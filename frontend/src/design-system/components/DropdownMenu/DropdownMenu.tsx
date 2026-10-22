@@ -83,7 +83,12 @@ export function DropdownMenu({
       )}
     >
       {searchable ? (
-        <div className={cn('mb-2 flex items-center gap-2 rounded-md border border-border-subtle bg-card px-3', recipe.fieldControl)}>
+        <div
+          className={cn(
+            'mb-2 flex items-center gap-2 rounded-md border border-border-subtle bg-card px-3',
+            recipe.fieldControl
+          )}
+        >
           <Search className={cn('shrink-0 text-muted', recipe.icon)} aria-hidden="true" />
           <input
             ref={searchInputRef}
@@ -95,7 +100,10 @@ export function DropdownMenu({
             aria-controls={searchListboxId}
             aria-activedescendant={searchActiveDescendant}
             aria-autocomplete="list"
-            className={cn('min-w-0 flex-1 bg-transparent text-primary outline-none placeholder:text-muted', recipe.label)}
+            className={cn(
+              'min-w-0 flex-1 bg-transparent text-primary outline-none placeholder:text-muted',
+              recipe.label
+            )}
           />
         </div>
       ) : null}
@@ -103,7 +111,9 @@ export function DropdownMenu({
         <DensityProvider density={resolvedDensity}>{children}</DensityProvider>
       </div>
       {footer ? (
-        <div className={cn('mt-2 border-t border-border-subtle pt-2 text-muted', recipe.caption)}>{footer}</div>
+        <div className={cn('mt-2 border-t border-border-subtle pt-2 text-muted', recipe.caption)}>
+          {footer}
+        </div>
       ) : null}
     </div>
   );

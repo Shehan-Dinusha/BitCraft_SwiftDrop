@@ -6,9 +6,23 @@ import {
 import type { DeliveryState } from '@/types/contracts';
 import { CatalogRow, DemoGrid, DemoRow, DensityPreview } from '../components/catalog-kit';
 
-const states: DeliveryState[] = ['CREATED', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'CANCELLED'];
+const states: DeliveryState[] = [
+  'CREATED',
+  'ASSIGNED',
+  'PICKED_UP',
+  'IN_TRANSIT',
+  'DELIVERED',
+  'FAILED',
+  'CANCELLED'
+];
 
-const slideStates: SlideToTransitionBarState[] = ['idle', 'dragging', 'armed', 'committed', 'disabled'];
+const slideStates: SlideToTransitionBarState[] = [
+  'idle',
+  'dragging',
+  'armed',
+  'committed',
+  'disabled'
+];
 
 const slideLabels: Record<SlideToTransitionBarState, string> = {
   idle: 'Idle',
@@ -21,7 +35,10 @@ const slideLabels: Record<SlideToTransitionBarState, string> = {
 export function ProgressSection() {
   return (
     <>
-      <CatalogRow label="Delivery stepper" hint="Solid = reached, muted = upcoming, green connectors">
+      <CatalogRow
+        label="Delivery stepper"
+        hint="Solid = reached, muted = upcoming, green connectors"
+      >
         <div className="space-y-4">
           {states.map((state) => (
             <div key={state} className="space-y-1">
@@ -36,7 +53,9 @@ export function ProgressSection() {
         <div className="space-y-3">
           {slideStates.map((state) => (
             <div key={state} className="space-y-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted">{slideLabels[state]}</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted">
+                {slideLabels[state]}
+              </span>
               <SlideToTransitionBar
                 label="Slide to confirm pickup"
                 confirmLabel="Release to confirm pickup"
@@ -59,7 +78,11 @@ export function ProgressSection() {
         <DensityPreview>
           {() => (
             <DemoRow>
-              <SlideToTransitionBar label="Slide to deliver" onConfirm={() => undefined} className="max-w-md" />
+              <SlideToTransitionBar
+                label="Slide to deliver"
+                onConfirm={() => undefined}
+                className="max-w-md"
+              />
             </DemoRow>
           )}
         </DensityPreview>

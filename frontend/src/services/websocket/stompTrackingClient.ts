@@ -19,8 +19,10 @@ export const createTrackingClient = (
     activate: () => {
       const protocol = gatewayOrigin.startsWith('https') ? 'wss' : 'ws';
       const host = gatewayOrigin.replace(/^https?:\/\//, '');
-      socket = new WebSocket(`${protocol}://${host}/ws/tracking?trackingId=${encodeURIComponent(trackingId)}`);
-      socket.onmessage = event => onMessage({body: event.data});
+      socket = new WebSocket(
+        `${protocol}://${host}/ws/tracking?trackingId=${encodeURIComponent(trackingId)}`
+      );
+      socket.onmessage = (event) => onMessage({ body: event.data });
     },
     deactivate: async () => {
       socket?.close();

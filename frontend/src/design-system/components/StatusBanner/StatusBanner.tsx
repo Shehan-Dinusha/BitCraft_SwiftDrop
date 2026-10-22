@@ -61,7 +61,11 @@ export function StatusBanner({
     >
       <span
         aria-hidden="true"
-        className={cn('mt-0.5 inline-flex shrink-0 items-center justify-center', recipe.icon, '[&_svg]:size-full')}
+        className={cn(
+          'mt-0.5 inline-flex shrink-0 items-center justify-center',
+          recipe.icon,
+          '[&_svg]:size-full'
+        )}
       >
         <Icon />
       </span>

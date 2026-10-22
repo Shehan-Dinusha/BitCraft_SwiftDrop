@@ -31,7 +31,9 @@ export function ButtonsSection() {
         <div className="space-y-2">
           {variants.map((variant) => (
             <div key={variant} className="flex flex-wrap items-center gap-2">
-              <span className="w-20 shrink-0 text-[10px] uppercase tracking-wider text-muted">{variant}</span>
+              <span className="w-20 shrink-0 text-[10px] uppercase tracking-wider text-muted">
+                {variant}
+              </span>
               {states.map((state) => (
                 <Button key={state} variant={variant} state={state} loadingLabel="Saving">
                   {stateLabels[state]}

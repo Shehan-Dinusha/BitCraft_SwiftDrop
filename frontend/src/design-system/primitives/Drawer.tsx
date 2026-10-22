@@ -1,5 +1,8 @@
 import { ReactNode } from 'react';
-import { ModalDrawerShell, type ModalDrawerSize } from '@/design-system/components/ModalDrawerShell/ModalDrawerShell';
+import {
+  ModalDrawerShell,
+  type ModalDrawerSize
+} from '@/design-system/components/ModalDrawerShell/ModalDrawerShell';
 
 export interface DrawerProps {
   open: boolean;

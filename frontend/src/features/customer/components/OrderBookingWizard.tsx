@@ -1,1 +1,15 @@
-import {useState} from 'react';import {Input} from '@/design-system/primitives/Input';import {Button} from '@/design-system/primitives/Button';export function OrderBookingWizard(){const[s,set]=useState(1);return <div className="space-y-4"><p>Step {s} of 2</p><Input placeholder={s===1?'Pickup address':'Delivery address'}/><Button onClick={()=>set(s===1?2:1)}>{s===1?'Continue':'Confirm booking'}</Button></div>}
+import { useState } from 'react';
+import { Input } from '@/design-system/primitives/Input';
+import { Button } from '@/design-system/primitives/Button';
+export function OrderBookingWizard() {
+  const [s, set] = useState(1);
+  return (
+    <div className="space-y-4">
+      <p>Step {s} of 2</p>
+      <Input placeholder={s === 1 ? 'Pickup address' : 'Delivery address'} />
+      <Button onClick={() => set(s === 1 ? 2 : 1)}>
+        {s === 1 ? 'Continue' : 'Confirm booking'}
+      </Button>
+    </div>
+  );
+}

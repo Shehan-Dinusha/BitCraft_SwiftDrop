@@ -49,10 +49,16 @@ export function SurfacesSection() {
         <SurfaceCard
           title="Delivery summary"
           header={<span className="text-xs text-muted">Updated 2 minutes ago</span>}
-          actions={<button type="button" className="text-xs font-semibold text-brand-primary">View</button>}
+          actions={
+            <button type="button" className="text-xs font-semibold text-brand-primary">
+              View
+            </button>
+          }
           footer={<span className="text-xs text-muted">Zone 4 · 12 stops</span>}
         >
-          <p className="text-sm text-secondary">Three parcels are waiting for a courier assignment.</p>
+          <p className="text-sm text-secondary">
+            Three parcels are waiting for a courier assignment.
+          </p>
         </SurfaceCard>
       </CatalogRow>
 

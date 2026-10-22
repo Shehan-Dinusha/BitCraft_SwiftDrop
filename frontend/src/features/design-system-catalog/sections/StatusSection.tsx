@@ -10,15 +10,32 @@ import type { DeliveryState } from '@/types/contracts';
 import { cn } from '@/utils/cn';
 import { CatalogRow, DemoGrid, DemoRow } from '../components/catalog-kit';
 
-const states: DeliveryState[] = ['CREATED', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'CANCELLED'];
+const states: DeliveryState[] = [
+  'CREATED',
+  'ASSIGNED',
+  'PICKED_UP',
+  'IN_TRANSIT',
+  'DELIVERED',
+  'FAILED',
+  'CANCELLED'
+];
 const sizes: FsmStatusBadgeSize[] = ['sm', 'md', 'lg'];
 const tones: StatusBannerTone[] = ['success', 'warning', 'danger', 'info'];
 
 const toneCopy: Record<StatusBannerTone, { title: string; body: string }> = {
   success: { title: 'Delivery completed', body: 'Proof of delivery was captured and verified.' },
-  warning: { title: 'SLA at risk', body: 'Three parcels in Zone 4 are close to their promised window.' },
-  danger: { title: 'Replay failed', body: 'Webhook #wh_001 exhausted its retries and moved to the DLQ.' },
-  info: { title: 'Courier reassigned', body: 'Zone 4 coverage moved to Amara Okafor for the next 2 hours.' }
+  warning: {
+    title: 'SLA at risk',
+    body: 'Three parcels in Zone 4 are close to their promised window.'
+  },
+  danger: {
+    title: 'Replay failed',
+    body: 'Webhook #wh_001 exhausted its retries and moved to the DLQ.'
+  },
+  info: {
+    title: 'Courier reassigned',
+    body: 'Zone 4 coverage moved to Amara Okafor for the next 2 hours.'
+  }
 };
 
 function SlaPill({ tone, label }: { tone: keyof typeof slaColors; label: string }) {
@@ -44,7 +61,9 @@ export function StatusSection() {
         <div className="space-y-3">
           {sizes.map((size) => (
             <DemoRow key={size}>
-              <span className="w-8 shrink-0 text-[10px] uppercase tracking-wider text-muted">{size}</span>
+              <span className="w-8 shrink-0 text-[10px] uppercase tracking-wider text-muted">
+                {size}
+              </span>
               {states.map((state) => (
                 <FsmStatusBadge key={state} state={state} size={size} />
               ))}

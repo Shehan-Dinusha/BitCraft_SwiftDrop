@@ -25,7 +25,11 @@ export function FeedbackSection() {
             <AiAssistantDock />
           </div>
           <div className="h-[420px]">
-            <AiAssistantDock title="Ops copilot" subtitle="Scoped to the control tower" placeholder="Ask about a zone" />
+            <AiAssistantDock
+              title="Ops copilot"
+              subtitle="Scoped to the control tower"
+              placeholder="Ask about a zone"
+            />
           </div>
         </DemoGrid>
       </CatalogRow>

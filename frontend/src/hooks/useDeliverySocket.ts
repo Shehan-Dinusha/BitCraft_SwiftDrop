@@ -1,12 +1,12 @@
-import {useEffect} from 'react';
-import {createTrackingClient} from '@/services/websocket/stompTrackingClient';
-import {useActiveDeliveryStore} from '@/store/useActiveDeliveryStore';
-import type {LocationUpdatedEvent} from '@/types/contracts';
+import { useEffect } from 'react';
+import { createTrackingClient } from '@/services/websocket/stompTrackingClient';
+import { useActiveDeliveryStore } from '@/store/useActiveDeliveryStore';
+import type { LocationUpdatedEvent } from '@/types/contracts';
 
 export function useDeliverySocket(trackingId = 'unknown') {
-  const setLocation = useActiveDeliveryStore(s => s.setLocation);
+  const setLocation = useActiveDeliveryStore((s) => s.setLocation);
   useEffect(() => {
-    const client = createTrackingClient(trackingId, message => {
+    const client = createTrackingClient(trackingId, (message) => {
       const update = JSON.parse(message.body) as {
         latitude?: number | null;
         longitude?: number | null;

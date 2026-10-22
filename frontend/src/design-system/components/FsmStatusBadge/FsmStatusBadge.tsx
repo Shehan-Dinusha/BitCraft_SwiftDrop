@@ -32,7 +32,14 @@ const densitySizes: Record<DensityMode, FsmStatusBadgeSize> = {
   compact: 'sm'
 };
 
-export function FsmStatusBadge({ state, size, tone = 'solid', label, density, className }: FsmStatusBadgeProps) {
+export function FsmStatusBadge({
+  state,
+  size,
+  tone = 'solid',
+  label,
+  density,
+  className
+}: FsmStatusBadgeProps) {
   const contextDensity = useDensityMode();
   const tokens = deliveryStateColors[state];
   const resolvedSize = size ?? densitySizes[density ?? contextDensity];
@@ -52,7 +59,14 @@ export function FsmStatusBadge({ state, size, tone = 'solid', label, density, cl
         className
       )}
     >
-      <span className={cn('shrink-0 rounded-full', isMuted ? 'bg-disabled-fg' : 'bg-current', sizing.dot)} aria-hidden="true" />
+      <span
+        className={cn(
+          'shrink-0 rounded-full',
+          isMuted ? 'bg-disabled-fg' : 'bg-current',
+          sizing.dot
+        )}
+        aria-hidden="true"
+      />
       <span className="truncate">{label ?? state.replace(/_/g, ' ')}</span>
     </span>
   );

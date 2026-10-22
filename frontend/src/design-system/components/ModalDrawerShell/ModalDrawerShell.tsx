@@ -101,7 +101,12 @@ export function ModalDrawerShell({
         className
       )}
     >
-      <header className={cn('flex items-start justify-between gap-3 border-b border-border-subtle', recipe.surfaceSection)}>
+      <header
+        className={cn(
+          'flex items-start justify-between gap-3 border-b border-border-subtle',
+          recipe.surfaceSection
+        )}
+      >
         <div className="min-w-0 flex-1">
           <h2 id={titleId} className="truncate text-lg font-bold text-primary">
             {title}
@@ -113,7 +118,13 @@ export function ModalDrawerShell({
           ) : null}
           {header}
         </div>
-        <Button variant="ghost" density={density} className="text-secondary" onClick={onClose} aria-label="Close dialog">
+        <Button
+          variant="ghost"
+          density={density}
+          className="text-secondary"
+          onClick={onClose}
+          aria-label="Close dialog"
+        >
           <X size={18} />
         </Button>
       </header>
@@ -121,7 +132,9 @@ export function ModalDrawerShell({
         <div className={recipe.surfacePadding}>{children}</div>
       </div>
       {footer ? (
-        <footer className={cn('border-t border-border-subtle', recipe.surfaceSection)}>{footer}</footer>
+        <footer className={cn('border-t border-border-subtle', recipe.surfaceSection)}>
+          {footer}
+        </footer>
       ) : null}
     </section>
   );

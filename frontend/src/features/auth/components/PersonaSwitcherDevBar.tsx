@@ -13,7 +13,9 @@ export function PersonaSwitcherDevBar({ onSwitch }: PersonaSwitcherDevBarProps) 
 
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-border-subtle bg-elevated px-3 py-1.5">
-      <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted">Dev persona</span>
+      <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+        Dev persona
+      </span>
       {PERSONA_ROLES.map((role) => (
         <button
           key={role}

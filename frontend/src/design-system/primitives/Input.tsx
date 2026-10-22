@@ -5,7 +5,8 @@ import { useDensityMode } from '@/design-system/providers/DensityProvider';
 import { densityRecipes, type DensityMode } from '@/design-system/tokens/density';
 
 export type InputVariant = 'text' | 'password' | 'search' | 'currency' | 'phone';
-export type InputState = 'default' | 'hover' | 'focused' | 'filled' | 'error' | 'disabled' | 'readOnly';
+export type InputState =
+  'default' | 'hover' | 'focused' | 'filled' | 'error' | 'disabled' | 'readOnly';
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   /** Field archetype. Drives the input type, monospace treatment and slot defaults. */
@@ -38,20 +39,23 @@ const variantTypes: Record<InputVariant, string> = {
   phone: 'tel'
 };
 
-const variantInputModes: Record<InputVariant, InputHTMLAttributes<HTMLInputElement>['inputMode']> = {
-  text: undefined,
-  password: undefined,
-  search: 'search',
-  currency: 'decimal',
-  phone: 'tel'
-};
+const variantInputModes: Record<InputVariant, InputHTMLAttributes<HTMLInputElement>['inputMode']> =
+  {
+    text: undefined,
+    password: undefined,
+    search: 'search',
+    currency: 'decimal',
+    phone: 'tel'
+  };
 
 const monospacedVariants: InputVariant[] = ['currency', 'phone'];
 
 const focusRing = 'outline outline-2 outline-offset-[-2px] outline-border-focus';
 const focusRingError = 'outline outline-2 outline-offset-[-2px] outline-status-danger';
-const liveFocusRing = 'focus-within:outline focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-border-focus';
-const liveFocusRingError = 'focus-within:outline focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-status-danger';
+const liveFocusRing =
+  'focus-within:outline focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-border-focus';
+const liveFocusRingError =
+  'focus-within:outline focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-status-danger';
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
@@ -110,9 +114,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     };
 
     const liveHover =
-      resolved === 'default' || resolved === 'filled' || resolved === 'hover' ? 'hover:border-secondary' : '';
+      resolved === 'default' || resolved === 'filled' || resolved === 'hover'
+        ? 'hover:border-secondary'
+        : '';
     const liveFocusEnabled =
-      resolved === 'default' || resolved === 'filled' || resolved === 'focused' || resolved === 'error';
+      resolved === 'default' ||
+      resolved === 'filled' ||
+      resolved === 'focused' ||
+      resolved === 'error';
     const liveFocus = liveFocusEnabled ? (isInvalid ? liveFocusRingError : liveFocusRing) : '';
 
     const variantLeading =
@@ -131,16 +140,26 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           onClick={() => setRevealed((current) => !current)}
           aria-label={revealed ? 'Hide password' : 'Show password'}
           aria-pressed={revealed}
-          className={cn('shrink-0 rounded text-muted transition-colors hover:text-primary', recipe.target)}
+          className={cn(
+            'shrink-0 rounded text-muted transition-colors hover:text-primary',
+            recipe.target
+          )}
         >
-          {revealed ? <EyeOff className={recipe.icon} aria-hidden="true" /> : <Eye className={recipe.icon} aria-hidden="true" />}
+          {revealed ? (
+            <EyeOff className={recipe.icon} aria-hidden="true" />
+          ) : (
+            <Eye className={recipe.icon} aria-hidden="true" />
+          )}
         </button>
       ) : variant === 'search' && onClear && hasValue ? (
         <button
           type="button"
           onClick={onClear}
           aria-label="Clear search"
-          className={cn('shrink-0 rounded text-muted transition-colors hover:text-primary', recipe.target)}
+          className={cn(
+            'shrink-0 rounded text-muted transition-colors hover:text-primary',
+            recipe.target
+          )}
         >
           <X className={recipe.icon} aria-hidden="true" />
         </button>
@@ -148,25 +167,33 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
     const stateTrailing =
       resolved === 'error' ? (
-        <AlertCircle className={cn('shrink-0 text-status-danger', recipe.icon)} aria-hidden="true" />
+        <AlertCircle
+          className={cn('shrink-0 text-status-danger', recipe.icon)}
+          aria-hidden="true"
+        />
       ) : resolved === 'readOnly' ? (
         <Lock className={cn('shrink-0 text-muted', recipe.icon)} aria-hidden="true" />
       ) : null;
 
     const leadingSlot =
-      leading ?? variantLeading ? (
-        <span className={cn('flex shrink-0 items-center', recipe.icon)}>{leading ?? variantLeading}</span>
+      (leading ?? variantLeading) ? (
+        <span className={cn('flex shrink-0 items-center', recipe.icon)}>
+          {leading ?? variantLeading}
+        </span>
       ) : null;
 
     const trailingSlot = (
       <>
         {variantTrailing}
         {stateTrailing}
-        {trailing ? <span className={cn('flex shrink-0 items-center', recipe.icon)}>{trailing}</span> : null}
+        {trailing ? (
+          <span className={cn('flex shrink-0 items-center', recipe.icon)}>{trailing}</span>
+        ) : null}
       </>
     );
 
-    const inputType = variant === 'password' ? (revealed ? 'text' : 'password') : variantTypes[variant];
+    const inputType =
+      variant === 'password' ? (revealed ? 'text' : 'password') : variantTypes[variant];
 
     return (
       <span

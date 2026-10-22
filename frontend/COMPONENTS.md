@@ -32,33 +32,33 @@ must be authored as `.tsx` with explicit props and accessible behavior.
 
 ### Primitives
 
-| Component | Purpose |
-| --- | --- |
-| `Button` | Primary, secondary, outline, ghost, and destructive actions. Renders at the active persona density and supports default, hover, pressed, focused, disabled, and loading states. |
-| `Input` | Bare text control for filters and compact controls. Five archetypes (`text`, `password`, `search`, `currency`, `phone`) and seven visual states. |
-| `Field` | Labelled form field built on `Input`, with hint and error messaging. Use this for forms. |
-| `SurfaceCard` | Card surface with `base`, `elevated`, `interactive`, and `selected` roles, plus header/actions/body/footer slots. |
-| `Card` | Alias for `SurfaceCard` with the base role, kept for existing feature pages. |
-| `Modal` | Centered dialog. Thin wrapper over `ModalDrawerShell`. |
-| `Drawer` | Right-side dialog. Thin wrapper over `ModalDrawerShell`. |
-| `ModalDrawerShell` | Typed dialog shell shared by modal and drawer layouts: title, description, header, scrollable body, and pinned footer. |
-| `Skeleton` | Loading placeholder. `shape` is `text`, `block`, or `circle`; `lines` renders stacked text bars. Always decorative (`aria-hidden`), so put `aria-busy` on the region being loaded. |
+| Component          | Purpose                                                                                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`           | Primary, secondary, outline, ghost, and destructive actions. Renders at the active persona density and supports default, hover, pressed, focused, disabled, and loading states.    |
+| `Input`            | Bare text control for filters and compact controls. Five archetypes (`text`, `password`, `search`, `currency`, `phone`) and seven visual states.                                   |
+| `Field`            | Labelled form field built on `Input`, with hint and error messaging. Use this for forms.                                                                                           |
+| `SurfaceCard`      | Card surface with `base`, `elevated`, `interactive`, and `selected` roles, plus header/actions/body/footer slots.                                                                  |
+| `Card`             | Alias for `SurfaceCard` with the base role, kept for existing feature pages.                                                                                                       |
+| `Modal`            | Centered dialog. Thin wrapper over `ModalDrawerShell`.                                                                                                                             |
+| `Drawer`           | Right-side dialog. Thin wrapper over `ModalDrawerShell`.                                                                                                                           |
+| `ModalDrawerShell` | Typed dialog shell shared by modal and drawer layouts: title, description, header, scrollable body, and pinned footer.                                                             |
+| `Skeleton`         | Loading placeholder. `shape` is `text`, `block`, or `circle`; `lines` renders stacked text bars. Always decorative (`aria-hidden`), so put `aria-busy` on the region being loaded. |
 
 ### Domain components
 
-| Component | Use |
-| --- | --- |
-| `FsmStatusBadge` | Token-driven pill for one backend `DeliveryState`: status dot plus uppercase label. |
-| `DeliveryProgressStepper` | Customer-facing delivery lifecycle progress. |
-| `ErgonomicActionBar` | Courier thumb-zone transition controls. Only show allowed next states from `useFsmTransition`; the first action is primary, `FAILED`/`CANCELLED` are destructive, and the recipe caps the visible count (2 touch, 3 comfortable, 4 compact). Pass `pendingState` to block repeat taps. |
-| `SlideToTransitionBar` | Slide-to-confirm control for courier state transitions, with an Enter/Space fallback. |
-| `HighDensityDataGrid` | Compact merchant and operations table with progressive filtering, a live row count, right-aligned numeric columns, and an empty state. |
-| `AiAssistantDock` | AI conversation panel; citations are attributed per message. `onSubmit` may return the assistant reply. |
-| `StatusBanner` | Success, warning, danger, and informational feedback on the tinted `status-*-bg` / `status-*-fg` token triads. `danger` announces as `role="alert"`. |
-| `ThemeToggle` | Theme switch backed by `useThemeStore`: toggles the `dark` class, persists the choice, and stays in sync across instances. `appearance` is `icon` (default) or `labelled`. |
-| `SelectDropdown` | Single-choice select with listbox keyboard support, optional search, and status badges. |
-| `DropdownMenu` | Floating option panel used by `SelectDropdown` and by action menus. |
-| `DropdownItem` | One option row inside a `DropdownMenu`. |
+| Component                 | Use                                                                                                                                                                                                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FsmStatusBadge`          | Token-driven pill for one backend `DeliveryState`: status dot plus uppercase label.                                                                                                                                                                                                    |
+| `DeliveryProgressStepper` | Customer-facing delivery lifecycle progress.                                                                                                                                                                                                                                           |
+| `ErgonomicActionBar`      | Courier thumb-zone transition controls. Only show allowed next states from `useFsmTransition`; the first action is primary, `FAILED`/`CANCELLED` are destructive, and the recipe caps the visible count (2 touch, 3 comfortable, 4 compact). Pass `pendingState` to block repeat taps. |
+| `SlideToTransitionBar`    | Slide-to-confirm control for courier state transitions, with an Enter/Space fallback.                                                                                                                                                                                                  |
+| `HighDensityDataGrid`     | Compact merchant and operations table with progressive filtering, a live row count, right-aligned numeric columns, and an empty state.                                                                                                                                                 |
+| `AiAssistantDock`         | AI conversation panel; citations are attributed per message. `onSubmit` may return the assistant reply.                                                                                                                                                                                |
+| `StatusBanner`            | Success, warning, danger, and informational feedback on the tinted `status-*-bg` / `status-*-fg` token triads. `danger` announces as `role="alert"`.                                                                                                                                   |
+| `ThemeToggle`             | Theme switch backed by `useThemeStore`: toggles the `dark` class, persists the choice, and stays in sync across instances. `appearance` is `icon` (default) or `labelled`.                                                                                                             |
+| `SelectDropdown`          | Single-choice select with listbox keyboard support, optional search, and status badges.                                                                                                                                                                                                |
+| `DropdownMenu`            | Floating option panel used by `SelectDropdown` and by action menus.                                                                                                                                                                                                                    |
+| `DropdownItem`            | One option row inside a `DropdownMenu`.                                                                                                                                                                                                                                                |
 
 ## Button states and density
 
@@ -66,11 +66,11 @@ must be authored as `.tsx` with explicit props and accessible behavior.
 matching target height, padding, icon size, radius, and label size from
 `densityRecipes`. Pass `density` to override it for a single control.
 
-| Density | Target height | Padding | Icon | Radius |
-| --- | --- | --- | --- | --- |
-| `touch` | 56px | 20px / 16px | 24px | 12px |
-| `comfortable` | 44px | 16px / 12px | 20px | 8px |
-| `compact` | 36px | 12px / 8px | 18px | 6px |
+| Density       | Target height | Padding     | Icon | Radius |
+| ------------- | ------------- | ----------- | ---- | ------ |
+| `touch`       | 56px          | 20px / 16px | 24px | 12px   |
+| `comfortable` | 44px          | 16px / 12px | 20px | 8px    |
+| `compact`     | 36px          | 12px / 8px  | 18px | 6px    |
 
 `state` renders one explicit visual state instead of the live
 `:hover`/`:active`/`:focus-visible` behaviour. Use it for design reviews and
@@ -93,23 +93,23 @@ renders a spinner, sets `aria-busy`, and disables the control.
 leading slot, the native input, and a trailing slot, so archetype affordances
 and state icons stay consistent across every form.
 
-| Archetype | Behaviour |
-| --- | --- |
-| `text` | Native text input. |
-| `password` | Masked input with a reveal toggle in the trailing slot. |
-| `search` | `inputMode="search"` with a magnifier leading icon; pass `onClear` to render a clear button. |
+| Archetype  | Behaviour                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| `text`     | Native text input.                                                                                  |
+| `password` | Masked input with a reveal toggle in the trailing slot.                                             |
+| `search`   | `inputMode="search"` with a magnifier leading icon; pass `onClear` to render a clear button.        |
 | `currency` | `inputMode="decimal"` with a currency prefix and monospaced digits. Use `tabular-nums` for amounts. |
-| `phone` | `type="tel"` with a dialling-code prefix and monospaced digits. |
+| `phone`    | `type="tel"` with a dialling-code prefix and monospaced digits.                                     |
 
-| State | Treatment |
-| --- | --- |
-| `default` | `bg-card`, `border-border-subtle`, placeholder `text-muted`. |
-| `hover` | Border darkens to `border-secondary`. |
-| `focused` | Inset 2px `outline-border-focus` ring on the wrapper. |
-| `filled` | Value is `text-primary`; the border stays subtle. |
-| `error` | `border-status-danger`, `aria-invalid`, and a trailing alert icon. |
-| `disabled` | `bg-disabled-bg` / `text-disabled-fg`. |
-| `readOnly` | `bg-canvas` with a trailing lock icon. |
+| State      | Treatment                                                          |
+| ---------- | ------------------------------------------------------------------ |
+| `default`  | `bg-card`, `border-border-subtle`, placeholder `text-muted`.       |
+| `hover`    | Border darkens to `border-secondary`.                              |
+| `focused`  | Inset 2px `outline-border-focus` ring on the wrapper.              |
+| `filled`   | Value is `text-primary`; the border stays subtle.                  |
+| `error`    | `border-status-danger`, `aria-invalid`, and a trailing alert icon. |
+| `disabled` | `bg-disabled-bg` / `text-disabled-fg`.                             |
+| `readOnly` | `bg-canvas` with a trailing lock icon.                             |
 
 `state` forces one explicit visual state for catalog and review screens. In
 product views, omit it and let `invalid`, `disabled`, and `readOnly` drive the
@@ -131,13 +131,13 @@ appearance.
 `role="combobox"` button, the panel is a `role="listbox"`, and the active row is
 tracked with `aria-activedescendant` so focus never leaves the trigger.
 
-| Key | Behaviour |
-| --- | --- |
-| `ArrowDown` / `ArrowUp` | Open the menu, then move the active row. |
-| `Home` / `End` | Jump to the first or last row. |
-| `Enter` / `Space` | Open, then select the active row. |
-| `Escape` | Close the menu and return focus to the trigger. |
-| `Tab` | Close the menu and move on. |
+| Key                     | Behaviour                                       |
+| ----------------------- | ----------------------------------------------- |
+| `ArrowDown` / `ArrowUp` | Open the menu, then move the active row.        |
+| `Home` / `End`          | Jump to the first or last row.                  |
+| `Enter` / `Space`       | Open, then select the active row.               |
+| `Escape`                | Close the menu and return focus to the trigger. |
+| `Tab`                   | Close the menu and move on.                     |
 
 ```tsx
 <SelectDropdown
@@ -159,18 +159,18 @@ tracked with `aria-activedescendant` so focus never leaves the trigger.
 role, so existing feature pages keep working while new pages can opt into the
 richer roles.
 
-| Role | Use |
-| --- | --- |
-| `base` | Standard content surface on the page canvas. |
-| `elevated` | Surface that sits above the page, e.g. an inline panel or popover. |
+| Role          | Use                                                                           |
+| ------------- | ----------------------------------------------------------------------------- |
+| `base`        | Standard content surface on the page canvas.                                  |
+| `elevated`    | Surface that sits above the page, e.g. an inline panel or popover.            |
 | `interactive` | Tappable card. Adds `cursor-pointer`, a brand hover border, and a focus ring. |
-| `selected` | The chosen card in a set, e.g. a courier or slot picker. |
+| `selected`    | The chosen card in a set, e.g. a courier or slot picker.                      |
 
-| State | Treatment |
-| --- | --- |
-| `default` | Live `:hover`/`:focus-visible` behaviour. |
-| `hover` | Border darkens to `border-secondary`. |
-| `focused` | 2px `outline-border-focus` ring with a matching halo. |
+| State      | Treatment                                             |
+| ---------- | ----------------------------------------------------- |
+| `default`  | Live `:hover`/`:focus-visible` behaviour.             |
+| `hover`    | Border darkens to `border-secondary`.                 |
+| `focused`  | 2px `outline-border-focus` ring with a matching halo. |
 | `disabled` | `bg-disabled-bg` / `text-disabled-fg`, not clickable. |
 
 `title`, `header`, and `actions` build the header; `children` render in the body
@@ -201,14 +201,20 @@ layout at runtime. The backdrop uses the theme-aware `bg-scrim` (modal) and
 `bg-scrim-soft` (drawer) tokens, which carry their own alpha so no opacity
 modifier is needed.
 
-| Size | Modal | Drawer |
-| --- | --- | --- |
-| `sm` | 560 x 380 | 480 x 520 |
-| `md` (default) | 800 x 480 | 700 x 720 |
-| `lg` | 1040 x 640 | 960 x 880 |
+| Size           | Modal      | Drawer    |
+| -------------- | ---------- | --------- |
+| `sm`           | 560 x 380  | 480 x 520 |
+| `md` (default) | 800 x 480  | 700 x 720 |
+| `lg`           | 1040 x 640 | 960 x 880 |
 
 ```tsx
-<Modal open={open} onClose={close} title="Manual dispatch override" description="Choose a courier" footer={<Button onClick={confirm}>Confirm</Button>}>
+<Modal
+  open={open}
+  onClose={close}
+  title="Manual dispatch override"
+  description="Choose a courier"
+  footer={<Button onClick={confirm}>Confirm</Button>}
+>
   <CourierPicker />
 </Modal>
 ```
@@ -219,11 +225,11 @@ modifier is needed.
 `deliveryStateColors` (backed by the `--color-fsm-*` tokens) so light and dark
 themes stay in sync and no view invents its own palette.
 
-| Size | Default for | Treatment |
-| --- | --- | --- |
-| `sm` | `compact` | 10px label, 4px dot, `px-2 py-0.5` |
+| Size | Default for   | Treatment                          |
+| ---- | ------------- | ---------------------------------- |
+| `sm` | `compact`     | 10px label, 4px dot, `px-2 py-0.5` |
 | `md` | `comfortable` | 12px label, 6px dot, `px-2.5 py-1` |
-| `lg` | `touch` | 14px label, 8px dot, `px-3 py-1.5` |
+| `lg` | `touch`       | 14px label, 8px dot, `px-3 py-1.5` |
 
 ```tsx
 <FsmStatusBadge state="IN_TRANSIT" />
@@ -246,12 +252,12 @@ deliberate gesture. The track height comes from
 `densityRecipes[...].slideTrack` (64px touch, 48px comfortable, 40px compact) and
 the thumb is inset 4px, so touch density yields the 64px track / 56px thumb pair.
 
-| Progress | Behaviour |
-| --- | --- |
-| `0` | Idle: label at rest. |
-| `>= 50%` | Armed preview: brand border and the `confirmLabel` copy. |
-| `>= 85%` on release | Commit: fires `onConfirm()`. |
-| `< 85%` on release | Snaps back without firing. |
+| Progress            | Behaviour                                                |
+| ------------------- | -------------------------------------------------------- |
+| `0`                 | Idle: label at rest.                                     |
+| `>= 50%`            | Armed preview: brand border and the `confirmLabel` copy. |
+| `>= 85%` on release | Commit: fires `onConfirm()`.                             |
+| `< 85%` on release  | Snaps back without firing.                               |
 
 Keyboard users can focus the bar and press `Enter` or `Space` to commit
 immediately. `state` forces one visual state for catalog screens and makes the
@@ -264,7 +270,7 @@ const { next, transition } = useFsmTransition();
   label={`Slide to ${next[0].replace('_', ' ').toLowerCase()}`}
   confirmLabel="Release to confirm"
   onConfirm={() => transition(next[0])}
-/>
+/>;
 ```
 
 ## Feedback, actions, and data
@@ -273,12 +279,12 @@ const { next, transition } = useFsmTransition();
 `status-<tone>-bg` / `-fg` / `-border` triad, so banners work in both themes
 without opacity modifiers on hex variables.
 
-| Tone | Role | Use |
-| --- | --- | --- |
-| `success` | `status` | Confirmed actions and settled states. |
-| `info` | `status` | Neutral guidance and context. |
+| Tone      | Role     | Use                                                       |
+| --------- | -------- | --------------------------------------------------------- |
+| `success` | `status` | Confirmed actions and settled states.                     |
+| `info`    | `status` | Neutral guidance and context.                             |
 | `warning` | `status` | Degraded but recoverable conditions, e.g. an SLA at risk. |
-| `danger` | `alert` | Failed actions and blocking errors. |
+| `danger`  | `alert`  | Failed actions and blocking errors.                       |
 
 ```tsx
 <StatusBanner tone="warning" title="SLA at risk" action={<button type="button">Reassign</button>}>
@@ -294,7 +300,7 @@ deliberate confirmation.
 ```tsx
 const { next, transition } = useFsmTransition();
 
-<ErgonomicActionBar next={next} onTransition={transition} pendingState={pending} sticky />
+<ErgonomicActionBar next={next} onTransition={transition} pendingState={pending} sticky />;
 ```
 
 `HighDensityDataGrid` filters across every column, keeps the row count visible,
@@ -306,7 +312,11 @@ columns should set `align: 'right'`.
   rows={events}
   columns={[
     { key: 'id', label: 'Event ID' },
-    { key: 'status', label: 'Status', render: (row) => <FsmStatusBadge state={row.deliveryState} /> },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (row) => <FsmStatusBadge state={row.deliveryState} />
+    },
     { key: 'attempts', label: 'Attempts', align: 'right' }
   ]}
 />

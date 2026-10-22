@@ -28,7 +28,8 @@ export interface SurfaceCardProps extends Omit<HTMLAttributes<HTMLElement>, 'tit
 const variantClasses: Record<SurfaceCardVariant, string> = {
   base: 'bg-card border border-border-subtle',
   elevated: 'bg-elevated border border-border-subtle shadow-ambient',
-  interactive: 'bg-card border border-border-subtle hover:border-brand-primary hover:shadow-ambient',
+  interactive:
+    'bg-card border border-border-subtle hover:border-brand-primary hover:shadow-ambient',
   selected: 'bg-brand-subtle border border-brand-primary'
 };
 
@@ -90,7 +91,12 @@ export function SurfaceCard({
       )}
     >
       {hasHeader ? (
-        <header className={cn('flex items-start justify-between gap-3 border-b border-border-subtle', recipe.surfaceSection)}>
+        <header
+          className={cn(
+            'flex items-start justify-between gap-3 border-b border-border-subtle',
+            recipe.surfaceSection
+          )}
+        >
           <div className="min-w-0 flex-1">
             {title ? <h3 className="truncate font-semibold text-primary">{title}</h3> : null}
             {header}
@@ -100,7 +106,9 @@ export function SurfaceCard({
       ) : null}
       <div className={cn('min-w-0 flex-1', recipe.surfacePadding)}>{children}</div>
       {footer ? (
-        <footer className={cn('border-t border-border-subtle', recipe.surfaceSection)}>{footer}</footer>
+        <footer className={cn('border-t border-border-subtle', recipe.surfaceSection)}>
+          {footer}
+        </footer>
       ) : null}
     </section>
   );

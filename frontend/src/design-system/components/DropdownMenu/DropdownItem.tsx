@@ -61,16 +61,29 @@ export function DropdownItem({
         'flex cursor-pointer items-center gap-2 rounded-md transition-colors',
         recipe.menuItem,
         recipe.label,
-        disabled ? 'cursor-not-allowed text-disabled-fg' : selected ? 'bg-brand-subtle text-brand-primary' : 'text-primary',
+        disabled
+          ? 'cursor-not-allowed text-disabled-fg'
+          : selected
+            ? 'bg-brand-subtle text-brand-primary'
+            : 'text-primary',
         active && !selected && !disabled ? 'bg-canvas' : '',
         className
       )}
     >
-      {status ? <span className={cn('size-2 shrink-0 rounded-full', statusDots[status])} aria-hidden="true" /> : null}
+      {status ? (
+        <span
+          className={cn('size-2 shrink-0 rounded-full', statusDots[status])}
+          aria-hidden="true"
+        />
+      ) : null}
       {icon ? <span className={cn('flex shrink-0 items-center', recipe.icon)}>{icon}</span> : null}
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {description ? <span className={cn('shrink-0 text-muted', recipe.caption)}>{description}</span> : null}
-      {selected ? <Check className={cn('shrink-0 text-brand-primary', recipe.icon)} aria-hidden="true" /> : null}
+      {description ? (
+        <span className={cn('shrink-0 text-muted', recipe.caption)}>{description}</span>
+      ) : null}
+      {selected ? (
+        <Check className={cn('shrink-0 text-brand-primary', recipe.icon)} aria-hidden="true" />
+      ) : null}
     </div>
   );
 }

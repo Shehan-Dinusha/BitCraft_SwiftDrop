@@ -7,4 +7,8 @@ import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard'
  */
 export const Card = SurfaceCard;
 
-export type { SurfaceCardProps, SurfaceCardState, SurfaceCardVariant } from '@/design-system/components/SurfaceCard/SurfaceCard';
+export type {
+  SurfaceCardProps,
+  SurfaceCardState,
+  SurfaceCardVariant
+} from '@/design-system/components/SurfaceCard/SurfaceCard';

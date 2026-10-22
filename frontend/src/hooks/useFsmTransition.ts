@@ -1,1 +1,14 @@
-import {useActiveDeliveryStore} from '@/store/useActiveDeliveryStore';import {allowedTransitions} from '@/types/fsm';import type {DeliveryState} from '@/types/contracts';export function useFsmTransition(){const current=useActiveDeliveryStore(s=>s.state);const setState=useActiveDeliveryStore(s=>s.setState);return{current,next:allowedTransitions[current],transition:(n:DeliveryState)=>{if(allowedTransitions[current].includes(n))setState(n)}}}
+import { useActiveDeliveryStore } from '@/store/useActiveDeliveryStore';
+import { allowedTransitions } from '@/types/fsm';
+import type { DeliveryState } from '@/types/contracts';
+export function useFsmTransition() {
+  const current = useActiveDeliveryStore((s) => s.state);
+  const setState = useActiveDeliveryStore((s) => s.setState);
+  return {
+    current,
+    next: allowedTransitions[current],
+    transition: (n: DeliveryState) => {
+      if (allowedTransitions[current].includes(n)) setState(n);
+    }
+  };
+}

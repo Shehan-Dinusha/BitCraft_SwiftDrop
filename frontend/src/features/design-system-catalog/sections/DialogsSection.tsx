@@ -6,7 +6,8 @@ const sizes: ModalDrawerSize[] = ['sm', 'md', 'lg'];
 const body = (
   <div className="space-y-3">
     <p className="text-sm text-secondary">
-      Choose the courier for parcel SD-4821-XZ. Only couriers on shift in the destination zone are listed.
+      Choose the courier for parcel SD-4821-XZ. Only couriers on shift in the destination zone are
+      listed.
     </p>
     <SurfacePreviewList />
   </div>
@@ -67,7 +68,9 @@ export function DialogsSection() {
               title={`Delivery details (${size})`}
               onClose={() => undefined}
             >
-              <p className="text-sm text-secondary">Drawer body content scrolls independently of the footer.</p>
+              <p className="text-sm text-secondary">
+                Drawer body content scrolls independently of the footer.
+              </p>
             </ModalDrawerShell>
           ))}
         </DemoGrid>
@@ -95,8 +98,8 @@ export function DialogsSection() {
           }
         >
           <p className="text-sm text-secondary">
-            Nobody answered at the delivery address after two attempts. Confirm the failure to release the parcel
-            back to dispatch.
+            Nobody answered at the delivery address after two attempts. Confirm the failure to
+            release the parcel back to dispatch.
           </p>
         </ModalDrawerShell>
       </CatalogRow>

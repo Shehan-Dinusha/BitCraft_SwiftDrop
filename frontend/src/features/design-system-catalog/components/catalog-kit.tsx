@@ -8,7 +8,15 @@ export interface PreviewPaneProps {
   className?: string;
 }
 
-function Frame({ theme, className, children }: { theme: 'light' | 'dark'; className?: string; children: ReactNode }) {
+function Frame({
+  theme,
+  className,
+  children
+}: {
+  theme: 'light' | 'dark';
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <div
       className={cn(
@@ -53,7 +61,9 @@ export function CatalogSection({
     <section id={id} className="scroll-mt-28 space-y-6">
       <div>
         <h2 className="text-xl font-bold tracking-tight text-primary">{title}</h2>
-        {description ? <p className="mt-1 max-w-3xl text-sm text-secondary">{description}</p> : null}
+        {description ? (
+          <p className="mt-1 max-w-3xl text-sm text-secondary">{description}</p>
+        ) : null}
       </div>
       {children}
     </section>
@@ -94,7 +104,9 @@ export function DensityPreview({ children }: { children: (density: DensityMode) 
     <div className="space-y-4">
       {densityModes.map((density) => (
         <div key={density}>
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted">{density}</p>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+            {density}
+          </p>
           <DensityProvider density={density}>{children(density)}</DensityProvider>
         </div>
       ))}

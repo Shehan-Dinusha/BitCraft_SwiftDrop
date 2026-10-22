@@ -4,7 +4,8 @@ import { Input, type InputProps } from '@/design-system/primitives/Input';
 import { useDensityMode } from '@/design-system/providers/DensityProvider';
 import { densityRecipes } from '@/design-system/tokens/density';
 
-export type FieldState = 'default' | 'hover' | 'focused' | 'filled' | 'error' | 'disabled' | 'readOnly';
+export type FieldState =
+  'default' | 'hover' | 'focused' | 'filled' | 'error' | 'disabled' | 'readOnly';
 
 export interface FieldProps extends Omit<InputProps, 'id'> {
   label: string;
@@ -14,7 +15,23 @@ export interface FieldProps extends Omit<InputProps, 'id'> {
 }
 
 export const Field = forwardRef<HTMLInputElement, FieldProps>(
-  ({ label, hint, error, className, inputClassName, id, required, disabled, density, invalid, state, ...props }, ref) => {
+  (
+    {
+      label,
+      hint,
+      error,
+      className,
+      inputClassName,
+      id,
+      required,
+      disabled,
+      density,
+      invalid,
+      state,
+      ...props
+    },
+    ref
+  ) => {
     const contextDensity = useDensityMode();
     const recipe = densityRecipes[density ?? contextDensity];
     const generatedId = useId();

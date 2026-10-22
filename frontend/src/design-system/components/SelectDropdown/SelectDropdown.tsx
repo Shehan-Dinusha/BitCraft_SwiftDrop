@@ -2,7 +2,10 @@ import { KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'reac
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { DropdownMenu } from '@/design-system/components/DropdownMenu/DropdownMenu';
-import { DropdownItem, type DropdownItemStatus } from '@/design-system/components/DropdownMenu/DropdownItem';
+import {
+  DropdownItem,
+  type DropdownItemStatus
+} from '@/design-system/components/DropdownMenu/DropdownItem';
 import { useDensityMode } from '@/design-system/providers/DensityProvider';
 import { densityRecipes, type DensityMode } from '@/design-system/tokens/density';
 
@@ -37,8 +40,10 @@ export interface SelectDropdownProps {
 
 const focusRing = 'outline outline-2 outline-offset-[-2px] outline-border-focus';
 const focusRingError = 'outline outline-2 outline-offset-[-2px] outline-status-danger';
-const liveFocus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-border-focus';
-const liveFocusError = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-status-danger';
+const liveFocus =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-border-focus';
+const liveFocusError =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-status-danger';
 
 export function SelectDropdown({
   options,
@@ -103,7 +108,9 @@ export function SelectDropdown({
   }, [isMenuOpen, searchable]);
 
   useEffect(() => {
-    setActiveIndex((current) => (current < filtered.length ? current : Math.max(filtered.length - 1, 0)));
+    setActiveIndex((current) =>
+      current < filtered.length ? current : Math.max(filtered.length - 1, 0)
+    );
   }, [filtered.length]);
 
   const moveActive = (delta: number) => {
@@ -178,14 +185,18 @@ export function SelectDropdown({
     disabled: 'bg-disabled-bg border-border-subtle text-disabled-fg'
   };
 
-  const resolvedState = state ?? (isDisabled ? 'disabled' : isInvalid ? 'error' : isMenuOpen ? 'open' : 'default');
+  const resolvedState =
+    state ?? (isDisabled ? 'disabled' : isInvalid ? 'error' : isMenuOpen ? 'open' : 'default');
   const showStaticRing = resolvedState === 'focused' || resolvedState === 'open';
   const showLiveRing = resolvedState === 'default' || resolvedState === 'error';
 
   return (
     <div className={cn('relative w-full', className)} onKeyDown={onKeyDown}>
       {label ? (
-        <label htmlFor={triggerId} className={cn('mb-1 block font-semibold text-primary', recipe.caption)}>
+        <label
+          htmlFor={triggerId}
+          className={cn('mb-1 block font-semibold text-primary', recipe.caption)}
+        >
           {label} {required && <span className="text-status-danger">*</span>}
         </label>
       ) : null}
@@ -213,11 +224,17 @@ export function SelectDropdown({
           showLiveRing ? (isInvalid ? liveFocusError : liveFocus) : ''
         )}
       >
-        <span className={cn('min-w-0 flex-1 truncate', selectedOption ? 'text-primary' : 'text-muted')}>
+        <span
+          className={cn('min-w-0 flex-1 truncate', selectedOption ? 'text-primary' : 'text-muted')}
+        >
           {selectedOption?.label ?? placeholder}
         </span>
         <ChevronDown
-          className={cn('shrink-0 text-muted transition-transform', recipe.icon, isMenuOpen && 'rotate-180')}
+          className={cn(
+            'shrink-0 text-muted transition-transform',
+            recipe.icon,
+            isMenuOpen && 'rotate-180'
+          )}
           aria-hidden="true"
         />
       </button>
@@ -254,7 +271,10 @@ export function SelectDropdown({
       </DropdownMenu>
 
       {error ? (
-        <span id={`${triggerId}-error`} className={cn('mt-1 block text-status-danger', recipe.caption)}>
+        <span
+          id={`${triggerId}-error`}
+          className={cn('mt-1 block text-status-danger', recipe.caption)}
+        >
           {error}
         </span>
       ) : hint ? (

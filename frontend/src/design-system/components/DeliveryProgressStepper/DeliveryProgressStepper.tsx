@@ -22,7 +22,12 @@ const densitySizes: Record<DensityMode, FsmStatusBadgeSize> = {
   compact: 'sm'
 };
 
-export function DeliveryProgressStepper({ current, size, density, className }: DeliveryProgressStepperProps) {
+export function DeliveryProgressStepper({
+  current,
+  size,
+  density,
+  className
+}: DeliveryProgressStepperProps) {
   const contextDensity = useDensityMode();
   const resolvedSize = size ?? densitySizes[density ?? contextDensity];
 

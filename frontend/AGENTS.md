@@ -10,12 +10,12 @@ Read [package.json](package.json), [tailwind.config.ts](tailwind.config.ts), the
 
 The live density mapping is defined in [density.ts](src/design-system/tokens/density.ts):
 
-| Persona folder | Density | Required interaction model |
-|---|---|---|
-| `features/courier/` | `touch` | Fitts-friendly controls, minimum 56px tap targets, and bottom thumb-zone `ErgonomicActionBar` |
-| `features/customer/` | `comfortable` | Hick’s Law progressive disclosure; reveal complexity progressively |
-| `features/admin-ops/` | `compact` | High-density scannable operational grids |
-| `features/merchant/` | `compact` | High-density scannable business grids |
+| Persona folder        | Density       | Required interaction model                                                                    |
+| --------------------- | ------------- | --------------------------------------------------------------------------------------------- |
+| `features/courier/`   | `touch`       | Fitts-friendly controls, minimum 56px tap targets, and bottom thumb-zone `ErgonomicActionBar` |
+| `features/customer/`  | `comfortable` | Hick’s Law progressive disclosure; reveal complexity progressively                            |
+| `features/admin-ops/` | `compact`     | High-density scannable operational grids                                                      |
+| `features/merchant/`  | `compact`     | High-density scannable business grids                                                         |
 
 Use the primitives and components under [src/design-system](src/design-system), especially `Button`, `Card`, `FsmStatusBadge`, `HighDensityDataGrid`, and `ErgonomicActionBar`. The Tailwind theme exposes `min-h-target` and `min-w-target` as 56px target utilities.
 

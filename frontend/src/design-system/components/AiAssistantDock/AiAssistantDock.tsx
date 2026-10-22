@@ -28,7 +28,7 @@ interface Entry {
 const defaultSuggestions = [
   'Which zones are breaching SLA?',
   'How loaded is each courier?',
-  'Summarise today\'s failed deliveries'
+  "Summarise today's failed deliveries"
 ];
 
 export function AiAssistantDock({
@@ -62,7 +62,9 @@ export function AiAssistantDock({
     try {
       const answer = await onSubmit(trimmed);
       if (typeof answer === 'string' && answer.length > 0) {
-        setEntries((current) => current.map((item) => (item.id === entry.id ? { ...item, answer } : item)));
+        setEntries((current) =>
+          current.map((item) => (item.id === entry.id ? { ...item, answer } : item))
+        );
       }
     } finally {
       setPending(false);
@@ -94,11 +96,14 @@ export function AiAssistantDock({
         </div>
       </header>
 
-      <div className={cn('min-h-0 flex-1 overflow-y-auto', recipe.stackGap, 'mt-4 mb-4 flex flex-col')}>
+      <div
+        className={cn('min-h-0 flex-1 overflow-y-auto', recipe.stackGap, 'mt-4 mb-4 flex flex-col')}
+      >
         {entries.length === 0 ? (
           <div className={cn('flex flex-col', recipe.stackGap)}>
             <p className={cn('text-muted', recipe.caption)}>
-              Ask a question about today&apos;s operation. Answers cite the operational data they use.
+              Ask a question about today&apos;s operation. Answers cite the operational data they
+              use.
             </p>
             <div className="flex flex-wrap gap-2">
               {suggestions.map((suggestion) => (
@@ -121,11 +126,21 @@ export function AiAssistantDock({
 
         {entries.map((entry) => (
           <div key={entry.id} className="flex flex-col gap-2">
-            <div className={cn('self-end rounded-lg bg-brand-primary px-3 py-2 text-brand-on', recipe.caption)}>
+            <div
+              className={cn(
+                'self-end rounded-lg bg-brand-primary px-3 py-2 text-brand-on',
+                recipe.caption
+              )}
+            >
               {entry.question}
             </div>
             {entry.answer ? (
-              <div className={cn('rounded-lg border border-border-subtle bg-elevated', recipe.menuItem)}>
+              <div
+                className={cn(
+                  'rounded-lg border border-border-subtle bg-elevated',
+                  recipe.menuItem
+                )}
+              >
                 <p className={recipe.caption}>{entry.answer}</p>
                 <p className={cn('mt-2 flex items-center gap-1 text-muted', recipe.caption)}>
                   <Quote aria-hidden="true" className="size-3" />
@@ -154,7 +169,13 @@ export function AiAssistantDock({
           density={resolvedDensity}
           className="flex-1"
         />
-        <Button type="submit" density={resolvedDensity} rightIcon={<Send />} loading={pending} disabled={pending || !value.trim()}>
+        <Button
+          type="submit"
+          density={resolvedDensity}
+          rightIcon={<Send />}
+          loading={pending}
+          disabled={pending || !value.trim()}
+        >
           Send
         </Button>
       </form>

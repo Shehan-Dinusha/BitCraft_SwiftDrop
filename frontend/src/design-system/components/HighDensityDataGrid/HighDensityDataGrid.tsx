@@ -38,7 +38,11 @@ export function HighDensityDataGrid<T extends { id: string | number }>({
 
   const filtered = normalized
     ? rows.filter((row) =>
-        columns.some((column) => String(row[column.key] ?? '').toLowerCase().includes(normalized))
+        columns.some((column) =>
+          String(row[column.key] ?? '')
+            .toLowerCase()
+            .includes(normalized)
+        )
       )
     : rows;
 
@@ -61,7 +65,10 @@ export function HighDensityDataGrid<T extends { id: string | number }>({
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border-subtle bg-card">
-        <table className={cn('w-full border-collapse text-left', recipe.caption)} aria-label={label}>
+        <table
+          className={cn('w-full border-collapse text-left', recipe.caption)}
+          aria-label={label}
+        >
           <thead className="bg-elevated text-secondary">
             <tr>
               {columns.map((column) => (
@@ -82,7 +89,10 @@ export function HighDensityDataGrid<T extends { id: string | number }>({
           <tbody className="text-primary tabular-nums">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className={cn('text-center text-muted', recipe.gridCell)}>
+                <td
+                  colSpan={columns.length}
+                  className={cn('text-center text-muted', recipe.gridCell)}
+                >
                   {emptyMessage}
                 </td>
               </tr>

@@ -263,11 +263,7 @@
           "$description": "High x-height grotesque sans for sunlight and low-DPI monitor legibility."
         },
         "mono": {
-          "$value": [
-            "JetBrains Mono",
-            "Fira Code",
-            "monospace"
-          ],
+          "$value": ["JetBrains Mono", "Fira Code", "monospace"],
           "$type": "fontFamily",
           "$description": "Used for Tracking IDs, Webhook HTTP payloads, API keys, and coordinates."
         }
@@ -541,10 +537,7 @@
         },
         "iconSilhouette": "circle-hollow",
         "glyph": "○",
-        "allowedNextStates": [
-          "ASSIGNED",
-          "CANCELLED"
-        ]
+        "allowedNextStates": ["ASSIGNED", "CANCELLED"]
       },
       "ASSIGNED": {
         "code": "ASSIGNED",
@@ -576,11 +569,7 @@
         },
         "iconSilhouette": "user-check",
         "glyph": "◈",
-        "allowedNextStates": [
-          "PICKED_UP",
-          "FAILED",
-          "CANCELLED"
-        ]
+        "allowedNextStates": ["PICKED_UP", "FAILED", "CANCELLED"]
       },
       "PICKED_UP": {
         "code": "PICKED_UP",
@@ -612,10 +601,7 @@
         },
         "iconSilhouette": "box-arrow-up",
         "glyph": "↑",
-        "allowedNextStates": [
-          "IN_TRANSIT",
-          "FAILED"
-        ]
+        "allowedNextStates": ["IN_TRANSIT", "FAILED"]
       },
       "IN_TRANSIT": {
         "code": "IN_TRANSIT",
@@ -647,10 +633,7 @@
         },
         "iconSilhouette": "truck-fast-forward",
         "glyph": "»",
-        "allowedNextStates": [
-          "DELIVERED",
-          "FAILED"
-        ]
+        "allowedNextStates": ["DELIVERED", "FAILED"]
       },
       "DELIVERED": {
         "code": "DELIVERED",

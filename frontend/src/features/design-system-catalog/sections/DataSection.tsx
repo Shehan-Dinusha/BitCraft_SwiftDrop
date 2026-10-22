@@ -11,8 +11,20 @@ interface WebhookEvent {
 }
 
 const events: WebhookEvent[] = [
-  { id: 'wh_001', event: 'parcel.status.changed', state: 'IN_TRANSIT', attempts: 3, lastAttempt: '09:42' },
-  { id: 'wh_002', event: 'parcel.status.changed', state: 'DELIVERED', attempts: 0, lastAttempt: '09:40' },
+  {
+    id: 'wh_001',
+    event: 'parcel.status.changed',
+    state: 'IN_TRANSIT',
+    attempts: 3,
+    lastAttempt: '09:42'
+  },
+  {
+    id: 'wh_002',
+    event: 'parcel.status.changed',
+    state: 'DELIVERED',
+    attempts: 0,
+    lastAttempt: '09:40'
+  },
   { id: 'wh_003', event: 'delivery.failed', state: 'FAILED', attempts: 5, lastAttempt: '09:31' },
   { id: 'wh_004', event: 'parcel.created', state: 'CREATED', attempts: 1, lastAttempt: '09:12' }
 ];
@@ -46,7 +58,10 @@ export function DataSection() {
         </div>
       </CatalogRow>
 
-      <CatalogRow label="Action bar by density" hint="Hick's Law cap: 2 touch, 3 comfortable, 4 compact">
+      <CatalogRow
+        label="Action bar by density"
+        hint="Hick's Law cap: 2 touch, 3 comfortable, 4 compact"
+      >
         <DensityPreview>
           {(density) => (
             <ErgonomicActionBar
@@ -65,7 +80,12 @@ export function DataSection() {
       </CatalogRow>
 
       <CatalogRow label="Action bar pending" hint="Repeat taps blocked while submitting">
-        <ErgonomicActionBar next={['DELIVERED', 'FAILED']} pendingState="DELIVERED" onTransition={noop} sticky />
+        <ErgonomicActionBar
+          next={['DELIVERED', 'FAILED']}
+          pendingState="DELIVERED"
+          onTransition={noop}
+          sticky
+        />
       </CatalogRow>
     </>
   );

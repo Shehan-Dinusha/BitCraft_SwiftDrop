@@ -23,7 +23,9 @@ const roleNav: Record<PersonaRole, Array<{ to: string; label: string }>> = {
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
     'shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors',
-    isActive ? 'bg-brand-subtle text-brand-primary' : 'text-secondary hover:bg-elevated hover:text-primary'
+    isActive
+      ? 'bg-brand-subtle text-brand-primary'
+      : 'text-secondary hover:bg-elevated hover:text-primary'
   );
 
 export function AppShell() {
@@ -47,7 +49,10 @@ export function AppShell() {
             </span>
           </Link>
 
-          <nav aria-label="Primary" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+          <nav
+            aria-label="Primary"
+            className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+          >
             {links.map((link) => (
               <NavLink key={link.to} to={link.to} end className={navLinkClass}>
                 {link.label}

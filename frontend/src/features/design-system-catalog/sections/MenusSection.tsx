@@ -1,5 +1,10 @@
 ﻿import { User } from 'lucide-react';
-import { DropdownItem, DropdownMenu, SelectDropdown, type SelectDropdownState } from '@/design-system';
+import {
+  DropdownItem,
+  DropdownMenu,
+  SelectDropdown,
+  type SelectDropdownState
+} from '@/design-system';
 import { CatalogRow, DemoGrid } from '../components/catalog-kit';
 
 const couriers = [
@@ -32,11 +37,20 @@ export function MenusSection() {
 
       <CatalogRow label="Select open with search">
         <div className="relative min-h-80">
-          <SelectDropdown label="Assign courier" state="open" searchable value="amara" options={couriers} />
+          <SelectDropdown
+            label="Assign courier"
+            state="open"
+            searchable
+            value="amara"
+            options={couriers}
+          />
         </div>
       </CatalogRow>
 
-      <CatalogRow label="Dropdown rows" hint="default, selected, active, disabled, status dots, icons">
+      <CatalogRow
+        label="Dropdown rows"
+        hint="default, selected, active, disabled, status dots, icons"
+      >
         <div className="relative min-h-80">
           <DropdownMenu open label="Courier" density="compact">
             <DropdownItem>Default row</DropdownItem>

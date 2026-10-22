@@ -10,7 +10,9 @@ export type PublicTrackingView = {
 const gatewayOrigin = 'http://localhost:8080';
 
 export async function getTrackingView(trackingId: string): Promise<PublicTrackingView> {
-  const response = await fetch(`${gatewayOrigin}/api/v1/tracking/${encodeURIComponent(trackingId)}`);
+  const response = await fetch(
+    `${gatewayOrigin}/api/v1/tracking/${encodeURIComponent(trackingId)}`
+  );
   if (!response.ok) {
     throw new Error(`Tracking request failed with status ${response.status}`);
   }
@@ -25,7 +27,7 @@ export function subscribeToTrackingStream(
   const source = new EventSource(
     `${gatewayOrigin}/api/v1/tracking/${encodeURIComponent(trackingId)}/stream`
   );
-  source.onmessage = event => onUpdate(JSON.parse(event.data) as PublicTrackingView);
-  source.onerror = event => onError?.(event);
+  source.onmessage = (event) => onUpdate(JSON.parse(event.data) as PublicTrackingView);
+  source.onerror = (event) => onError?.(event);
   return source;
 }

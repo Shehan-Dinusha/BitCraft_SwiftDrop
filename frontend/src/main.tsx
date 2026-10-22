@@ -14,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <DensityProvider>
           <WebSocketProvider>
-            <BrowserRouter><App /></BrowserRouter>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
           </WebSocketProvider>
         </DensityProvider>
       </AuthProvider>

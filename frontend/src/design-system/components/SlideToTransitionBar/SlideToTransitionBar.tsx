@@ -74,7 +74,7 @@ export function SlideToTransitionBar({
 
   const resolvedState: SlideToTransitionBarState = disabled
     ? 'disabled'
-    : state ?? (armed ? 'armed' : dragging ? 'dragging' : 'idle');
+    : (state ?? (armed ? 'armed' : dragging ? 'dragging' : 'idle'));
 
   const locked = disabled || Boolean(state);
 
@@ -93,7 +93,10 @@ export function SlideToTransitionBar({
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current.active) return;
-    const next = Math.min(Math.max(dragRef.current.startOffset + (event.clientX - dragRef.current.startX), 0), maxOffset);
+    const next = Math.min(
+      Math.max(dragRef.current.startOffset + (event.clientX - dragRef.current.startX), 0),
+      maxOffset
+    );
     setOffset(next);
   };
 
@@ -130,7 +133,9 @@ export function SlideToTransitionBar({
         'border-border-subtle bg-card',
         armed && !disabled ? 'border-brand-primary' : '',
         resolvedState === 'committed' ? 'border-status-success' : '',
-        resolvedState === 'disabled' ? 'cursor-not-allowed border-border-subtle bg-disabled-bg' : '',
+        resolvedState === 'disabled'
+          ? 'cursor-not-allowed border-border-subtle bg-disabled-bg'
+          : '',
         !locked && resolvedState !== 'armed' ? 'cursor-grab' : '',
         dragging ? 'cursor-grabbing' : '',
         className
@@ -142,7 +147,9 @@ export function SlideToTransitionBar({
         className={cn(
           'pointer-events-none absolute inset-y-0 left-0 rounded-full',
           resolvedState === 'disabled' ? 'bg-canvas' : 'bg-brand-subtle',
-          dragging || forcedProgress !== null ? '' : 'transition-[width] duration-200 motion-reduce:transition-none'
+          dragging || forcedProgress !== null
+            ? ''
+            : 'transition-[width] duration-200 motion-reduce:transition-none'
         )}
         style={{ width: thumbSize + inset * 2 + progress * maxOffset }}
       />
@@ -167,9 +174,15 @@ export function SlideToTransitionBar({
       <span
         className={cn(
           'relative z-10 grid shrink-0 place-items-center rounded-full',
-          resolvedState === 'committed' ? 'bg-status-success text-brand-on' : 'bg-brand-primary text-brand-on',
-          resolvedState === 'disabled' ? 'border border-border-subtle bg-disabled-bg text-disabled-fg' : '',
-          dragging || forcedProgress !== null ? '' : 'transition-transform duration-200 motion-reduce:transition-none'
+          resolvedState === 'committed'
+            ? 'bg-status-success text-brand-on'
+            : 'bg-brand-primary text-brand-on',
+          resolvedState === 'disabled'
+            ? 'border border-border-subtle bg-disabled-bg text-disabled-fg'
+            : '',
+          dragging || forcedProgress !== null
+            ? ''
+            : 'transition-transform duration-200 motion-reduce:transition-none'
         )}
         style={{
           width: thumbSize,
@@ -181,7 +194,7 @@ export function SlideToTransitionBar({
         {resolvedState === 'committed' ? (
           <Check size={thumbSize / 2} aria-hidden="true" />
         ) : (
-          icon ?? <ArrowRight size={thumbSize / 2} aria-hidden="true" />
+          (icon ?? <ArrowRight size={thumbSize / 2} aria-hidden="true" />)
         )}
       </span>
     </div>

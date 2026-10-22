@@ -1,1 +1,9 @@
-import {WebhookDlqReplayTable} from '../components/WebhookDlqReplayTable';export function WebhookResiliencyConsolePage(){return <main className="p-4"><h1 className="text-2xl font-bold">Webhook resiliency</h1><WebhookDlqReplayTable/></main>}
+import { WebhookDlqReplayTable } from '../components/WebhookDlqReplayTable';
+export function WebhookResiliencyConsolePage() {
+  return (
+    <main className="p-4">
+      <h1 className="text-2xl font-bold">Webhook resiliency</h1>
+      <WebhookDlqReplayTable />
+    </main>
+  );
+}
