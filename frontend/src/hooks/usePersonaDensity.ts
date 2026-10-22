@@ -1,1 +1,1 @@
-import {useDensity} from '@/app/providers/DensityProvider';export const usePersonaDensity=useDensity;
+import {useDensity} from '@/design-system/providers/DensityProvider';export const usePersonaDensity=useDensity;

@@ -1,6 +1,10 @@
-import { HTMLAttributes } from 'react';
-import { cn } from '@/utils/cn';
+import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 
-export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
-  <section className={cn('rounded-2xl border border-subtle bg-card p-5 text-primary shadow-sm', className)} {...props} />
-);
+/**
+ * Backwards-compatible alias for the base `SurfaceCard` role. New code may use
+ * either name; `SurfaceCard` additionally exposes `elevated`, `interactive`, and
+ * `selected` roles plus header/actions/footer slots.
+ */
+export const Card = SurfaceCard;
+
+export type { SurfaceCardProps, SurfaceCardState, SurfaceCardVariant } from '@/design-system/components/SurfaceCard/SurfaceCard';

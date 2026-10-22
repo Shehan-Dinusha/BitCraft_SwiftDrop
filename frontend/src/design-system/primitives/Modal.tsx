@@ -1,12 +1,28 @@
 import { ReactNode } from 'react';
-import { Button } from './Button';
+import { ModalDrawerShell, type ModalDrawerSize } from '@/design-system/components/ModalDrawerShell/ModalDrawerShell';
 
-export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
-  if (!open) return null;
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4">
-    <div className="w-full max-w-lg rounded-2xl bg-white p-5">
-      <div className="mb-4 flex justify-between"><h2 className="font-bold">{title}</h2><Button variant="ghost" onClick={onClose}>Close</Button></div>
+export interface ModalProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  description?: string;
+  size?: ModalDrawerSize;
+}
+
+export function Modal({ open, onClose, title, children, footer, description, size }: ModalProps) {
+  return (
+    <ModalDrawerShell
+      mode="modal"
+      open={open}
+      onClose={onClose}
+      title={title}
+      footer={footer}
+      description={description}
+      size={size}
+    >
       {children}
-    </div>
-  </div>;
+    </ModalDrawerShell>
+  );
 }

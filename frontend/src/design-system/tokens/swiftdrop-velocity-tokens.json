@@ -542,13 +542,49 @@
         "iconSilhouette": "circle-hollow",
         "glyph": "○",
         "allowedNextStates": [
+          "ASSIGNED",
+          "CANCELLED"
+        ]
+      },
+      "ASSIGNED": {
+        "code": "ASSIGNED",
+        "stepOrder": 2,
+        "isTerminal": false,
+        "bgLight": {
+          "$value": "{primitives.color.blue.50}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.blue.900}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.blue.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.blue.400}",
+          "$type": "color"
+        },
+        "borderLight": {
+          "$value": "{primitives.color.blue.100}",
+          "$type": "color"
+        },
+        "borderDark": {
+          "$value": "{primitives.color.blue.700}",
+          "$type": "color"
+        },
+        "iconSilhouette": "user-check",
+        "glyph": "◈",
+        "allowedNextStates": [
           "PICKED_UP",
-          "FAILED"
+          "FAILED",
+          "CANCELLED"
         ]
       },
       "PICKED_UP": {
         "code": "PICKED_UP",
-        "stepOrder": 2,
+        "stepOrder": 3,
         "isTerminal": false,
         "bgLight": {
           "$value": "{primitives.color.sky.50}",
@@ -583,7 +619,7 @@
       },
       "IN_TRANSIT": {
         "code": "IN_TRANSIT",
-        "stepOrder": 3,
+        "stepOrder": 4,
         "isTerminal": false,
         "bgLight": {
           "$value": "{primitives.color.amber.50}",
@@ -611,41 +647,6 @@
         },
         "iconSilhouette": "truck-fast-forward",
         "glyph": "»",
-        "allowedNextStates": [
-          "OUT_FOR_DELIVERY",
-          "FAILED"
-        ]
-      },
-      "OUT_FOR_DELIVERY": {
-        "code": "OUT_FOR_DELIVERY",
-        "stepOrder": 4,
-        "isTerminal": false,
-        "bgLight": {
-          "$value": "{primitives.color.purple.50}",
-          "$type": "color"
-        },
-        "bgDark": {
-          "$value": "{primitives.color.purple.950}",
-          "$type": "color"
-        },
-        "fgLight": {
-          "$value": "{primitives.color.purple.600}",
-          "$type": "color"
-        },
-        "fgDark": {
-          "$value": "{primitives.color.purple.400}",
-          "$type": "color"
-        },
-        "borderLight": {
-          "$value": "{primitives.color.purple.200}",
-          "$type": "color"
-        },
-        "borderDark": {
-          "$value": "{primitives.color.purple.800}",
-          "$type": "color"
-        },
-        "iconSilhouette": "radar-pin",
-        "glyph": "◎",
         "allowedNextStates": [
           "DELIVERED",
           "FAILED"
@@ -716,9 +717,39 @@
         },
         "iconSilhouette": "octagon-exclamation",
         "glyph": "!",
-        "allowedNextStates": [
-          "OUT_FOR_DELIVERY"
-        ]
+        "allowedNextStates": []
+      },
+      "CANCELLED": {
+        "code": "CANCELLED",
+        "stepOrder": 5,
+        "isTerminal": true,
+        "bgLight": {
+          "$value": "{primitives.color.slate.100}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.slate.800}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.slate.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.slate.400}",
+          "$type": "color"
+        },
+        "borderLight": {
+          "$value": "{primitives.color.slate.200}",
+          "$type": "color"
+        },
+        "borderDark": {
+          "$value": "{primitives.color.slate.700}",
+          "$type": "color"
+        },
+        "iconSilhouette": "ban",
+        "glyph": "—",
+        "allowedNextStates": []
       }
     },
     "domain": {
