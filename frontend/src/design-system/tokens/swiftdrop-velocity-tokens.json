@@ -1,0 +1,925 @@
+{
+  "$schema": "https://tr.designtokens.org/format/",
+  "meta": {
+    "name": "SwiftDrop Velocity Design System",
+    "version": "1.0.0",
+    "package": "@swiftdrop/ui",
+    "description": "Tokenized, HCI-driven design system for the SwiftDrop Courier Management System monorepo."
+  },
+  "primitives": {
+    "color": {
+      "slate": {
+        "50": {
+          "$value": "#F8FAFC",
+          "$type": "color"
+        },
+        "100": {
+          "$value": "#F1F5F9",
+          "$type": "color"
+        },
+        "200": {
+          "$value": "#E2E8F0",
+          "$type": "color"
+        },
+        "300": {
+          "$value": "#CBD5E1",
+          "$type": "color"
+        },
+        "400": {
+          "$value": "#94A3B8",
+          "$type": "color"
+        },
+        "500": {
+          "$value": "#64748B",
+          "$type": "color"
+        },
+        "600": {
+          "$value": "#475569",
+          "$type": "color"
+        },
+        "700": {
+          "$value": "#334155",
+          "$type": "color"
+        },
+        "800": {
+          "$value": "#1E293B",
+          "$type": "color"
+        },
+        "900": {
+          "$value": "#0F172A",
+          "$type": "color"
+        },
+        "950": {
+          "$value": "#0B0F19",
+          "$type": "color"
+        }
+      },
+      "blue": {
+        "50": {
+          "$value": "#EFF6FF",
+          "$type": "color"
+        },
+        "100": {
+          "$value": "#DBEAFE",
+          "$type": "color"
+        },
+        "400": {
+          "$value": "#60A5FA",
+          "$type": "color"
+        },
+        "500": {
+          "$value": "#3B82F6",
+          "$type": "color"
+        },
+        "600": {
+          "$value": "#2563EB",
+          "$type": "color"
+        },
+        "700": {
+          "$value": "#1D4ED8",
+          "$type": "color"
+        },
+        "900": {
+          "$value": "#1E3A8A",
+          "$type": "color"
+        }
+      },
+      "indigo": {
+        "50": {
+          "$value": "#EEF2FF",
+          "$type": "color"
+        },
+        "200": {
+          "$value": "#C7D2FE",
+          "$type": "color"
+        },
+        "400": {
+          "$value": "#818CF8",
+          "$type": "color"
+        },
+        "600": {
+          "$value": "#4F46E5",
+          "$type": "color"
+        },
+        "800": {
+          "$value": "#3730A3",
+          "$type": "color"
+        },
+        "950": {
+          "$value": "#1E1B4B",
+          "$type": "color"
+        }
+      },
+      "sky": {
+        "50": {
+          "$value": "#E0F2FE",
+          "$type": "color"
+        },
+        "200": {
+          "$value": "#BAE6FD",
+          "$type": "color"
+        },
+        "400": {
+          "$value": "#38BDF8",
+          "$type": "color"
+        },
+        "600": {
+          "$value": "#0284C7",
+          "$type": "color"
+        },
+        "800": {
+          "$value": "#075985",
+          "$type": "color"
+        },
+        "950": {
+          "$value": "#082F49",
+          "$type": "color"
+        }
+      },
+      "amber": {
+        "50": {
+          "$value": "#FEF3C7",
+          "$type": "color"
+        },
+        "200": {
+          "$value": "#FDE68A",
+          "$type": "color"
+        },
+        "400": {
+          "$value": "#FBBF24",
+          "$type": "color"
+        },
+        "600": {
+          "$value": "#D97706",
+          "$type": "color"
+        },
+        "800": {
+          "$value": "#92400E",
+          "$type": "color"
+        },
+        "950": {
+          "$value": "#451A03",
+          "$type": "color"
+        }
+      },
+      "purple": {
+        "50": {
+          "$value": "#F3E8FF",
+          "$type": "color"
+        },
+        "200": {
+          "$value": "#E9D5FF",
+          "$type": "color"
+        },
+        "400": {
+          "$value": "#C084FC",
+          "$type": "color"
+        },
+        "600": {
+          "$value": "#7C3AED",
+          "$type": "color"
+        },
+        "800": {
+          "$value": "#5B21B6",
+          "$type": "color"
+        },
+        "950": {
+          "$value": "#3B0764",
+          "$type": "color"
+        }
+      },
+      "emerald": {
+        "50": {
+          "$value": "#D1FAE5",
+          "$type": "color"
+        },
+        "200": {
+          "$value": "#A7F3D0",
+          "$type": "color"
+        },
+        "400": {
+          "$value": "#34D399",
+          "$type": "color"
+        },
+        "600": {
+          "$value": "#059669",
+          "$type": "color"
+        },
+        "800": {
+          "$value": "#065F46",
+          "$type": "color"
+        },
+        "950": {
+          "$value": "#064E3B",
+          "$type": "color"
+        }
+      },
+      "red": {
+        "50": {
+          "$value": "#FEE2E2",
+          "$type": "color"
+        },
+        "200": {
+          "$value": "#FECACA",
+          "$type": "color"
+        },
+        "400": {
+          "$value": "#F87171",
+          "$type": "color"
+        },
+        "600": {
+          "$value": "#DC2626",
+          "$type": "color"
+        },
+        "800": {
+          "$value": "#991B1B",
+          "$type": "color"
+        },
+        "950": {
+          "$value": "#450A0A",
+          "$type": "color"
+        }
+      },
+      "white": {
+        "$value": "#FFFFFF",
+        "$type": "color"
+      },
+      "black": {
+        "$value": "#000000",
+        "$type": "color"
+      }
+    },
+    "typography": {
+      "fontFamily": {
+        "sans": {
+          "$value": [
+            "Plus Jakarta Sans",
+            "Inter",
+            "-apple-system",
+            "BlinkMacSystemFont",
+            "sans-serif"
+          ],
+          "$type": "fontFamily",
+          "$description": "High x-height grotesque sans for sunlight and low-DPI monitor legibility."
+        },
+        "mono": {
+          "$value": [
+            "JetBrains Mono",
+            "Fira Code",
+            "monospace"
+          ],
+          "$type": "fontFamily",
+          "$description": "Used for Tracking IDs, Webhook HTTP payloads, API keys, and coordinates."
+        }
+      },
+      "fontWeight": {
+        "regular": {
+          "$value": "400",
+          "$type": "fontWeight"
+        },
+        "medium": {
+          "$value": "500",
+          "$type": "fontWeight"
+        },
+        "semibold": {
+          "$value": "600",
+          "$type": "fontWeight"
+        },
+        "bold": {
+          "$value": "700",
+          "$type": "fontWeight"
+        }
+      },
+      "numericDiscipline": {
+        "tabular": {
+          "$value": "tabular-nums",
+          "$type": "string",
+          "$description": "Prevents horizontal jitter during real-time SLA timer and pricing updates."
+        }
+      }
+    },
+    "spacing": {
+      "0": {
+        "$value": "0px",
+        "$type": "dimension"
+      },
+      "1": {
+        "$value": "4px",
+        "$type": "dimension"
+      },
+      "1.5": {
+        "$value": "6px",
+        "$type": "dimension"
+      },
+      "2": {
+        "$value": "8px",
+        "$type": "dimension"
+      },
+      "2.5": {
+        "$value": "10px",
+        "$type": "dimension"
+      },
+      "3": {
+        "$value": "12px",
+        "$type": "dimension"
+      },
+      "4": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "5": {
+        "$value": "20px",
+        "$type": "dimension"
+      },
+      "6": {
+        "$value": "24px",
+        "$type": "dimension"
+      },
+      "8": {
+        "$value": "32px",
+        "$type": "dimension"
+      },
+      "9": {
+        "$value": "36px",
+        "$type": "dimension"
+      },
+      "11": {
+        "$value": "44px",
+        "$type": "dimension"
+      },
+      "14": {
+        "$value": "56px",
+        "$type": "dimension"
+      },
+      "16": {
+        "$value": "64px",
+        "$type": "dimension"
+      }
+    },
+    "radius": {
+      "none": {
+        "$value": "0px",
+        "$type": "dimension"
+      },
+      "sm": {
+        "$value": "4px",
+        "$type": "dimension"
+      },
+      "md": {
+        "$value": "8px",
+        "$type": "dimension"
+      },
+      "lg": {
+        "$value": "12px",
+        "$type": "dimension"
+      },
+      "xl": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "full": {
+        "$value": "9999px",
+        "$type": "dimension"
+      }
+    },
+    "motion": {
+      "duration": {
+        "instant": {
+          "$value": "75ms",
+          "$type": "duration"
+        },
+        "fast": {
+          "$value": "150ms",
+          "$type": "duration",
+          "$description": "Optimistic UI feedback under Doherty Threshold (<400ms)"
+        },
+        "normal": {
+          "$value": "240ms",
+          "$type": "duration"
+        },
+        "slow": {
+          "$value": "360ms",
+          "$type": "duration",
+          "$description": "Drawer & bottom-sheet snap transitions (<400ms)"
+        }
+      },
+      "easing": {
+        "standard": {
+          "$value": "cubic-bezier(0.2, 0, 0, 1)",
+          "$type": "cubicBezier"
+        },
+        "kineticOut": {
+          "$value": "cubic-bezier(0.16, 1, 0.3, 1)",
+          "$type": "cubicBezier"
+        },
+        "spring": {
+          "$value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+          "$type": "cubicBezier"
+        }
+      }
+    }
+  },
+  "semantic": {
+    "surface": {
+      "light": {
+        "canvas": {
+          "$value": "{primitives.color.slate.50}",
+          "$type": "color"
+        },
+        "surface": {
+          "$value": "{primitives.color.white}",
+          "$type": "color"
+        },
+        "elevated": {
+          "$value": "{primitives.color.slate.100}",
+          "$type": "color"
+        },
+        "border": {
+          "$value": "{primitives.color.slate.200}",
+          "$type": "color"
+        },
+        "textPrimary": {
+          "$value": "{primitives.color.slate.900}",
+          "$type": "color"
+        },
+        "textSecondary": {
+          "$value": "{primitives.color.slate.600}",
+          "$type": "color"
+        },
+        "textMuted": {
+          "$value": "{primitives.color.slate.400}",
+          "$type": "color"
+        }
+      },
+      "dark": {
+        "canvas": {
+          "$value": "{primitives.color.slate.950}",
+          "$type": "color"
+        },
+        "surface": {
+          "$value": "{primitives.color.slate.900}",
+          "$type": "color"
+        },
+        "elevated": {
+          "$value": "{primitives.color.slate.800}",
+          "$type": "color"
+        },
+        "border": {
+          "$value": "{primitives.color.slate.700}",
+          "$type": "color"
+        },
+        "textPrimary": {
+          "$value": "{primitives.color.slate.100}",
+          "$type": "color"
+        },
+        "textSecondary": {
+          "$value": "{primitives.color.slate.300}",
+          "$type": "color"
+        },
+        "textMuted": {
+          "$value": "{primitives.color.slate.500}",
+          "$type": "color"
+        }
+      }
+    },
+    "brand": {
+      "primary": {
+        "bgLight": {
+          "$value": "{primitives.color.blue.50}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.blue.900}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.blue.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.blue.400}",
+          "$type": "color"
+        },
+        "solid": {
+          "$value": "{primitives.color.blue.600}",
+          "$type": "color"
+        },
+        "solidHover": {
+          "$value": "{primitives.color.blue.700}",
+          "$type": "color"
+        }
+      }
+    },
+    "fsm": {
+      "CREATED": {
+        "code": "CREATED",
+        "stepOrder": 1,
+        "isTerminal": false,
+        "bgLight": {
+          "$value": "{primitives.color.indigo.50}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.indigo.950}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.indigo.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.indigo.400}",
+          "$type": "color"
+        },
+        "borderLight": {
+          "$value": "{primitives.color.indigo.200}",
+          "$type": "color"
+        },
+        "borderDark": {
+          "$value": "{primitives.color.indigo.800}",
+          "$type": "color"
+        },
+        "iconSilhouette": "circle-hollow",
+        "glyph": "○",
+        "allowedNextStates": [
+          "PICKED_UP",
+          "FAILED"
+        ]
+      },
+      "PICKED_UP": {
+        "code": "PICKED_UP",
+        "stepOrder": 2,
+        "isTerminal": false,
+        "bgLight": {
+          "$value": "{primitives.color.sky.50}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.sky.950}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.sky.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.sky.400}",
+          "$type": "color"
+        },
+        "borderLight": {
+          "$value": "{primitives.color.sky.200}",
+          "$type": "color"
+        },
+        "borderDark": {
+          "$value": "{primitives.color.sky.800}",
+          "$type": "color"
+        },
+        "iconSilhouette": "box-arrow-up",
+        "glyph": "↑",
+        "allowedNextStates": [
+          "IN_TRANSIT",
+          "FAILED"
+        ]
+      },
+      "IN_TRANSIT": {
+        "code": "IN_TRANSIT",
+        "stepOrder": 3,
+        "isTerminal": false,
+        "bgLight": {
+          "$value": "{primitives.color.amber.50}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.amber.950}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.amber.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.amber.400}",
+          "$type": "color"
+        },
+        "borderLight": {
+          "$value": "{primitives.color.amber.200}",
+          "$type": "color"
+        },
+        "borderDark": {
+          "$value": "{primitives.color.amber.800}",
+          "$type": "color"
+        },
+        "iconSilhouette": "truck-fast-forward",
+        "glyph": "»",
+        "allowedNextStates": [
+          "OUT_FOR_DELIVERY",
+          "FAILED"
+        ]
+      },
+      "OUT_FOR_DELIVERY": {
+        "code": "OUT_FOR_DELIVERY",
+        "stepOrder": 4,
+        "isTerminal": false,
+        "bgLight": {
+          "$value": "{primitives.color.purple.50}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.purple.950}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.purple.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.purple.400}",
+          "$type": "color"
+        },
+        "borderLight": {
+          "$value": "{primitives.color.purple.200}",
+          "$type": "color"
+        },
+        "borderDark": {
+          "$value": "{primitives.color.purple.800}",
+          "$type": "color"
+        },
+        "iconSilhouette": "radar-pin",
+        "glyph": "◎",
+        "allowedNextStates": [
+          "DELIVERED",
+          "FAILED"
+        ]
+      },
+      "DELIVERED": {
+        "code": "DELIVERED",
+        "stepOrder": 5,
+        "isTerminal": true,
+        "requiresPokaYokeSlide": true,
+        "bgLight": {
+          "$value": "{primitives.color.emerald.50}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.emerald.950}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.emerald.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.emerald.400}",
+          "$type": "color"
+        },
+        "borderLight": {
+          "$value": "{primitives.color.emerald.200}",
+          "$type": "color"
+        },
+        "borderDark": {
+          "$value": "{primitives.color.emerald.800}",
+          "$type": "color"
+        },
+        "iconSilhouette": "shield-check-solid",
+        "glyph": "✓",
+        "allowedNextStates": []
+      },
+      "FAILED": {
+        "code": "FAILED",
+        "stepOrder": 5,
+        "isTerminal": true,
+        "requiresPokaYokeSlide": true,
+        "requiresReasonCode": true,
+        "bgLight": {
+          "$value": "{primitives.color.red.50}",
+          "$type": "color"
+        },
+        "bgDark": {
+          "$value": "{primitives.color.red.950}",
+          "$type": "color"
+        },
+        "fgLight": {
+          "$value": "{primitives.color.red.600}",
+          "$type": "color"
+        },
+        "fgDark": {
+          "$value": "{primitives.color.red.400}",
+          "$type": "color"
+        },
+        "borderLight": {
+          "$value": "{primitives.color.red.200}",
+          "$type": "color"
+        },
+        "borderDark": {
+          "$value": "{primitives.color.red.800}",
+          "$type": "color"
+        },
+        "iconSilhouette": "octagon-exclamation",
+        "glyph": "!",
+        "allowedNextStates": [
+          "OUT_FOR_DELIVERY"
+        ]
+      }
+    },
+    "domain": {
+      "webhook": {
+        "healthy": {
+          "$value": "{primitives.color.emerald.600}",
+          "$type": "color"
+        },
+        "backoffRetry": {
+          "$value": "{primitives.color.amber.600}",
+          "$type": "color"
+        },
+        "deadLetterQueue": {
+          "$value": "{primitives.color.red.600}",
+          "$type": "color"
+        }
+      },
+      "pricing": {
+        "baseRate": {
+          "$value": "{primitives.color.slate.700}",
+          "$type": "color"
+        },
+        "surgeMultiplier": {
+          "$value": "{primitives.color.amber.600}",
+          "$type": "color"
+        },
+        "slaDiscount": {
+          "$value": "{primitives.color.emerald.600}",
+          "$type": "color"
+        }
+      }
+    }
+  },
+  "density": {
+    "kinetic": {
+      "$description": "Courier Mobile App: Field operation under glare, one-handed thumb zone (Fitts's Law W=56px).",
+      "persona": "Courier Mobile",
+      "defaultTheme": "light-high-contrast",
+      "minTargetSize": {
+        "$value": "56px",
+        "$type": "dimension"
+      },
+      "slideTrackHeight": {
+        "$value": "64px",
+        "$type": "dimension"
+      },
+      "fontSizeBase": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "lineHeightBase": {
+        "$value": "24px",
+        "$type": "dimension"
+      },
+      "fontSizeHeading": {
+        "$value": "22px",
+        "$type": "dimension"
+      },
+      "paddingY": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "paddingX": {
+        "$value": "20px",
+        "$type": "dimension"
+      },
+      "stackGap": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "borderRadius": {
+        "$value": "12px",
+        "$type": "dimension"
+      },
+      "hicksLawMaxChoices": 2
+    },
+    "comfortable": {
+      "$description": "Customer Web Portal: Guided booking wizard and live parcel tracking stepper.",
+      "persona": "Customer Portal",
+      "defaultTheme": "light",
+      "minTargetSize": {
+        "$value": "44px",
+        "$type": "dimension"
+      },
+      "slideTrackHeight": {
+        "$value": "48px",
+        "$type": "dimension"
+      },
+      "fontSizeBase": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "lineHeightBase": {
+        "$value": "24px",
+        "$type": "dimension"
+      },
+      "fontSizeHeading": {
+        "$value": "20px",
+        "$type": "dimension"
+      },
+      "paddingY": {
+        "$value": "12px",
+        "$type": "dimension"
+      },
+      "paddingX": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "stackGap": {
+        "$value": "12px",
+        "$type": "dimension"
+      },
+      "borderRadius": {
+        "$value": "8px",
+        "$type": "dimension"
+      },
+      "hicksLawMaxChoices": 3
+    },
+    "compact": {
+      "$description": "Merchant B2B Portal: High-density bulk order tables, SLA billing, and webhook logs.",
+      "persona": "Merchant B2B",
+      "defaultTheme": "light",
+      "minTargetSize": {
+        "$value": "36px",
+        "$type": "dimension"
+      },
+      "slideTrackHeight": {
+        "$value": "40px",
+        "$type": "dimension"
+      },
+      "fontSizeBase": {
+        "$value": "14px",
+        "$type": "dimension"
+      },
+      "lineHeightBase": {
+        "$value": "20px",
+        "$type": "dimension"
+      },
+      "fontSizeHeading": {
+        "$value": "18px",
+        "$type": "dimension"
+      },
+      "paddingY": {
+        "$value": "8px",
+        "$type": "dimension"
+      },
+      "paddingX": {
+        "$value": "12px",
+        "$type": "dimension"
+      },
+      "stackGap": {
+        "$value": "8px",
+        "$type": "dimension"
+      },
+      "borderRadius": {
+        "$value": "6px",
+        "$type": "dimension"
+      },
+      "hicksLawMaxChoices": 4
+    },
+    "compact-dark": {
+      "$description": "Admin & Dispatcher Console: Split-pane geospatial map + virtualized exception queues.",
+      "persona": "Admin Dispatcher",
+      "defaultTheme": "dark",
+      "minTargetSize": {
+        "$value": "32px",
+        "$type": "dimension"
+      },
+      "slideTrackHeight": {
+        "$value": "36px",
+        "$type": "dimension"
+      },
+      "fontSizeBase": {
+        "$value": "13px",
+        "$type": "dimension"
+      },
+      "lineHeightBase": {
+        "$value": "18px",
+        "$type": "dimension"
+      },
+      "fontSizeHeading": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "paddingY": {
+        "$value": "6px",
+        "$type": "dimension"
+      },
+      "paddingX": {
+        "$value": "10px",
+        "$type": "dimension"
+      },
+      "stackGap": {
+        "$value": "6px",
+        "$type": "dimension"
+      },
+      "borderRadius": {
+        "$value": "4px",
+        "$type": "dimension"
+      },
+      "hicksLawMaxChoices": 5
+    }
+  }
+}

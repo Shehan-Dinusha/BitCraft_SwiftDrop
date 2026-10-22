@@ -1,0 +1,148 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop – Auth IAM Service (Deployment + Service + HPA)
+# Namespace: swiftdrop-apps
+# ──────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-iam-service
+  namespace: swiftdrop-apps
+  labels:
+    app.kubernetes.io/name: auth-iam-service
+    app.kubernetes.io/part-of: swiftdrop
+    app.kubernetes.io/component: service
+    swiftdrop.io/bounded-context: iam
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: auth-iam-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-iam-service
+  namespace: swiftdrop-apps
+  labels:
+    app.kubernetes.io/name: auth-iam-service
+    app.kubernetes.io/part-of: swiftdrop
+    app.kubernetes.io/component: service
+    swiftdrop.io/bounded-context: iam
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth-iam-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth-iam-service
+        app.kubernetes.io/part-of: swiftdrop
+        app.kubernetes.io/component: service
+        swiftdrop.io/bounded-context: iam
+    spec:
+      serviceAccountName: auth-iam-service-sa
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: auth-iam-service
+          image: swiftdropacr.azurecr.io/auth-iam-service:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: kubernetes
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://iam-postgres-headless.swiftdrop-data.svc.cluster.local:5432/swiftdrop_iam
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: iam-postgres-credentials
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: iam-postgres-credentials
+                  key: password
+            - name: SPRING_RABBITMQ_HOST
+              value: rabbitmq.swiftdrop-messaging.svc.cluster.local
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 5
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-iam-service-hpa
+  namespace: swiftdrop-apps
+  labels:
+    app.kubernetes.io/name: auth-iam-service
+    app.kubernetes.io/part-of: swiftdrop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-iam-service
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60

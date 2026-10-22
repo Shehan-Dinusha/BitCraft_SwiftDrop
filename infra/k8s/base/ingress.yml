@@ -1,0 +1,57 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop – NGINX Ingress Controller Configuration
+# Routes /api/* and /ws/* to the api-gateway service.
+# ──────────────────────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: swiftdrop-ingress
+  namespace: swiftdrop-apps
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    app.kubernetes.io/component: ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.swiftdrop.io"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type, X-Request-ID, X-Correlation-ID"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.swiftdrop.io
+      secretName: swiftdrop-tls-secret
+  rules:
+    - host: api.swiftdrop.io
+      http:
+        paths:
+          - path: /api/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+          - path: /ws/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080

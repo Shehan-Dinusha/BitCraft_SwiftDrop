@@ -1,0 +1,15 @@
+openapi: 3.1.0
+info:
+  title: SwiftDrop Notification API
+  description: Notification preferences and delivery log APIs.
+  version: v1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/notification-log/health:
+    get:
+      tags: [NotificationLog]
+      summary: Check notification service health
+      responses:
+        "200":
+          description: Service health response

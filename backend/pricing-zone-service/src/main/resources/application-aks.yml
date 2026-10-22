@@ -1,0 +1,22 @@
+server:
+  port: 8083
+spring:
+  application:
+    name: pricing-zone-service
+  datasource:
+    url: jdbc:postgresql://pricing-postgres-0.pricing-postgres-hl.swiftdrop-data.svc.cluster.local:5432/swiftdrop_pricing
+    username: ${DB_USERNAME:swiftdrop}
+    password: ${DB_PASSWORD:swiftdrop}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq.default.svc.cluster.local}
+    port: ${RABBITMQ_PORT:5672}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

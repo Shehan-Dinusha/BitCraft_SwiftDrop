@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+  data:
+    redis:
+      host: ${REDIS_HOST:redis-master.default.svc.cluster.local}
+      port: ${REDIS_PORT:6379}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq.swiftdrop-infra.svc.cluster.local}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:swiftdrop}
+    password: ${RABBITMQ_PASSWORD:changeme_rabbit}
+
+swiftdrop:
+  jwt:
+    secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      probes:
+        enabled: true

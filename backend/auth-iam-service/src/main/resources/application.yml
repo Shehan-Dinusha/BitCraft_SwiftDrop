@@ -1,0 +1,47 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-iam-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/swiftdrop_iam
+    username: swiftdrop
+    password: swiftdrop
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+swiftdrop:
+  jwt:
+    secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+springdoc:
+  api-docs:
+    version: OPENAPI_3_1
+  swagger-ui:
+    path: /swagger-ui.html

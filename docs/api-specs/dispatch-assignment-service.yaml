@@ -1,0 +1,15 @@
+openapi: 3.1.0
+info:
+  title: SwiftDrop Dispatch Assignment API
+  description: Courier assignment and dispatch APIs.
+  version: v1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/dispatch/health:
+    get:
+      tags: [Dispatch]
+      summary: Check dispatch service health
+      responses:
+        "200":
+          description: Service health response

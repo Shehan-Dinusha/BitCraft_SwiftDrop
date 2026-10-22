@@ -1,0 +1,57 @@
+# ─── Java / Maven ──────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.logs
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# ─── Node / Frontend ──────────────────────────────────────────────────────────
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+.eslintcache
+
+# ─── IDE ──────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Environment ──────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─── Docker ───────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Kubernetes Secrets (never commit) ────────────────────────────────────────
+infra/k8s/**/secrets*.yml
+infra/k8s/**/sealed-secrets*.yml
+
+# ─── Terraform ────────────────────────────────────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+
+# ─── Logs & Misc ──────────────────────────────────────────────────────────────
+*.log
+*.pid
+*.seed
+coverage/
+.nyc_output/

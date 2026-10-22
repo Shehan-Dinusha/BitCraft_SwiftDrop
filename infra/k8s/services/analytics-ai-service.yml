@@ -1,0 +1,148 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop – Analytics AI Service (Deployment + Service + HPA)
+# Namespace: swiftdrop-apps
+# ──────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-ai-service
+  namespace: swiftdrop-apps
+  labels:
+    app.kubernetes.io/name: analytics-ai-service
+    app.kubernetes.io/part-of: swiftdrop
+    app.kubernetes.io/component: service
+    swiftdrop.io/bounded-context: analytics
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: analytics-ai-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-ai-service
+  namespace: swiftdrop-apps
+  labels:
+    app.kubernetes.io/name: analytics-ai-service
+    app.kubernetes.io/part-of: swiftdrop
+    app.kubernetes.io/component: service
+    swiftdrop.io/bounded-context: analytics
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: analytics-ai-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: analytics-ai-service
+        app.kubernetes.io/part-of: swiftdrop
+        app.kubernetes.io/component: service
+        swiftdrop.io/bounded-context: analytics
+    spec:
+      serviceAccountName: analytics-ai-service-sa
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: analytics-ai-service
+          image: swiftdropacr.azurecr.io/analytics-ai-service:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: kubernetes
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://analytics-postgres-headless.swiftdrop-data.svc.cluster.local:5432/swiftdrop_analytics
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: analytics-postgres-credentials
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: analytics-postgres-credentials
+                  key: password
+            - name: SPRING_RABBITMQ_HOST
+              value: rabbitmq.swiftdrop-messaging.svc.cluster.local
+          resources:
+            requests:
+              cpu: "1"
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 5
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-ai-service-hpa
+  namespace: swiftdrop-apps
+  labels:
+    app.kubernetes.io/name: analytics-ai-service
+    app.kubernetes.io/part-of: swiftdrop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics-ai-service
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 120
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60

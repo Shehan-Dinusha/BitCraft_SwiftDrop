@@ -1,0 +1,1 @@
+import {PERSONA_ROLES,PersonaRole} from '@/types/contracts';import {useAuthStore} from '@/store/useAuthStore';export function PersonaSwitcherDevBar(){const set=useAuthStore(s=>s.setSession);return <div className="flex gap-3 bg-slate-900 p-2 text-xs text-white">{PERSONA_ROLES.map(r=><button key={r} onClick={()=>set('dev-token',r as PersonaRole)}>{r}</button>)}</div>}

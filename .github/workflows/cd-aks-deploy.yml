@@ -1,0 +1,174 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# CD – Build, Push to ACR & Deploy to AKS (Rolling Update)
+# Triggers on push to main branch after CI passes.
+# ──────────────────────────────────────────────────────────────────────────────
+name: CD – AKS Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target_service:
+        description: "Service to deploy (leave blank for all)"
+        required: false
+        type: string
+
+concurrency:
+  group: cd-aks-deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_REGISTRY: swiftdropacr.azurecr.io
+  AKS_CLUSTER: swiftdrop-aks
+  AKS_RESOURCE_GROUP: rg-swiftdrop-prod
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.filter.outputs.services }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed services
+        id: filter
+        run: |
+          if [ -n "${{ inputs.target_service }}" ]; then
+            echo "services=[\"${{ inputs.target_service }}\"]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          SERVICES=()
+          for dir in services/*/; do
+            svc=$(basename "$dir")
+            if git diff --name-only HEAD~1 HEAD | grep -q "^services/${svc}/"; then
+              SERVICES+=("\"${svc}\"")
+            fi
+          done
+
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            echo "services=[]" >> $GITHUB_OUTPUT
+          else
+            echo "services=[$(IFS=,; echo "${SERVICES[*]}")]" >> $GITHUB_OUTPUT
+          fi
+
+  build-push:
+    name: Build & Push – ${{ matrix.service }}
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR Login
+        run: az acr login --name swiftdropacr
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Build Maven module
+        run: mvn -B -pl services/${{ matrix.service }} -am package -DskipTests --no-transfer-progress
+
+      - name: Build & Push Docker image
+        run: |
+          IMAGE="${ACR_REGISTRY}/${{ matrix.service }}:${IMAGE_TAG}"
+          IMAGE_LATEST="${ACR_REGISTRY}/${{ matrix.service }}:latest"
+          docker build \
+            -t "${IMAGE}" \
+            -t "${IMAGE_LATEST}" \
+            -f services/${{ matrix.service }}/Dockerfile \
+            services/${{ matrix.service }}
+          docker push "${IMAGE}"
+          docker push "${IMAGE_LATEST}"
+
+  deploy:
+    name: Deploy to AKS
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          cluster-name: ${{ env.AKS_CLUSTER }}
+          resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+
+      - name: Apply base manifests
+        run: |
+          kubectl apply -f infra/k8s/base/namespaces.yml
+          kubectl apply -f infra/k8s/base/storage-classes.yml
+          kubectl apply -f infra/k8s/base/ingress.yml
+
+      - name: Apply database StatefulSets
+        run: kubectl apply -f infra/k8s/databases/
+
+      - name: Apply messaging StatefulSets
+        run: kubectl apply -f infra/k8s/messaging/
+
+      - name: Deploy services (rolling update)
+        run: |
+          for manifest in infra/k8s/services/*.yml; do
+            kubectl apply -f "$manifest"
+          done
+
+      - name: Update image tags for changed services
+        run: |
+          SERVICES='${{ needs.detect-changes.outputs.services }}'
+          for svc in $(echo "$SERVICES" | jq -r '.[]'); do
+            kubectl set image deployment/${svc} \
+              ${svc}=${ACR_REGISTRY}/${svc}:${IMAGE_TAG} \
+              -n swiftdrop-apps || true
+          done
+
+      - name: Wait for rollouts
+        run: |
+          SERVICES='${{ needs.detect-changes.outputs.services }}'
+          for svc in $(echo "$SERVICES" | jq -r '.[]'); do
+            kubectl rollout status deployment/${svc} \
+              -n swiftdrop-apps --timeout=300s || true
+          done
+
+      - name: Verify deployment health
+        run: |
+          echo "=== Pod Status ==="
+          kubectl get pods -n swiftdrop-apps -o wide
+          echo "=== Services ==="
+          kubectl get svc -n swiftdrop-apps

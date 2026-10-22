@@ -1,0 +1,1 @@
+import {Card} from '@/design-system/primitives/Card';import {SlaBreachAlertTicker} from '../components/SlaBreachAlertTicker';export function FleetControlTowerPage(){return <main className="space-y-4 p-4"><h1 className="text-2xl font-bold">Fleet control tower</h1><SlaBreachAlertTicker/><Card>Live fleet operations workspace</Card></main>}

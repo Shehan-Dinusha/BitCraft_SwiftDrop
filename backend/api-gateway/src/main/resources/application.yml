@@ -1,0 +1,93 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop API Gateway – Default Profile (Local Development)
+# ──────────────────────────────────────────────────────────────────────────────
+server:
+  port: 8080
+  netty:
+    connection-timeout: 30s
+    idle-timeout: 60s
+
+spring:
+  application:
+    name: api-gateway
+  threads:
+    virtual:
+      enabled: true
+
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:swiftdrop}
+    password: ${RABBITMQ_PASSWORD:changeme_rabbit}
+
+springdoc:
+  api-docs:
+    version: OPENAPI_3_1
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: api-gateway-tracking-hub
+        url: /v3/api-docs
+      - name: auth-iam-service
+        url: /api/v1/iam/v3/api-docs
+      - name: customer-order-service
+        url: /api/v1/orders/v3/api-docs
+      - name: pricing-zone-service
+        url: /api/v1/pricing/v3/api-docs
+      - name: dispatch-assignment-service
+        url: /api/v1/dispatch/v3/api-docs
+      - name: delivery-execution-service
+        url: /api/v1/deliveries/v3/api-docs
+      - name: merchant-b2b-service
+        url: /api/v1/merchants/v3/api-docs
+      - name: webhook-resiliency-service
+        url: /api/v1/webhooks/v3/api-docs
+      - name: notification-service
+        url: /api/v1/notifications/v3/api-docs
+      - name: analytics-ai-service
+        url: /api/v1/analytics/v3/api-docs
+
+# ─── JWT Configuration ────────────────────────────────────────────────────────
+swiftdrop:
+  jwt:
+    secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+
+# ─── Actuator ─────────────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+    gateway:
+      enabled: true
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.swiftdrop.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId:-}] %-5level %logger{36} - %msg%n"

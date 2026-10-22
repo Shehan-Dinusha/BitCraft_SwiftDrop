@@ -1,0 +1,268 @@
+{
+  "rabbit_version": "3.13.0",
+  "users": [
+    {
+      "name": "swiftdrop",
+      "password_hash": "changeme_rabbit",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "swiftdrop",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "swiftdrop.dlx.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "order.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+        "x-dead-letter-routing-key": "dlq.order.events",
+        "x-message-ttl": 86400000,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "dlq.order.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 604800000
+      }
+    },
+    {
+      "name": "dispatch.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+        "x-dead-letter-routing-key": "dlq.dispatch.events",
+        "x-message-ttl": 86400000,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "dlq.dispatch.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 604800000
+      }
+    },
+    {
+      "name": "delivery.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+        "x-dead-letter-routing-key": "dlq.delivery.events",
+        "x-message-ttl": 86400000,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "dlq.delivery.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 604800000
+      }
+    },
+    {
+      "name": "notification.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+        "x-dead-letter-routing-key": "dlq.notification.events",
+        "x-message-ttl": 86400000,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "dlq.notification.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 604800000
+      }
+    },
+    {
+      "name": "webhook.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+        "x-dead-letter-routing-key": "dlq.webhook.events",
+        "x-message-ttl": 86400000,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "swiftdrop.gateway.tracking.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "dlq.webhook.events.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 604800000
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "order.events.queue",
+      "destination_type": "queue",
+      "routing_key": "order.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "dispatch.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dispatch.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "delivery.events.queue",
+      "destination_type": "queue",
+      "routing_key": "delivery.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "notification.events.queue",
+      "destination_type": "queue",
+      "routing_key": "notification.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "webhook.events.queue",
+      "destination_type": "queue",
+      "routing_key": "webhook.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "swiftdrop.gateway.tracking.queue",
+      "destination_type": "queue",
+      "routing_key": "parcel.status.changed.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.dlx.exchange",
+      "vhost": "/",
+      "destination": "dlq.order.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dlq.order.events",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.dlx.exchange",
+      "vhost": "/",
+      "destination": "dlq.dispatch.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dlq.dispatch.events",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.dlx.exchange",
+      "vhost": "/",
+      "destination": "dlq.delivery.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dlq.delivery.events",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.dlx.exchange",
+      "vhost": "/",
+      "destination": "dlq.notification.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dlq.notification.events",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.dlx.exchange",
+      "vhost": "/",
+      "destination": "dlq.webhook.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dlq.webhook.events",
+      "arguments": {}
+    }
+  ],
+  "policies": [
+    {
+      "name": "ha-quorum-queues",
+      "vhost": "/",
+      "pattern": ".*",
+      "apply-to": "quorum_queues",
+      "definition": {
+        "delivery-limit": 5
+      },
+      "priority": 0
+    }
+  ]
+}

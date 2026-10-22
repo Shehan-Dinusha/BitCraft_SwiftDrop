@@ -1,0 +1,15 @@
+openapi: 3.1.0
+info:
+  title: SwiftDrop Delivery Execution API
+  description: Delivery execution and tracking APIs.
+  version: v1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/delivery-execution/health:
+    get:
+      tags: [DeliveryExecution]
+      summary: Check delivery service health
+      responses:
+        "200":
+          description: Service health response

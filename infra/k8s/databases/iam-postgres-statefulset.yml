@@ -1,0 +1,119 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop – IAM PostgreSQL StatefulSet (10Gi Standard SSD)
+# Namespace: swiftdrop-data
+# ──────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: iam-postgres-headless
+  namespace: swiftdrop-data
+  labels:
+    app.kubernetes.io/name: iam-postgres
+    app.kubernetes.io/part-of: swiftdrop
+    app.kubernetes.io/component: database
+    swiftdrop.io/bounded-context: iam
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: iam-postgres
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iam-postgres
+  namespace: swiftdrop-data
+  labels:
+    app.kubernetes.io/name: iam-postgres
+    app.kubernetes.io/part-of: swiftdrop
+    app.kubernetes.io/component: database
+    swiftdrop.io/bounded-context: iam
+spec:
+  serviceName: iam-postgres-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iam-postgres
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: iam-postgres
+        app.kubernetes.io/part-of: swiftdrop
+        app.kubernetes.io/component: database
+        swiftdrop.io/bounded-context: iam
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        fsGroup: 70
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgresql
+          env:
+            - name: POSTGRES_DB
+              value: swiftdrop_iam
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: iam-postgres-credentials
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: iam-postgres-credentials
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: iam-pgdata
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - "-U"
+                - "$(POSTGRES_USER)"
+                - "-d"
+                - swiftdrop_iam
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - "-U"
+                - "$(POSTGRES_USER)"
+                - "-d"
+                - swiftdrop_iam
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: iam-pgdata
+        labels:
+          app.kubernetes.io/name: iam-postgres
+          app.kubernetes.io/part-of: swiftdrop
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: managed-csi-standard
+        resources:
+          requests:
+            storage: 10Gi

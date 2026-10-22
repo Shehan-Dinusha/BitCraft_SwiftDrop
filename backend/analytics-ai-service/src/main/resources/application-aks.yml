@@ -1,0 +1,22 @@
+server:
+  port: 8089
+spring:
+  application:
+    name: analytics-ai-service
+  datasource:
+    url: jdbc:postgresql://analytics-postgres-0.analytics-postgres-hl.swiftdrop-data.svc.cluster.local:5432/swiftdrop_analytics
+    username: ${DB_USERNAME:swiftdrop}
+    password: ${DB_PASSWORD:swiftdrop}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq.default.svc.cluster.local}
+    port: ${RABBITMQ_PORT:5672}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

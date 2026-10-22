@@ -1,0 +1,1 @@
+import {OneTapStateTransitionCard} from '../components/OneTapStateTransitionCard';export function ActiveDeliveryExecutionPage(){return <main className="mx-auto max-w-2xl space-y-5 p-5"><h1 className="text-2xl font-bold">Active delivery</h1><OneTapStateTransitionCard/></main>}

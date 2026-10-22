@@ -1,0 +1,22 @@
+server:
+  port: 8086
+spring:
+  application:
+    name: merchant-b2b-service
+  datasource:
+    url: jdbc:postgresql://merchant-postgres-0.merchant-postgres-hl.swiftdrop-data.svc.cluster.local:5432/swiftdrop_merchant
+    username: ${DB_USERNAME:swiftdrop}
+    password: ${DB_PASSWORD:swiftdrop}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq.default.svc.cluster.local}
+    port: ${RABBITMQ_PORT:5672}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

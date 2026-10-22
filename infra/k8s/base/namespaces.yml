@@ -1,0 +1,26 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop – Kubernetes Namespaces
+# ──────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiftdrop-apps
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    tier: application
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiftdrop-data
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    tier: data
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiftdrop-messaging
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    tier: messaging

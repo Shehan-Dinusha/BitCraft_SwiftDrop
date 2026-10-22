@@ -1,0 +1,86 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# CI – Backend (Java 25 / Maven / Testcontainers)
+# Triggers on pull requests touching any backend service or shared library.
+# ──────────────────────────────────────────────────────────────────────────────
+name: CI – Backend
+
+on:
+  pull_request:
+    paths:
+      - "services/**"
+      - "pom.xml"
+      - ".github/workflows/ci-backend.yml"
+
+concurrency:
+  group: ci-backend-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build-and-test:
+    name: Build & Test (Java 25)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      rabbitmq:
+        image: rabbitmq:3.13-management-alpine
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q check_running"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-${{ runner.os }}-
+
+      - name: Compile all modules
+        run: mvn -B -T 1C compile -DskipTests --no-transfer-progress
+
+      - name: Run unit tests
+        run: mvn -B -T 1C test --no-transfer-progress -Dspring.profiles.active=test
+
+      - name: Run integration tests (Testcontainers)
+        run: mvn -B verify --no-transfer-progress -Dspring.profiles.active=integration-test
+        env:
+          TESTCONTAINERS_REUSE_ENABLE: "true"
+          SPRING_RABBITMQ_HOST: localhost
+          SPRING_RABBITMQ_PORT: 5672
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: JUnit Results
+          path: "**/target/surefire-reports/TEST-*.xml"
+          reporter: java-junit
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: "**/target/site/jacoco/"
+          retention-days: 14

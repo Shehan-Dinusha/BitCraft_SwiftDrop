@@ -1,0 +1,1 @@
+import {Card} from '@/design-system/primitives/Card';import {OrderBookingWizard} from '../components/OrderBookingWizard';export function CustomerBookingPage(){return <main className="mx-auto max-w-3xl p-6"><h1 className="text-3xl font-bold">Book a delivery</h1><Card className="mt-6"><OrderBookingWizard/></Card></main>}

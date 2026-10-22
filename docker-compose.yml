@@ -1,0 +1,337 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop – Local Development Infrastructure
+# Physical Database Isolation: 9 dedicated PostgreSQL 16 containers
+# Event Messaging: RabbitMQ 3.13 with pre-configured exchanges & queues
+# ──────────────────────────────────────────────────────────────────────────────
+name: swiftdrop
+
+services:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # MESSAGE BROKER
+  # ═══════════════════════════════════════════════════════════════════════════
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: swiftdrop-rabbitmq
+    hostname: swiftdrop-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-SWIFTDROP_ERLANG_COOKIE_SECRET}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./infra/local/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    configs:
+      - source: rabbitmq_conf
+        target: /etc/rabbitmq/rabbitmq.conf
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # API GATEWAY AND REAL-TIME TRACKING HUB
+  # ═══════════════════════════════════════════════════════════════════════════
+  api-gateway:
+    build:
+      context: ./backend
+      dockerfile: api-gateway/Dockerfile
+    container_name: swiftdrop-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – IAM Service (Port 5432)
+  # ═══════════════════════════════════════════════════════════════════════════
+  iam-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-iam-postgres
+    hostname: iam-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_iam
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - iam_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_iam"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – Order Service (Port 5433)
+  # ═══════════════════════════════════════════════════════════════════════════
+  order-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-order-postgres
+    hostname: order-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_order
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - order_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_order"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – Pricing Service (Port 5434)
+  # ═══════════════════════════════════════════════════════════════════════════
+  pricing-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-pricing-postgres
+    hostname: pricing-postgres
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_pricing
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pricing_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_pricing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – Dispatch Service (Port 5435)
+  # ═══════════════════════════════════════════════════════════════════════════
+  dispatch-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-dispatch-postgres
+    hostname: dispatch-postgres
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_dispatch
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - dispatch_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_dispatch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – Delivery Service (Port 5436)
+  # ═══════════════════════════════════════════════════════════════════════════
+  delivery-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-delivery-postgres
+    hostname: delivery-postgres
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_delivery
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - delivery_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_delivery"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – Merchant Service (Port 5437)
+  # ═══════════════════════════════════════════════════════════════════════════
+  merchant-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-merchant-postgres
+    hostname: merchant-postgres
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_merchant
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - merchant_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_merchant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – Webhook Service (Port 5438)
+  # ═══════════════════════════════════════════════════════════════════════════
+  webhook-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-webhook-postgres
+    hostname: webhook-postgres
+    ports:
+      - "5438:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_webhook
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - webhook_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_webhook"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – Notification Service (Port 5439)
+  # ═══════════════════════════════════════════════════════════════════════════
+  notify-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-notify-postgres
+    hostname: notify-postgres
+    ports:
+      - "5439:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_notify
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - notify_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_notify"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DATABASE – Analytics Service (Port 5440)
+  # ═══════════════════════════════════════════════════════════════════════════
+  analytics-postgres:
+    image: postgres:16-alpine
+    container_name: swiftdrop-analytics-postgres
+    hostname: analytics-postgres
+    ports:
+      - "5440:5432"
+    environment:
+      POSTGRES_DB: swiftdrop_analytics
+      POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - analytics_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiftdrop} -d swiftdrop_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGS
+# ═══════════════════════════════════════════════════════════════════════════════
+configs:
+  rabbitmq_conf:
+    content: |
+      management.load_definitions = /etc/rabbitmq/definitions.json
+      vm_memory_high_watermark.relative = 0.7
+      disk_free_limit.relative = 1.5
+      consumer_timeout = 3600000
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NAMED VOLUMES – Physical isolation: one volume per database instance
+# ═══════════════════════════════════════════════════════════════════════════════
+volumes:
+  rabbitmq_data:
+    driver: local
+  iam_pgdata:
+    driver: local
+  order_pgdata:
+    driver: local
+  pricing_pgdata:
+    driver: local
+  dispatch_pgdata:
+    driver: local
+  delivery_pgdata:
+    driver: local
+  merchant_pgdata:
+    driver: local
+  webhook_pgdata:
+    driver: local
+  notify_pgdata:
+    driver: local
+  analytics_pgdata:
+    driver: local
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NETWORKS
+# ═══════════════════════════════════════════════════════════════════════════════
+networks:
+  swiftdrop-net:
+    driver: bridge
+    name: swiftdrop-network

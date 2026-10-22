@@ -1,0 +1,1 @@
+import {Modal} from '@/design-system/primitives/Modal';export function ManualDispatchOverrideModal({open,onClose}:{open:boolean;onClose:()=>void}){return <Modal open={open} onClose={onClose} title="Manual dispatch override">Select a courier and confirm.</Modal>}
