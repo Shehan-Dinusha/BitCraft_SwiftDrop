@@ -39,6 +39,64 @@ services:
   # ═══════════════════════════════════════════════════════════════════════════
   # API GATEWAY AND REAL-TIME TRACKING HUB
   # ═══════════════════════════════════════════════════════════════════════════
+  # Shared cache for JWT blacklist and public tracking rate limits.
+  redis:
+    image: redis:7-alpine
+    container_name: swiftdrop-redis
+    hostname: redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - swiftdrop-net
+
+  auth-iam-service:
+    build:
+      context: ./backend
+      dockerfile: auth-iam-service/Dockerfile
+    container_name: swiftdrop-auth-iam
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_DATASOURCE_URL: jdbc:postgresql://iam-postgres:5432/swiftdrop_iam
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+      JWT_ISSUER: ${JWT_ISSUER:-swiftdrop-iam}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-swiftdrop}
+      JWT_ACCESS_TOKEN_EXPIRATION_MS: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:-3600000}
+      JWT_REFRESH_TOKEN_EXPIRATION_DAYS: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:-30}
+      JWT_BLACKLIST_PREFIX: ${JWT_BLACKLIST_PREFIX:-jwt:blacklist:}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_DISTRICT: ${BOOTSTRAP_ADMIN_DISTRICT:-COLOMBO}
+    depends_on:
+      iam-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - swiftdrop-net
+
   api-gateway:
     build:
       context: ./backend
@@ -52,8 +110,19 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MERCHANT_API_KEY_VALIDATION_URL: http://host.docker.internal:8086/internal/v1/api-keys/validate
+      PUBLIC_TRACKING_RATE_LIMIT: ${PUBLIC_TRACKING_RATE_LIMIT:-60}
+      PUBLIC_TRACKING_RATE_WINDOW_SECONDS: ${PUBLIC_TRACKING_RATE_WINDOW_SECONDS:-60}
+      JWT_BLACKLIST_PREFIX: ${JWT_BLACKLIST_PREFIX:-jwt:blacklist:}
+      JWT_SECRET: ${JWT_SECRET:-swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - swiftdrop-net
@@ -308,6 +377,8 @@ configs:
 # ═══════════════════════════════════════════════════════════════════════════════
 volumes:
   rabbitmq_data:
+    driver: local
+  redis_data:
     driver: local
   iam_pgdata:
     driver: local

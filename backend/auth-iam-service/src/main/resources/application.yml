@@ -26,10 +26,28 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
 
 swiftdrop:
   jwt:
     secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+    issuer: ${JWT_ISSUER:swiftdrop-iam}
+    audience: ${JWT_AUDIENCE:swiftdrop}
+    access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:${JWT_EXPIRATION_MS:3600000}}
+    refresh-token-expiration-days: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:30}
+    blacklist-prefix: ${JWT_BLACKLIST_PREFIX:jwt:blacklist:}
+  bootstrap:
+    admin:
+      username: ${BOOTSTRAP_ADMIN_USERNAME:}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+      email: ${BOOTSTRAP_ADMIN_EMAIL:}
+      district: ${BOOTSTRAP_ADMIN_DISTRICT:COLOMBO}
 
 management:
   endpoints:

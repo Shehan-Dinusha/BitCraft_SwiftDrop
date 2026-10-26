@@ -63,6 +63,14 @@ springdoc:
 swiftdrop:
   jwt:
     secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+    blacklist-prefix: ${JWT_BLACKLIST_PREFIX:jwt:blacklist:}
+  rate-limit:
+    public-tracking:
+      limit: ${PUBLIC_TRACKING_RATE_LIMIT:60}
+      window-seconds: ${PUBLIC_TRACKING_RATE_WINDOW_SECONDS:60}
+  merchant:
+    api-key-validation-url: ${MERCHANT_API_KEY_VALIDATION_URL:http://localhost:8086/internal/v1/api-keys/validate}
+    api-key-cache-ttl-seconds: ${MERCHANT_API_KEY_CACHE_TTL_SECONDS:60}
 
 # ─── Actuator ─────────────────────────────────────────────────────────────────
 management:

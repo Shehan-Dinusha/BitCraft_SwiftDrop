@@ -1,6 +1,6 @@
 # SwiftDrop OpenAPI contracts
 
-SwiftDrop exposes one OpenAPI 3.1 document per downstream service. The API Gateway provides the centralized Swagger UI at [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) and proxies each service document through its `/api/v1/<service>/v3/api-docs` route.
+SwiftDrop exposes one OpenAPI 3.1 document per downstream service, plus a public tracking contract for the API Gateway. The API Gateway provides the centralized Swagger UI at [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) and proxies each service document through its `/api/v1/<service>/v3/api-docs` route.
 
 ## Backend engineers
 

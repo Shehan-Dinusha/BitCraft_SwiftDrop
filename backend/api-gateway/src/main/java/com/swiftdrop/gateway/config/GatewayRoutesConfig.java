@@ -49,7 +49,11 @@ public class GatewayRoutesConfig {
 
                 // ─── Merchant B2B ────────────────────────────────────────
                 .route("merchant-b2b-service", r -> r
-                        .path("/api/v1/merchants/**", "/api/v1/merchants/v3/api-docs/**")
+                        .path("/api/v1/merchants/**",
+                                "/api/v1/merchant/**",
+                                "/api/v1/merchant-order-ingest/**",
+                                "/api/v1/api-key-management/**",
+                                "/api/v1/merchants/v3/api-docs/**")
                         .filters(f -> f.rewritePath("/api/v1/merchants/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
                         .uri("lb://merchant-b2b-service"))
 

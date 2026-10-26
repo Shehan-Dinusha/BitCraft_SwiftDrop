@@ -1,6 +1,6 @@
 package com.swiftdrop.gateway.config;
 
-import com.swiftdrop.gateway.trackinghub.controller.LiveTrackingStreamController;
+import com.swiftdrop.gateway.trackinghub.websocket.TrackingWebSocketHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.HandlerMapping;
@@ -11,12 +11,12 @@ import java.util.Map;
 
 @Configuration
 public class ReactiveWebSocketConfig {
+
     @Bean
-    public HandlerMapping trackingWebSocketMapping(LiveTrackingStreamController controller) {
+    public HandlerMapping trackingWebSocketMapping(TrackingWebSocketHandler handler) {
         SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
         mapping.setOrder(-1);
-        Map<String, Object> urlMap = Map.of("/ws/tracking", controller);
-        mapping.setUrlMap(urlMap);
+        mapping.setUrlMap(Map.of("/ws/tracking", handler));
         return mapping;
     }
 

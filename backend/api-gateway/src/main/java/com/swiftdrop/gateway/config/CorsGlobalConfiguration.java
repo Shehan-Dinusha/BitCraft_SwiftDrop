@@ -31,12 +31,17 @@ public class CorsGlobalConfiguration {
                 "Content-Type",
                 "X-Request-ID",
                 "X-Correlation-Id",
+                "X-API-Key",
+                "X-Merchant-Api-Key",
                 "Accept",
                 "Origin"
         ));
         corsConfig.setExposedHeaders(List.of(
                 "X-Correlation-Id",
-                "X-Request-ID"
+                "X-Request-ID",
+                "X-RateLimit-Limit",
+                "X-RateLimit-Remaining",
+                "Retry-After"
         ));
         corsConfig.setAllowCredentials(true);
         corsConfig.setMaxAge(3600L);

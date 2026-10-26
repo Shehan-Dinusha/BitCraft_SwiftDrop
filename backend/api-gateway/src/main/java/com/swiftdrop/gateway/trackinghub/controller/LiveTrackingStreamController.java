@@ -13,11 +13,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Controller
-@RequestMapping("/api/v1/tracking")
+@RequestMapping({"/api/v1/public/track", "/api/v1/tracking"})
 @Tag(name = "Real-Time Tracking Hub", description = "SSE and WebSocket parcel update streams")
 public class LiveTrackingStreamController implements WebSocketHandler {
     private final TrackingBroadcastHubService broadcastHub;
@@ -28,22 +29,30 @@ public class LiveTrackingStreamController implements WebSocketHandler {
         this.objectMapper = objectMapper;
     }
 
-    @GetMapping(value = "/{trackingId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = "/{trackingNumber}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @ResponseBody
     @Operation(summary = "Subscribe to sanitized parcel updates over Server-Sent Events")
-    public Flux<PublicTrackingViewDto> stream(@PathVariable String trackingId) {
-        return broadcastHub.stream(trackingId);
+    public Flux<PublicTrackingViewDto> stream(@PathVariable String trackingNumber) {
+        return broadcastHub.stream(trackingNumber);
     }
 
     @Override
     @NonNull
     public Mono<Void> handle(@NonNull WebSocketSession session) {
-        String trackingId = session.getHandshakeInfo().getUri().getQuery();
-        if (trackingId != null && trackingId.startsWith("trackingId=")) {
-            trackingId = trackingId.substring("trackingId=".length());
+        String trackingNumber = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())
+                .build()
+                .getQueryParams()
+                .getFirst("trackingNumber");
+        if (trackingNumber == null) {
+            trackingNumber = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())
+                    .build()
+                    .getQueryParams()
+                    .getFirst("trackingId");
         }
-        String resolvedTrackingId = trackingId == null || trackingId.isBlank() ? "unknown" : trackingId;
-        Flux<WebSocketMessage> messages = broadcastHub.stream(resolvedTrackingId)
+        String resolvedTrackingNumber = trackingNumber == null || trackingNumber.isBlank()
+                ? "unknown"
+                : trackingNumber;
+        Flux<WebSocketMessage> messages = broadcastHub.stream(resolvedTrackingNumber)
                 .map(this::toJson)
                 .map(session::textMessage);
         return session.send(messages);

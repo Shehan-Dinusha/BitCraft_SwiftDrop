@@ -153,6 +153,15 @@
       }
     },
     {
+      "name": "swiftdrop.gateway.fee.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
       "name": "dlq.webhook.events.queue",
       "vhost": "/",
       "durable": true,
@@ -210,6 +219,14 @@
       "destination": "swiftdrop.gateway.tracking.queue",
       "destination_type": "queue",
       "routing_key": "parcel.status.changed.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "swiftdrop.gateway.fee.queue",
+      "destination_type": "queue",
+      "routing_key": "parcel.fee.revised",
       "arguments": {}
     },
     {

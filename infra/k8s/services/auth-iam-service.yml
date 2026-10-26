@@ -60,7 +60,7 @@ spec:
               name: http
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: kubernetes
+              value: aks
             - name: SERVER_PORT
               value: "8080"
             - name: SPRING_DATASOURCE_URL
@@ -77,6 +77,49 @@ spec:
                   key: password
             - name: SPRING_RABBITMQ_HOST
               value: rabbitmq.swiftdrop-messaging.svc.cluster.local
+            - name: REDIS_HOST
+              value: redis.swiftdrop-messaging.svc.cluster.local
+            - name: REDIS_PORT
+              value: "6379"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-jwt-credentials
+                  key: secret
+            - name: JWT_ISSUER
+              value: swiftdrop-iam
+            - name: JWT_AUDIENCE
+              value: swiftdrop
+            - name: JWT_ACCESS_TOKEN_EXPIRATION_MS
+              value: "3600000"
+            - name: JWT_REFRESH_TOKEN_EXPIRATION_DAYS
+              value: "30"
+            - name: JWT_BLACKLIST_PREFIX
+              value: "jwt:blacklist:"
+            - name: BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-bootstrap-admin
+                  key: username
+                  optional: true
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-bootstrap-admin
+                  key: password
+                  optional: true
+            - name: BOOTSTRAP_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-bootstrap-admin
+                  key: email
+                  optional: true
+            - name: BOOTSTRAP_ADMIN_DISTRICT
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-bootstrap-admin
+                  key: district
+                  optional: true
           resources:
             requests:
               cpu: 250m

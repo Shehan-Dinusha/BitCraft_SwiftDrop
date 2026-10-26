@@ -4,6 +4,7 @@ import { cn } from '@/utils/cn';
 import { Button, ThemeToggle } from '@/design-system';
 import { PersonaSwitcherDevBar } from '@/features/auth/components/PersonaSwitcherDevBar';
 import { useAuthStore } from '@/store/useAuthStore';
+import { logoutUser } from '@/services/api/authApi';
 import { roleHome } from '@/app/roleHome';
 import type { PersonaRole } from '@/types/contracts';
 
@@ -30,6 +31,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function AppShell() {
   const role = useAuthStore((state) => state.role);
+  const refreshToken = useAuthStore((state) => state.refreshToken);
   const signOut = useAuthStore((state) => state.signOut);
   const navigate = useNavigate();
   const links = roleNav[role];
@@ -71,8 +73,14 @@ export function AppShell() {
               leftIcon={<LogOut />}
               aria-label="Sign out"
               onClick={() => {
-                signOut();
-                navigate('/login', { replace: true });
+                void (async () => {
+                  try {
+                    await logoutUser(refreshToken);
+                  } finally {
+                    signOut();
+                    navigate('/login', { replace: true });
+                  }
+                })();
               }}
             >
               <span className="hidden sm:inline">Sign out</span>

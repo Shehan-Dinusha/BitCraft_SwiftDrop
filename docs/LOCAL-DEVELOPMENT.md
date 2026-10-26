@@ -131,6 +131,50 @@ mvn -f backend\pom.xml -pl delivery-execution-service -am spring-boot:run
 
 The delivery service runs at `http://localhost:8085`.
 
+### Auth and IAM
+
+Start the database, RabbitMQ, and Redis, then run the service:
+
+```powershell
+docker compose up -d rabbitmq iam-postgres redis
+mvn -f backend\pom.xml -pl auth-iam-service -am spring-boot:run
+```
+
+The Auth/IAM service runs at `http://localhost:8081`. Register a customer directly while developing:
+
+```powershell
+$body = @{
+  username = 'customer.one'
+  email = 'customer.one@example.com'
+  firstName = 'Nimal'
+  lastName = 'Perera'
+  password = 'SwiftDrop123'
+  role = 'CUSTOMER'
+  district = 'COLOMBO'
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri http://localhost:8081/api/v1/auth/register `
+  -ContentType 'application/json' -Body $body
+```
+
+To create the first administrator, set the bootstrap variables before starting the service:
+
+```powershell
+$env:BOOTSTRAP_ADMIN_USERNAME = 'root'
+$env:BOOTSTRAP_ADMIN_PASSWORD = 'ChangeMe123'
+$env:BOOTSTRAP_ADMIN_EMAIL = 'root@example.com'
+$env:BOOTSTRAP_ADMIN_DISTRICT = 'COLOMBO'
+```
+
+The bootstrap runner only creates the account when no active `SYSTEM_ADMIN` exists and the username is unused. Leave the variables unset to skip it. The API gateway must use the same `JWT_SECRET` as Auth/IAM; local development defaults are aligned. AKS deployments read the shared secret from `swiftdrop-jwt-credentials` in `swiftdrop-apps`:
+
+```powershell
+kubectl -n swiftdrop-apps create secret generic swiftdrop-jwt-credentials `
+  --from-literal=secret='<at-least-32-byte-random-value>'
+```
+
+Redis backs the login failure limiter and JWT blacklist. If Redis is unavailable, both checks fail open so local UI work can continue; do not rely on that behavior in production.
+
 ### Any other service
 
 Replace `<module>` and `<database-container>` with the values from the service matrix:
