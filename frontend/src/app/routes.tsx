@@ -8,6 +8,7 @@ import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
 import { CourierShiftDashboard } from '@/features/courier/pages/CourierShiftDashboard';
 import { ActiveDeliveryExecutionPage } from '@/features/courier/pages/ActiveDeliveryExecutionPage';
 import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPortalDashboard';
+import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { PersonaRole } from '@/types/contracts';
@@ -57,6 +58,14 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/courier/deliveries',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <ActiveDeliveryExecutionPage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/merchant',
         element: (
           <RoleGuard roles={['MERCHANT']}>
@@ -65,10 +74,26 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/merchant/webhooks',
+        element: (
+          <RoleGuard roles={['MERCHANT', 'ADMIN_OPS']}>
+            <WebhookResiliencyConsolePage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/ops',
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
             <FleetControlTowerPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/webhooks',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <WebhookResiliencyConsolePage />
           </RoleGuard>
         )
       },

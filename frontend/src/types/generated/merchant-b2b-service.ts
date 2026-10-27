@@ -4,14 +4,14 @@
  */
 
 export interface paths {
-    "/api/v1/merchant-order-ingest/health": {
+    "/api/v1/merchants/health": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Check merchant service health */
+        /** Check merchant account health */
         get: {
             parameters: {
                 query?: never;
@@ -23,6 +23,113 @@ export interface paths {
             responses: {
                 /** @description Service health response */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all merchant accounts */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Merchant accounts retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListMerchantAccountResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Register a new merchant account */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateMerchantRequest"];
+                };
+            };
+            responses: {
+                /** @description Merchant account created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseMerchantAccountResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get merchant profile by UUID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Merchant profile retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseMerchantAccountResponse"];
+                    };
+                };
+                /** @description Merchant not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -38,10 +145,584 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/api-key-management/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check API key controller health */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Service health response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all API keys for a merchant */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description API keys retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListApiKeyResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Generate a new merchant API key
+         * @description Returns raw secret key ONLY ONCE.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateApiKeyRequest"];
+                };
+            };
+            responses: {
+                /** @description API key created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseApiKeyResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}/api-keys/{keyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an API key */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                    keyId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description API key revoked */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseApiKeyResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/v1/api-keys/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Internal API key validation for gateway filter */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MerchantApiKeyValidationRequest"];
+                };
+            };
+            responses: {
+                /** @description Validation result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MerchantApiKeyValidationResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchant-order-ingest/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check order ingest health */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Service health response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}/ingest/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest a batch of delivery orders via JSON payload */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BulkIngestRequest"];
+                };
+            };
+            responses: {
+                /** @description Batch accepted and processed */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBulkIngestBatchResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}/ingest/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload and process bulk orders from CSV */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description CSV batch accepted and processed */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBulkIngestBatchResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List ingestion batches for a merchant */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Batches retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListBulkIngestBatchResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/batches/{batchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get ingestion batch summary by UUID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    batchId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Batch retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBulkIngestBatchResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/batches/{batchId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get row-level parcel tracking details for a batch */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    batchId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Batch items retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListBulkBatchItemResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        /** @enum {string} */
+        SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
+        CreateMerchantRequest: {
+            businessName: string;
+            contactEmail: string;
+            contactPhone: string;
+            pickupAddress: string;
+            operatingDistrict: components["schemas"]["SriLankanDistrict"];
+        };
+        MerchantAccountResponse: {
+            /** Format: uuid */
+            merchantId?: string;
+            businessName?: string;
+            contactEmail?: string;
+            contactPhone?: string;
+            pickupAddress?: string;
+            operatingDistrict?: components["schemas"]["SriLankanDistrict"];
+            status?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        CreateApiKeyRequest: {
+            keyName: string;
+            expiresInDays?: number;
+        };
+        ApiKeyResponse: {
+            /** Format: uuid */
+            keyId?: string;
+            /** Format: uuid */
+            merchantId?: string;
+            keyName?: string;
+            keyPrefix?: string;
+            active?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: date-time */
+            lastUsedAt?: string;
+            /** Format: date-time */
+            revokedAt?: string;
+            rawApiKey?: string;
+        };
+        MerchantApiKeyValidationRequest: {
+            apiKey: string;
+        };
+        MerchantApiKeyValidationResult: {
+            valid?: boolean;
+            /** Format: uuid */
+            merchantId?: string;
+            reason?: string;
+        };
+        BulkOrderIngestItem: {
+            recipientName: string;
+            recipientPhone: string;
+            deliveryDistrict: components["schemas"]["SriLankanDistrict"];
+            deliveryAddress: string;
+            packageWeightKg?: number;
+            deliverySpeed?: string;
+        };
+        BulkIngestRequest: {
+            fileName?: string;
+            orders: components["schemas"]["BulkOrderIngestItem"][];
+        };
+        BulkIngestBatchResponse: {
+            /** Format: uuid */
+            batchId?: string;
+            /** Format: uuid */
+            merchantId?: string;
+            fileName?: string;
+            batchStatus?: string;
+            totalRecords?: number;
+            successCount?: number;
+            failedCount?: number;
+            errorSummary?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            completedAt?: string;
+        };
+        BulkBatchItemResponse: {
+            /** Format: uuid */
+            batchId?: string;
+            rowIndex?: number;
+            trackingNumber?: string;
+            /** Format: uuid */
+            orderId?: string;
+            recipientName?: string;
+            recipientPhone?: string;
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            deliveryAddress?: string;
+            packageWeightKg?: number;
+            deliverySpeed?: string;
+            itemStatus?: string;
+            errorMessage?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        ApiResponseString: {
+            success?: boolean;
+            message?: string;
+            data?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseMerchantAccountResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["MerchantAccountResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListMerchantAccountResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["MerchantAccountResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseApiKeyResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ApiKeyResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListApiKeyResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ApiKeyResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseBulkIngestBatchResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["BulkIngestBatchResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListBulkIngestBatchResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["BulkIngestBatchResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListBulkBatchItemResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["BulkBatchItemResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;

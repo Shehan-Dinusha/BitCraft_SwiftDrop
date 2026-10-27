@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/v1/delivery-execution/health": {
+    "/api/v1/deliveries/health": {
         parameters: {
             query?: never;
             header?: never;
@@ -12,26 +12,166 @@ export interface paths {
             cookie?: never;
         };
         /** Check delivery service health */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Service health response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        get: operations["deliveryHealth"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/{deliveryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get delivery session by UUID */
+        get: operations["getDeliveryById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/order/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get delivery session by order UUID */
+        get: operations["getDeliveryByOrderId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/tracking/{trackingNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get delivery session by tracking number */
+        get: operations["getDeliveryByTrackingNumber"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/courier/{courierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List delivery sessions for a courier */
+        get: operations["getDeliveriesByCourier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/{deliveryId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transition delivery lifecycle state
+         * @description Advances delivery state machine according to 12-state FSM rules and guards.
+         */
+        post: operations["transitionDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/{deliveryId}/location": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record courier GPS telemetry breadcrumb */
+        post: operations["recordLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/{deliveryId}/breadcrumbs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get recent GPS telemetry breadcrumbs */
+        get: operations["getBreadcrumbs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/{deliveryId}/proof-of-delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get proof-of-delivery status for a delivery */
+        get: operations["getProofOfDelivery"];
+        put?: never;
+        /** Upload proof-of-delivery evidence */
+        post: operations["uploadProofOfDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/{deliveryId}/proof-of-delivery/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify proof-of-delivery with recipient OTP */
+        post: operations["verifyProofOfDelivery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -41,7 +181,125 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        /** @enum {string} */
+        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED" | "FAILED" | "CANCELLED";
+        /** @enum {string} */
+        DeliveryFailureReason: "RECIPIENT_UNAVAILABLE" | "INCORRECT_ADDRESS" | "ACCESS_RESTRICTED" | "RECIPIENT_REJECTED" | "DAMAGED_IN_TRANSIT" | "ADVERSE_WEATHER" | "SYSTEM_CANCELLATION" | "OTHER";
+        /** @enum {string} */
+        SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
+        TransitionDeliveryRequest: {
+            targetState: components["schemas"]["DeliveryState"];
+            notes?: string;
+            latitude?: number;
+            longitude?: number;
+            failureReason?: components["schemas"]["DeliveryFailureReason"];
+            actorRole?: string;
+        };
+        CourierLocationUpdatePayload: {
+            latitude: number;
+            longitude: number;
+            bearingDegrees?: number;
+            speedKmh?: number;
+            accuracy?: number;
+        };
+        ProofOfDeliveryUploadRequest: {
+            photoUrl: string;
+            recipientSignature: string;
+            confirmationOtp: string;
+        };
+        ProofOfDeliveryResponse: {
+            id?: number;
+            /** Format: uuid */
+            deliveryId?: string;
+            verified?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            verifiedAt?: string;
+        };
+        DeliverySessionResponse: {
+            /** Format: uuid */
+            deliveryId?: string;
+            /** Format: uuid */
+            orderId?: string;
+            trackingNumber?: string;
+            /** Format: uuid */
+            courierId?: string;
+            courierName?: string;
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            currentState?: components["schemas"]["DeliveryState"];
+            previousState?: components["schemas"]["DeliveryState"];
+            failedReason?: string;
+            attemptCount?: number;
+            /** Format: date-time */
+            pickupAt?: string;
+            /** Format: date-time */
+            deliveredAt?: string;
+            currentLatitude?: number;
+            currentLongitude?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        TrackingBreadcrumbResponse: {
+            /** Format: uuid */
+            deliveryId?: string;
+            /** Format: uuid */
+            courierId?: string;
+            latitude?: number;
+            longitude?: number;
+            bearingDegrees?: number;
+            speedKmh?: number;
+            accuracy?: number;
+            /** Format: date-time */
+            recordedAt?: string;
+        };
+        ApiResponseString: {
+            success?: boolean;
+            message?: string;
+            data?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseDeliverySessionResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DeliverySessionResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListDeliverySessionResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DeliverySessionResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseTrackingBreadcrumbResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["TrackingBreadcrumbResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListTrackingBreadcrumbResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["TrackingBreadcrumbResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseProofOfDeliveryResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ProofOfDeliveryResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -49,4 +307,303 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    deliveryHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service health response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseString"];
+                };
+            };
+        };
+    };
+    getDeliveryById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery session retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDeliverySessionResponse"];
+                };
+            };
+            /** @description Delivery not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getDeliveryByOrderId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery session retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDeliverySessionResponse"];
+                };
+            };
+            /** @description Delivery not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getDeliveryByTrackingNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackingNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery session retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDeliverySessionResponse"];
+                };
+            };
+            /** @description Delivery not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getDeliveriesByCourier: {
+        parameters: {
+            query?: {
+                state?: components["schemas"]["DeliveryState"];
+            };
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier delivery sessions retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDeliverySessionResponse"];
+                };
+            };
+        };
+    };
+    transitionDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description State transition executed successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDeliverySessionResponse"];
+                };
+            };
+            /** @description Delivery session not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid state transition or guard requirement failed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    recordLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourierLocationUpdatePayload"];
+            };
+        };
+        responses: {
+            /** @description GPS breadcrumb recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseTrackingBreadcrumbResponse"];
+                };
+            };
+        };
+    };
+    getBreadcrumbs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GPS breadcrumbs retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListTrackingBreadcrumbResponse"];
+                };
+            };
+        };
+    };
+    getProofOfDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Proof-of-delivery retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseProofOfDeliveryResponse"];
+                };
+            };
+        };
+    };
+    uploadProofOfDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProofOfDeliveryUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Evidence uploaded successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseProofOfDeliveryResponse"];
+                };
+            };
+        };
+    };
+    verifyProofOfDelivery: {
+        parameters: {
+            query: {
+                otp: string;
+            };
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Proof-of-delivery verified */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseProofOfDeliveryResponse"];
+                };
+            };
+            /** @description Invalid OTP */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+}

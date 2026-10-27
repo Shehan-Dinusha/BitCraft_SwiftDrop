@@ -1,15 +1,352 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Analytics and AI API
-  description: Operational KPI and AI delivery assistant APIs.
+  description: Operational KPI tracking, courier telemetry analytics, and AI delivery assistant APIs.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
 paths:
-  /api/v1/operational-kpi/health:
+  /api/v1/analytics/health:
     get:
       tags: [OperationalKpi]
-      summary: Check analytics service health
+      summary: Health check endpoint for operational analytics
       responses:
         "200":
           description: Service health response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+
+  /api/v1/analytics/kpis:
+    get:
+      tags: [OperationalKpi]
+      summary: Retrieve system-wide and district-level operational KPIs
+      responses:
+        "200":
+          description: Operational KPI summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseOperationalKpiSummary'
+
+  /api/v1/analytics/couriers:
+    get:
+      tags: [OperationalKpi]
+      summary: List courier performance analytics across districts
+      parameters:
+        - name: district
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of courier performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseCourierPerformanceList'
+
+  /api/v1/analytics/couriers/{courierId}:
+    get:
+      tags: [OperationalKpi]
+      summary: Get performance analytics for a specific courier
+      parameters:
+        - name: courierId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Courier performance response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseCourierPerformance'
+        "404":
+          description: Courier not found
+
+  /api/v1/analytics/snapshots/aggregate:
+    post:
+      tags: [OperationalKpi]
+      summary: Trigger on-demand SLA snapshot recalculation
+      responses:
+        "200":
+          description: Recalculated operational KPIs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseOperationalKpiSummary'
+
+  /api/v1/analytics/ai/health:
+    get:
+      tags: [AiDeliveryAssistant]
+      summary: Health check endpoint for AI assistant service
+      responses:
+        "200":
+          description: AI assistant health response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+
+  /api/v1/analytics/ai/predict-delay:
+    post:
+      tags: [AiDeliveryAssistant]
+      summary: Calculate predictive delay risk score and operational mitigation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DelayRiskPredictionRequest'
+      responses:
+        "200":
+          description: Delay risk prediction response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseDelayRiskPrediction'
+
+  /api/v1/analytics/ai/reroute-suggestions:
+    post:
+      tags: [AiDeliveryAssistant]
+      summary: Generate dynamic transit reroute suggestions for delayed parcels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnomalyRerouteRequest'
+      responses:
+        "200":
+          description: Anomaly reroute response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseAnomalyReroute'
+
+  /api/v1/analytics/ai/agent-query:
+    post:
+      tags: [AiDeliveryAssistant]
+      summary: Query the AI logistics assistant agent in natural language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssistantQueryRequest'
+      responses:
+        "200":
+          description: Agent query response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseAssistantQuery'
+
+  /api/v1/analytics/ai/audits:
+    get:
+      tags: [AiDeliveryAssistant]
+      summary: Retrieve recent AI tool execution audit logs for compliance
+      responses:
+        "200":
+          description: List of AI audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseAiAuditList'
+
+components:
+  schemas:
+    ApiResponseString:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { type: string }
+        timestamp: { type: string, format: date-time }
+
+    DistrictKpiResponse:
+      type: object
+      properties:
+        district: { type: string }
+        totalParcels: { type: integer }
+        deliveredOnTime: { type: integer }
+        breachedSla: { type: integer }
+        failedDeliveries: { type: integer }
+        onTimeRate: { type: number }
+        avgTransitMinutes: { type: number }
+
+    OperationalKpiSummaryResponse:
+      type: object
+      properties:
+        totalParcels: { type: integer }
+        deliveredOnTime: { type: integer }
+        breachedSla: { type: integer }
+        failedDeliveries: { type: integer }
+        systemOnTimeRate: { type: number }
+        avgTransitMinutes: { type: number }
+        activeCouriers: { type: integer }
+        districtBreakdowns:
+          type: array
+          items:
+            $ref: '#/components/schemas/DistrictKpiResponse'
+
+    ApiResponseOperationalKpiSummary:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/OperationalKpiSummaryResponse' }
+        timestamp: { type: string, format: date-time }
+
+    CourierPerformanceResponse:
+      type: object
+      properties:
+        courierId: { type: string, format: uuid }
+        courierName: { type: string }
+        currentDistrict: { type: string }
+        totalAssigned: { type: integer }
+        deliveredCount: { type: integer }
+        failedCount: { type: integer }
+        avgTransitMinutes: { type: number }
+        onTimePercentage: { type: number }
+        customerRating: { type: number }
+        status: { type: string }
+        lastEventAt: { type: string, format: date-time }
+
+    ApiResponseCourierPerformance:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/CourierPerformanceResponse' }
+        timestamp: { type: string, format: date-time }
+
+    ApiResponseCourierPerformanceList:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourierPerformanceResponse'
+        timestamp: { type: string, format: date-time }
+
+    DelayRiskPredictionRequest:
+      type: object
+      required: [originDistrict, destinationDistrict]
+      properties:
+        originDistrict: { type: string }
+        destinationDistrict: { type: string }
+        deliverySpeed: { type: string }
+        weatherCondition: { type: string }
+        trafficCongestion: { type: string }
+
+    DelayRiskPredictionResponse:
+      type: object
+      properties:
+        insightId: { type: string, format: uuid }
+        originDistrict: { type: string }
+        destinationDistrict: { type: string }
+        deliverySpeed: { type: string }
+        riskLevel: { type: string }
+        riskScore: { type: number }
+        predictedDelayMinutes: { type: integer }
+        recommendedAction: { type: string }
+        reasoning: { type: string }
+        weatherOrTrafficFactor: { type: string }
+
+    ApiResponseDelayRiskPrediction:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/DelayRiskPredictionResponse' }
+        timestamp: { type: string, format: date-time }
+
+    AnomalyRerouteRequest:
+      type: object
+      required: [trackingNumber, currentDistrict, destinationDistrict]
+      properties:
+        trackingNumber: { type: string }
+        currentDistrict: { type: string }
+        destinationDistrict: { type: string }
+        delayMinutes: { type: integer }
+        anomalyReason: { type: string }
+
+    AnomalyRerouteResponse:
+      type: object
+      properties:
+        trackingNumber: { type: string }
+        suggestedTransitHub: { type: string }
+        recommendedSpeed: { type: string }
+        priorityScore: { type: integer }
+        suggestedSteps:
+          type: array
+          items: { type: string }
+        rationale: { type: string }
+
+    ApiResponseAnomalyReroute:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/AnomalyRerouteResponse' }
+        timestamp: { type: string, format: date-time }
+
+    AssistantQueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        callerPersona: { type: string }
+        contextTrackingNumber: { type: string }
+
+    AssistantQueryResponse:
+      type: object
+      properties:
+        answer: { type: string }
+        detectedIntent: { type: string }
+        confidence: { type: number }
+        suggestedActions:
+          type: array
+          items: { type: string }
+        toolInvocations:
+          type: array
+          items: { type: string }
+
+    ApiResponseAssistantQuery:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/AssistantQueryResponse' }
+        timestamp: { type: string, format: date-time }
+
+    AiAuditResponse:
+      type: object
+      properties:
+        auditId: { type: string, format: uuid }
+        toolName: { type: string }
+        callerPersona: { type: string }
+        promptOrQuery: { type: string }
+        outputResult: { type: string }
+        executionTimeMs: { type: integer }
+        success: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    ApiResponseAiAuditList:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiAuditResponse'
+        timestamp: { type: string, format: date-time }

@@ -1,15 +1,315 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Notification API
-  description: Notification preferences and delivery log APIs.
+  description: Recipient notification preferences management, omnichannel dispatch (SMS, Email, Push), and delivery audit log APIs.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
 paths:
-  /api/v1/notification-log/health:
+  /api/v1/notifications/preferences/health:
     get:
-      tags: [NotificationLog]
-      summary: Check notification service health
+      tags: [Preference]
+      summary: Health check for notification preference controller
       responses:
         "200":
-          description: Service health response
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+  /api/v1/notifications/preferences:
+    get:
+      tags: [Preference]
+      summary: Get current authenticated user notification preferences
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: recipientId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Notification preferences retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRecipientPreferenceResponse"
+  /api/v1/notifications/preferences/{recipientId}:
+    get:
+      tags: [Preference]
+      summary: Get notification preferences for a recipient
+      parameters:
+        - name: recipientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Notification preferences retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRecipientPreferenceResponse"
+    put:
+      tags: [Preference]
+      summary: Update notification preferences for a recipient
+      parameters:
+        - name: recipientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePreferenceRequest"
+      responses:
+        "200":
+          description: Notification preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRecipientPreferenceResponse"
+  /api/v1/notifications/logs/health:
+    get:
+      tags: [NotificationLog]
+      summary: Health check for notification log controller
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+  /api/v1/notifications/logs:
+    get:
+      tags: [NotificationLog]
+      summary: List notification dispatch audit logs
+      parameters:
+        - name: recipientId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: X-User-Id
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notification logs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListNotificationDispatchLogResponse"
+  /api/v1/notifications/logs/{logId}:
+    get:
+      tags: [NotificationLog]
+      summary: Get notification dispatch log detail by log UUID
+      parameters:
+        - name: logId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Log retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseNotificationDispatchLogResponse"
+  /api/v1/notifications/logs/dispatch:
+    post:
+      tags: [NotificationLog]
+      summary: Ad-hoc or manual notification dispatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DispatchNotificationRequest"
+      responses:
+        "201":
+          description: Notification dispatched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseNotificationDispatchLogResponse"
+
+components:
+  schemas:
+    ApiResponseString:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    UpdatePreferenceRequest:
+      type: object
+      properties:
+        emailEnabled:
+          type: boolean
+        smsEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        emailAddress:
+          type: string
+        phoneNumber:
+          type: string
+        languagePreference:
+          type: string
+
+    RecipientPreferenceResponse:
+      type: object
+      properties:
+        recipientId:
+          type: string
+          format: uuid
+        recipientType:
+          type: string
+        emailEnabled:
+          type: boolean
+        smsEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        emailAddress:
+          type: string
+        phoneNumber:
+          type: string
+        languagePreference:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    ApiResponseRecipientPreferenceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/RecipientPreferenceResponse"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    DispatchNotificationRequest:
+      type: object
+      required:
+        - recipientId
+        - channel
+        - templateCode
+      properties:
+        recipientId:
+          type: string
+          format: uuid
+        channel:
+          type: string
+          enum: [SMS, EMAIL, PUSH]
+        templateCode:
+          type: string
+        destination:
+          type: string
+        templateParams:
+          type: object
+          additionalProperties:
+            type: string
+        referenceId:
+          type: string
+
+    NotificationDispatchLogResponse:
+      type: object
+      properties:
+        logId:
+          type: string
+          format: uuid
+        recipientId:
+          type: string
+          format: uuid
+        channel:
+          type: string
+        templateCode:
+          type: string
+        destination:
+          type: string
+        subject:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+          enum: [SENT, SUPPRESSED, FAILED]
+        failureReason:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        referenceId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiResponseNotificationDispatchLogResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/NotificationDispatchLogResponse"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListNotificationDispatchLogResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationDispatchLogResponse"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time

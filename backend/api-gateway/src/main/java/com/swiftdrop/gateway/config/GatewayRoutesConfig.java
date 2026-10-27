@@ -71,7 +71,11 @@ public class GatewayRoutesConfig {
 
                 // ─── Analytics ───────────────────────────────────────────
                 .route("analytics-ai-service", r -> r
-                        .path("/api/v1/analytics/**", "/api/v1/reports/**", "/api/v1/analytics/v3/api-docs/**")
+                        .path("/api/v1/analytics/**",
+                                "/api/v1/operational-kpi/**",
+                                "/api/v1/ai-delivery-assistant/**",
+                                "/api/v1/reports/**",
+                                "/api/v1/analytics/v3/api-docs/**")
                         .filters(f -> f.rewritePath("/api/v1/analytics/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
                         .uri("lb://analytics-ai-service"))
 

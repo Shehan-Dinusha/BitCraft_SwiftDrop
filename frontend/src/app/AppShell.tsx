@@ -1,4 +1,4 @@
-﻿import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Boxes, LogOut } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button, ThemeToggle } from '@/design-system';
@@ -17,8 +17,14 @@ const roleNav: Record<PersonaRole, Array<{ to: string; label: string }>> = {
     { to: '/courier', label: 'Shift' },
     { to: '/courier/delivery', label: 'Active delivery' }
   ],
-  MERCHANT: [{ to: '/merchant', label: 'Portal' }],
-  ADMIN_OPS: [{ to: '/ops', label: 'Control tower' }]
+  MERCHANT: [
+    { to: '/merchant', label: 'Portal' },
+    { to: '/merchant/webhooks', label: 'Webhooks' }
+  ],
+  ADMIN_OPS: [
+    { to: '/ops', label: 'Control tower' },
+    { to: '/ops/webhooks', label: 'Webhooks DLQ' }
+  ]
 };
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>

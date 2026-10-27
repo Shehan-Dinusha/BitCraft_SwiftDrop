@@ -1,15 +1,257 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Pricing and Zone API
-  description: Pricing quote and geofence zone APIs.
+  description: Dynamic delivery tariff calculation, geofence zones, and quote estimation APIs.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
 paths:
-  /api/v1/pricing-quote/health:
+  /api/v1/pricing/health:
     get:
-      tags: [PricingQuote]
+      tags: [Pricing]
       summary: Check pricing service health
+      operationId: checkPricingHealth
       responses:
         "200":
           description: Service health response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+
+  /api/v1/pricing/quote:
+    post:
+      tags: [Pricing]
+      summary: Calculate dynamic delivery fee quotation
+      operationId: calculatePricingQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PricingQuoteRequest"
+      responses:
+        "200":
+          description: Pricing quotation response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponsePricingQuoteResponse"
+
+  /api/v1/pricing/zones:
+    get:
+      tags: [Pricing]
+      summary: List all active pricing geofence zones
+      operationId: listPricingZones
+      responses:
+        "200":
+          description: List of pricing zones
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListPricingZone"
+
+components:
+  schemas:
+    OrderSpeed:
+      type: string
+      enum: [STANDARD, EXPRESS, SAME_DAY]
+      example: STANDARD
+
+    SriLankanDistrict:
+      type: string
+      enum:
+        - COLOMBO
+        - GAMPAHA
+        - KALUTARA
+        - KANDY
+        - MATALE
+        - NUWARA_ELIYA
+        - GALLE
+        - MATARA
+        - HAMBANTOTA
+        - JAFFNA
+        - KILINOCHCHI
+        - MANNAR
+        - VAVUNIYA
+        - MULLAITIVU
+        - BATTICALOA
+        - AMPARA
+        - TRINCOMALEE
+        - KURUNEGALA
+        - PUTTALAM
+        - ANURADHAPURA
+        - POLONNARUWA
+        - BADULLA
+        - MONARAGALA
+        - RATNAPURA
+        - KEGALLE
+      example: COLOMBO
+
+    PricingQuoteRequest:
+      type: object
+      required:
+        - pickupDistrict
+        - deliveryDistrict
+        - actualWeightKg
+      properties:
+        pickupDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        actualWeightKg:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 1.5
+        lengthCm:
+          type: number
+          format: double
+          example: 25.0
+        widthCm:
+          type: number
+          format: double
+          example: 20.0
+        heightCm:
+          type: number
+          format: double
+          example: 10.0
+        speed:
+          $ref: "#/components/schemas/OrderSpeed"
+
+    PricingQuoteResponse:
+      type: object
+      properties:
+        pickupDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        pickupZone:
+          type: string
+          example: ZONE_WESTERN
+        deliveryZone:
+          type: string
+          example: ZONE_CENTRAL
+        intraDistrict:
+          type: boolean
+          example: false
+        actualWeightKg:
+          type: number
+          format: double
+          example: 1.5
+        volumetricWeightKg:
+          type: number
+          format: double
+          example: 1.0
+        chargeableWeightKg:
+          type: number
+          format: double
+          example: 1.5
+        speed:
+          $ref: "#/components/schemas/OrderSpeed"
+        baseFee:
+          type: number
+          format: double
+          example: 550.0
+        weightFee:
+          type: number
+          format: double
+          example: 60.0
+        speedSurcharge:
+          type: number
+          format: double
+          example: 0.0
+        estimatedFee:
+          type: number
+          format: double
+          example: 610.0
+        currency:
+          type: string
+          example: LKR
+        pricingRuleVersionId:
+          type: string
+          example: PRICING-2026-V1
+
+    PricingZone:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        zoneCode:
+          type: string
+          example: ZONE_WESTERN
+        zoneName:
+          type: string
+          example: Western Province Metro
+        tier:
+          type: string
+          example: METRO
+        baseFee:
+          type: number
+          format: double
+          example: 350.0
+        perKgFee:
+          type: number
+          format: double
+          example: 80.0
+        expressMultiplier:
+          type: number
+          format: double
+          example: 1.5
+        sameDayMultiplier:
+          type: number
+          format: double
+          example: 2.0
+        status:
+          type: string
+          example: ACTIVE
+
+    ApiResponseString:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Service is online
+        data:
+          type: string
+          example: Pricing service is online
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponsePricingQuoteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Quotation calculated successfully
+        data:
+          $ref: "#/components/schemas/PricingQuoteResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListPricingZone:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Pricing zones retrieved successfully
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PricingZone"
+        timestamp:
+          type: string
+          format: date-time
