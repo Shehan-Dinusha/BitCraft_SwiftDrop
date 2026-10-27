@@ -135,7 +135,7 @@ services:
     container_name: swiftdrop-iam-postgres
     hostname: iam-postgres
     ports:
-      - "5432:5432"
+      - "5431:5432"
     environment:
       POSTGRES_DB: swiftdrop_iam
       POSTGRES_USER: ${POSTGRES_USER:-swiftdrop}
