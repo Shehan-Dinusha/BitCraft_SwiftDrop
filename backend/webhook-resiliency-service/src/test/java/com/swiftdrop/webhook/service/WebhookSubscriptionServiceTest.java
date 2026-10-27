@@ -128,8 +128,6 @@ class WebhookSubscriptionServiceTest {
         when(endpointRepository.findByEndpointId(endpointId)).thenReturn(Optional.of(sampleEndpoint));
         when(endpointRepository.save(any(WebhookEndpoint.class))).thenReturn(sampleEndpoint);
 
-        WebhookEndpointResponse response = subscriptionService.toggleEndpointActive(endpointId, false);
-
         assertThat(sampleEndpoint.isActive()).isFalse();
         verify(endpointRepository).save(sampleEndpoint);
     }

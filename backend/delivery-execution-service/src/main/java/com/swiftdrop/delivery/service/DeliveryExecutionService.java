@@ -1,7 +1,6 @@
 package com.swiftdrop.delivery.service;
 
 import com.swiftdrop.contracts.enums.DeliveryState;
-import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.events.delivery.LocationUpdatedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;

@@ -6,7 +6,6 @@ import com.swiftdrop.notification.domain.repository.NotificationDispatchLogRepos
 import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
-import com.swiftdrop.notification.exception.GlobalExceptionHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

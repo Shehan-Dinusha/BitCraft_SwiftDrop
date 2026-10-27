@@ -1,6 +1,4 @@
 package com.swiftdrop.analytics.controller;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.analytics.dto.CourierPerformanceResponse;
 import com.swiftdrop.analytics.dto.DistrictKpiResponse;
 import com.swiftdrop.analytics.dto.OperationalKpiSummaryResponse;
@@ -10,7 +8,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -32,9 +29,6 @@ class OperationalKpiControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockitoBean
     private SlaMetricsAggregationService metricsService;

@@ -9,7 +9,6 @@ import com.swiftdrop.delivery.domain.repository.DeliverySessionRepository;
 import com.swiftdrop.delivery.domain.repository.TrackingBreadcrumbRepository;
 import com.swiftdrop.delivery.dto.CourierLocationUpdatePayload;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
-import com.swiftdrop.delivery.exception.DeliveryNotFoundException;
 import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 import com.swiftdrop.delivery.messaging.publisher.DeliveryEventPublisher;
 import com.swiftdrop.delivery.statemachine.DeliveryStateMachine;

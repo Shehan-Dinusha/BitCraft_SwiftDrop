@@ -1,6 +1,5 @@
 package com.swiftdrop.webhook.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.webhook.dto.DeadLetterWebhookResponse;
 import com.swiftdrop.webhook.dto.ReplayDlqResponse;
 import com.swiftdrop.webhook.service.DlqReplayService;
@@ -15,7 +14,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -26,9 +24,6 @@ class DlqReplayControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockitoBean
     private DlqReplayService dlqReplayService;

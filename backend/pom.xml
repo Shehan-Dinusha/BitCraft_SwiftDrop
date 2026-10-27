@@ -229,6 +229,7 @@
                         <compilerArgs>
                             <arg>-Amapstruct.defaultComponentModel=spring</arg>
                             <arg>-Amapstruct.unmappedTargetPolicy=IGNORE</arg>
+                            <arg>-Xlint:-processing</arg>
                         </compilerArgs>
                     </configuration>
                 </plugin>
