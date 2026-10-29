@@ -60,7 +60,7 @@ export type {
 export { DensityProvider, useDensity, useDensityMode } from './providers/DensityProvider';
 export { densityForRole, densityModes, densityRecipes } from './tokens/density';
 export type { DensityMode, DensityRecipe } from './tokens/density';
-export { deliveryStateColors, slaColors } from './tokens/colors';
+export { deliveryStateColors, publicStatusColors, toPublicStatus, slaColors } from './tokens/colors';
 export {
   velocityTypography,
   velocityTextStyles,

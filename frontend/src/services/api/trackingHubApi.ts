@@ -1,12 +1,6 @@
-export type PublicOrderStatus =
-  | 'CREATED'
-  | 'PICKUP_ASSIGNED'
-  | 'PICKED_UP'
-  | 'IN_TRANSIT'
-  | 'OUT_FOR_DELIVERY'
-  | 'DELIVERED'
-  | 'CANCELLED'
-  | 'RETURNED_TO_SENDER';
+import type { PublicOrderStatus } from '@/types/contracts';
+
+export type { PublicOrderStatus };
 
 export type SriLankanDistrict =
   | 'COLOMBO'

@@ -1,25 +1,17 @@
 import {
   FsmStatusBadge,
   StatusBanner,
-  deliveryStateColors,
+  publicStatusColors,
   slaColors,
   type FsmStatusBadgeSize,
   type StatusBannerTone
 } from '@/design-system';
-import type { DeliveryState } from '@/types/contracts';
+import { PUBLIC_ORDER_STATUSES } from '@/types/contracts';
 import { cn } from '@/utils/cn';
 import { CatalogRow, DemoGrid, DemoRow } from '../components/catalog-kit';
 
-const states: DeliveryState[] = [
-  'CREATED',
-  'ASSIGNED',
-  'PICKED_UP',
-  'IN_TRANSIT',
-  'DELIVERED',
-  'FAILED',
-  'CANCELLED'
-];
-const sizes: FsmStatusBadgeSize[] = ['sm', 'md', 'lg'];
+const states = PUBLIC_ORDER_STATUSES;
+const sizes: FsmStatusBadgeSize[] = ['md', 'sm'];
 const tones: StatusBannerTone[] = ['success', 'warning', 'danger', 'info'];
 
 const toneCopy: Record<StatusBannerTone, { title: string; body: string }> = {
@@ -57,7 +49,10 @@ function SlaPill({ tone, label }: { tone: keyof typeof slaColors; label: string 
 export function StatusSection() {
   return (
     <>
-      <CatalogRow label="FSM badge sizes" hint="Density picks the default size">
+      <CatalogRow
+        label="FSM badge sizes"
+        hint="All 9 public statuses; md = Figma M, sm = Figma S. Density picks the default"
+      >
         <div className="space-y-3">
           {sizes.map((size) => (
             <DemoRow key={size}>
@@ -70,6 +65,14 @@ export function StatusSection() {
             </DemoRow>
           ))}
         </div>
+      </CatalogRow>
+
+      <CatalogRow label="Sync (offline queue)" hint="Dashed border, hollow dot, SYNCING suffix">
+        <DemoRow>
+          {states.map((state) => (
+            <FsmStatusBadge key={state} state={state} sync />
+          ))}
+        </DemoRow>
       </CatalogRow>
 
       <CatalogRow label="Muted tone" hint="Upcoming steps keep the vocabulary without the palette">
@@ -89,8 +92,8 @@ export function StatusSection() {
               key={state}
               className={cn(
                 'size-3 rounded-full border',
-                deliveryStateColors[state].background,
-                deliveryStateColors[state].border
+                publicStatusColors[state].background,
+                publicStatusColors[state].border
               )}
               title={state}
             />
