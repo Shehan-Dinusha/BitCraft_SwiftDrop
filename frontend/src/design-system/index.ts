@@ -61,4 +61,8 @@ export { DensityProvider, useDensity, useDensityMode } from './providers/Density
 export { densityForRole, densityModes, densityRecipes } from './tokens/density';
 export type { DensityMode, DensityRecipe } from './tokens/density';
 export { deliveryStateColors, slaColors } from './tokens/colors';
-export { velocityTypography } from './tokens/typography';
+export {
+  velocityTypography,
+  velocityTextStyles,
+  type VelocityTextStyle
+} from './tokens/typography';

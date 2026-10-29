@@ -9,6 +9,7 @@ import { StatusSection } from './sections/StatusSection';
 import { ProgressSection } from './sections/ProgressSection';
 import { FeedbackSection } from './sections/FeedbackSection';
 import { DataSection } from './sections/DataSection';
+import { TypographySection } from './sections/TypographySection';
 
 interface CatalogEntry {
   id: string;
@@ -18,6 +19,13 @@ interface CatalogEntry {
 }
 
 const families: CatalogEntry[] = [
+  {
+    id: 'typography',
+    title: 'Typography',
+    description:
+      'Twelve Velocity text styles (Display to Mono L), exposed as Tailwind text-* utilities.',
+    content: <TypographySection />
+  },
   {
     id: 'buttons',
     title: 'Buttons',
