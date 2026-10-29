@@ -195,3 +195,16 @@ export type {
   AssistantMessage,
   AssistantPanelProps
 } from './components/AiAssistant/AiAssistant';
+export { NavItem } from './components/Shell/NavItem';
+export type { NavItemProps } from './components/Shell/NavItem';
+export { SideNav } from './components/Shell/SideNav';
+export type { SideNavAccount, SideNavProps } from './components/Shell/SideNav';
+export { TopBar, PublicHeader } from './components/Shell/TopBar';
+export type { PublicHeaderProps, TopBarProps } from './components/Shell/TopBar';
+export { BottomNav } from './components/Shell/BottomNav';
+export type { BottomNavProps } from './components/Shell/BottomNav';
+export { roleShellSpec } from './components/Shell/roleNav';
+export type { NavEntry, NavGroup, RoleShellSpec, ShellRole } from './components/Shell/roleNav';
+export { navIcons } from './components/Shell/navIcons';
+export type { NavIconName } from './components/Shell/navIcons';
+export { useMediaQuery } from './components/Shell/useMediaQuery';

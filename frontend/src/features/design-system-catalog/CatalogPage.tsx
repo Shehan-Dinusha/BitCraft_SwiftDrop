@@ -17,6 +17,7 @@ import { AlertsSection } from './sections/AlertsSection';
 import { PageStructureSection } from './sections/PageStructureSection';
 import { OrderPatternsSection } from './sections/OrderPatternsSection';
 import { CourierAssistantSection } from './sections/CourierAssistantSection';
+import { ShellSection } from './sections/ShellSection';
 
 interface CatalogEntry {
   id: string;
@@ -94,6 +95,13 @@ const families: CatalogEntry[] = [
     description:
       'The courier slide control (idle, dragging, holding, done, locked) and the assistant launcher and panel. SlideToTransitionBar and AiAssistantDock stay available for existing pages.',
     content: <CourierAssistantSection />
+  },
+  {
+    id: 'shell',
+    title: 'Role app shells',
+    description:
+      'Side nav, top bar, bottom nav and the public header for the five roles. AppShell picks the shell from the signed-in role.',
+    content: <ShellSection />
   },
   {
     id: 'menus',
