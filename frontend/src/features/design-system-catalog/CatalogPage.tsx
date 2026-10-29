@@ -10,6 +10,7 @@ import { ProgressSection } from './sections/ProgressSection';
 import { FeedbackSection } from './sections/FeedbackSection';
 import { DataSection } from './sections/DataSection';
 import { TypographySection } from './sections/TypographySection';
+import { SelectionSection } from './sections/SelectionSection';
 
 interface CatalogEntry {
   id: string;
@@ -39,6 +40,13 @@ const families: CatalogEntry[] = [
     description:
       'Five input archetypes and seven visual states, plus the labelled Field wrapper that wires hints and errors to `aria-describedby`.',
     content: <FormControlsSection />
+  },
+  {
+    id: 'selection',
+    title: 'Selection controls',
+    description:
+      'Checkbox, radio, toggle, textarea with counter, radio cards, choice chips and the booking special fields.',
+    content: <SelectionSection />
   },
   {
     id: 'menus',
