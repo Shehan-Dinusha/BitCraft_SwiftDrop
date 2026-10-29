@@ -94,13 +94,13 @@ export function AiDeliveryAssistantPanel() {
 
   return (
     <SurfaceCard className="space-y-4 p-4 text-xs">
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3">
         <div className="flex items-center gap-2">
           <div className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-600 text-white">
             <Bot className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+            <h2 className="text-sm font-bold text-slate-900">
               AI Logistics Co-Pilot & Route Predictor
             </h2>
             <p className="text-[11px] text-slate-500">
@@ -117,7 +117,7 @@ export function AiDeliveryAssistantPanel() {
             className={`rounded px-2.5 py-1 font-medium transition-colors ${
               activeTab === 'assistant'
                 ? 'bg-indigo-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             Co-Pilot Chat
@@ -128,7 +128,7 @@ export function AiDeliveryAssistantPanel() {
             className={`rounded px-2.5 py-1 font-medium transition-colors ${
               activeTab === 'predictor'
                 ? 'bg-indigo-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             Delay Risk Predictor
@@ -142,7 +142,7 @@ export function AiDeliveryAssistantPanel() {
             className={`rounded px-2.5 py-1 font-medium transition-colors ${
               activeTab === 'audits'
                 ? 'bg-indigo-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             Audit Trail
@@ -160,7 +160,7 @@ export function AiDeliveryAssistantPanel() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAskAgent()}
               placeholder="E.g. What is the ETA for Colombo to Kandy under heavy rain? Or suggest reroute..."
-              className="flex-1 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              className="flex-1 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs"
             />
             <Button
               variant="primary"
@@ -174,12 +174,12 @@ export function AiDeliveryAssistantPanel() {
           </div>
 
           {assistantResult && (
-            <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-              <div className="flex items-center justify-between text-[11px] text-indigo-700 dark:text-indigo-300">
+            <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3">
+              <div className="flex items-center justify-between text-[11px] text-indigo-700">
                 <span className="font-semibold">Intent: {assistantResult.detectedIntent}</span>
                 <span>Confidence: {((assistantResult.confidence ?? 0.9) * 100).toFixed(0)}%</span>
               </div>
-              <p className="mt-1.5 font-medium text-slate-800 dark:text-slate-200">
+              <p className="mt-1.5 font-medium text-slate-800">
                 {assistantResult.answer}
               </p>
 
@@ -189,7 +189,7 @@ export function AiDeliveryAssistantPanel() {
                   {assistantResult.suggestedActions.map((act) => (
                     <span
                       key={act}
-                      className="rounded bg-indigo-200/70 px-1.5 py-0.5 text-[10px] font-bold text-indigo-900 dark:bg-indigo-900/80 dark:text-indigo-100"
+                      className="rounded bg-indigo-200/70 px-1.5 py-0.5 text-[10px] font-bold text-indigo-900"
                     >
                       {act}
                     </span>
@@ -210,7 +210,7 @@ export function AiDeliveryAssistantPanel() {
               <select
                 value={origin}
                 onChange={(e) => setOrigin(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
               >
                 {SRI_LANKAN_DISTRICTS.map((d) => (
                   <option key={d} value={d}>{d}</option>
@@ -223,7 +223,7 @@ export function AiDeliveryAssistantPanel() {
               <select
                 value={dest}
                 onChange={(e) => setDest(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
               >
                 {SRI_LANKAN_DISTRICTS.map((d) => (
                   <option key={d} value={d}>{d}</option>
@@ -236,7 +236,7 @@ export function AiDeliveryAssistantPanel() {
               <select
                 value={speed}
                 onChange={(e) => setSpeed(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
               >
                 <option value="STANDARD">STANDARD</option>
                 <option value="EXPRESS">EXPRESS</option>
@@ -249,7 +249,7 @@ export function AiDeliveryAssistantPanel() {
               <select
                 value={weather}
                 onChange={(e) => setWeather(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
               >
                 <option value="CLEAR">CLEAR (Sunny)</option>
                 <option value="RAINY">RAINY (+20% delay)</option>
@@ -262,7 +262,7 @@ export function AiDeliveryAssistantPanel() {
               <select
                 value={traffic}
                 onChange={(e) => setTraffic(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
               >
                 <option value="LOW">LOW</option>
                 <option value="MODERATE">MODERATE (+15%)</option>
@@ -284,16 +284,16 @@ export function AiDeliveryAssistantPanel() {
           </div>
 
           {prediction && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span
                     className={`rounded px-2 py-0.5 font-bold ${
                       prediction.riskLevel === 'CRITICAL'
-                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                        ? 'bg-rose-100 text-rose-800'
                         : prediction.riskLevel === 'HIGH'
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-emerald-100 text-emerald-800'
                     }`}
                   >
                     Risk Level: {prediction.riskLevel} ({prediction.riskScore}%)
@@ -304,11 +304,11 @@ export function AiDeliveryAssistantPanel() {
                 </div>
 
                 <span className="font-mono text-[11px] text-slate-500">
-                  Mitigation: <strong className="text-indigo-600 dark:text-indigo-400">{prediction.recommendedAction}</strong>
+                  Mitigation: <strong className="text-indigo-600">{prediction.recommendedAction}</strong>
                 </span>
               </div>
 
-              <p className="mt-2 text-slate-600 dark:text-slate-400">
+              <p className="mt-2 text-slate-600">
                 {prediction.reasoning}
               </p>
             </div>
@@ -328,15 +328,15 @@ export function AiDeliveryAssistantPanel() {
               {audits.map((a) => (
                 <div
                   key={a.auditId}
-                  className="flex items-center justify-between rounded border border-slate-200 bg-white px-3 py-2 text-[11px] dark:border-slate-800 dark:bg-slate-900"
+                  className="flex items-center justify-between rounded border border-slate-200 bg-white px-3 py-2 text-[11px]"
                 >
                   <div className="space-y-0.5">
-                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{a.toolName}</span>
-                    <p className="text-slate-600 dark:text-slate-400">{a.promptOrQuery}</p>
+                    <span className="font-mono font-bold text-indigo-600">{a.toolName}</span>
+                    <p className="text-slate-600">{a.promptOrQuery}</p>
                   </div>
                   <div className="text-right text-slate-500">
                     <span>{a.executionTimeMs} ms</span>
-                    <span className="ml-2 font-semibold text-emerald-600 dark:text-emerald-400">SUCCESS</span>
+                    <span className="ml-2 font-semibold text-emerald-600">SUCCESS</span>
                   </div>
                 </div>
               ))}

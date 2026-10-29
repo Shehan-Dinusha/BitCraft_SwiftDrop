@@ -51,8 +51,8 @@ export function MenusSection() {
         label="Dropdown rows"
         hint="default, selected, active, disabled, status dots, icons"
       >
-        <div className="relative min-h-80">
-          <DropdownMenu open label="Courier" density="compact">
+        <div className="max-w-sm">
+          <DropdownMenu open label="Courier" density="compact" className="static mt-0">
             <DropdownItem>Default row</DropdownItem>
             <DropdownItem selected>Selected row</DropdownItem>
             <DropdownItem active>Active row</DropdownItem>
@@ -68,10 +68,11 @@ export function MenusSection() {
       </CatalogRow>
 
       <CatalogRow label="Dropdown with search and footer">
-        <div className="relative min-h-80">
+        <div className="max-w-sm">
           <DropdownMenu
             open
             searchable
+            className="static mt-0"
             searchPlaceholder="Find courier"
             label="Courier"
             footer="5 couriers on shift"

@@ -9,6 +9,15 @@ import { StatusSection } from './sections/StatusSection';
 import { ProgressSection } from './sections/ProgressSection';
 import { FeedbackSection } from './sections/FeedbackSection';
 import { DataSection } from './sections/DataSection';
+import { TypographySection } from './sections/TypographySection';
+import { SelectionSection } from './sections/SelectionSection';
+import { IdentifiersSection } from './sections/IdentifiersSection';
+import { TimelineSection } from './sections/TimelineSection';
+import { AlertsSection } from './sections/AlertsSection';
+import { PageStructureSection } from './sections/PageStructureSection';
+import { OrderPatternsSection } from './sections/OrderPatternsSection';
+import { CourierAssistantSection } from './sections/CourierAssistantSection';
+import { ShellSection } from './sections/ShellSection';
 
 interface CatalogEntry {
   id: string;
@@ -18,6 +27,13 @@ interface CatalogEntry {
 }
 
 const families: CatalogEntry[] = [
+  {
+    id: 'typography',
+    title: 'Typography',
+    description:
+      'Twelve Velocity text styles (Display to Mono L), exposed as Tailwind text-* utilities.',
+    content: <TypographySection />
+  },
   {
     id: 'buttons',
     title: 'Buttons',
@@ -31,6 +47,61 @@ const families: CatalogEntry[] = [
     description:
       'Five input archetypes and seven visual states, plus the labelled Field wrapper that wires hints and errors to `aria-describedby`.',
     content: <FormControlsSection />
+  },
+  {
+    id: 'selection',
+    title: 'Selection controls',
+    description:
+      'Checkbox, radio, toggle, textarea with counter, radio cards, choice chips and the booking special fields.',
+    content: <SelectionSection />
+  },
+  {
+    id: 'identifiers',
+    title: 'Identifiers and tags',
+    description:
+      'Tracking number, money amount, speed and role tags, dispatcher queue chips, and cash state.',
+    content: <IdentifiersSection />
+  },
+  {
+    id: 'timeline',
+    title: 'Timeline and progress',
+    description:
+      'Timeline step and tracking history card, the five-step status progress bar, and the live connection indicator.',
+    content: <TimelineSection />
+  },
+  {
+    id: 'alerts',
+    title: 'Alerts, toasts and empty states',
+    description: 'Inline alerts, the toast queue (5 s, max 3) and the three empty-state types.',
+    content: <AlertsSection />
+  },
+  {
+    id: 'page-structure',
+    title: 'Page structure and tables',
+    description:
+      'Page header, tabs, filter bar, the orders table with sortable header cells and selectable rows, and pagination.',
+    content: <PageStructureSection />
+  },
+  {
+    id: 'order-patterns',
+    title: 'Order patterns and cards',
+    description:
+      'Price breakdown, order cards, bottom sheet, photo upload, pickup slot picker and notifications.',
+    content: <OrderPatternsSection />
+  },
+  {
+    id: 'courier-assistant',
+    title: 'Slide to confirm and assistant',
+    description:
+      'The courier slide control (idle, dragging, holding, done, locked) and the assistant launcher and panel. SlideToTransitionBar and AiAssistantDock stay available for existing pages.',
+    content: <CourierAssistantSection />
+  },
+  {
+    id: 'shell',
+    title: 'Role app shells',
+    description:
+      'Side nav, top bar, bottom nav and the public header for the five roles. AppShell picks the shell from the signed-in role.',
+    content: <ShellSection />
   },
   {
     id: 'menus',
@@ -84,12 +155,17 @@ const families: CatalogEntry[] = [
 ];
 
 const densityLegend = [
-  { persona: 'COURIER', density: 'touch', target: '56px', note: 'Thumb zone, one primary action' },
+  {
+    persona: 'COURIER',
+    density: 'kinetic',
+    target: '56px',
+    note: 'Thumb zone, one primary action'
+  },
   { persona: 'CUSTOMER', density: 'comfortable', target: '44px', note: 'Progressive disclosure' },
   {
     persona: 'ADMIN_OPS / MERCHANT',
     density: 'compact',
-    target: '36px',
+    target: '34px',
     note: 'Scan-first operational grids'
   }
 ];
@@ -106,9 +182,8 @@ export function CatalogPage() {
             Velocity variant catalog
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-secondary">
-            Every family renders twice: once scoped to the light token set and once to the dark set,
-            independent of the app theme. Forced states exist for this page; product code drives
-            states from props and interaction.
+            Every family renders on the light token set. Forced states exist for this page; product
+            code drives states from props and interaction.
           </p>
         </div>
 

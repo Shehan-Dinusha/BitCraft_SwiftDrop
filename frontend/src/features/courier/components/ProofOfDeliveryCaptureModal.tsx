@@ -106,13 +106,13 @@ export function ProofOfDeliveryCaptureModal({
         )}
 
         {/* Tab selection for touch ergonomics */}
-        <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
           <button
             type="button"
             className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors ${
               activeTab === 'otp'
-                ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
             onClick={() => {
               setActiveTab('otp');
@@ -126,8 +126,8 @@ export function ProofOfDeliveryCaptureModal({
             type="button"
             className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors ${
               activeTab === 'photo_sig'
-                ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
             onClick={() => {
               setActiveTab('photo_sig');
@@ -141,7 +141,7 @@ export function ProofOfDeliveryCaptureModal({
 
         {activeTab === 'otp' ? (
           <form onSubmit={handleVerifyOtp} className="space-y-4 py-2">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500">
               Ask the recipient for the 6-digit confirmation PIN sent to their SMS or notification channel.
             </p>
             <Field label="Recipient 6-digit OTP" required>

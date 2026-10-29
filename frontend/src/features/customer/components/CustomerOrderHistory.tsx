@@ -201,12 +201,12 @@ export function CustomerOrderHistory() {
                     <div className="flex items-start gap-2.5">
                       <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
                       <div>
-                        <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                        <h4 className="text-xs font-bold text-amber-600 uppercase tracking-wider">
                           Courier Pickup Fee Revision Pending Your Approval (FR-C8)
                         </h4>
                         <p className="text-xs text-primary mt-0.5">
                           The courier has revised the delivery fee to{' '}
-                          <span className="font-bold text-amber-600 dark:text-amber-400">
+                          <span className="font-bold text-amber-600">
                             LKR {order.revisedFee?.toFixed(2)}
                           </span>{' '}
                           (Original: LKR {order.estimatedFee?.toFixed(2)}).
@@ -263,7 +263,7 @@ export function CustomerOrderHistory() {
                         href={orderApi.getDeliveryReceiptUrl(order.orderId as string)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-500/20 transition-all"
                       >
                         <Receipt className="size-3.5" />
                         Final Delivery Receipt

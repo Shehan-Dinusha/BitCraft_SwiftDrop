@@ -1,4 +1,11 @@
-﻿import { forwardRef, useId } from 'react';
+﻿import {
+  Children,
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  useId,
+  type ReactElement
+} from 'react';
 import { cn } from '@/utils/cn';
 import { Input, type InputProps } from '@/design-system/primitives/Input';
 import { useDensityMode } from '@/design-system/providers/DensityProvider';
@@ -28,6 +35,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
       density,
       invalid,
       state,
+      children,
       ...props
     },
     ref
@@ -43,18 +51,31 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
         <label htmlFor={fieldId} className={cn('font-semibold text-primary', recipe.caption)}>
           {label} {required && <span className="text-status-danger">*</span>}
         </label>
-        <Input
-          ref={ref}
-          id={fieldId}
-          density={density}
-          invalid={invalid || Boolean(error)}
-          state={state === 'error' ? 'error' : state}
-          disabled={disabled}
-          required={required}
-          aria-describedby={describedBy}
-          inputClassName={inputClassName}
-          {...props}
-        />
+        {Children.count(children) > 0 ? (
+          // Wrapper usage: <Field label="…"><Input /></Field>. Link the child to the label and message.
+          Children.map(children, (child) =>
+            isValidElement(child)
+              ? cloneElement(child as ReactElement<Record<string, unknown>>, {
+                  id: (child.props as { id?: string }).id ?? fieldId,
+                  'aria-describedby': describedBy,
+                  ...(child.type === Input ? { invalid: invalid || Boolean(error) } : {})
+                })
+              : child
+          )
+        ) : (
+          <Input
+            ref={ref}
+            id={fieldId}
+            density={density}
+            invalid={invalid || Boolean(error)}
+            state={state === 'error' ? 'error' : state}
+            disabled={disabled}
+            required={required}
+            aria-describedby={describedBy}
+            inputClassName={inputClassName}
+            {...props}
+          />
+        )}
         {error ? (
           <span id={`${fieldId}-error`} className={cn('text-status-danger', recipe.caption)}>
             {error}

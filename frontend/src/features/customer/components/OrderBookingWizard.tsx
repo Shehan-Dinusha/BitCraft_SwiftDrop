@@ -541,7 +541,7 @@ export function OrderBookingWizard({ onOrderCreated }: WizardProps) {
           </div>
 
           {/* LIVE FEE ESTIMATE CARD (FR-C2) */}
-          <SurfaceCard className="border-border-subtle bg-slate-900/5 dark:bg-slate-50/5 p-4 rounded-xl">
+          <SurfaceCard className="border-border-subtle bg-slate-900/5 p-4 rounded-xl">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wider text-secondary">
@@ -577,7 +577,7 @@ export function OrderBookingWizard({ onOrderCreated }: WizardProps) {
                 className="mt-1 size-4 rounded border-border-subtle text-brand-primary focus:ring-brand-primary"
               />
               <div className="text-xs text-primary leading-relaxed">
-                <span className="font-semibold text-amber-600 dark:text-amber-400">
+                <span className="font-semibold text-amber-600">
                   Mandatory Legal Declaration:
                 </span>{' '}
                 I hereby declare that this parcel contains no prohibited, restricted, flammable, explosive, or toxic items under the laws of Sri Lanka and SwiftDrop terms of carriage. I agree to digital inspection at pickup.

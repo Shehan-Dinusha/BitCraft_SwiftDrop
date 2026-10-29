@@ -19,7 +19,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const baseClasses: Record<ButtonVariant, string> = {
   primary: 'bg-brand-primary text-brand-on',
-  secondary: 'bg-card text-primary border border-border-subtle',
+  secondary: 'bg-disabled-bg text-primary',
   outline: 'bg-transparent text-brand-primary border border-border-subtle',
   ghost: 'bg-transparent text-brand-primary',
   destructive: 'bg-status-danger text-brand-on'
@@ -35,7 +35,7 @@ const hoverClasses: Record<ButtonVariant, string> = {
 
 const pressedClasses: Record<ButtonVariant, string> = {
   primary: 'bg-brand-pressed',
-  secondary: 'bg-brand-subtle text-brand-primary',
+  secondary: 'bg-brand-subtle text-primary',
   outline: 'bg-brand-subtle text-brand-primary',
   ghost: 'bg-brand-subtle text-brand-primary',
   destructive: 'bg-danger-pressed'
@@ -43,7 +43,7 @@ const pressedClasses: Record<ButtonVariant, string> = {
 
 const disabledClasses: Record<ButtonVariant, string> = {
   primary: 'bg-disabled-bg text-disabled-fg',
-  secondary: 'bg-disabled-bg text-disabled-fg border border-border-subtle',
+  secondary: 'bg-disabled-bg text-disabled-fg',
   outline: 'bg-disabled-bg text-disabled-fg border border-border-subtle',
   ghost: 'bg-disabled-bg text-disabled-fg',
   destructive: 'bg-disabled-bg text-disabled-fg'
@@ -52,7 +52,7 @@ const disabledClasses: Record<ButtonVariant, string> = {
 const liveClasses: Record<ButtonVariant, string> = {
   primary: 'hover:bg-brand-hover active:bg-brand-pressed',
   secondary:
-    'hover:bg-elevated hover:text-primary active:bg-brand-subtle active:text-brand-primary',
+    'hover:bg-elevated hover:text-primary active:bg-brand-subtle active:text-primary',
   outline:
     'hover:bg-elevated hover:text-brand-primary active:bg-brand-subtle active:text-brand-primary',
   ghost:

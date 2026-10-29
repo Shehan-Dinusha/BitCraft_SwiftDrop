@@ -19,7 +19,7 @@ export function SlaBreachAlertTicker({
       className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-xs transition-all ${
         isBreached
           ? `${slaColors.critical.background} ${slaColors.critical.foreground} ${slaColors.critical.border}`
-          : 'border-emerald-200 bg-emerald-50/80 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'
+          : 'border-emerald-200 bg-emerald-50/80 text-emerald-800'
       }`}
     >
       <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export function SlaBreachAlertTicker({
           <span className="font-bold">
             {isBreached ? `${breachCount} Active SLA Breaches Detected` : 'All Island Deliveries Within SLA'}
           </span>
-          <span className="text-slate-400 dark:text-slate-500">|</span>
+          <span className="text-slate-400">|</span>
           <span>System On-Time Adherence: <strong className="font-mono">{onTimeRate.toFixed(1)}%</strong></span>
         </div>
       </div>
@@ -44,7 +44,7 @@ export function SlaBreachAlertTicker({
           {criticalDistricts.map((d) => (
             <span
               key={d}
-              className="rounded bg-rose-200/80 px-1.5 py-0.5 font-mono font-bold text-rose-900 dark:bg-rose-900/60 dark:text-rose-100"
+              className="rounded bg-rose-200/80 px-1.5 py-0.5 font-mono font-bold text-rose-900"
             >
               {d}
             </span>

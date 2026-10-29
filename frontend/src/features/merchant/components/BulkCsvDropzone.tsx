@@ -92,7 +92,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+          <h3 className="text-sm font-bold text-slate-900">
             Bulk CSV Order Ingestion
           </h3>
         </div>
@@ -119,7 +119,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
 
       {/* Drag and Drop Zone */}
       <div
-        className="relative grid min-h-32 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border-subtle bg-slate-50/50 p-4 transition-colors hover:border-indigo-400 hover:bg-indigo-50/20 dark:bg-slate-800/20 dark:hover:border-indigo-500"
+        className="relative grid min-h-32 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border-subtle bg-slate-50/50 p-4 transition-colors hover:border-indigo-400 hover:bg-indigo-50/20"
         onClick={() => fileInputRef.current?.click()}
       >
         <input
@@ -131,7 +131,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
         />
         <div className="text-center">
           <UploadCloud className="mx-auto h-8 w-8 text-indigo-500" />
-          <p className="mt-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+          <p className="mt-2 text-xs font-semibold text-slate-700">
             {selectedFile ? selectedFile.name : 'Click to select CSV batch file or drag & drop'}
           </p>
           <p className="mt-0.5 text-[11px] text-slate-400">
@@ -144,7 +144,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
       {selectedFile && previewRows.length > 0 && (
         <div className="space-y-3 rounded-lg border border-border-subtle bg-card p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <span className="text-xs font-semibold text-slate-700">
               Preview ({previewRows.length - 1} sample rows shown)
             </span>
             <span className="font-mono text-xs text-slate-500">
@@ -163,7 +163,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-subtle text-slate-700 dark:text-slate-300">
+              <tbody className="divide-y divide-border-subtle text-slate-700">
                 {previewRows.slice(1).map((row, i) => (
                   <tr key={i}>
                     {row.map((cell, j) => (

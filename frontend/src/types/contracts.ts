@@ -46,3 +46,17 @@ export type LocationUpdatedEvent = {
   accuracy: number;
   timestamp: string;
 };
+
+/** Mirrors `PublicOrderStatus` in the generated api-gateway / customer-order-service types. */
+export const PUBLIC_ORDER_STATUSES = [
+  'CREATED',
+  'PICKUP_ASSIGNED',
+  'PICKED_UP',
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+  'FAILED',
+  'DELIVERED',
+  'CANCELLED',
+  'RETURNED_TO_SENDER'
+] as const;
+export type PublicOrderStatus = (typeof PUBLIC_ORDER_STATUSES)[number];

@@ -17,6 +17,7 @@ export interface DeliveryProgressStepperProps {
 }
 
 const densitySizes: Record<DensityMode, FsmStatusBadgeSize> = {
+  kinetic: 'lg',
   touch: 'lg',
   comfortable: 'md',
   compact: 'sm'

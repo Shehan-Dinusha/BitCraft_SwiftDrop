@@ -141,10 +141,10 @@ export function ActiveDeliveryExecutionPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
               Active Delivery Execution
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500">
               One-tap FSM state machine transitions, GPS breadcrumb telemetry, and PoD handover.
             </p>
           </div>
@@ -175,16 +175,16 @@ export function ActiveDeliveryExecutionPage() {
 
       {loading ? (
         <div className="space-y-4">
-          <SurfaceCard className="h-32 animate-pulse bg-slate-100 dark:bg-slate-800" />
-          <SurfaceCard className="h-48 animate-pulse bg-slate-100 dark:bg-slate-800" />
+          <SurfaceCard className="h-32 animate-pulse bg-slate-100" />
+          <SurfaceCard className="h-48 animate-pulse bg-slate-100" />
         </div>
       ) : !session ? (
         <SurfaceCard className="p-8 text-center">
           <Package className="mx-auto h-12 w-12 text-slate-400" />
-          <h2 className="mt-3 text-lg font-bold text-slate-900 dark:text-white">
+          <h2 className="mt-3 text-lg font-bold text-slate-900">
             No Active Delivery Found
           </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500">
             {orderIdParam
               ? `No delivery session linked to order ID ${orderIdParam}.`
               : 'You do not have any active deliveries assigned right now.'}
@@ -201,10 +201,10 @@ export function ActiveDeliveryExecutionPage() {
           <SurfaceCard className="space-y-4 p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                <span className="font-mono text-sm font-bold text-indigo-600">
                   {session.trackingNumber || 'UNTRACKED'}
                 </span>
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                   {session.courierName ? `Courier: ${session.courierName}` : 'SwiftDrop Express'}
                 </span>
               </div>
@@ -244,7 +244,7 @@ export function ActiveDeliveryExecutionPage() {
                 </div>
                 <div>
                   <span className="text-xs font-semibold text-slate-500">Pickup District</span>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  <p className="text-sm font-medium text-slate-900">
                     {session.pickupDistrict ? `${session.pickupDistrict} District Hub` : 'Merchant Hub, Colombo'}
                   </p>
                 </div>
@@ -256,7 +256,7 @@ export function ActiveDeliveryExecutionPage() {
                 </div>
                 <div>
                   <span className="text-xs font-semibold text-slate-500">Delivery Destination</span>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  <p className="text-sm font-medium text-slate-900">
                     {session.deliveryDistrict ? `${session.deliveryDistrict} Recipient Address` : 'Customer Address, Colombo'}
                   </p>
                 </div>
@@ -265,13 +265,13 @@ export function ActiveDeliveryExecutionPage() {
               <div className="grid grid-cols-2 gap-3 border-t border-border-subtle pt-3 text-xs">
                 <div>
                   <span className="text-slate-500">Attempt Count:</span>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">
+                  <p className="font-semibold text-slate-800">
                     {session.attemptCount ?? 1} of 3
                   </p>
                 </div>
                 <div>
                   <span className="text-slate-500">Courier Dispatch Hotline:</span>
-                  <p className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200">
+                  <p className="flex items-center gap-1 font-semibold text-slate-800">
                     <Phone className="h-3.5 w-3.5 text-indigo-500" />
                     +94 11 234 5678
                   </p>
@@ -301,7 +301,7 @@ export function ActiveDeliveryExecutionPage() {
                     {breadcrumbs.map((crumb, idx) => (
                       <div
                         key={`${crumb.deliveryId || 'crumb'}-${idx}`}
-                        className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs text-slate-700"
                       >
                         <div className="flex items-center gap-2">
                           <MapPin className="h-3 w-3 text-indigo-500" />
