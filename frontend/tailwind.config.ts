@@ -77,6 +77,24 @@ export default {
             fg: 'var(--color-fsm-assigned-fg)',
             border: 'var(--color-fsm-assigned-border)'
           },
+          'pickup-assigned': {
+            DEFAULT: 'var(--color-fsm-pickup-assigned-fg)',
+            bg: 'var(--color-fsm-pickup-assigned-bg)',
+            fg: 'var(--color-fsm-pickup-assigned-fg)',
+            border: 'var(--color-fsm-pickup-assigned-border)'
+          },
+          'out-for-delivery': {
+            DEFAULT: 'var(--color-fsm-out-for-delivery-fg)',
+            bg: 'var(--color-fsm-out-for-delivery-bg)',
+            fg: 'var(--color-fsm-out-for-delivery-fg)',
+            border: 'var(--color-fsm-out-for-delivery-border)'
+          },
+          'returned-to-sender': {
+            DEFAULT: 'var(--color-fsm-returned-to-sender-fg)',
+            bg: 'var(--color-fsm-returned-to-sender-bg)',
+            fg: 'var(--color-fsm-returned-to-sender-fg)',
+            border: 'var(--color-fsm-returned-to-sender-border)'
+          },
           'picked-up': {
             DEFAULT: 'var(--color-fsm-picked-up-fg)',
             bg: 'var(--color-fsm-picked-up-bg)',
@@ -107,6 +125,13 @@ export default {
             fg: 'var(--color-fsm-cancelled-fg)',
             border: 'var(--color-fsm-cancelled-border)'
           }
+        },
+        role: {
+          customer: 'var(--color-role-customer)',
+          merchant: 'var(--color-role-merchant)',
+          courier: 'var(--color-role-courier)',
+          dispatcher: 'var(--color-role-dispatcher)',
+          'system-admin': 'var(--color-role-system-admin)'
         },
         sla: {
           warning: {

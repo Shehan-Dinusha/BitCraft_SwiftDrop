@@ -20,17 +20,17 @@
 
   --color-brand-primary: #2563eb;
   --color-brand-hover: #1d4ed8;
-  --color-brand-pressed: #1e40af;
+  --color-brand-pressed: #1e3a8a;
   --color-brand-subtle: #eff6ff;
   --color-on-brand: #ffffff;
 
   --color-disabled-bg: #f1f5f9;
   --color-disabled-fg: #94a3b8;
 
-  --color-status-success: #059669;
-  --color-status-warning: #d97706;
+  --color-status-success: #065f46;
+  --color-status-warning: #92400e;
   --color-status-danger: #dc2626;
-  --color-status-info: #0284c7;
+  --color-status-info: #1d4ed8;
 
   --color-status-success-bg: #ecfdf5;
   --color-status-success-fg: #065f46;
@@ -53,7 +53,7 @@
   --color-danger-subtle: #fee2e2;
   --color-danger-glow: rgba(220, 38, 38, 0.18);
 
-  --color-shadow-ambient: rgba(15, 23, 42, 0.09);
+  --color-shadow-ambient: rgba(15, 23, 42, 0.094);
   --color-shadow-overlay: rgba(15, 23, 42, 0.08);
 
   --color-scrim: rgba(15, 23, 42, 0.5);
@@ -68,32 +68,51 @@
   --color-sla-critical-border: #fecaca;
 
   --color-fsm-created-bg: #eef2ff;
-  --color-fsm-created-fg: #4f46e5;
+  --color-fsm-created-fg: #3730a3;
   --color-fsm-created-border: #c7d2fe;
 
-  --color-fsm-assigned-bg: #eff6ff;
-  --color-fsm-assigned-fg: #2563eb;
-  --color-fsm-assigned-border: #dbeafe;
+  --color-fsm-pickup-assigned-bg: #eff6ff;
+  --color-fsm-pickup-assigned-fg: #1e40af;
+  --color-fsm-pickup-assigned-border: #bfdbfe;
 
   --color-fsm-picked-up-bg: #e0f2fe;
-  --color-fsm-picked-up-fg: #0284c7;
+  --color-fsm-picked-up-fg: #075985;
   --color-fsm-picked-up-border: #bae6fd;
 
   --color-fsm-in-transit-bg: #fef3c7;
-  --color-fsm-in-transit-fg: #d97706;
+  --color-fsm-in-transit-fg: #92400e;
   --color-fsm-in-transit-border: #fde68a;
 
   --color-fsm-delivered-bg: #d1fae5;
-  --color-fsm-delivered-fg: #059669;
+  --color-fsm-delivered-fg: #065f46;
   --color-fsm-delivered-border: #a7f3d0;
 
   --color-fsm-failed-bg: #fee2e2;
-  --color-fsm-failed-fg: #dc2626;
+  --color-fsm-failed-fg: #991b1b;
   --color-fsm-failed-border: #fecaca;
 
   --color-fsm-cancelled-bg: #f1f5f9;
   --color-fsm-cancelled-fg: #475569;
-  --color-fsm-cancelled-border: #e2e8f0;
+  --color-fsm-cancelled-border: #cbd5e1;
+
+  --color-fsm-out-for-delivery-bg: #f3e8ff;
+  --color-fsm-out-for-delivery-fg: #5b21b6;
+  --color-fsm-out-for-delivery-border: #e9d5ff;
+
+  --color-fsm-returned-to-sender-bg: #ffedd5;
+  --color-fsm-returned-to-sender-fg: #9a3412;
+  --color-fsm-returned-to-sender-border: #fed7aa;
+
+  /* alias kept so existing ASSIGNED usages keep working */
+  --color-fsm-assigned-bg: var(--color-fsm-pickup-assigned-bg);
+  --color-fsm-assigned-fg: var(--color-fsm-pickup-assigned-fg);
+  --color-fsm-assigned-border: var(--color-fsm-pickup-assigned-border);
+
+  --color-role-customer: #1d4ed8;
+  --color-role-merchant: #7e22ce;
+  --color-role-courier: #15803d;
+  --color-role-dispatcher: #b45309;
+  --color-role-system-admin: #0f766e;
 }
 
 .dark {
