@@ -15,6 +15,7 @@ import { IdentifiersSection } from './sections/IdentifiersSection';
 import { TimelineSection } from './sections/TimelineSection';
 import { AlertsSection } from './sections/AlertsSection';
 import { PageStructureSection } from './sections/PageStructureSection';
+import { OrderPatternsSection } from './sections/OrderPatternsSection';
 
 interface CatalogEntry {
   id: string;
@@ -78,6 +79,13 @@ const families: CatalogEntry[] = [
     description:
       'Page header, tabs, filter bar, the orders table with sortable header cells and selectable rows, and pagination.',
     content: <PageStructureSection />
+  },
+  {
+    id: 'order-patterns',
+    title: 'Order patterns and cards',
+    description:
+      'Price breakdown, order cards, bottom sheet, photo upload, pickup slot picker and notifications.',
+    content: <OrderPatternsSection />
   },
   {
     id: 'menus',
