@@ -6,7 +6,7 @@ COPY api-gateway/target/*.jar app.jar
 RUN chown -R swiftdrop:swiftdrop /app
 USER swiftdrop
 EXPOSE 8080
-HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=15s --timeout=10s --start-period=180s --retries=10 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health/readiness || exit 1
 ENTRYPOINT ["java", \
     "-XX:+UseZGC", \

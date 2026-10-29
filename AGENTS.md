@@ -13,7 +13,7 @@ The backend reactor modules are declared in [backend/pom.xml](backend/pom.xml): 
 | Service | Member role | Local app port | Local Postgres container / host port | AKS Postgres headless DNS | Primary responsibility |
 |---|---:|---:|---|---|---|
 | `api-gateway` | Member 1 | 8080 | None; stateless | None | Routing, JWT/header propagation, CORS, rate limiting, and the Real-Time Tracking Hub |
-| `auth-iam-service` | Member 2 | 8081 | `swiftdrop-iam-postgres` / 5432; `swiftdrop_iam` | `iam-postgres-headless.swiftdrop-data.svc.cluster.local` | Authentication, identity, and roles |
+| `auth-iam-service` | Member 2 | 8081 | `swiftdrop-iam-postgres` / 5431; `swiftdrop_iam` | `iam-postgres-headless.swiftdrop-data.svc.cluster.local` | Authentication, identity, and roles |
 | `customer-order-service` | Member 3 | 8082 | `swiftdrop-order-postgres` / 5433; `swiftdrop_order` | `order-postgres-headless.swiftdrop-data.svc.cluster.local` | Customer order lifecycle |
 | `pricing-zone-service` | Member 4 | 8083 | `swiftdrop-pricing-postgres` / 5434; `swiftdrop_pricing` | `pricing-postgres-headless.swiftdrop-data.svc.cluster.local` | Pricing quotes and geofence zones |
 | `dispatch-assignment-service` | Member 5 | 8084 | `swiftdrop-dispatch-postgres` / 5435; `swiftdrop_dispatch` | `dispatch-postgres-headless.swiftdrop-data.svc.cluster.local` | Courier availability and assignment |

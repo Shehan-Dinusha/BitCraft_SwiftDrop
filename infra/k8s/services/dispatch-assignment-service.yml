@@ -63,19 +63,29 @@ spec:
               value: kubernetes
             - name: SERVER_PORT
               value: "8080"
-            - name: SPRING_DATASOURCE_URL
+            - name: DB_URL
               value: jdbc:postgresql://dispatch-postgres-headless.swiftdrop-data.svc.cluster.local:5432/swiftdrop_dispatch
-            - name: SPRING_DATASOURCE_USERNAME
+            - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: dispatch-postgres-credentials
                   key: username
-            - name: SPRING_DATASOURCE_PASSWORD
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: dispatch-postgres-credentials
                   key: password
-            - name: SPRING_RABBITMQ_HOST
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: password
+            - name: RABBITMQ_HOST
               value: rabbitmq.swiftdrop-messaging.svc.cluster.local
           resources:
             requests:

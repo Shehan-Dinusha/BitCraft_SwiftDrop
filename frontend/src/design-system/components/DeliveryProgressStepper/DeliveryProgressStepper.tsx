@@ -7,7 +7,7 @@ import {
   type FsmStatusBadgeSize
 } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 
-const steps: DeliveryState[] = ['CREATED', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED'];
+const steps: DeliveryState[] = ['CREATED', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'];
 
 export interface DeliveryProgressStepperProps {
   current: DeliveryState;

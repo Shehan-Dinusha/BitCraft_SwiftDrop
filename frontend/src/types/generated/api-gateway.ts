@@ -43,7 +43,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
-        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
+        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "FAILED" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
         /** @enum {string} */
         SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
         PublicTrackingTimelineEntry: {

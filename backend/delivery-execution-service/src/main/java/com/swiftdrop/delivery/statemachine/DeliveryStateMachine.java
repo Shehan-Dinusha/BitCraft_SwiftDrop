@@ -18,7 +18,8 @@ public class DeliveryStateMachine {
         TRANSITIONS.put(DeliveryState.CREATED, EnumSet.of(DeliveryState.ASSIGNED, DeliveryState.CANCELLED));
         TRANSITIONS.put(DeliveryState.ASSIGNED, EnumSet.of(DeliveryState.PICKED_UP, DeliveryState.FAILED, DeliveryState.CANCELLED));
         TRANSITIONS.put(DeliveryState.PICKED_UP, EnumSet.of(DeliveryState.IN_TRANSIT, DeliveryState.FAILED));
-        TRANSITIONS.put(DeliveryState.IN_TRANSIT, EnumSet.of(DeliveryState.DELIVERED, DeliveryState.FAILED));
+        TRANSITIONS.put(DeliveryState.IN_TRANSIT, EnumSet.of(DeliveryState.OUT_FOR_DELIVERY, DeliveryState.FAILED));
+        TRANSITIONS.put(DeliveryState.OUT_FOR_DELIVERY, EnumSet.of(DeliveryState.DELIVERED, DeliveryState.FAILED));
         TRANSITIONS.put(DeliveryState.DELIVERED, EnumSet.noneOf(DeliveryState.class));
         TRANSITIONS.put(DeliveryState.FAILED, EnumSet.noneOf(DeliveryState.class));
         TRANSITIONS.put(DeliveryState.CANCELLED, EnumSet.noneOf(DeliveryState.class));

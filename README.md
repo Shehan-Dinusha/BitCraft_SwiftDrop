@@ -102,10 +102,13 @@ SwiftDrop/
 # 1. Clone and configure
 cp .env.example .env
 
-# 2. Spin up infrastructure (9 PostgreSQL + RabbitMQ)
+# 2. Start infrastructure only (9 PostgreSQL + RabbitMQ)
 docker compose up -d
 
-# 3. Verify all containers are healthy
+# Optional: start all apps and the frontend
+docker compose --profile apps up -d --build
+
+# 3. Verify the selected containers
 docker compose ps
 
 # 4. Access RabbitMQ Management UI

@@ -183,7 +183,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
-        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED" | "FAILED" | "CANCELLED";
+        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED" | "CANCELLED";
         /** @enum {string} */
         DeliveryFailureReason: "RECIPIENT_UNAVAILABLE" | "INCORRECT_ADDRESS" | "ACCESS_RESTRICTED" | "RECIPIENT_REJECTED" | "DAMAGED_IN_TRANSIT" | "ADVERSE_WEATHER" | "SYSTEM_CANCELLATION" | "OTHER";
         /** @enum {string} */

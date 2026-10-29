@@ -29,9 +29,9 @@ services:
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      timeout: 30s
+      retries: 10
+      start_period: 120s
     restart: unless-stopped
     networks:
       - swiftdrop-net
@@ -64,13 +64,14 @@ services:
       context: ./backend
       dockerfile: auth-iam-service/Dockerfile
     container_name: swiftdrop-auth-iam
+    profiles: ["apps"]
     ports:
       - "8081:8081"
     environment:
       SPRING_PROFILES_ACTIVE: default
-      SPRING_DATASOURCE_URL: jdbc:postgresql://iam-postgres:5432/swiftdrop_iam
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-swiftdrop}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      DB_URL: jdbc:postgresql://iam-postgres:5432/swiftdrop_iam
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
@@ -94,6 +95,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
     networks:
       - swiftdrop-net
 
@@ -102,6 +109,7 @@ services:
       context: ./backend
       dockerfile: api-gateway/Dockerfile
     container_name: swiftdrop-api-gateway
+    profiles: ["apps"]
     ports:
       - "8080:8080"
     environment:
@@ -112,17 +120,42 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      MERCHANT_API_KEY_VALIDATION_URL: http://host.docker.internal:8086/internal/v1/api-keys/validate
+      MERCHANT_API_KEY_VALIDATION_URL: http://merchant-b2b-service:8086/internal/v1/api-keys/validate
+      AUTH_SERVICE_URL: http://auth-iam-service:8081
+      ORDER_SERVICE_URL: http://customer-order-service:8082
+      PRICING_SERVICE_URL: http://pricing-zone-service:8083
+      DISPATCH_SERVICE_URL: http://dispatch-assignment-service:8084
+      DELIVERY_SERVICE_URL: http://delivery-execution-service:8085
+      MERCHANT_SERVICE_URL: http://merchant-b2b-service:8086
+      WEBHOOK_SERVICE_URL: http://webhook-resiliency-service:8087
+      NOTIFICATION_SERVICE_URL: http://notification-service:8088
+      ANALYTICS_SERVICE_URL: http://analytics-ai-service:8089
       PUBLIC_TRACKING_RATE_LIMIT: ${PUBLIC_TRACKING_RATE_LIMIT:-60}
       PUBLIC_TRACKING_RATE_WINDOW_SECONDS: ${PUBLIC_TRACKING_RATE_WINDOW_SECONDS:-60}
       JWT_BLACKLIST_PREFIX: ${JWT_BLACKLIST_PREFIX:-jwt:blacklist:}
       JWT_SECRET: ${JWT_SECRET:-swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       rabbitmq:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      auth-iam-service:
+        condition: service_healthy
+      customer-order-service:
+        condition: service_healthy
+      pricing-zone-service:
+        condition: service_healthy
+      dispatch-assignment-service:
+        condition: service_healthy
+      delivery-execution-service:
+        condition: service_healthy
+      merchant-b2b-service:
+        condition: service_healthy
+      webhook-resiliency-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      analytics-ai-service:
         condition: service_healthy
     networks:
       - swiftdrop-net
@@ -130,6 +163,242 @@ services:
   # ═══════════════════════════════════════════════════════════════════════════
   # DATABASE – IAM Service (Port 5432)
   # ═══════════════════════════════════════════════════════════════════════════
+  customer-order-service:
+    build:
+      context: ./backend
+      dockerfile: customer-order-service/Dockerfile
+    container_name: swiftdrop-customer-order-service
+    profiles: ["apps"]
+    ports:
+      - "8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://order-postgres:5432/swiftdrop_order
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      order-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks: [swiftdrop-net]
+  pricing-zone-service:
+    build:
+      context: ./backend
+      dockerfile: pricing-zone-service/Dockerfile
+    container_name: swiftdrop-pricing-zone-service
+    profiles: ["apps"]
+    ports:
+      - "8083:8083"
+    environment:
+      DB_URL: jdbc:postgresql://pricing-postgres:5432/swiftdrop_pricing
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      pricing-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks: [swiftdrop-net]
+  dispatch-assignment-service:
+    build:
+      context: ./backend
+      dockerfile: dispatch-assignment-service/Dockerfile
+    container_name: swiftdrop-dispatch-assignment-service
+    profiles: ["apps"]
+    ports:
+      - "8084:8084"
+    environment:
+      DB_URL: jdbc:postgresql://dispatch-postgres:5432/swiftdrop_dispatch
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      dispatch-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks: [swiftdrop-net]
+  delivery-execution-service:
+    build:
+      context: ./backend
+      dockerfile: delivery-execution-service/Dockerfile
+    container_name: swiftdrop-delivery-execution-service
+    profiles: ["apps"]
+    ports:
+      - "8085:8085"
+    environment:
+      DB_URL: jdbc:postgresql://delivery-postgres:5432/swiftdrop_delivery
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      delivery-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks: [swiftdrop-net]
+  merchant-b2b-service:
+    build:
+      context: ./backend
+      dockerfile: merchant-b2b-service/Dockerfile
+    container_name: swiftdrop-merchant-b2b-service
+    profiles: ["apps"]
+    ports:
+      - "8086:8086"
+    environment:
+      DB_URL: jdbc:postgresql://merchant-postgres:5432/swiftdrop_merchant
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      merchant-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks: [swiftdrop-net]
+  webhook-resiliency-service:
+    build:
+      context: ./backend
+      dockerfile: webhook-resiliency-service/Dockerfile
+    container_name: swiftdrop-webhook-resiliency-service
+    profiles: ["apps"]
+    ports:
+      - "8087:8087"
+    environment:
+      DB_URL: jdbc:postgresql://webhook-postgres:5432/swiftdrop_webhook
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      webhook-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8087/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks: [swiftdrop-net]
+  notification-service:
+    build:
+      context: ./backend
+      dockerfile: notification-service/Dockerfile
+    container_name: swiftdrop-notification-service
+    profiles: ["apps"]
+    ports:
+      - "8088:8088"
+    environment:
+      DB_URL: jdbc:postgresql://notify-postgres:5432/swiftdrop_notify
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      notify-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8088/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks: [swiftdrop-net]
+  analytics-ai-service:
+    build:
+      context: ./backend
+      dockerfile: analytics-ai-service/Dockerfile
+    container_name: swiftdrop-analytics-ai-service
+    profiles: ["apps"]
+    ports:
+      - "8089:8089"
+    environment:
+      DB_URL: jdbc:postgresql://analytics-postgres:5432/swiftdrop_analytics
+      DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+    depends_on:
+      analytics-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8089/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    networks: [swiftdrop-net]
+  frontend:
+    build:
+      context: ./frontend
+    container_name: swiftdrop-frontend
+    profiles: ["apps", "frontend"]
+    ports:
+      - "5173:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+    networks: [swiftdrop-net]
+
   iam-postgres:
     image: postgres:16-alpine
     container_name: swiftdrop-iam-postgres

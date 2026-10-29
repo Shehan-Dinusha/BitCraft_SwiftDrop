@@ -20,6 +20,7 @@ public enum InternalQueueStatus {
     OUTBOUND,
     INCOMING,
     DELIVERED,
+    FAILED_ATTEMPT,
     FAILED_RETURN,
     CANCELLED;
 
@@ -31,13 +32,14 @@ public enum InternalQueueStatus {
             case AT_HUB, OUTBOUND, INCOMING -> PublicOrderStatus.IN_TRANSIT;
             case OUT_FOR_DELIVERY -> PublicOrderStatus.OUT_FOR_DELIVERY;
             case DELIVERED -> PublicOrderStatus.DELIVERED;
+            case FAILED_ATTEMPT -> PublicOrderStatus.FAILED;
             case FAILED_RETURN -> PublicOrderStatus.RETURNED_TO_SENDER;
             case CANCELLED -> PublicOrderStatus.CANCELLED;
         };
     }
 
     public boolean isTerminal() {
-        return this == DELIVERED || this == FAILED_RETURN || this == CANCELLED;
+        return this == DELIVERED || this == FAILED_ATTEMPT || this == FAILED_RETURN || this == CANCELLED;
     }
 
     public static InternalQueueStatus fromDeliveryState(DeliveryState state) {
@@ -48,9 +50,10 @@ public enum InternalQueueStatus {
             case CREATED -> CREATED;
             case ASSIGNED -> PICKUP_ASSIGNED;
             case PICKED_UP -> PICKED_UP;
-            case IN_TRANSIT -> OUT_FOR_DELIVERY;
+            case IN_TRANSIT -> OUTBOUND;
+            case OUT_FOR_DELIVERY -> OUT_FOR_DELIVERY;
             case DELIVERED -> DELIVERED;
-            case FAILED -> FAILED_RETURN;
+            case FAILED -> FAILED_ATTEMPT;
             case CANCELLED -> CANCELLED;
         };
     }

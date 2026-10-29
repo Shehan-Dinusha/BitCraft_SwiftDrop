@@ -61,14 +61,23 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
             "/v3/api-docs",
             "/webjars",
             "/webjars/",
+            "/api/v1/iam/v3/api-docs",
             "/api/v1/iam/v3/api-docs/",
+            "/api/v1/orders/v3/api-docs",
             "/api/v1/orders/v3/api-docs/",
+            "/api/v1/pricing/v3/api-docs",
             "/api/v1/pricing/v3/api-docs/",
+            "/api/v1/dispatch/v3/api-docs",
             "/api/v1/dispatch/v3/api-docs/",
+            "/api/v1/deliveries/v3/api-docs",
             "/api/v1/deliveries/v3/api-docs/",
+            "/api/v1/merchants/v3/api-docs",
             "/api/v1/merchants/v3/api-docs/",
+            "/api/v1/webhooks/v3/api-docs",
             "/api/v1/webhooks/v3/api-docs/",
+            "/api/v1/notifications/v3/api-docs",
             "/api/v1/notifications/v3/api-docs/",
+            "/api/v1/analytics/v3/api-docs",
             "/api/v1/analytics/v3/api-docs/"
     );
 

@@ -3,6 +3,7 @@ export const DELIVERY_STATES = [
   'ASSIGNED',
   'PICKED_UP',
   'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
   'DELIVERED',
   'FAILED',
   'CANCELLED'

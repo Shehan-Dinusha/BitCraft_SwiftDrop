@@ -32,6 +32,12 @@ export const deliveryStateColors: Record<DeliveryState, DeliveryStateTokens> = {
     border: 'border-fsm-in-transit-border',
     glyph: '»'
   },
+  OUT_FOR_DELIVERY: {
+    background: 'bg-fsm-in-transit-bg',
+    foreground: 'text-fsm-in-transit-fg',
+    border: 'border-fsm-in-transit-border',
+    glyph: '»'
+  },
   DELIVERED: {
     background: 'bg-fsm-delivered-bg',
     foreground: 'text-fsm-delivered-fg',

@@ -61,6 +61,16 @@ springdoc:
 
 # ─── JWT Configuration ────────────────────────────────────────────────────────
 swiftdrop:
+  routes:
+    auth: ${AUTH_SERVICE_URL:http://localhost:8081}
+    order: ${ORDER_SERVICE_URL:http://localhost:8082}
+    pricing: ${PRICING_SERVICE_URL:http://localhost:8083}
+    dispatch: ${DISPATCH_SERVICE_URL:http://localhost:8084}
+    delivery: ${DELIVERY_SERVICE_URL:http://localhost:8085}
+    merchant: ${MERCHANT_SERVICE_URL:http://localhost:8086}
+    webhook: ${WEBHOOK_SERVICE_URL:http://localhost:8087}
+    notification: ${NOTIFICATION_SERVICE_URL:http://localhost:8088}
+    analytics: ${ANALYTICS_SERVICE_URL:http://localhost:8089}
   jwt:
     secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
     blacklist-prefix: ${JWT_BLACKLIST_PREFIX:jwt:blacklist:}

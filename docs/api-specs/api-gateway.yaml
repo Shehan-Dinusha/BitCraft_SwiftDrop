@@ -64,6 +64,7 @@ components:
         - PICKED_UP
         - IN_TRANSIT
         - OUT_FOR_DELIVERY
+        - FAILED
         - DELIVERED
         - CANCELLED
         - RETURNED_TO_SENDER

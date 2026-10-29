@@ -8,9 +8,9 @@ spring:
     virtual:
       enabled: true
   datasource:
-    url: jdbc:postgresql://localhost:5432/swiftdrop_iam
-    username: swiftdrop
-    password: swiftdrop
+    url: ${DB_URL:jdbc:postgresql://localhost:5431/swiftdrop_iam}
+    username: ${DB_USERNAME:swiftdrop}
+    password: ${DB_PASSWORD:changeme_pg}
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
@@ -24,8 +24,8 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
+    username: ${RABBITMQ_USERNAME:swiftdrop}
+    password: ${RABBITMQ_PASSWORD:changeme_rabbit}
   data:
     redis:
       host: ${REDIS_HOST:localhost}

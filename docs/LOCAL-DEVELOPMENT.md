@@ -90,7 +90,7 @@ The default local PostgreSQL credentials are:
 
 ```text
 Username: swiftdrop
-Password: swiftdrop
+Password: changeme_pg
 ```
 
 ## 4. Backend service matrix
@@ -100,7 +100,7 @@ Use the module name in the `mvn` command and start the matching PostgreSQL conta
 | Team area | Maven module | Application port | PostgreSQL container | PostgreSQL host port |
 |---|---|---:|---|---:|
 | API gateway and tracking hub | `api-gateway` | 8080 | None | None |
-| Auth and IAM | `auth-iam-service` | 8081 | `iam-postgres` | 5432 |
+| Auth and IAM | `auth-iam-service` | 8081 | `iam-postgres` | 5431 |
 | Customer orders | `customer-order-service` | 8082 | `order-postgres` | 5433 |
 | Pricing and zones | `pricing-zone-service` | 8083 | `pricing-postgres` | 5434 |
 | Dispatch and assignment | `dispatch-assignment-service` | 8084 | `dispatch-postgres` | 5435 |
@@ -295,15 +295,8 @@ mvn -f backend\pom.xml -pl delivery-execution-service -am spring-boot:run
 
 ## 8. Gateway routing note
 
-The gateway route definitions use service-discovery URIs such as `lb://delivery-execution-service`. This is correct for the containerized/Kubernetes deployment topology, but a gateway started directly with Maven may not discover another service started directly with Maven unless local service discovery is configured.
+Gateway route URLs default to localhost, so Maven-run services are reachable without service discovery. Container deployments set these URLs to Docker or Kubernetes service DNS names.
 
-For direct backend testing, call the service port directly, for example:
-
-```text
-http://localhost:8085
-```
-
-For browser testing, use the gateway at `http://localhost:8080`. If a gateway route returns a service-discovery or connection error during direct-Maven development, use the service directly for backend testing or run the Docker/Kubernetes topology that provides service discovery.
 
 ## 9. Stop local processes and infrastructure
 
@@ -353,13 +346,20 @@ If RabbitMQ connection fails, verify:
 docker compose ps rabbitmq
 ```
 
-## 11. Full local infrastructure
+## 11. Full local application stack
 
-Use this only when testing cross-service behavior:
+Use the default Compose profile for infrastructure only:
 
 ```powershell
 docker compose up -d
 docker compose ps
 ```
 
-This starts RabbitMQ, the API gateway container, and all nine PostgreSQL containers. Backend application services are normally run individually with Maven unless you intentionally use the containerized deployment workflow.
+Start the backend services and frontend with the `apps` profile:
+
+```powershell
+docker compose --profile apps up -d --build
+docker compose ps
+```
+
+Open `http://localhost:5173`. Nginx proxies REST, SSE, and WebSocket traffic through the gateway.

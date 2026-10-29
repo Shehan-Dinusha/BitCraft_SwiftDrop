@@ -190,12 +190,12 @@ export interface components {
          * @example CREATED
          * @enum {string}
          */
-        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
+        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "FAILED" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
         /**
          * @example CREATED
          * @enum {string}
          */
-        InternalQueueStatus: "CREATED" | "UNASSIGNED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "AT_HUB" | "OUT_FOR_DELIVERY" | "OUTBOUND" | "INCOMING" | "DELIVERED" | "FAILED_RETURN" | "CANCELLED";
+        InternalQueueStatus: "CREATED" | "UNASSIGNED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "AT_HUB" | "OUT_FOR_DELIVERY" | "OUTBOUND" | "INCOMING" | "DELIVERED" | "FAILED_ATTEMPT" | "FAILED_RETURN" | "CANCELLED";
         /**
          * @example APPROVED
          * @enum {string}

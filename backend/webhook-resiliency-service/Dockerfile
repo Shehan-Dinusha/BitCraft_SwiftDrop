@@ -3,9 +3,9 @@ WORKDIR /workspace
 COPY pom.xml .
 COPY common-contracts ./common-contracts
 COPY webhook-resiliency-service ./webhook-resiliency-service
-RUN mvn -B --non-recursive install && \
-    mvn -B -f common-contracts/pom.xml clean install -DskipTests --no-transfer-progress && \
-    mvn -B -f webhook-resiliency-service/pom.xml clean package -DskipTests --no-transfer-progress
+RUN mvn -B --non-recursive install:install --no-transfer-progress && \
+    mvn -B -f common-contracts/pom.xml clean resources:resources compiler:compile jar:jar install:install --no-transfer-progress && \
+    mvn -B -f webhook-resiliency-service/pom.xml clean resources:resources compiler:compile jar:jar spring-boot:repackage --no-transfer-progress
 
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app

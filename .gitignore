@@ -57,3 +57,6 @@ infra/k8s/**/sealed-secrets*.yml
 *.seed
 coverage/
 .nyc_output/
+
+# Local Codex/Maven validation cache
+.codex/maven-repository/
