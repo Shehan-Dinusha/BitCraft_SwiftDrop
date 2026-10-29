@@ -13,8 +13,8 @@ must be authored as `.tsx` with explicit props and accessible behavior.
    (not `border-subtle`), and the focus color is `outline-border-focus`.
 2. **Keep backend vocabulary unchanged.** `DeliveryState` and `PersonaRole`
    come from `src/types/contracts.ts`, which mirrors
-   `backend/common-contracts`. Do not introduce `OUT_FOR_DELIVERY` or other
-   frontend-only lifecycle values.
+   `backend/common-contracts`. `OUT_FOR_DELIVERY` and `RETURNED_TO_SENDER` are
+   public order statuses; do not introduce other frontend-only lifecycle values.
 3. **Choose density by persona.** `ADMIN_OPS` and `MERCHANT` use `compact`,
    `COURIER` uses `touch` with 56px minimum targets, and `CUSTOMER` uses
    `comfortable`.
