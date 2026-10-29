@@ -27,6 +27,7 @@ const sizeClasses: Record<FsmStatusBadgeSize, { box: string; dot: string }> = {
 };
 
 const densitySizes: Record<DensityMode, FsmStatusBadgeSize> = {
+  kinetic: 'lg',
   touch: 'lg',
   comfortable: 'md',
   compact: 'sm'

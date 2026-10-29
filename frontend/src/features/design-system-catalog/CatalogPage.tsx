@@ -92,12 +92,12 @@ const families: CatalogEntry[] = [
 ];
 
 const densityLegend = [
-  { persona: 'COURIER', density: 'touch', target: '56px', note: 'Thumb zone, one primary action' },
+  { persona: 'COURIER', density: 'kinetic', target: '56px', note: 'Thumb zone, one primary action' },
   { persona: 'CUSTOMER', density: 'comfortable', target: '44px', note: 'Progressive disclosure' },
   {
     persona: 'ADMIN_OPS / MERCHANT',
     density: 'compact',
-    target: '36px',
+    target: '34px',
     note: 'Scan-first operational grids'
   }
 ];
