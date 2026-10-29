@@ -48,7 +48,7 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
       {
         label: 'Account',
         items: [
-          { id: 'notifications', label: 'Notifications', icon: 'bell' },
+          { id: 'notifications', label: 'Notifications', icon: 'bell', count: 3 },
           { id: 'addresses', label: 'Addresses', icon: 'mapPin' },
           { id: 'profile', label: 'Profile', icon: 'user' }
         ]
@@ -72,7 +72,7 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
         label: 'Shipping',
         items: [
           { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
-          { id: 'orders', label: 'Orders', icon: 'list' },
+          { id: 'orders', label: 'Orders', icon: 'list', count: 248 },
           { id: 'bulk', label: 'Bulk import', icon: 'upload' },
           { id: 'labels', label: 'Labels', icon: 'tag' }
         ]
@@ -81,7 +81,7 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
         label: 'Developers',
         items: [
           { id: 'keys', label: 'API keys', icon: 'key' },
-          { id: 'webhooks', label: 'Webhook logs', icon: 'webhook' }
+          { id: 'webhooks', label: 'Webhook logs', icon: 'webhook', count: 2 }
         ]
       },
       {
@@ -121,9 +121,9 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
       {
         label: 'Operations',
         items: [
-          { id: 'queues', label: 'Queues', icon: 'inbox' },
+          { id: 'queues', label: 'Queues', icon: 'inbox', count: 14 },
           { id: 'map', label: 'Live map', icon: 'map' },
-          { id: 'handoffs', label: 'Hand-offs', icon: 'swap' }
+          { id: 'handoffs', label: 'Hand-offs', icon: 'swap', count: 5 }
         ]
       },
       {
@@ -146,7 +146,7 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
         label: 'Platform',
         items: [
           { id: 'overview', label: 'Overview', icon: 'grid' },
-          { id: 'approvals', label: 'Merchant approvals', icon: 'store' },
+          { id: 'approvals', label: 'Merchant approvals', icon: 'store', count: 4 },
           { id: 'users', label: 'Users & roles', icon: 'users' },
           { id: 'districts', label: 'Districts & dispatchers', icon: 'mapPin' }
         ]

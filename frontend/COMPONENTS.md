@@ -364,8 +364,26 @@ reply; without it the dock stays a prompt surface.
 
 ## Catalog and shell
 
-`/catalog` renders every family on the light token set, grouped like the Figma
-component library. Forced states (`state` props) exist for this page only.
+The catalog is **public**: `/catalog` needs no login, no role and no backend, and
+it does not use `AppShell`. It has its own layout (index, search, Figma links).
+
+| Route                    | What it shows                                                                                                  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `/catalog`               | Overview of all groups and the density by role                                                                 |
+| `/catalog/foundations`   | Colour tokens, status and role colours, spacing, radius, elevation, density, type                              |
+| `/catalog/actions`       | Buttons                                                                                                        |
+| `/catalog/inputs`        | Inputs, fields, selects, selection controls                                                                    |
+| `/catalog/data-display`  | Badges, tags, identifiers, tabs, filters, tables, pagination                                                   |
+| `/catalog/feedback`      | Alerts, toasts, empty states, skeletons, timelines, progress                                                   |
+| `/catalog/patterns`      | Surfaces, dialogs, price breakdown, order cards, sheets, photo upload, slots                                   |
+| `/catalog/courier`       | Slide to confirm and the assistant                                                                             |
+| `/catalog/shells`        | Every role shell (Public, Customer, Merchant, Courier, Dispatcher, System Admin) at Desktop, Tablet and Mobile |
+| `/catalog/preview/:role` | One role shell as a full page. The shells gallery embeds it in a frame                                         |
+
+The page map is in `src/features/design-system-catalog/catalogNav.ts`. To add a
+component, put its demo in a section under `sections/`, register the section in
+`families.tsx`, and list its id on the right page in `catalogNav.ts`.
+Forced states (`state` props) exist for the catalog only.
 
 Shell behaviour lives in `src/app/AppShell.tsx`, built from the shell parts in
 `src/design-system/components/Shell/`:
@@ -379,8 +397,11 @@ Shell behaviour lives in `src/app/AppShell.tsx`, built from the shell parts in
 - Menu entries come from `routedNav` in `AppShell.tsx`: only pages that have a
   route today. The full Figma menus live in `roleShellSpec` and are shown in the
   catalog; add an entry to `routedNav` when its page and route exist.
-- The dev persona bar sits above the top bar and switches the zustand session,
-  which re-derives density and then navigates to the persona home.
+- The dev persona bar (development builds only) sits above the top bar and
+  switches the zustand session, which re-derives density and then navigates to
+  the persona home. A dev session uses a fake token, so it is marked
+  `isDevSession` and the API client does not sign you out when the backend
+  answers 401. For a real sign-in per role run `npm run seed:demo`.
 - Sign-out lives in the side nav account footer. It clears the session and
   replaces the route with `/login`.
 - `PublicHeader` is the two-row header for public pages (no login). It is not

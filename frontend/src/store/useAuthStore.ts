@@ -22,6 +22,8 @@ type Session = {
   refreshToken: string | null;
   user: AuthUserProfile | null;
   role: PersonaRole;
+  /** True for a developer-switched persona with a fake token. The API client leaves it signed in on 401. */
+  isDevSession: boolean;
   setSession: (token: string, role: PersonaRole) => void;
   setAuth: (tokens: AuthTokenResponse) => void;
   setUser: (user: AuthUserProfile) => void;
@@ -35,7 +37,9 @@ export const useAuthStore = create<Session>()(
       refreshToken: null,
       user: null,
       role: 'CUSTOMER',
-      setSession: (token, role) => set({ token, role }),
+      isDevSession: false,
+      setSession: (token, role) =>
+        set({ token, role, refreshToken: null, user: null, isDevSession: true }),
       setAuth: (tokens) =>
         set({
           token: tokens.accessToken ?? null,
@@ -47,15 +51,29 @@ export const useAuthStore = create<Session>()(
             role: tokens.role,
             district: tokens.district
           },
-          role: personaForRole(tokens.role)
+          role: personaForRole(tokens.role),
+          isDevSession: false
         }),
-      setUser: (user) => set({ user, role: personaForRole(user.role) }),
-      signOut: () => set({ token: null, refreshToken: null, user: null, role: 'CUSTOMER' })
+      setUser: (user) => set({ user, role: personaForRole(user.role), isDevSession: false }),
+      signOut: () =>
+        set({
+          token: null,
+          refreshToken: null,
+          user: null,
+          role: 'CUSTOMER',
+          isDevSession: false
+        })
     }),
     {
       name: 'swiftdrop-auth',
       storage: createJSONStorage(() => sessionStorage),
-      partialize: ({ token, refreshToken, user, role }) => ({ token, refreshToken, user, role })
+      partialize: ({ token, refreshToken, user, role, isDevSession }) => ({
+        token,
+        refreshToken,
+        user,
+        role,
+        isDevSession
+      })
     }
   )
 );

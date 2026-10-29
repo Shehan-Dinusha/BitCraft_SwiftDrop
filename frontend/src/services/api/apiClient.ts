@@ -25,6 +25,12 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // A dev-switched persona has a fake token, so every real call is a 401. Let the page show its own
+    // error state instead of signing the developer out and bouncing them to /login.
+    if (useAuthStore.getState().isDevSession) {
+      return Promise.reject(error);
+    }
+
     const refreshToken = useAuthStore.getState().refreshToken;
     if (!refreshToken) {
       useAuthStore.getState().signOut();
@@ -33,7 +39,9 @@ apiClient.interceptors.response.use(
 
     request._retry = true;
     try {
-      const { data } = await axios.post<AuthTokenResponse>('/api/v1/auth/refresh', { refreshToken });
+      const { data } = await axios.post<AuthTokenResponse>('/api/v1/auth/refresh', {
+        refreshToken
+      });
       useAuthStore.getState().setAuth(data);
       request.headers.Authorization = `Bearer ${data.accessToken ?? ''}`;
       return apiClient(request);
