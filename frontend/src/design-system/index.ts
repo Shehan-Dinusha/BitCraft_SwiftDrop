@@ -179,3 +179,19 @@ export type {
   NotificationItemProps,
   NotificationTrayProps
 } from './components/Notifications/Notifications';
+export { SlideToConfirm } from './components/SlideToConfirm/SlideToConfirm';
+export type {
+  SlideToConfirmProps,
+  SlideToConfirmState
+} from './components/SlideToConfirm/SlideToConfirm';
+export {
+  AiAssistant,
+  AssistantLauncher,
+  AssistantPanel
+} from './components/AiAssistant/AiAssistant';
+export type {
+  AiAssistantProps,
+  AssistantLauncherProps,
+  AssistantMessage,
+  AssistantPanelProps
+} from './components/AiAssistant/AiAssistant';

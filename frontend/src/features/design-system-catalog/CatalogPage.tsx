@@ -16,6 +16,7 @@ import { TimelineSection } from './sections/TimelineSection';
 import { AlertsSection } from './sections/AlertsSection';
 import { PageStructureSection } from './sections/PageStructureSection';
 import { OrderPatternsSection } from './sections/OrderPatternsSection';
+import { CourierAssistantSection } from './sections/CourierAssistantSection';
 
 interface CatalogEntry {
   id: string;
@@ -86,6 +87,13 @@ const families: CatalogEntry[] = [
     description:
       'Price breakdown, order cards, bottom sheet, photo upload, pickup slot picker and notifications.',
     content: <OrderPatternsSection />
+  },
+  {
+    id: 'courier-assistant',
+    title: 'Slide to confirm and assistant',
+    description:
+      'The courier slide control (idle, dragging, holding, done, locked) and the assistant launcher and panel. SlideToTransitionBar and AiAssistantDock stay available for existing pages.',
+    content: <CourierAssistantSection />
   },
   {
     id: 'menus',
