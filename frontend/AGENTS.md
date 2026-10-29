@@ -12,7 +12,7 @@ The live density mapping is defined in [density.ts](src/design-system/tokens/den
 
 | Persona folder        | Density       | Required interaction model                                                                    |
 | --------------------- | ------------- | --------------------------------------------------------------------------------------------- |
-| `features/courier/`   | `touch`       | Fitts-friendly controls, minimum 56px tap targets, and bottom thumb-zone `ErgonomicActionBar` |
+| `features/courier/`   | `kinetic`     | Fitts-friendly controls, minimum 56px tap targets, and bottom thumb-zone `ErgonomicActionBar` |
 | `features/customer/`  | `comfortable` | Hick’s Law progressive disclosure; reveal complexity progressively                            |
 | `features/admin-ops/` | `compact`     | High-density scannable operational grids                                                      |
 | `features/merchant/`  | `compact`     | High-density scannable business grids                                                         |
