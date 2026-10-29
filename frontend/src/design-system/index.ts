@@ -134,3 +134,20 @@ export {
 export type { ToastOptions, ToastProps, ToastTone } from './components/Toast/Toast';
 export { EmptyState } from './components/EmptyState/EmptyState';
 export type { EmptyStateProps, EmptyStateType } from './components/EmptyState/EmptyState';
+export { Tabs, TabItem } from './components/Tabs/Tabs';
+export type { TabItemProps, TabsProps } from './components/Tabs/Tabs';
+export { PageHeader } from './components/PageHeader/PageHeader';
+export type { BreadcrumbItem, PageHeaderProps } from './components/PageHeader/PageHeader';
+export { TableHeaderCell } from './components/DataTable/TableHeaderCell';
+export type { SortDirection, TableHeaderCellProps } from './components/DataTable/TableHeaderCell';
+export { OrderTable, OrderTableRow } from './components/DataTable/OrderTable';
+export type {
+  OrderTableColumn,
+  OrderTableProps,
+  OrderTableRowData,
+  OrderTableRowProps
+} from './components/DataTable/OrderTable';
+export { FilterBar } from './components/FilterBar/FilterBar';
+export type { FilterBarProps, FilterOption } from './components/FilterBar/FilterBar';
+export { Pagination } from './components/Pagination/Pagination';
+export type { PaginationProps } from './components/Pagination/Pagination';

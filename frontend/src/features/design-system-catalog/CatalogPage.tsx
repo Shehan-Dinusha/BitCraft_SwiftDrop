@@ -14,6 +14,7 @@ import { SelectionSection } from './sections/SelectionSection';
 import { IdentifiersSection } from './sections/IdentifiersSection';
 import { TimelineSection } from './sections/TimelineSection';
 import { AlertsSection } from './sections/AlertsSection';
+import { PageStructureSection } from './sections/PageStructureSection';
 
 interface CatalogEntry {
   id: string;
@@ -70,6 +71,13 @@ const families: CatalogEntry[] = [
     title: 'Alerts, toasts and empty states',
     description: 'Inline alerts, the toast queue (5 s, max 3) and the three empty-state types.',
     content: <AlertsSection />
+  },
+  {
+    id: 'page-structure',
+    title: 'Page structure and tables',
+    description:
+      'Page header, tabs, filter bar, the orders table with sortable header cells and selectable rows, and pagination.',
+    content: <PageStructureSection />
   },
   {
     id: 'menus',
