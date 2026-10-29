@@ -12,6 +12,7 @@ import { DataSection } from './sections/DataSection';
 import { TypographySection } from './sections/TypographySection';
 import { SelectionSection } from './sections/SelectionSection';
 import { IdentifiersSection } from './sections/IdentifiersSection';
+import { TimelineSection } from './sections/TimelineSection';
 
 interface CatalogEntry {
   id: string;
@@ -55,6 +56,13 @@ const families: CatalogEntry[] = [
     description:
       'Tracking number, money amount, speed and role tags, dispatcher queue chips, and cash state.',
     content: <IdentifiersSection />
+  },
+  {
+    id: 'timeline',
+    title: 'Timeline and progress',
+    description:
+      'Timeline step and tracking history card, the five-step status progress bar, and the live connection indicator.',
+    content: <TimelineSection />
   },
   {
     id: 'menus',
