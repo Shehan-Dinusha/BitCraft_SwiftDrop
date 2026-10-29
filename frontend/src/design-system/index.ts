@@ -1,5 +1,7 @@
 ﻿export { Button } from './primitives/Button';
 export type { ButtonProps, ButtonState, ButtonVariant } from './primitives/Button';
+export { IconButton } from './primitives/IconButton';
+export type { IconButtonProps } from './primitives/IconButton';
 export { Input } from './primitives/Input';
 export type { InputProps, InputState, InputVariant } from './primitives/Input';
 export { Field } from './primitives/Field';
@@ -22,7 +24,7 @@ export type {
   ModalDrawerSize
 } from './components/ModalDrawerShell/ModalDrawerShell';
 export { Skeleton } from './primitives/Skeleton';
-export type { SkeletonProps, SkeletonShape } from './primitives/Skeleton';
+export type { SkeletonProps, SkeletonShape, SkeletonPreset } from './primitives/Skeleton';
 export { FsmStatusBadge } from './components/FsmStatusBadge/FsmStatusBadge';
 export type {
   FsmStatusBadgeProps,

@@ -1,5 +1,5 @@
 import { ArrowRight, Plus, Trash2 } from 'lucide-react';
-import { Button, type ButtonState, type ButtonVariant } from '@/design-system';
+import { Button, IconButton, type ButtonState, type ButtonVariant } from '@/design-system';
 import { CatalogRow, DemoRow, DensityPreview } from '../components/catalog-kit';
 
 const variants: ButtonVariant[] = ['primary', 'secondary', 'outline', 'ghost', 'destructive'];
@@ -53,6 +53,24 @@ export function ButtonsSection() {
               <Button variant="destructive" leftIcon={<Trash2 />}>
                 Delete
               </Button>
+            </DemoRow>
+          )}
+        </DensityPreview>
+      </CatalogRow>
+
+      <CatalogRow label="Icon button" hint="Square, icon only; aria-label is required">
+        <DensityPreview>
+          {() => (
+            <DemoRow>
+              {variants.map((variant) => (
+                <IconButton
+                  key={variant}
+                  variant={variant}
+                  icon={<Plus />}
+                  aria-label={`Add (${variant})`}
+                />
+              ))}
+              <IconButton variant="primary" icon={<Plus />} aria-label="Add (disabled)" disabled />
             </DemoRow>
           )}
         </DensityPreview>
