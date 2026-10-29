@@ -106,8 +106,7 @@ export function CatalogPage() {
             Velocity variant catalog
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-secondary">
-            Every family renders twice: once scoped to the light token set and once to the dark set,
-            independent of the app theme. Forced states exist for this page; product code drives
+            Every family renders on the light token set. Forced states exist for this page; product code drives
             states from props and interaction.
           </p>
         </div>

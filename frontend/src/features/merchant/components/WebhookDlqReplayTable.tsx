@@ -90,7 +90,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       label: 'Event Type',
       render: (row) => (
         <div className="flex flex-col">
-          <span className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+          <span className="font-mono text-xs font-semibold text-indigo-600">
             {row.eventType || 'webhook.event'}
           </span>
           <span className="text-[10px] text-slate-400">
@@ -104,7 +104,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       label: 'Failure Diagnostic',
       render: (row) => (
         <span
-          className="block max-w-[240px] truncate text-xs text-rose-600 dark:text-rose-400"
+          className="block max-w-[240px] truncate text-xs text-rose-600"
           title={row.failureReason || 'Dispatch failure'}
         >
           {row.failureReason || 'Failed delivery attempts'}
@@ -115,7 +115,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       key: 'totalAttempts',
       label: 'Retries',
       render: (row) => (
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-700">
           {row.totalAttempts || 3}/3
         </span>
       )
@@ -125,12 +125,12 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       label: 'State',
       render: (row) =>
         row.replayed ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
             <CheckCircle2 className="h-3 w-3" />
             REPLAYED
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-800">
             <AlertOctagon className="h-3 w-3" />
             DEAD-LETTERED
           </span>
@@ -189,7 +189,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
             <History className="h-4 w-4 text-brand-primary" />
             <span className="font-semibold text-primary">{records.length}</span> Total Records
             {unreplayedCount > 0 && (
-              <span className="ml-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+              <span className="ml-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
                 {unreplayedCount} Pending
               </span>
             )}
@@ -270,8 +270,8 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
             </div>
 
             <div>
-              <span className="font-semibold text-rose-600 dark:text-rose-400">Terminal Failure Reason:</span>
-              <p className="mt-1 rounded bg-rose-50 p-2 font-mono text-rose-800 dark:bg-rose-950 dark:text-rose-200">
+              <span className="font-semibold text-rose-600">Terminal Failure Reason:</span>
+              <p className="mt-1 rounded bg-rose-50 p-2 font-mono text-rose-800">
                 {selectedRecord.failureReason || 'Failed after maximum backoff retries'}
               </p>
             </div>

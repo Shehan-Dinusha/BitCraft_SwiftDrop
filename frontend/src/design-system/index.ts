@@ -47,7 +47,6 @@ export { AiAssistantDock } from './components/AiAssistantDock/AiAssistantDock';
 export type { AiAssistantDockProps } from './components/AiAssistantDock/AiAssistantDock';
 export { StatusBanner } from './components/StatusBanner/StatusBanner';
 export type { StatusBannerProps, StatusBannerTone } from './components/StatusBanner/StatusBanner';
-export { ThemeToggle } from './components/ThemeToggle/ThemeToggle';
 export { DropdownMenu } from './components/DropdownMenu/DropdownMenu';
 export type { DropdownMenuProps } from './components/DropdownMenu/DropdownMenu';
 export { DropdownItem } from './components/DropdownMenu/DropdownItem';

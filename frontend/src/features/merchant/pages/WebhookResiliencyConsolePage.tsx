@@ -186,14 +186,14 @@ export function WebhookResiliencyConsolePage() {
         <div>
           <div className="flex items-center gap-2">
             <Webhook className="h-6 w-6 text-brand-primary" />
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
               Webhook Resiliency Console
             </h1>
-            <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+            <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-800">
               HMAC-SHA256 Signed
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500">
             Real-time event streaming, 3-attempt exponential backoff retries, and manual Dead-Letter Queue (DLQ) replay.
           </p>
         </div>
@@ -238,7 +238,7 @@ export function WebhookResiliencyConsolePage() {
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Active Listeners</span>
-          <p className="mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400">{activeCount}</p>
+          <p className="mt-1 text-xl font-bold text-emerald-600">{activeCount}</p>
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Backoff Retry Policy</span>
@@ -246,7 +246,7 @@ export function WebhookResiliencyConsolePage() {
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Payload Security</span>
-          <p className="mt-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">X-SwiftDrop-Signature</p>
+          <p className="mt-1 text-xs font-semibold text-indigo-600">X-SwiftDrop-Signature</p>
         </SurfaceCard>
       </div>
 
@@ -290,11 +290,11 @@ export function WebhookResiliencyConsolePage() {
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-bold text-primary">{ep.targetUrl}</span>
                         {ep.active ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
                             ACTIVE
                           </span>
                         ) : (
-                          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                             PAUSED
                           </span>
                         )}
@@ -358,8 +358,8 @@ export function WebhookResiliencyConsolePage() {
                         <span
                           className={`rounded px-2 py-0.5 text-[11px] font-bold ${
                             pingResult.success
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-rose-100 text-rose-800'
                           }`}
                         >
                           HTTP {pingResult.status}
@@ -520,8 +520,8 @@ export function WebhookResiliencyConsolePage() {
                       <span
                         className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${
                           att.success
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-rose-100 text-rose-800'
                         }`}
                       >
                         HTTP {att.httpStatusCode}
@@ -529,7 +529,7 @@ export function WebhookResiliencyConsolePage() {
                       <span className="text-[10px] text-secondary">Attempt #{att.attemptNumber}</span>
                     </div>
                     {att.errorMessage && (
-                      <p className="font-mono text-[10px] text-rose-600 dark:text-rose-400">{att.errorMessage}</p>
+                      <p className="font-mono text-[10px] text-rose-600">{att.errorMessage}</p>
                     )}
                   </div>
                   <span className="text-[10px] text-secondary">

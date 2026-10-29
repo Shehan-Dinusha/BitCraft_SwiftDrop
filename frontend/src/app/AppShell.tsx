@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Boxes, LogOut } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { Button, ThemeToggle } from '@/design-system';
+import { Button } from '@/design-system';
 import { PersonaSwitcherDevBar } from '@/features/auth/components/PersonaSwitcherDevBar';
 import { useAuthStore } from '@/store/useAuthStore';
 import { logoutUser } from '@/services/api/authApi';
@@ -72,7 +72,6 @@ export function AppShell() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-1">
-            <ThemeToggle />
             <Button
               variant="ghost"
               className="text-secondary"

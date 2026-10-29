@@ -4,44 +4,15 @@ import { DensityProvider, densityModes, type DensityMode } from '@/design-system
 
 export interface PreviewPaneProps {
   children: ReactNode;
-  /** Applied to both frames, e.g. a fixed height for docks and grids. */
+  /** Applied to the frame, e.g. a fixed height for docks and grids. */
   className?: string;
 }
 
-function Frame({
-  theme,
-  className,
-  children
-}: {
-  theme: 'light' | 'dark';
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        'overflow-hidden rounded-xl border border-border-subtle',
-        theme === 'light' ? 'light' : 'dark'
-      )}
-    >
-      <div className="border-b border-border-subtle bg-elevated px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
-        {theme}
-      </div>
-      <div className={cn('bg-canvas p-4 text-primary', className)}>{children}</div>
-    </div>
-  );
-}
-
-/** Renders the same demo twice, scoped to the light and dark token sets. */
+/** Renders a demo on the canvas inside a bordered frame. */
 export function PreviewPane({ children, className }: PreviewPaneProps) {
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      <Frame theme="light" className={className}>
-        {children}
-      </Frame>
-      <Frame theme="dark" className={className}>
-        {children}
-      </Frame>
+    <div className="light overflow-hidden rounded-xl border border-border-subtle">
+      <div className={cn('bg-canvas p-4 text-primary', className)}>{children}</div>
     </div>
   );
 }
