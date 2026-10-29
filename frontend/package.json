@@ -11,6 +11,7 @@
     "api:sync:local": "node scripts/generate-api-types.mjs --source live",
     "api:sync:specs": "node scripts/generate-api-types.mjs --source specs",
     "seed:demo": "node scripts/seed-demo-users.mjs",
+    "build:catalog": "node scripts/build-catalog.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

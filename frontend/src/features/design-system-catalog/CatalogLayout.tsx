@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 import { catalogFamilies } from './families';
 import { FIGMA_FILE, catalogPages } from './catalogNav';
+import { isStandaloneCatalog } from './standalone';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
@@ -55,9 +56,11 @@ export function CatalogLayout() {
             Figma
             <ExternalLink aria-hidden="true" className="size-3.5" />
           </a>
-          <Link to="/login" className="text-brand-primary hover:underline">
-            Open the app
-          </Link>
+          {isStandaloneCatalog ? null : (
+            <Link to="/login" className="text-brand-primary hover:underline">
+              Open the app
+            </Link>
+          )}
         </div>
       </header>
 

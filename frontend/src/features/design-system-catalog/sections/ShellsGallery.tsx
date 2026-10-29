@@ -3,6 +3,7 @@ import { ExternalLink } from 'lucide-react';
 import { ChoiceChip, roleShellSpec } from '@/design-system';
 import { cn } from '@/utils/cn';
 import { previewRoles, type PreviewRole } from '../ShellPreviewPage';
+import { previewUrl } from '../standalone';
 
 type Viewport = 'desktop' | 'tablet' | 'mobile';
 
@@ -74,7 +75,7 @@ export function ShellsGallery() {
 
   const effective: Viewport = viewport === 'mobile' && !supportsMobile(role) ? 'desktop' : viewport;
   const frame = viewports[effective];
-  const src = `/catalog/preview/${role}`;
+  const src = previewUrl(role);
 
   return (
     <div className="space-y-4">

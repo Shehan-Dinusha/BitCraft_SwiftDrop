@@ -1,10 +1,7 @@
 import { Navigate, RouteObject, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/app/AppShell';
-import { CatalogLayout } from '@/features/design-system-catalog/CatalogLayout';
-import { CatalogHome } from '@/features/design-system-catalog/CatalogHome';
-import { CatalogGroupPage } from '@/features/design-system-catalog/CatalogGroupPage';
-import { ShellPreviewPage } from '@/features/design-system-catalog/ShellPreviewPage';
+import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
@@ -103,14 +100,6 @@ export const routes: RouteObject[] = [
     ]
   },
   // The design catalog is public: no login, no role, no app shell.
-  {
-    path: '/catalog',
-    element: <CatalogLayout />,
-    children: [
-      { index: true, element: <CatalogHome /> },
-      { path: ':slug', element: <CatalogGroupPage /> }
-    ]
-  },
-  { path: '/catalog/preview/:role', element: <ShellPreviewPage /> },
+  ...catalogRoutes,
   { path: '*', element: <Navigate to="/login" replace /> }
 ];
