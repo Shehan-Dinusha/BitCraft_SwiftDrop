@@ -87,3 +87,18 @@ export { ChoiceChip } from './components/ChoiceChip/ChoiceChip';
 export type { ChoiceChipProps } from './components/ChoiceChip/ChoiceChip';
 export { SpecialField } from './components/SpecialField/SpecialField';
 export type { DimensionsValue, SpecialFieldProps } from './components/SpecialField/SpecialField';
+export { TrackingNumber } from './components/TrackingNumber/TrackingNumber';
+export type {
+  TrackingNumberProps,
+  TrackingNumberSize
+} from './components/TrackingNumber/TrackingNumber';
+export { MoneyAmount } from './components/MoneyAmount/MoneyAmount';
+export type { MoneyAmountProps, MoneyAmountSize } from './components/MoneyAmount/MoneyAmount';
+export { SpeedTag } from './components/SpeedTag/SpeedTag';
+export type { Speed, SpeedTagProps } from './components/SpeedTag/SpeedTag';
+export { RoleTag } from './components/RoleTag/RoleTag';
+export type { RoleTagProps, RoleTagRole, RoleTagStyle } from './components/RoleTag/RoleTag';
+export { QueueChip } from './components/QueueChip/QueueChip';
+export type { QueueChipProps } from './components/QueueChip/QueueChip';
+export { CashState } from './components/CashState/CashState';
+export type { CashStateKind, CashStateProps } from './components/CashState/CashState';

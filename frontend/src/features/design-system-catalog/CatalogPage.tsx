@@ -11,6 +11,7 @@ import { FeedbackSection } from './sections/FeedbackSection';
 import { DataSection } from './sections/DataSection';
 import { TypographySection } from './sections/TypographySection';
 import { SelectionSection } from './sections/SelectionSection';
+import { IdentifiersSection } from './sections/IdentifiersSection';
 
 interface CatalogEntry {
   id: string;
@@ -47,6 +48,13 @@ const families: CatalogEntry[] = [
     description:
       'Checkbox, radio, toggle, textarea with counter, radio cards, choice chips and the booking special fields.',
     content: <SelectionSection />
+  },
+  {
+    id: 'identifiers',
+    title: 'Identifiers and tags',
+    description:
+      'Tracking number, money amount, speed and role tags, dispatcher queue chips, and cash state.',
+    content: <IdentifiersSection />
   },
   {
     id: 'menus',
@@ -100,7 +108,12 @@ const families: CatalogEntry[] = [
 ];
 
 const densityLegend = [
-  { persona: 'COURIER', density: 'kinetic', target: '56px', note: 'Thumb zone, one primary action' },
+  {
+    persona: 'COURIER',
+    density: 'kinetic',
+    target: '56px',
+    note: 'Thumb zone, one primary action'
+  },
   { persona: 'CUSTOMER', density: 'comfortable', target: '44px', note: 'Progressive disclosure' },
   {
     persona: 'ADMIN_OPS / MERCHANT',
@@ -122,8 +135,8 @@ export function CatalogPage() {
             Velocity variant catalog
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-secondary">
-            Every family renders on the light token set. Forced states exist for this page; product code drives
-            states from props and interaction.
+            Every family renders on the light token set. Forced states exist for this page; product
+            code drives states from props and interaction.
           </p>
         </div>
 
