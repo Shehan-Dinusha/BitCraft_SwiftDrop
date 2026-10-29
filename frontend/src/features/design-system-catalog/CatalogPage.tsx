@@ -13,6 +13,7 @@ import { TypographySection } from './sections/TypographySection';
 import { SelectionSection } from './sections/SelectionSection';
 import { IdentifiersSection } from './sections/IdentifiersSection';
 import { TimelineSection } from './sections/TimelineSection';
+import { AlertsSection } from './sections/AlertsSection';
 
 interface CatalogEntry {
   id: string;
@@ -63,6 +64,12 @@ const families: CatalogEntry[] = [
     description:
       'Timeline step and tracking history card, the five-step status progress bar, and the live connection indicator.',
     content: <TimelineSection />
+  },
+  {
+    id: 'alerts',
+    title: 'Alerts, toasts and empty states',
+    description: 'Inline alerts, the toast queue (5 s, max 3) and the three empty-state types.',
+    content: <AlertsSection />
   },
   {
     id: 'menus',
