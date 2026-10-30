@@ -30,3 +30,10 @@ springdoc:
     version: OPENAPI_3_1
   swagger-ui:
     path: /swagger-ui.html
+pricing:
+  # local = built-in tariff copy, remote = call the pricing service (no fallback between them)
+  mode: ${PRICING_MODE:local}
+  service:
+    url: ${PRICING_SERVICE_URL:http://localhost:8083}
+    connect-timeout-ms: ${PRICING_CONNECT_TIMEOUT_MS:1000}
+    read-timeout-ms: ${PRICING_READ_TIMEOUT_MS:2000}

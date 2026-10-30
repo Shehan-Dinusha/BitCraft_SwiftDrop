@@ -87,6 +87,14 @@ spec:
                   key: password
             - name: RABBITMQ_HOST
               value: rabbitmq.swiftdrop-messaging.svc.cluster.local
+            - name: PRICING_MODE
+              value: local
+            - name: PRICING_SERVICE_URL
+              value: http://pricing-zone-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: PRICING_CONNECT_TIMEOUT_MS
+              value: "1000"
+            - name: PRICING_READ_TIMEOUT_MS
+              value: "2000"
           resources:
             requests:
               cpu: 500m
