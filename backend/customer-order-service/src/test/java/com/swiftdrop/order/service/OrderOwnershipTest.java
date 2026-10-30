@@ -9,6 +9,7 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
+import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,8 +31,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -196,5 +199,142 @@ class OrderOwnershipTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> customerOrderService.listCustomerOrders(null, null, null, pageable))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ---- writes and downloads (Stage 3) ----
+
+    @Test
+    @DisplayName("Customer B cannot cancel customer A's order, and nothing is saved or published")
+    void nonOwnerCannotCancel() {
+        orderExists();
+
+        assertThatThrownBy(() -> customerOrderService.cancelOrder(orderId, null, customerB, "CUSTOMER", UUID.randomUUID()))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        assertThat(orderOfA.getStatus()).isEqualTo(PublicOrderStatus.CREATED);
+        verify(customerOrderRepository, never()).save(any());
+        verifyNoInteractions(orderEventPublisher);
+    }
+
+    @Test
+    @DisplayName("Owner can cancel their own order")
+    void ownerCanCancel() {
+        orderExists();
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerA, "CUSTOMER", UUID.randomUUID());
+
+        assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
+        verify(orderEventPublisher).publishOrderCancelled(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Dispatcher can cancel any order")
+    void dispatcherCanCancel() {
+        orderExists();
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerB, "DISPATCHER", UUID.randomUUID());
+
+        assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("Customer B cannot edit or delete customer A's order")
+    void nonOwnerCannotUpdateOrDelete() {
+        orderExists();
+
+        assertThatThrownBy(() -> customerOrderService.updateOrder(orderId, new UpdateOrderRequest(), customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.deleteOrder(orderId, customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        verify(customerOrderRepository, never()).save(any());
+        verify(customerOrderRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Owner can edit and delete their own order")
+    void ownerCanUpdateAndDelete() {
+        orderExists();
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(customerOrderService.updateOrder(orderId, new UpdateOrderRequest(), customerA, "CUSTOMER").getOrderId())
+                .isEqualTo(orderId);
+        customerOrderService.deleteOrder(orderId, customerA, "CUSTOMER");
+
+        verify(customerOrderRepository).delete(orderOfA);
+    }
+
+    @Test
+    @DisplayName("Non-owner gets 404, not 409, even when the order is past the editable state")
+    void ownershipIsCheckedBeforeOrderState() {
+        orderOfA.setStatus(PublicOrderStatus.PICKED_UP);
+        orderExists();
+
+        assertThatThrownBy(() -> customerOrderService.updateOrder(orderId, new UpdateOrderRequest(), customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.deleteOrder(orderId, customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Customer B cannot accept or reject a fee revision on customer A's order")
+    void nonOwnerCannotActOnFeeRevision() {
+        orderOfA.setFeeRevisionStatus(FeeRevisionStatus.PENDING);
+        orderOfA.setRevisedFee(new BigDecimal("900.00"));
+        orderExists();
+
+        assertThatThrownBy(() -> customerOrderService.acceptFeeRevision(orderId, customerB, "CUSTOMER", UUID.randomUUID()))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.rejectFeeRevision(orderId, customerB, "CUSTOMER", UUID.randomUUID()))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        assertThat(orderOfA.getFeeRevisionStatus()).isEqualTo(FeeRevisionStatus.PENDING);
+        assertThat(orderOfA.getStatus()).isEqualTo(PublicOrderStatus.CREATED);
+        verify(customerOrderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Owner can accept a fee revision")
+    void ownerCanAcceptFeeRevision() {
+        orderOfA.setFeeRevisionStatus(FeeRevisionStatus.PENDING);
+        orderOfA.setRevisedFee(new BigDecimal("900.00"));
+        orderExists();
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CustomerOrderResponse response = customerOrderService.acceptFeeRevision(orderId, customerA, "CUSTOMER", UUID.randomUUID());
+
+        assertThat(response.getFinalFee()).isEqualByComparingTo("900.00");
+    }
+
+    @Test
+    @DisplayName("Customer B gets 404 on customer A's label and receipt, and no PDF is generated")
+    void nonOwnerCannotDownloadPdfs() {
+        orderExists();
+
+        assertThatThrownBy(() -> customerOrderService.getShippingLabelPdf(orderId, customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.getDeliveryReceiptPdf(orderId, customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.getShippingLabelPdf(orderId, null, null))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        verifyNoInteractions(orderPdfGeneratorService);
+    }
+
+    @Test
+    @DisplayName("Owner, dispatcher and admin can download the label and receipt")
+    void ownerAndPrivilegedRolesCanDownloadPdfs() {
+        orderExists();
+        byte[] label = "label".getBytes();
+        byte[] receipt = "receipt".getBytes();
+        when(orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(orderOfA)).thenReturn(label);
+        when(orderPdfGeneratorService.generateDeliveryReceiptPdf(orderOfA)).thenReturn(receipt);
+
+        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerA, "CUSTOMER")).isEqualTo(label);
+        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerB, "DISPATCHER")).isEqualTo(label);
+        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerA, "CUSTOMER")).isEqualTo(receipt);
+        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerB, "SYSTEM_ADMIN")).isEqualTo(receipt);
     }
 }

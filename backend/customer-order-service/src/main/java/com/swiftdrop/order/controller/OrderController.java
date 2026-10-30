@@ -106,10 +106,11 @@ public class OrderController {
     public ApiResponse<CustomerOrderResponse> updateOrder(
             @PathVariable("orderId") UUID orderId,
             @Valid @RequestBody UpdateOrderRequest request,
-            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader) {
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
 
         UUID authUserId = parseUuidSafe(userIdHeader);
-        CustomerOrderResponse response = customerOrderService.updateOrder(orderId, request, authUserId);
+        CustomerOrderResponse response = customerOrderService.updateOrder(orderId, request, authUserId, userRoleHeader);
         return ApiResponse.success(response, "Order updated successfully");
     }
 
@@ -117,10 +118,11 @@ public class OrderController {
     @Operation(summary = "Delete order while in CREATED status")
     public ApiResponse<String> deleteOrder(
             @PathVariable("orderId") UUID orderId,
-            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader) {
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
 
         UUID authUserId = parseUuidSafe(userIdHeader);
-        customerOrderService.deleteOrder(orderId, authUserId);
+        customerOrderService.deleteOrder(orderId, authUserId, userRoleHeader);
         return ApiResponse.success("Order " + orderId + " deleted successfully");
     }
 
@@ -130,11 +132,12 @@ public class OrderController {
             @PathVariable("orderId") UUID orderId,
             @Valid @RequestBody(required = false) CancelOrderRequest request,
             @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader,
             @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationIdHeader) {
 
         UUID authUserId = parseUuidSafe(userIdHeader);
         UUID correlationId = parseUuidSafe(correlationIdHeader);
-        CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, request, authUserId, correlationId);
+        CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, request, authUserId, userRoleHeader, correlationId);
         return ApiResponse.success(response, "Order cancelled successfully");
     }
 
@@ -143,11 +146,12 @@ public class OrderController {
     public ApiResponse<CustomerOrderResponse> acceptFeeRevision(
             @PathVariable("orderId") UUID orderId,
             @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader,
             @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationIdHeader) {
 
         UUID authUserId = parseUuidSafe(userIdHeader);
         UUID correlationId = parseUuidSafe(correlationIdHeader);
-        CustomerOrderResponse response = customerOrderService.acceptFeeRevision(orderId, authUserId, correlationId);
+        CustomerOrderResponse response = customerOrderService.acceptFeeRevision(orderId, authUserId, userRoleHeader, correlationId);
         return ApiResponse.success(response, "Fee revision accepted. Final fee is LKR " + response.getFinalFee());
     }
 
@@ -156,20 +160,23 @@ public class OrderController {
     public ApiResponse<CustomerOrderResponse> rejectFeeRevision(
             @PathVariable("orderId") UUID orderId,
             @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader,
             @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationIdHeader) {
 
         UUID authUserId = parseUuidSafe(userIdHeader);
         UUID correlationId = parseUuidSafe(correlationIdHeader);
-        CustomerOrderResponse response = customerOrderService.rejectFeeRevision(orderId, authUserId, correlationId);
+        CustomerOrderResponse response = customerOrderService.rejectFeeRevision(orderId, authUserId, userRoleHeader, correlationId);
         return ApiResponse.success(response, "Fee revision rejected. Order has been cancelled at LKR 0.00");
     }
 
     @GetMapping(value = "/{orderId}/shipping-label", produces = MediaType.APPLICATION_PDF_VALUE)
     @Operation(summary = "Download 2-page A5 shipping label with QR code and fee estimate receipt (FR-C4, FR-C5)")
     public ResponseEntity<byte[]> downloadShippingLabel(
-            @Parameter(description = "Order UUID") @PathVariable("orderId") UUID orderId) {
+            @Parameter(description = "Order UUID") @PathVariable("orderId") UUID orderId,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
 
-        byte[] pdfBytes = customerOrderService.getShippingLabelPdf(orderId);
+        byte[] pdfBytes = customerOrderService.getShippingLabelPdf(orderId, parseUuidSafe(userIdHeader), userRoleHeader);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"shipping-label-" + orderId + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
@@ -179,9 +186,11 @@ public class OrderController {
     @GetMapping(value = "/{orderId}/delivery-receipt", produces = MediaType.APPLICATION_PDF_VALUE)
     @Operation(summary = "Download A5 final delivery & cash collection receipt (FR-C7)")
     public ResponseEntity<byte[]> downloadDeliveryReceipt(
-            @Parameter(description = "Order UUID") @PathVariable("orderId") UUID orderId) {
+            @Parameter(description = "Order UUID") @PathVariable("orderId") UUID orderId,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
 
-        byte[] pdfBytes = customerOrderService.getDeliveryReceiptPdf(orderId);
+        byte[] pdfBytes = customerOrderService.getDeliveryReceiptPdf(orderId, parseUuidSafe(userIdHeader), userRoleHeader);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"delivery-receipt-" + orderId + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)

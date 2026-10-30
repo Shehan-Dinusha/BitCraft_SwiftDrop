@@ -152,6 +152,17 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       requestBody:
         required: true
         content:
@@ -165,6 +176,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
+        "404":
+          description: Order not found, or not owned by the caller
     delete:
       tags: [Order]
       summary: Delete order while in CREATED status
@@ -176,6 +189,17 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       responses:
         "200":
           description: Deletion confirmation
@@ -183,6 +207,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseString"
+        "404":
+          description: Order not found, or not owned by the caller
 
   /api/v1/orders/tracking/{trackingNumber}:
     get:
@@ -216,6 +242,17 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       requestBody:
         content:
           application/json:
@@ -228,6 +265,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
+        "404":
+          description: Order not found, or not owned by the caller
 
   /api/v1/orders/{orderId}/fee-revision/accept:
     post:
@@ -241,6 +280,17 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       responses:
         "200":
           description: Accepted fee revision response
@@ -248,6 +298,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
+        "404":
+          description: Order not found, or not owned by the caller
 
   /api/v1/orders/{orderId}/fee-revision/reject:
     post:
@@ -261,6 +313,17 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       responses:
         "200":
           description: Rejected fee revision response
@@ -268,6 +331,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
+        "404":
+          description: Order not found, or not owned by the caller
 
   /api/v1/orders/{orderId}/shipping-label:
     get:
@@ -281,6 +346,17 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       responses:
         "200":
           description: 2-page A5 Shipping Label PDF
@@ -289,6 +365,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        "404":
+          description: Order not found, or not owned by the caller
 
   /api/v1/orders/{orderId}/delivery-receipt:
     get:
@@ -302,6 +380,17 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       responses:
         "200":
           description: Final Delivery Receipt PDF
@@ -310,6 +399,9 @@ paths:
               schema:
                 type: string
                 format: binary
+        "404":
+          description: Order not found, or not owned by the caller
+
 
 components:
   schemas:

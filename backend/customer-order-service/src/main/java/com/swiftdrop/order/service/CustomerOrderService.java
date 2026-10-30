@@ -118,9 +118,7 @@ public class CustomerOrderService {
 
     @Transactional(readOnly = true)
     public CustomerOrderResponse getOrderById(UUID orderId, UUID callerId, String callerRole) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
-        assertCallerCanAccess(order, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
         return CustomerOrderResponse.fromEntity(order);
     }
 
@@ -152,6 +150,13 @@ public class CustomerOrderService {
      * Ownership rule shared by every order endpoint: dispatchers and system admins may access any order,
      * everyone else only their own. A non-owner gets the same 404 as a missing order so existence is not leaked.
      */
+    private CustomerOrder findAccessibleOrder(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+        assertCallerCanAccess(order, callerId, callerRole);
+        return order;
+    }
+
     private void assertCallerCanAccess(CustomerOrder order, UUID callerId, String callerRole) {
         if (isPrivilegedRole(callerRole)) {
             return;
@@ -167,9 +172,8 @@ public class CustomerOrderService {
     }
 
     @Transactional
-    public CustomerOrderResponse updateOrder(UUID orderId, UpdateOrderRequest request, UUID authenticatedUserId) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+    public CustomerOrderResponse updateOrder(UUID orderId, UpdateOrderRequest request, UUID callerId, String callerRole) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
 
         if (order.getStatus() != PublicOrderStatus.CREATED) {
             throw new InvalidOrderStateException("Order cannot be updated once it leaves CREATED status. Current status: " + order.getStatus());
@@ -225,9 +229,8 @@ public class CustomerOrderService {
     }
 
     @Transactional
-    public void deleteOrder(UUID orderId, UUID authenticatedUserId) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+    public void deleteOrder(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
 
         if (order.getStatus() != PublicOrderStatus.CREATED) {
             throw new InvalidOrderStateException("Only orders in CREATED status can be deleted. Current status: " + order.getStatus());
@@ -238,9 +241,8 @@ public class CustomerOrderService {
     }
 
     @Transactional
-    public CustomerOrderResponse cancelOrder(UUID orderId, CancelOrderRequest request, UUID authenticatedUserId, UUID correlationId) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+    public CustomerOrderResponse cancelOrder(UUID orderId, CancelOrderRequest request, UUID callerId, String callerRole, UUID correlationId) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
 
         if (order.getStatus().isTerminal()) {
             throw new InvalidOrderStateException("Order " + orderId + " is already in terminal state " + order.getStatus());
@@ -258,9 +260,8 @@ public class CustomerOrderService {
     }
 
     @Transactional
-    public CustomerOrderResponse acceptFeeRevision(UUID orderId, UUID authenticatedUserId, UUID correlationId) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+    public CustomerOrderResponse acceptFeeRevision(UUID orderId, UUID callerId, String callerRole, UUID correlationId) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
 
         if (order.getFeeRevisionStatus() != FeeRevisionStatus.PENDING || order.getRevisedFee() == null) {
             throw new InvalidOrderStateException("Order " + orderId + " does not have a pending fee revision.");
@@ -276,9 +277,8 @@ public class CustomerOrderService {
     }
 
     @Transactional
-    public CustomerOrderResponse rejectFeeRevision(UUID orderId, UUID authenticatedUserId, UUID correlationId) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+    public CustomerOrderResponse rejectFeeRevision(UUID orderId, UUID callerId, String callerRole, UUID correlationId) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
 
         if (order.getFeeRevisionStatus() != FeeRevisionStatus.PENDING) {
             throw new InvalidOrderStateException("Order " + orderId + " does not have a pending fee revision.");
@@ -300,16 +300,14 @@ public class CustomerOrderService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] getShippingLabelPdf(UUID orderId) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+    public byte[] getShippingLabelPdf(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
         return orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(order);
     }
 
     @Transactional(readOnly = true)
-    public byte[] getDeliveryReceiptPdf(UUID orderId) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+    public byte[] getDeliveryReceiptPdf(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
         return orderPdfGeneratorService.generateDeliveryReceiptPdf(order);
     }
 }

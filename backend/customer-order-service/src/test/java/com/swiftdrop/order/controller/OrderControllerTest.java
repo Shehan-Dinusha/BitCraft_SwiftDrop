@@ -180,7 +180,7 @@ class OrderControllerTest {
         UUID orderId = UUID.randomUUID();
         byte[] dummyPdf = "%PDF-1.4 test".getBytes();
 
-        when(customerOrderService.getShippingLabelPdf(orderId)).thenReturn(dummyPdf);
+        when(customerOrderService.getShippingLabelPdf(eq(orderId), any(), any())).thenReturn(dummyPdf);
 
         mockMvc.perform(get("/api/v1/orders/{orderId}/shipping-label", orderId))
                 .andExpect(status().isOk())
@@ -198,7 +198,7 @@ class OrderControllerTest {
                 .cancellationReason("Customer changed mind")
                 .build();
 
-        when(customerOrderService.cancelOrder(eq(orderId), any(), any(), any())).thenReturn(cancelledResponse);
+        when(customerOrderService.cancelOrder(eq(orderId), any(), any(), any(), any())).thenReturn(cancelledResponse);
 
         CancelOrderRequest req = CancelOrderRequest.builder().reason("Customer changed mind").build();
 
@@ -220,7 +220,7 @@ class OrderControllerTest {
                 .feeRevisionStatus(FeeRevisionStatus.REJECTED)
                 .build();
 
-        when(customerOrderService.rejectFeeRevision(eq(orderId), any(), any())).thenReturn(rejectedResponse);
+        when(customerOrderService.rejectFeeRevision(eq(orderId), any(), any(), any())).thenReturn(rejectedResponse);
 
         mockMvc.perform(post("/api/v1/orders/{orderId}/fee-revision/reject", orderId))
                 .andExpect(status().isOk())
