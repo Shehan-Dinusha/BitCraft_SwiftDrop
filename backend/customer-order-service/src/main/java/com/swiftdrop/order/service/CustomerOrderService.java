@@ -5,6 +5,7 @@ import com.swiftdrop.contracts.enums.FeeRevisionStatus;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
+import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CancelOrderRequest;
@@ -116,9 +117,10 @@ public class CustomerOrderService {
     }
 
     @Transactional(readOnly = true)
-    public CustomerOrderResponse getOrderById(UUID orderId) {
+    public CustomerOrderResponse getOrderById(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+        assertCallerCanAccess(order, callerId, callerRole);
         return CustomerOrderResponse.fromEntity(order);
     }
 
@@ -130,7 +132,12 @@ public class CustomerOrderService {
     }
 
     @Transactional(readOnly = true)
-    public PagedResult<CustomerOrderResponse> listCustomerOrders(UUID customerId, Pageable pageable) {
+    public PagedResult<CustomerOrderResponse> listCustomerOrders(UUID requestedCustomerId, UUID callerId, String callerRole, Pageable pageable) {
+        // Only dispatchers and admins may list another customer's orders; everyone else sees their own.
+        UUID customerId = isPrivilegedRole(callerRole) && requestedCustomerId != null ? requestedCustomerId : callerId;
+        if (customerId == null) {
+            throw new IllegalArgumentException("Customer identification is required to list orders");
+        }
         Page<CustomerOrder> page = customerOrderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId, pageable);
         return PagedResult.of(
                 page.getContent().stream().map(CustomerOrderResponse::fromEntity).toList(),
@@ -139,6 +146,24 @@ public class CustomerOrderService {
                 page.getTotalElements(),
                 page.getTotalPages()
         );
+    }
+
+    /**
+     * Ownership rule shared by every order endpoint: dispatchers and system admins may access any order,
+     * everyone else only their own. A non-owner gets the same 404 as a missing order so existence is not leaked.
+     */
+    private void assertCallerCanAccess(CustomerOrder order, UUID callerId, String callerRole) {
+        if (isPrivilegedRole(callerRole)) {
+            return;
+        }
+        if (callerId == null || !callerId.equals(order.getCustomerId())) {
+            throw new OrderNotFoundException("Order not found with ID: " + order.getOrderId());
+        }
+    }
+
+    private boolean isPrivilegedRole(String callerRole) {
+        UserRole role = UserRole.fromClaim(callerRole);
+        return role == UserRole.DISPATCHER || role == UserRole.SYSTEM_ADMIN;
     }
 
     @Transactional

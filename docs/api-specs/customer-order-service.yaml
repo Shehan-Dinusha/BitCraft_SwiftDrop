@@ -80,12 +80,17 @@ paths:
             type: string
             format: uuid
           description: Authenticated customer UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
         - name: customerId
           in: query
           schema:
             type: string
             format: uuid
-          description: Explicit customer UUID override
+          description: Customer UUID to list. Honoured only for DISPATCHER and SYSTEM_ADMIN; other callers always see their own orders.
         - name: page
           in: query
           schema:
@@ -116,6 +121,17 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       responses:
         "200":
           description: Order details response
@@ -123,6 +139,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
+        "404":
+          description: Order not found, or not owned by the caller
     put:
       tags: [Order]
       summary: Edit order while in CREATED status

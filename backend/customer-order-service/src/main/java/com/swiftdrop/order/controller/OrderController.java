@@ -71,8 +71,13 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     @Operation(summary = "Get order details by order UUID")
-    public ApiResponse<CustomerOrderResponse> getOrderById(@PathVariable("orderId") UUID orderId) {
-        return ApiResponse.success(customerOrderService.getOrderById(orderId), "Order retrieved successfully");
+    public ApiResponse<CustomerOrderResponse> getOrderById(
+            @PathVariable("orderId") UUID orderId,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
+        return ApiResponse.success(
+                customerOrderService.getOrderById(orderId, parseUuidSafe(userIdHeader), userRoleHeader),
+                "Order retrieved successfully");
     }
 
     @GetMapping("/tracking/{trackingNumber}")
@@ -85,17 +90,14 @@ public class OrderController {
     @Operation(summary = "List customer's orders with pagination")
     public ApiResponse<PagedResult<CustomerOrderResponse>> listOrders(
             @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader,
             @RequestParam(value = "customerId", required = false) UUID customerIdParam,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size) {
 
-        UUID customerId = customerIdParam != null ? customerIdParam : parseUuidSafe(userIdHeader);
-        if (customerId == null) {
-            throw new IllegalArgumentException("Customer identification is required to list orders");
-        }
-
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size)));
-        PagedResult<CustomerOrderResponse> result = customerOrderService.listCustomerOrders(customerId, pageable);
+        PagedResult<CustomerOrderResponse> result = customerOrderService.listCustomerOrders(
+                customerIdParam, parseUuidSafe(userIdHeader), userRoleHeader, pageable);
         return ApiResponse.success(result, "Orders retrieved successfully");
     }
 
