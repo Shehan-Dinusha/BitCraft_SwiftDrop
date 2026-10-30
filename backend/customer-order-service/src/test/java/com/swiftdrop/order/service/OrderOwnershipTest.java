@@ -13,6 +13,7 @@ import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.CallerIdentityRequiredException;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
+import com.swiftdrop.order.service.pricing.PricingClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,7 @@ class OrderOwnershipTest {
     private TrackingNumberGenerator trackingNumberGenerator;
 
     @Mock
-    private PricingCalculationService pricingCalculationService;
+    private PricingClient pricingClient;
 
     @Mock
     private OrderPdfGeneratorService orderPdfGeneratorService;

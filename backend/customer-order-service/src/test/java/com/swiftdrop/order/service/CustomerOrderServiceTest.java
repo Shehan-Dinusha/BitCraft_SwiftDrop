@@ -15,6 +15,7 @@ import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
+import com.swiftdrop.order.service.pricing.PricingClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,7 @@ class CustomerOrderServiceTest {
     private TrackingNumberGenerator trackingNumberGenerator;
 
     @Mock
-    private PricingCalculationService pricingCalculationService;
+    private PricingClient pricingClient;
 
     @Mock
     private OrderPdfGeneratorService orderPdfGeneratorService;
@@ -117,7 +118,7 @@ class CustomerOrderServiceTest {
                 .currency("LKR")
                 .build();
 
-        when(pricingCalculationService.calculateEstimate(any(FeeEstimateRequest.class)))
+        when(pricingClient.estimate(any(FeeEstimateRequest.class)))
                 .thenReturn(mockEstimate);
 
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
