@@ -69,6 +69,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
+        "401":
+          description: Caller identification (X-User-Id) is missing
     get:
       tags: [Order]
       summary: List customer's orders with pagination
@@ -108,6 +110,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponsePagedCustomerOrderResponse"
+        "401":
+          description: Caller identification (X-User-Id) is missing
 
   /api/v1/orders/{orderId}:
     get:

@@ -23,6 +23,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    private static final int MAX_CAUSE_DEPTH = 10;
+    private static final int MAX_FRAMES = 40;
+
     @ExceptionHandler(OrderNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(OrderNotFoundException ex, HttpServletRequest request) {
         log.warn("Order not found on {}", safePath(request));
@@ -63,6 +66,13 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(400, "Bad Request", "Invalid value for parameter '" + ex.getName() + "'", safePath(request)));
     }
 
+    @ExceptionHandler(CallerIdentityRequiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallerIdentityRequired(CallerIdentityRequiredException ex, HttpServletRequest request) {
+        log.warn("Caller identity missing on {}", safePath(request));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiErrorResponse.of(401, "Unauthorized", "Customer identification is required", safePath(request)));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         log.warn("Illegal argument on {}", safePath(request));
@@ -72,10 +82,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
-        // Only exception types are logged: messages from the database or libraries can contain row data.
-        Throwable root = rootCause(ex);
-        log.error("Internal error on {} ({}, root cause {})", safePath(request),
-                ex.getClass().getName(), root.getClass().getName());
+        // The stack trace is kept for debugging, but without exception messages: those can come from the
+        // database or libraries and contain row data such as phone numbers.
+        log.error("Internal error on {}{}", safePath(request), traceWithoutMessages(ex));
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiErrorResponse.of(500, "Internal Server Error", "An unexpected error occurred", safePath(request)));
     }
@@ -89,11 +98,18 @@ public class GlobalExceptionHandler {
         return pattern != null ? pattern.toString() : "unmatched";
     }
 
-    private Throwable rootCause(Throwable throwable) {
+    /** Exception class names and stack frames for the whole cause chain, never the messages. */
+    private String traceWithoutMessages(Throwable throwable) {
+        StringBuilder trace = new StringBuilder();
         Throwable current = throwable;
-        while (current.getCause() != null && current.getCause() != current) {
-            current = current.getCause();
+        for (int depth = 0; current != null && depth < MAX_CAUSE_DEPTH; depth++) {
+            trace.append(System.lineSeparator()).append(depth == 0 ? "" : "Caused by: ").append(current.getClass().getName());
+            StackTraceElement[] frames = current.getStackTrace();
+            for (int i = 0; i < Math.min(frames.length, MAX_FRAMES); i++) {
+                trace.append(System.lineSeparator()).append("\tat ").append(frames[i]);
+            }
+            current = current.getCause() == current ? null : current.getCause();
         }
-        return current;
+        return trace.toString();
     }
 }

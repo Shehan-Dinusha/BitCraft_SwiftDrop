@@ -10,6 +10,7 @@ import com.swiftdrop.order.domain.entity.CustomerOrder;
 import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
+import com.swiftdrop.order.exception.CallerIdentityRequiredException;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
@@ -196,9 +197,9 @@ class OrderOwnershipTest {
         Pageable pageable = PageRequest.of(0, 10);
 
         assertThatThrownBy(() -> customerOrderService.listCustomerOrders(customerA, null, "CUSTOMER", pageable))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(CallerIdentityRequiredException.class);
         assertThatThrownBy(() -> customerOrderService.listCustomerOrders(null, null, null, pageable))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(CallerIdentityRequiredException.class);
     }
 
     // ---- writes and downloads (Stage 3) ----

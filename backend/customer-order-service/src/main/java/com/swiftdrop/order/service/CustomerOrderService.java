@@ -14,6 +14,7 @@ import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
+import com.swiftdrop.order.exception.CallerIdentityRequiredException;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
@@ -47,7 +48,7 @@ public class CustomerOrderService {
     public CustomerOrderResponse createOrder(CreateOrderRequest request, UUID authenticatedUserId, UUID correlationId) {
         UUID effectiveCustomerId = authenticatedUserId != null ? authenticatedUserId : request.getCustomerId();
         if (effectiveCustomerId == null) {
-            throw new IllegalArgumentException("Customer ID is mandatory");
+            throw new CallerIdentityRequiredException("Customer identification is required");
         }
 
         // 1. Calculate price and chargeable weight
@@ -134,7 +135,7 @@ public class CustomerOrderService {
         // Only dispatchers and admins may list another customer's orders; everyone else sees their own.
         UUID customerId = isPrivilegedRole(callerRole) && requestedCustomerId != null ? requestedCustomerId : callerId;
         if (customerId == null) {
-            throw new IllegalArgumentException("Customer identification is required to list orders");
+            throw new CallerIdentityRequiredException("Customer identification is required");
         }
         Page<CustomerOrder> page = customerOrderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId, pageable);
         return PagedResult.of(

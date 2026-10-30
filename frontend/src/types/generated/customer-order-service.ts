@@ -602,6 +602,13 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponsePagedCustomerOrderResponse"];
                 };
             };
+            /** @description Caller identification (X-User-Id) is missing */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     createOrder: {
@@ -630,6 +637,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
                 };
+            };
+            /** @description Caller identification (X-User-Id) is missing */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

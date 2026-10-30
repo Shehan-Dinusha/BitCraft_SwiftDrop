@@ -9,6 +9,7 @@ import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.service.CustomerOrderService;
 import org.junit.jupiter.api.BeforeEach;
+import com.swiftdrop.order.exception.CallerIdentityRequiredException;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(OutputCaptureExtension.class)
@@ -279,17 +281,37 @@ class CreateOrderValidationTest {
     }
 
     @Test
-    @DisplayName("Unexpected errors return a fixed 500 message with no exception text, and the log has no exception message")
+    @DisplayName("Unexpected errors return a fixed 500 message; the log keeps the stack trace but not exception messages")
     void internalErrorHidesExceptionText(CapturedOutput output) throws Exception {
+        IllegalStateException cause = new IllegalStateException("root cause leaks Nimal 0716667778");
         when(customerOrderService.createOrder(any(), any(), any()))
-                .thenThrow(new RuntimeException("could not execute statement: insert into customer_orders ... Key (recipient_phone)=(0714445556)"));
+                .thenThrow(new RuntimeException("could not execute statement: insert into customer_orders ... Key (recipient_phone)=(0714445556)", cause));
 
         String body = create(r -> { }).andExpect(status().isInternalServerError())
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(body).doesNotContain("insert into", "customer_orders", "0714445556", "recipient_phone")
                 .contains("An unexpected error occurred");
-        assertThat(output.getAll()).doesNotContain("insert into", "0714445556");
+        assertThat(output.getAll())
+                .doesNotContain("insert into", "0714445556", "0716667778", "Nimal")
+                .contains("Internal error on /api/v1/orders")
+                .contains("java.lang.RuntimeException")
+                .contains("Caused by: java.lang.IllegalStateException")
+                .contains("\tat com.swiftdrop.order.controller.CreateOrderValidationTest");
+    }
+
+    @Test
+    @DisplayName("Missing caller identity returns 401 with a specific message")
+    void missingCallerIdentityReturns401() throws Exception {
+        when(customerOrderService.listCustomerOrders(any(), any(), any(), any()))
+                .thenThrow(new CallerIdentityRequiredException("Customer identification is required"));
+        when(customerOrderService.createOrder(any(), any(), any()))
+                .thenThrow(new CallerIdentityRequiredException("Customer identification is required"));
+
+        mockMvc.perform(get("/api/v1/orders"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Customer identification is required"));
+        create(r -> { }).andExpect(status().isUnauthorized());
     }
 
     @Test
