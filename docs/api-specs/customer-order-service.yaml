@@ -489,6 +489,8 @@ components:
           $ref: "#/components/schemas/SriLankanDistrict"
         actualWeightKg:
           type: number
+          minimum: 0.01
+          maximum: 50
           format: double
           example: 1.5
         lengthCm:
@@ -583,46 +585,69 @@ components:
           format: uuid
         pickupAddressLine1:
           type: string
+          minLength: 5
+          maxLength: 200
+          description: "Letters, digits, spaces and . , / # ( ) & ' : - only"
           example: No. 42, Galle Road
         pickupAddressLine2:
           type: string
+          maxLength: 200
+          description: "Letters, digits, spaces and . , / # ( ) & ' : - only"
           example: Suite 4B
         pickupCity:
           type: string
+          minLength: 2
+          maxLength: 100
           example: Colombo 03
         pickupDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
         pickupPostalCode:
           type: string
+          pattern: '^\d{5}$'
           example: "00300"
         pickupContactName:
           type: string
+          minLength: 2
+          maxLength: 100
           example: Sunil Perera
         pickupContactPhone:
           type: string
+          pattern: '^(0\d{9}|\+94\d{9})$'
           example: "+94771234567"
         deliveryAddressLine1:
           type: string
+          minLength: 5
+          maxLength: 200
+          description: "Letters, digits, spaces and . , / # ( ) & ' : - only"
           example: No. 18, Peradeniya Road
         deliveryAddressLine2:
           type: string
+          maxLength: 200
+          description: "Letters, digits, spaces and . , / # ( ) & ' : - only"
           example: Hilltop Residence
         deliveryCity:
           type: string
+          minLength: 2
+          maxLength: 100
           example: Kandy
         deliveryDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
         deliveryPostalCode:
           type: string
+          pattern: '^\d{5}$'
           example: "20000"
         recipientName:
           type: string
+          minLength: 2
+          maxLength: 100
           example: Anura Fernando
         recipientPhone:
           type: string
+          pattern: '^(0\d{9}|\+94\d{9})$'
           example: "+94719876543"
         recipientEmail:
           type: string
+          maxLength: 128
           format: email
           example: anura.f@gmail.com
         lengthCm:
@@ -639,12 +664,15 @@ components:
           example: 10.0
         actualWeightKg:
           type: number
+          minimum: 0.01
+          maximum: 50
           format: double
           example: 1.5
         speed:
           $ref: "#/components/schemas/OrderSpeed"
         itemDescription:
           type: string
+          maxLength: 512
           example: Handicrafts and tea canisters
         declaredValue:
           type: number
@@ -659,6 +687,8 @@ components:
           example: true
         pricingRuleVersionId:
           type: string
+          maxLength: 64
+          pattern: '^[A-Za-z0-9._-]*$'
           example: PRICING-2026-V1
 
     UpdateOrderRequest:
@@ -666,34 +696,57 @@ components:
       properties:
         pickupAddressLine1:
           type: string
+          minLength: 5
+          maxLength: 200
+          description: "Letters, digits, spaces and . , / # ( ) & ' : - only"
         pickupAddressLine2:
           type: string
+          maxLength: 200
+          description: "Letters, digits, spaces and . , / # ( ) & ' : - only"
         pickupCity:
           type: string
+          minLength: 2
+          maxLength: 100
         pickupDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
         pickupPostalCode:
           type: string
+          pattern: '^\d{5}$'
         pickupContactName:
           type: string
+          minLength: 2
+          maxLength: 100
         pickupContactPhone:
           type: string
+          pattern: '^(0\d{9}|\+94\d{9})$'
         deliveryAddressLine1:
           type: string
+          minLength: 5
+          maxLength: 200
+          description: "Letters, digits, spaces and . , / # ( ) & ' : - only"
         deliveryAddressLine2:
           type: string
+          maxLength: 200
+          description: "Letters, digits, spaces and . , / # ( ) & ' : - only"
         deliveryCity:
           type: string
+          minLength: 2
+          maxLength: 100
         deliveryDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
         deliveryPostalCode:
           type: string
+          pattern: '^\d{5}$'
         recipientName:
           type: string
+          minLength: 2
+          maxLength: 100
         recipientPhone:
           type: string
+          pattern: '^(0\d{9}|\+94\d{9})$'
         recipientEmail:
           type: string
+          maxLength: 128
           format: email
         lengthCm:
           type: number
@@ -706,11 +759,14 @@ components:
           format: double
         actualWeightKg:
           type: number
+          minimum: 0.01
+          maximum: 50
           format: double
         speed:
           $ref: "#/components/schemas/OrderSpeed"
         itemDescription:
           type: string
+          maxLength: 512
         declaredValue:
           type: number
           format: double
@@ -725,6 +781,7 @@ components:
       properties:
         reason:
           type: string
+          maxLength: 512
           example: Sender no longer needs delivery
 
     CustomerOrderResponse:

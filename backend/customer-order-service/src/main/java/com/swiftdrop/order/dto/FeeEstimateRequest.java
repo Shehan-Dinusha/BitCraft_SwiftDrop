@@ -5,6 +5,7 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMax;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,6 +31,7 @@ public class FeeEstimateRequest {
     @NotNull(message = "Actual weight is mandatory")
     @DecimalMin(value = "0.01", message = "Actual weight must be at least 0.01 kg")
     @Schema(description = "Actual package weight in kilograms", example = "1.50")
+    @DecimalMax(value = ValidationPatterns.WEIGHT_MAX, message = ValidationPatterns.WEIGHT_MAX_MESSAGE)
     private BigDecimal actualWeightKg;
 
     @DecimalMin(value = "0.1", message = "Length must be at least 0.1 cm")

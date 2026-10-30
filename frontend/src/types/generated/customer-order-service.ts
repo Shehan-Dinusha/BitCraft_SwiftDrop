@@ -282,9 +282,15 @@ export interface components {
             customerId?: string;
             /** Format: uuid */
             merchantId?: string;
-            /** @example No. 42, Galle Road */
+            /**
+             * @description Letters, digits, spaces and . , / # ( ) & ' : - only
+             * @example No. 42, Galle Road
+             */
             pickupAddressLine1: string;
-            /** @example Suite 4B */
+            /**
+             * @description Letters, digits, spaces and . , / # ( ) & ' : - only
+             * @example Suite 4B
+             */
             pickupAddressLine2?: string;
             /** @example Colombo 03 */
             pickupCity: string;
@@ -295,9 +301,15 @@ export interface components {
             pickupContactName: string;
             /** @example +94771234567 */
             pickupContactPhone: string;
-            /** @example No. 18, Peradeniya Road */
+            /**
+             * @description Letters, digits, spaces and . , / # ( ) & ' : - only
+             * @example No. 18, Peradeniya Road
+             */
             deliveryAddressLine1: string;
-            /** @example Hilltop Residence */
+            /**
+             * @description Letters, digits, spaces and . , / # ( ) & ' : - only
+             * @example Hilltop Residence
+             */
             deliveryAddressLine2?: string;
             /** @example Kandy */
             deliveryCity: string;
@@ -352,14 +364,18 @@ export interface components {
             pricingRuleVersionId?: string;
         };
         UpdateOrderRequest: {
+            /** @description Letters, digits, spaces and . , / # ( ) & ' : - only */
             pickupAddressLine1?: string;
+            /** @description Letters, digits, spaces and . , / # ( ) & ' : - only */
             pickupAddressLine2?: string;
             pickupCity?: string;
             pickupDistrict?: components["schemas"]["SriLankanDistrict"];
             pickupPostalCode?: string;
             pickupContactName?: string;
             pickupContactPhone?: string;
+            /** @description Letters, digits, spaces and . , / # ( ) & ' : - only */
             deliveryAddressLine1?: string;
+            /** @description Letters, digits, spaces and . , / # ( ) & ' : - only */
             deliveryAddressLine2?: string;
             deliveryCity?: string;
             deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
@@ -561,7 +577,7 @@ export interface operations {
     listOrders: {
         parameters: {
             query?: {
-                /** @description Explicit customer UUID override */
+                /** @description Customer UUID to list. Honoured only for DISPATCHER and SYSTEM_ADMIN; other callers always see their own orders. */
                 customerId?: string;
                 page?: number;
                 size?: number;
@@ -569,6 +585,8 @@ export interface operations {
             header?: {
                 /** @description Authenticated customer UUID */
                 "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
             };
             path?: never;
             cookie?: never;
@@ -618,7 +636,12 @@ export interface operations {
     getOrderById: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 orderId: string;
             };
@@ -635,12 +658,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
                 };
             };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     updateOrder: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 orderId: string;
             };
@@ -661,12 +696,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
                 };
             };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     deleteOrder: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 orderId: string;
             };
@@ -682,6 +729,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseString"];
                 };
+            };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -710,7 +764,12 @@ export interface operations {
     cancelOrder: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 orderId: string;
             };
@@ -731,12 +790,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
                 };
             };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     acceptFeeRevision: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 orderId: string;
             };
@@ -753,12 +824,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
                 };
             };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     rejectFeeRevision: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 orderId: string;
             };
@@ -775,12 +858,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
                 };
             };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     downloadShippingLabel: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 orderId: string;
             };
@@ -797,12 +892,24 @@ export interface operations {
                     "application/pdf": string;
                 };
             };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     downloadDeliveryReceipt: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 orderId: string;
             };
@@ -818,6 +925,13 @@ export interface operations {
                 content: {
                     "application/pdf": string;
                 };
+            };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
