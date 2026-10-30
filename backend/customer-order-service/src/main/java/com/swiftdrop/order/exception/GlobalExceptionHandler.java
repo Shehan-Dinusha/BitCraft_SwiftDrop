@@ -66,6 +66,21 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(400, "Bad Request", "Invalid value for parameter '" + ex.getName() + "'", safePath(request)));
     }
 
+    @ExceptionHandler(PricingUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handlePricingUnavailable(PricingUnavailableException ex, HttpServletRequest request) {
+        // Fixed text only: the downstream URL and response body must not reach the caller or the log.
+        log.warn("Pricing unavailable on {}", safePath(request));
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiErrorResponse.of(503, "Service Unavailable", "Pricing service is temporarily unavailable", safePath(request)));
+    }
+
+    @ExceptionHandler(PricingRequestRejectedException.class)
+    public ResponseEntity<ApiErrorResponse> handlePricingRejected(PricingRequestRejectedException ex, HttpServletRequest request) {
+        log.error("Pricing service rejected a validated request on {}", safePath(request));
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiErrorResponse.of(502, "Bad Gateway", "Pricing could not be calculated for this request", safePath(request)));
+    }
+
     @ExceptionHandler(CallerIdentityRequiredException.class)
     public ResponseEntity<ApiErrorResponse> handleCallerIdentityRequired(CallerIdentityRequiredException ex, HttpServletRequest request) {
         log.warn("Caller identity missing on {}", safePath(request));

@@ -37,6 +37,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseFeeEstimateResponse"
+        "502":
+          description: Pricing service rejected a request this service had validated
+        "503":
+          description: Pricing service is temporarily unavailable
 
   /api/v1/orders:
     post:
@@ -71,6 +75,10 @@ paths:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
         "401":
           description: Caller identification (X-User-Id) is missing
+        "502":
+          description: Pricing service rejected a request this service had validated
+        "503":
+          description: Pricing service is temporarily unavailable
     get:
       tags: [Order]
       summary: List customer's orders with pagination
@@ -182,6 +190,10 @@ paths:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
         "404":
           description: Order not found, or not owned by the caller
+        "502":
+          description: Pricing service rejected a request this service had validated
+        "503":
+          description: Pricing service is temporarily unavailable
     delete:
       tags: [Order]
       summary: Delete order while in CREATED status

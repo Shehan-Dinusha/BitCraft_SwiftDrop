@@ -4,6 +4,7 @@ import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.service.PricingCalculationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
  * service's endpoint is the single source of pricing.
  */
 @Component
+@ConditionalOnProperty(name = "pricing.mode", havingValue = "local", matchIfMissing = true)
 @RequiredArgsConstructor
 public class LocalPricingFallback implements PricingClient {
 
