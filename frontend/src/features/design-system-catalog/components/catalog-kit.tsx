@@ -17,6 +17,25 @@ export function PreviewPane({ children, className }: PreviewPaneProps) {
   );
 }
 
+function InlineCode({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(`[^`]+`)/g).map((part, index) =>
+        part.startsWith('`') && part.endsWith('`') && part.length > 2 ? (
+          <code
+            key={index}
+            className="rounded bg-elevated px-1 font-mono text-[0.92em] text-primary"
+          >
+            {part.slice(1, -1)}
+          </code>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
 export function CatalogSection({
   id,
   title,
@@ -33,7 +52,9 @@ export function CatalogSection({
       <div>
         <h2 className="text-xl font-bold tracking-tight text-primary">{title}</h2>
         {description ? (
-          <p className="mt-1 max-w-3xl text-sm text-secondary">{description}</p>
+          <p className="mt-1 max-w-3xl text-sm text-secondary">
+            <InlineCode text={description} />
+          </p>
         ) : null}
       </div>
       {children}
@@ -54,7 +75,11 @@ export function CatalogRow({
     <div className="space-y-2">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-secondary">{label}</h3>
-        {hint ? <span className="text-xs text-muted">{hint}</span> : null}
+        {hint ? (
+          <span className="text-xs text-muted">
+            <InlineCode text={hint} />
+          </span>
+        ) : null}
       </div>
       <PreviewPane>{children}</PreviewPane>
     </div>

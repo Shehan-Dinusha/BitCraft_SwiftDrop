@@ -1,7 +1,7 @@
 import { Navigate, RouteObject, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/app/AppShell';
-import { CatalogPage } from '@/features/design-system-catalog/CatalogPage';
+import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
@@ -96,9 +96,10 @@ export const routes: RouteObject[] = [
             <WebhookResiliencyConsolePage />
           </RoleGuard>
         )
-      },
-      { path: '/catalog', element: <CatalogPage /> }
+      }
     ]
   },
+  // The design catalog is public: no login, no role, no app shell.
+  ...catalogRoutes,
   { path: '*', element: <Navigate to="/login" replace /> }
 ];
