@@ -125,7 +125,7 @@ public class CustomerOrderService {
     @Transactional(readOnly = true)
     public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber) {
         CustomerOrder order = customerOrderRepository.findByTrackingNumber(trackingNumber)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with tracking number: " + trackingNumber));
+                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
         return CustomerOrderResponse.fromEntity(order);
     }
 
@@ -152,7 +152,7 @@ public class CustomerOrderService {
      */
     private CustomerOrder findAccessibleOrder(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderId));
+                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
         assertCallerCanAccess(order, callerId, callerRole);
         return order;
     }
@@ -162,7 +162,7 @@ public class CustomerOrderService {
             return;
         }
         if (callerId == null || !callerId.equals(order.getCustomerId())) {
-            throw new OrderNotFoundException("Order not found with ID: " + order.getOrderId());
+            throw new OrderNotFoundException("Order not found");
         }
     }
 

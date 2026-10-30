@@ -9,11 +9,15 @@ import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.service.CustomerOrderService;
 import org.junit.jupiter.api.BeforeEach;
+import com.swiftdrop.order.exception.OrderNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -24,12 +28,15 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(OutputCaptureExtension.class)
 @WebMvcTest(OrderController.class)
 class CreateOrderValidationTest {
 
@@ -202,6 +209,99 @@ class CreateOrderValidationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ---- Stage 5: error bodies and logs must not echo input ----
+
+    private static final String SECRET_ADDRESS = "77 Hidden Lane <b>secret</b>";
+    private static final String SECRET_PHONE = "0719998887x";
+    private static final String SECRET_NAME = "Zed<script>Quux</script>";
+
+    @Test
+    @DisplayName("Validation error body names the fields but contains no submitted text")
+    void validationErrorBodyDoesNotEchoInput(CapturedOutput output) throws Exception {
+        String body = create(r -> {
+            r.setPickupAddressLine1(SECRET_ADDRESS);
+            r.setDeliveryAddressLine1(SQLI);
+            r.setPickupContactPhone(SECRET_PHONE);
+            r.setRecipientName(SECRET_NAME);
+            r.setItemDescription(XSS);
+        }).andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body)
+                .contains("pickupAddressLine1", "deliveryAddressLine1", "pickupContactPhone", "recipientName", "itemDescription")
+                .doesNotContain("Hidden Lane", "secret", SECRET_PHONE, "0719998887", "Quux", "<script", "OR 1=1", "alert");
+        assertThat(output.getAll())
+                .contains("Validation error on")
+                .doesNotContain("Hidden Lane", "0719998887", "Quux", "OR 1=1", "alert(1)");
+    }
+
+    @Test
+    @DisplayName("Malformed JSON or an invalid enum value gives a generic 400 without the offending text")
+    void unreadableBodyDoesNotEchoInput(CapturedOutput output) throws Exception {
+        String badEnum = "{\"pickupDistrict\":\"ATLANTIS-secret-42\"}";
+        String malformed = "{\"pickupAddressLine1\": \"Leaky Street 99\" oops";
+
+        for (String content : new String[] {badEnum, malformed}) {
+            String body = mockMvc.perform(post("/api/v1/orders")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(content))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(body).doesNotContain("ATLANTIS", "secret-42", "Leaky", "oops");
+        }
+        assertThat(output.getAll()).doesNotContain("ATLANTIS", "secret-42", "Leaky Street");
+    }
+
+    @Test
+    @DisplayName("A malformed id in the path gives a generic 400 without echoing the id or the raw URI")
+    void invalidPathValueDoesNotEchoInput() throws Exception {
+        String body = mockMvc.perform(get("/api/v1/orders/{orderId}", "not-a-uuid-leaky-123"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("leaky-123", "not-a-uuid").contains("orderId");
+    }
+
+    @Test
+    @DisplayName("Not-found response never contains the requested tracking number")
+    void notFoundDoesNotEchoTrackingNumber() throws Exception {
+        when(customerOrderService.getOrderByTrackingNumber("SD-ZZZZ-9999"))
+                .thenThrow(new OrderNotFoundException("Order not found with tracking number: SD-ZZZZ-9999"));
+
+        String body = mockMvc.perform(get("/api/v1/orders/tracking/{trackingNumber}", "SD-ZZZZ-9999"))
+                .andExpect(status().isNotFound())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("ZZZZ").contains("Order not found");
+    }
+
+    @Test
+    @DisplayName("Unexpected errors return a fixed 500 message with no exception text, and the log has no exception message")
+    void internalErrorHidesExceptionText(CapturedOutput output) throws Exception {
+        when(customerOrderService.createOrder(any(), any(), any()))
+                .thenThrow(new RuntimeException("could not execute statement: insert into customer_orders ... Key (recipient_phone)=(0714445556)"));
+
+        String body = create(r -> { }).andExpect(status().isInternalServerError())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("insert into", "customer_orders", "0714445556", "recipient_phone")
+                .contains("An unexpected error occurred");
+        assertThat(output.getAll()).doesNotContain("insert into", "0714445556");
+    }
+
+    @Test
+    @DisplayName("Illegal-argument errors return a fixed message, not the exception text")
+    void illegalArgumentHidesExceptionText() throws Exception {
+        when(customerOrderService.createOrder(any(), any(), any()))
+                .thenThrow(new IllegalArgumentException("bad value 0713334445 for Nimal"));
+
+        String body = create(r -> { }).andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("0713334445", "Nimal");
     }
 
     @Test

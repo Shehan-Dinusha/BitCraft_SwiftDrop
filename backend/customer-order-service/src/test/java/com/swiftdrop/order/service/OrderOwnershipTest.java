@@ -136,7 +136,7 @@ class OrderOwnershipTest {
     }
 
     @Test
-    @DisplayName("Not-found message is identical for a missing order and a foreign order")
+    @DisplayName("Not-found message is identical for a missing order and a foreign order, and carries no id")
     void notFoundMessageDoesNotLeakExistence() {
         orderExists();
         UUID missingId = UUID.randomUUID();
@@ -147,8 +147,8 @@ class OrderOwnershipTest {
         Throwable missing = org.assertj.core.api.Assertions.catchThrowable(
                 () -> customerOrderService.getOrderById(missingId, customerB, "CUSTOMER"));
 
-        assertThat(foreign.getMessage()).isEqualTo("Order not found with ID: " + orderId);
-        assertThat(missing.getMessage()).isEqualTo("Order not found with ID: " + missingId);
+        assertThat(foreign.getMessage()).isEqualTo("Order not found");
+        assertThat(missing.getMessage()).isEqualTo(foreign.getMessage());
     }
 
     @Test

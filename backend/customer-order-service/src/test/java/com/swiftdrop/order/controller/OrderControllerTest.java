@@ -154,7 +154,7 @@ class OrderControllerTest {
         UUID callerId = UUID.randomUUID();
 
         when(customerOrderService.getOrderById(orderId, callerId, "CUSTOMER"))
-                .thenThrow(new OrderNotFoundException("Order not found with ID: " + orderId));
+                .thenThrow(new OrderNotFoundException("Order not found"));
 
         mockMvc.perform(get("/api/v1/orders/{orderId}", orderId)
                         .header("X-User-Id", callerId.toString())
@@ -168,7 +168,7 @@ class OrderControllerTest {
         UUID orderId = UUID.randomUUID();
 
         when(customerOrderService.getOrderById(orderId, null, null))
-                .thenThrow(new OrderNotFoundException("Order not found with ID: " + orderId));
+                .thenThrow(new OrderNotFoundException("Order not found"));
 
         mockMvc.perform(get("/api/v1/orders/{orderId}", orderId))
                 .andExpect(status().isNotFound());
