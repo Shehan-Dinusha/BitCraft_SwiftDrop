@@ -18,6 +18,7 @@ import com.swiftdrop.order.exception.CallerIdentityRequiredException;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
+import com.swiftdrop.order.service.pricing.PricingClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,12 +37,12 @@ public class CustomerOrderService {
 
     private final CustomerOrderRepository customerOrderRepository;
     private final TrackingNumberGenerator trackingNumberGenerator;
-    private final PricingCalculationService pricingCalculationService;
+    private final PricingClient pricingClient;
     private final OrderPdfGeneratorService orderPdfGeneratorService;
     private final OrderEventPublisher orderEventPublisher;
 
     public FeeEstimateResponse calculateEstimate(FeeEstimateRequest request) {
-        return pricingCalculationService.calculateEstimate(request);
+        return pricingClient.estimate(request);
     }
 
     @Transactional
@@ -61,7 +62,7 @@ public class CustomerOrderService {
                 .heightCm(request.getHeightCm())
                 .speed(request.getSpeed() != null ? request.getSpeed() : OrderSpeed.STANDARD)
                 .build();
-        FeeEstimateResponse estimate = pricingCalculationService.calculateEstimate(estimateReq);
+        FeeEstimateResponse estimate = pricingClient.estimate(estimateReq);
 
         // 2. Generate non-sequential tracking number (SD-XXXX-XXXX)
         String trackingNumber = trackingNumberGenerator.generateUniqueTrackingNumber();
@@ -218,7 +219,7 @@ public class CustomerOrderService {
                     .heightCm(order.getHeightCm())
                     .speed(order.getOrderSpeed())
                     .build();
-            FeeEstimateResponse estimate = pricingCalculationService.calculateEstimate(estimateReq);
+            FeeEstimateResponse estimate = pricingClient.estimate(estimateReq);
             order.setChargeableWeightKg(estimate.getChargeableWeightKg());
             order.setEstimatedFee(estimate.getEstimatedFee());
             order.setFinalFee(estimate.getEstimatedFee());
