@@ -1,17 +1,53 @@
+import type { PublicOrderStatus } from '@/types/contracts';
+
+export type { PublicOrderStatus };
+
+export type SriLankanDistrict =
+  | 'COLOMBO'
+  | 'GAMPAHA'
+  | 'KALUTARA'
+  | 'KANDY'
+  | 'MATALE'
+  | 'NUWARA_ELIYA'
+  | 'GALLE'
+  | 'MATARA'
+  | 'HAMBANTOTA'
+  | 'JAFFNA'
+  | 'KILINOCHCHI'
+  | 'MANNAR'
+  | 'VAVUNIYA'
+  | 'MULLAITIVU'
+  | 'BATTICALOA'
+  | 'AMPARA'
+  | 'TRINCOMALEE'
+  | 'KURUNEGALA'
+  | 'PUTTALAM'
+  | 'ANURADHAPURA'
+  | 'POLONNARUWA'
+  | 'BADULLA'
+  | 'MONARAGALA'
+  | 'RATNAPURA'
+  | 'KEGALLE';
+
+export type PublicTrackingTimelineEntry = {
+  status: PublicOrderStatus;
+  district: SriLankanDistrict | null;
+  timestamp: string;
+};
+
 export type PublicTrackingView = {
-  trackingId: string;
-  status: string;
-  latitude: number | null;
-  longitude: number | null;
-  milestones: string[];
-  updatedAt: string;
+  trackingNumber: string;
+  currentPublicStatus: PublicOrderStatus;
+  originDistrict: SriLankanDistrict | null;
+  destinationDistrict: SriLankanDistrict | null;
+  statusTimeline: PublicTrackingTimelineEntry[];
 };
 
 const gatewayOrigin = 'http://localhost:8080';
 
-export async function getTrackingView(trackingId: string): Promise<PublicTrackingView> {
+export async function getTrackingView(trackingNumber: string): Promise<PublicTrackingView> {
   const response = await fetch(
-    `${gatewayOrigin}/api/v1/tracking/${encodeURIComponent(trackingId)}`
+    `${gatewayOrigin}/api/v1/public/track/${encodeURIComponent(trackingNumber)}`
   );
   if (!response.ok) {
     throw new Error(`Tracking request failed with status ${response.status}`);
@@ -20,12 +56,12 @@ export async function getTrackingView(trackingId: string): Promise<PublicTrackin
 }
 
 export function subscribeToTrackingStream(
-  trackingId: string,
+  trackingNumber: string,
   onUpdate: (view: PublicTrackingView) => void,
   onError?: (event: Event) => void
 ): EventSource {
   const source = new EventSource(
-    `${gatewayOrigin}/api/v1/tracking/${encodeURIComponent(trackingId)}/stream`
+    `${gatewayOrigin}/api/v1/public/track/${encodeURIComponent(trackingNumber)}/stream`
   );
   source.onmessage = (event) => onUpdate(JSON.parse(event.data) as PublicTrackingView);
   source.onerror = (event) => onError?.(event);

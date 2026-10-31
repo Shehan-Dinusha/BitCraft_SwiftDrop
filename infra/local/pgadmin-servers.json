@@ -1,0 +1,85 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "SwiftDrop 1 - Auth IAM (5431)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5431,
+      "MaintenanceDB": "swiftdrop_iam",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    },
+    "2": {
+      "Name": "SwiftDrop 2 - Order Service (5433)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5433,
+      "MaintenanceDB": "swiftdrop_order",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    },
+    "3": {
+      "Name": "SwiftDrop 3 - Pricing Zone (5434)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5434,
+      "MaintenanceDB": "swiftdrop_pricing",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    },
+    "4": {
+      "Name": "SwiftDrop 4 - Dispatch Assignment (5435)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5435,
+      "MaintenanceDB": "swiftdrop_dispatch",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    },
+    "5": {
+      "Name": "SwiftDrop 5 - Delivery Execution (5436)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5436,
+      "MaintenanceDB": "swiftdrop_delivery",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    },
+    "6": {
+      "Name": "SwiftDrop 6 - Merchant B2B (5437)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5437,
+      "MaintenanceDB": "swiftdrop_merchant",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    },
+    "7": {
+      "Name": "SwiftDrop 7 - Webhook Resiliency (5438)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5438,
+      "MaintenanceDB": "swiftdrop_webhook",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    },
+    "8": {
+      "Name": "SwiftDrop 8 - Notification Service (5439)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5439,
+      "MaintenanceDB": "swiftdrop_notify",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    },
+    "9": {
+      "Name": "SwiftDrop 9 - Analytics AI (5440)",
+      "Group": "SwiftDrop",
+      "Host": "localhost",
+      "Port": 5440,
+      "MaintenanceDB": "swiftdrop_analytics",
+      "Username": "swiftdrop",
+      "SSLMode": "prefer"
+    }
+  }
+}

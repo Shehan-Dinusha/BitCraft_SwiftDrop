@@ -57,11 +57,11 @@ spec:
               name: http
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: kubernetes
+              value: aks
             - name: SERVER_PORT
               value: "8080"
             - name: RABBITMQ_HOST
-              value: rabbitmq.swiftdrop-infra.svc.cluster.local
+              value: rabbitmq.swiftdrop-messaging.svc.cluster.local
             - name: RABBITMQ_PORT
               value: "5672"
             - name: RABBITMQ_USERNAME
@@ -74,6 +74,41 @@ spec:
                 secretKeyRef:
                   name: rabbitmq-credentials
                   key: password
+            - name: REDIS_HOST
+              value: redis.swiftdrop-messaging.svc.cluster.local
+            - name: REDIS_PORT
+              value: "6379"
+            - name: AUTH_SERVICE_URL
+              value: http://auth-iam-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: ORDER_SERVICE_URL
+              value: http://customer-order-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: PRICING_SERVICE_URL
+              value: http://pricing-zone-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: DISPATCH_SERVICE_URL
+              value: http://dispatch-assignment-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: DELIVERY_SERVICE_URL
+              value: http://delivery-execution-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: MERCHANT_SERVICE_URL
+              value: http://merchant-b2b-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: WEBHOOK_SERVICE_URL
+              value: http://webhook-resiliency-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: NOTIFICATION_SERVICE_URL
+              value: http://notification-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: ANALYTICS_SERVICE_URL
+              value: http://analytics-ai-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: MERCHANT_API_KEY_VALIDATION_URL
+              value: http://merchant-b2b-service.swiftdrop-apps.svc.cluster.local:8080/internal/v1/api-keys/validate
+            - name: PUBLIC_TRACKING_RATE_LIMIT
+              value: "60"
+            - name: PUBLIC_TRACKING_RATE_WINDOW_SECONDS
+              value: "60"
+            - name: JWT_BLACKLIST_PREFIX
+              value: "jwt:blacklist:"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-jwt-credentials
+                  key: secret
           resources:
             requests:
               cpu: 500m

@@ -17,11 +17,20 @@ public final class JwtHeaderConstants {
     /** UUID of the authenticated user. */
     public static final String X_USER_ID = "X-User-Id";
 
-    /** Role of the authenticated user (maps to {@link com.swiftdrop.contracts.enums.PersonaRole}). */
+    /** Role of the authenticated user (maps to {@link com.swiftdrop.contracts.enums.UserRole}). */
     public static final String X_USER_ROLE = "X-User-Role";
 
     /** UUID of the merchant (present only for MERCHANT persona). */
     public static final String X_MERCHANT_ID = "X-Merchant-Id";
+
+    /** District claim resolved from the JWT, used for district-scoped operations. */
+    public static final String X_DISTRICT_ID = "X-District-Id";
+
+    /** Merchant API key header accepted at the public edge. */
+    public static final String X_API_KEY = "X-API-Key";
+
+    /** Legacy merchant API key header retained for existing integrations. */
+    public static final String X_MERCHANT_API_KEY = "X-Merchant-Api-Key";
 
     /** Distributed tracing correlation ID propagated across service boundaries. */
     public static final String X_CORRELATION_ID = "X-Correlation-Id";

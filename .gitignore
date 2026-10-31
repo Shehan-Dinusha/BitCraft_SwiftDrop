@@ -11,6 +11,7 @@ target/
 # ─── Node / Frontend ──────────────────────────────────────────────────────────
 node_modules/
 dist/
+dist-catalog/
 .vite/
 *.tsbuildinfo
 .eslintcache
@@ -57,3 +58,6 @@ infra/k8s/**/sealed-secrets*.yml
 *.seed
 coverage/
 .nyc_output/
+
+# Local Codex/Maven validation cache
+.codex/maven-repository/

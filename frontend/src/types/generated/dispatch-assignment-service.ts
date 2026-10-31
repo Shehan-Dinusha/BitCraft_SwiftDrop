@@ -11,26 +11,233 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Check dispatch service health */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Service health response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        /** Check service health */
+        get: operations["dispatchHealth"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Manual courier assignment override
+         * @description Allows dispatcher or supervisor to manually assign or reassign a courier to an order.
+         */
+        post: operations["manualAssign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List dispatch assignments with pagination and optional status filter */
+        get: operations["getAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get dispatch assignment by UUID */
+        get: operations["getAssignmentById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/assignments/order/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get dispatch assignment by order UUID */
+        get: operations["getAssignmentByOrderId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/unassigned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List unassigned orders pending dispatch */
+        get: operations["getUnassignedParcels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/{courierId}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active assignments for a courier */
+        get: operations["getCourierAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check courier availability service health */
+        get: operations["courierHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List couriers with optional district and shift status filters */
+        get: operations["getCouriers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/{courierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get courier shift status and live metrics */
+        get: operations["getCourier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/shifts/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start or register courier shift */
+        post: operations["startShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/shifts/{courierId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End courier shift */
+        post: operations["endShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/shifts/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update courier shift status */
+        put: operations["updateShiftStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/shifts/location": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Record courier GPS location heartbeat ping */
+        put: operations["updateLocation"];
         post?: never;
         delete?: never;
         options?: never;
@@ -41,7 +248,147 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        /** @enum {string} */
+        AssignmentStatus: "UNASSIGNED" | "ASSIGNED" | "REASSIGNED" | "FAILED" | "CANCELLED" | "COMPLETED";
+        /** @enum {string} */
+        ShiftStatus: "AVAILABLE" | "BUSY" | "ON_BREAK" | "OFFLINE";
+        /** @enum {string} */
+        VehicleType: "MOTORCYCLE" | "VAN" | "THREE_WHEELER" | "BICYCLE";
+        /** @enum {string} */
+        OrderSpeed: "STANDARD" | "EXPRESS" | "SAME_DAY";
+        /** @enum {string} */
+        SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
+        ManualAssignRequest: {
+            /** Format: uuid */
+            orderId: string;
+            /** Format: uuid */
+            courierId: string;
+            /** @example DISPATCHER_ADMIN */
+            assignedBy?: string;
+            reason?: string;
+        };
+        StartShiftRequest: {
+            /** Format: uuid */
+            courierId: string;
+            /** @example Sunil Perera */
+            courierName: string;
+            /** @example +94771234567 */
+            phone?: string;
+            vehicleType?: components["schemas"]["VehicleType"];
+            initialDistrict: components["schemas"]["SriLankanDistrict"];
+            /** @example 5 */
+            maxCapacity?: number;
+        };
+        UpdateShiftStatusRequest: {
+            /** Format: uuid */
+            courierId: string;
+            status: components["schemas"]["ShiftStatus"];
+        };
+        CourierLocationPingRequest: {
+            /** Format: uuid */
+            courierId: string;
+            district: components["schemas"]["SriLankanDistrict"];
+            /** @example 6.9271 */
+            latitude?: number;
+            /** @example 79.8612 */
+            longitude?: number;
+        };
+        DispatchAssignmentResponse: {
+            /** Format: uuid */
+            assignmentId?: string;
+            /** Format: uuid */
+            orderId?: string;
+            /** @example SD-COL-98214 */
+            trackingNumber?: string;
+            /** Format: uuid */
+            courierId?: string;
+            courierName?: string;
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            orderSpeed?: components["schemas"]["OrderSpeed"];
+            status?: components["schemas"]["AssignmentStatus"];
+            assignedBy?: string;
+            /** Format: date-time */
+            assignedAt?: string;
+            estimatedPickupMinutes?: number;
+            failureReason?: string;
+            retryCount?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        CourierShiftResponse: {
+            /** Format: uuid */
+            courierId?: string;
+            courierName?: string;
+            phone?: string;
+            vehicleType?: components["schemas"]["VehicleType"];
+            currentDistrict?: components["schemas"]["SriLankanDistrict"];
+            latitude?: number;
+            longitude?: number;
+            shiftStatus?: components["schemas"]["ShiftStatus"];
+            activeParcelsCount?: number;
+            maxCapacity?: number;
+            /** Format: date-time */
+            shiftStartedAt?: string;
+            /** Format: date-time */
+            shiftEndedAt?: string;
+            /** Format: date-time */
+            lastHeartbeatAt?: string;
+        };
+        ApiResponseString: {
+            success?: boolean;
+            message?: string;
+            data?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseDispatchAssignmentResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DispatchAssignmentResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListDispatchAssignmentResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DispatchAssignmentResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCourierShiftResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierShiftResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListCourierShiftResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierShiftResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponsePagedResultDispatchAssignmentResponse: {
+            success?: boolean;
+            message?: string;
+            data?: {
+                content?: components["schemas"]["DispatchAssignmentResponse"][];
+                page?: number;
+                size?: number;
+                totalElements?: number;
+                totalPages?: number;
+                hasNext?: boolean;
+                hasPrevious?: boolean;
+            };
+            /** Format: date-time */
+            timestamp?: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -49,4 +396,355 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    dispatchHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service health response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseString"];
+                };
+            };
+        };
+    };
+    manualAssign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualAssignRequest"];
+            };
+        };
+        responses: {
+            /** @description Order assigned successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDispatchAssignmentResponse"];
+                };
+            };
+            /** @description Assignment or order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Courier not available */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAssignments: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["AssignmentStatus"];
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of dispatch assignments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponsePagedResultDispatchAssignmentResponse"];
+                };
+            };
+        };
+    };
+    getAssignmentById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dispatch assignment retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDispatchAssignmentResponse"];
+                };
+            };
+            /** @description Assignment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAssignmentByOrderId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dispatch assignment retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDispatchAssignmentResponse"];
+                };
+            };
+            /** @description Assignment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getUnassignedParcels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unassigned orders retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+        };
+    };
+    getCourierAssignments: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["AssignmentStatus"];
+            };
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active assignments for courier */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+        };
+    };
+    courierHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service health response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseString"];
+                };
+            };
+        };
+    };
+    getCouriers: {
+        parameters: {
+            query?: {
+                district?: components["schemas"]["SriLankanDistrict"];
+                status?: components["schemas"]["ShiftStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of couriers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListCourierShiftResponse"];
+                };
+            };
+        };
+    };
+    getCourier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier shift status retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+            /** @description Courier not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    startShift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartShiftRequest"];
+            };
+        };
+        responses: {
+            /** @description Courier shift started */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+        };
+    };
+    endShift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier shift ended */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+        };
+    };
+    updateShiftStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateShiftStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Shift status updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+        };
+    };
+    updateLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourierLocationPingRequest"];
+            };
+        };
+        responses: {
+            /** @description Location updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+        };
+    };
+}

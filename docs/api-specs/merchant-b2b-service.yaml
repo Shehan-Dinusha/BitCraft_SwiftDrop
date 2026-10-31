@@ -1,15 +1,628 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Merchant B2B API
-  description: Merchant onboarding, API key, and order ingestion APIs.
+  description: Merchant onboarding, SHA-256 API key management, and bulk parcel order ingestion.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
 paths:
-  /api/v1/merchant-order-ingest/health:
+  /api/v1/merchants/health:
     get:
-      tags: [MerchantOrderIngest]
-      summary: Check merchant service health
+      tags: [MerchantAccount]
+      summary: Check merchant account health
       responses:
         "200":
           description: Service health response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+
+  /api/v1/merchants:
+    post:
+      tags: [MerchantAccount]
+      summary: Register a new merchant account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMerchantRequest"
+      responses:
+        "201":
+          description: Merchant account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantAccountResponse"
+    get:
+      tags: [MerchantAccount]
+      summary: List all merchant accounts
+      responses:
+        "200":
+          description: Merchant accounts retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListMerchantAccountResponse"
+
+  /api/v1/merchants/{merchantId}:
+    get:
+      tags: [MerchantAccount]
+      summary: Get merchant profile by UUID
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Merchant profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantAccountResponse"
+        "404":
+          description: Merchant not found
+
+  /api/v1/api-key-management/health:
+    get:
+      tags: [ApiKeyManagement]
+      summary: Check API key controller health
+      responses:
+        "200":
+          description: Service health response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+
+  /api/v1/merchants/{merchantId}/api-keys:
+    post:
+      tags: [ApiKeyManagement]
+      summary: Generate a new merchant API key
+      description: Returns raw secret key ONLY ONCE.
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyRequest"
+      responses:
+        "201":
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseApiKeyResponse"
+    get:
+      tags: [ApiKeyManagement]
+      summary: List all API keys for a merchant
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: API keys retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListApiKeyResponse"
+
+  /api/v1/merchants/{merchantId}/api-keys/{keyId}:
+    delete:
+      tags: [ApiKeyManagement]
+      summary: Revoke an API key
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: API key revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseApiKeyResponse"
+
+  /internal/v1/api-keys/validate:
+    post:
+      tags: [ApiKeyManagement]
+      summary: Internal API key validation for gateway filter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MerchantApiKeyValidationRequest"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MerchantApiKeyValidationResult"
+
+  /api/v1/merchant-order-ingest/health:
+    get:
+      tags: [MerchantOrderIngest]
+      summary: Check order ingest health
+      responses:
+        "200":
+          description: Service health response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+
+  /api/v1/merchants/{merchantId}/ingest/bulk:
+    post:
+      tags: [MerchantOrderIngest]
+      summary: Ingest a batch of delivery orders via JSON payload
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkIngestRequest"
+      responses:
+        "202":
+          description: Batch accepted and processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseBulkIngestBatchResponse"
+
+  /api/v1/merchants/{merchantId}/ingest/csv:
+    post:
+      tags: [MerchantOrderIngest]
+      summary: Upload and process bulk orders from CSV
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        "202":
+          description: CSV batch accepted and processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseBulkIngestBatchResponse"
+
+  /api/v1/merchants/{merchantId}/batches:
+    get:
+      tags: [MerchantOrderIngest]
+      summary: List ingestion batches for a merchant
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Batches retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListBulkIngestBatchResponse"
+
+  /api/v1/merchants/batches/{batchId}:
+    get:
+      tags: [MerchantOrderIngest]
+      summary: Get ingestion batch summary by UUID
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Batch retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseBulkIngestBatchResponse"
+
+  /api/v1/merchants/batches/{batchId}/items:
+    get:
+      tags: [MerchantOrderIngest]
+      summary: Get row-level parcel tracking details for a batch
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Batch items retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListBulkBatchItemResponse"
+
+components:
+  schemas:
+    SriLankanDistrict:
+      type: string
+      enum:
+        - COLOMBO
+        - GAMPAHA
+        - KALUTARA
+        - KANDY
+        - MATALE
+        - NUWARA_ELIYA
+        - GALLE
+        - MATARA
+        - HAMBANTOTA
+        - JAFFNA
+        - KILINOCHCHI
+        - MANNAR
+        - VAVUNIYA
+        - MULLAITIVU
+        - BATTICALOA
+        - AMPARA
+        - TRINCOMALEE
+        - KURUNEGALA
+        - PUTTALAM
+        - ANURADHAPURA
+        - POLONNARUWA
+        - BADULLA
+        - MONARAGALA
+        - RATNAPURA
+        - KEGALLE
+
+    CreateMerchantRequest:
+      type: object
+      required:
+        - businessName
+        - contactEmail
+        - contactPhone
+        - pickupAddress
+        - operatingDistrict
+      properties:
+        businessName:
+          type: string
+        contactEmail:
+          type: string
+        contactPhone:
+          type: string
+        pickupAddress:
+          type: string
+        operatingDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+
+    MerchantAccountResponse:
+      type: object
+      properties:
+        merchantId:
+          type: string
+          format: uuid
+        businessName:
+          type: string
+        contactEmail:
+          type: string
+        contactPhone:
+          type: string
+        pickupAddress:
+          type: string
+        operatingDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateApiKeyRequest:
+      type: object
+      required:
+        - keyName
+      properties:
+        keyName:
+          type: string
+        expiresInDays:
+          type: integer
+
+    ApiKeyResponse:
+      type: object
+      properties:
+        keyId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        keyName:
+          type: string
+        keyPrefix:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+        rawApiKey:
+          type: string
+
+    MerchantApiKeyValidationRequest:
+      type: object
+      required:
+        - apiKey
+      properties:
+        apiKey:
+          type: string
+
+    MerchantApiKeyValidationResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        merchantId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+
+    BulkOrderIngestItem:
+      type: object
+      required:
+        - recipientName
+        - recipientPhone
+        - deliveryDistrict
+        - deliveryAddress
+      properties:
+        recipientName:
+          type: string
+        recipientPhone:
+          type: string
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        deliveryAddress:
+          type: string
+        packageWeightKg:
+          type: number
+        deliverySpeed:
+          type: string
+
+    BulkIngestRequest:
+      type: object
+      required:
+        - orders
+      properties:
+        fileName:
+          type: string
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/BulkOrderIngestItem"
+
+    BulkIngestBatchResponse:
+      type: object
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        batchStatus:
+          type: string
+        totalRecords:
+          type: integer
+        successCount:
+          type: integer
+        failedCount:
+          type: integer
+        errorSummary:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    BulkBatchItemResponse:
+      type: object
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        rowIndex:
+          type: integer
+        trackingNumber:
+          type: string
+        orderId:
+          type: string
+          format: uuid
+        recipientName:
+          type: string
+        recipientPhone:
+          type: string
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        deliveryAddress:
+          type: string
+        packageWeightKg:
+          type: number
+        deliverySpeed:
+          type: string
+        itemStatus:
+          type: string
+        errorMessage:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiResponseString:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseMerchantAccountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/MerchantAccountResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListMerchantAccountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MerchantAccountResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseApiKeyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/ApiKeyResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListApiKeyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiKeyResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseBulkIngestBatchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/BulkIngestBatchResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListBulkIngestBatchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BulkIngestBatchResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListBulkBatchItemResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BulkBatchItemResponse"
+        timestamp:
+          type: string
+          format: date-time

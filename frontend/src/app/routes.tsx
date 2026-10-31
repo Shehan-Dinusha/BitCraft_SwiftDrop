@@ -1,13 +1,14 @@
 import { Navigate, RouteObject, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/app/AppShell';
-import { CatalogPage } from '@/features/design-system-catalog/CatalogPage';
+import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
 import { CourierShiftDashboard } from '@/features/courier/pages/CourierShiftDashboard';
 import { ActiveDeliveryExecutionPage } from '@/features/courier/pages/ActiveDeliveryExecutionPage';
 import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPortalDashboard';
+import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { PersonaRole } from '@/types/contracts';
@@ -57,10 +58,26 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/courier/deliveries',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <ActiveDeliveryExecutionPage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/merchant',
         element: (
           <RoleGuard roles={['MERCHANT']}>
             <MerchantPortalDashboard />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/webhooks',
+        element: (
+          <RoleGuard roles={['MERCHANT', 'ADMIN_OPS']}>
+            <WebhookResiliencyConsolePage />
           </RoleGuard>
         )
       },
@@ -72,8 +89,17 @@ export const routes: RouteObject[] = [
           </RoleGuard>
         )
       },
-      { path: '/catalog', element: <CatalogPage /> }
+      {
+        path: '/ops/webhooks',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <WebhookResiliencyConsolePage />
+          </RoleGuard>
+        )
+      }
     ]
   },
+  // The design catalog is public: no login, no role, no app shell.
+  ...catalogRoutes,
   { path: '*', element: <Navigate to="/login" replace /> }
 ];

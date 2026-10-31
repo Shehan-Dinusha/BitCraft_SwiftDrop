@@ -101,7 +101,4 @@ Primary actions (Assign Driver, Confirm Pickup, Escalate) must be within one cli
 
 ## 8. Dark Mode
 
-- Default to system preference (`prefers-color-scheme`)
-- Manual toggle persisted in `localStorage`
-- All color tokens must have dark mode variants
-- Avoid pure white (`#FFF`) on dark backgrounds — use `--color-neutral-100` (`#F1F5F9`)
+> **Superseded.** The new Figma design system is light only (product decision, 2026-10-29). Dark tokens, the theme toggle and `dark:` classes were removed. See `frontend/COMPONENTS.md`.

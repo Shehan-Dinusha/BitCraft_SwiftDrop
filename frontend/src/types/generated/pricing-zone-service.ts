@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/v1/pricing-quote/health": {
+    "/api/v1/pricing/health": {
         parameters: {
             query?: never;
             header?: never;
@@ -12,24 +12,41 @@ export interface paths {
             cookie?: never;
         };
         /** Check pricing service health */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Service health response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
+        get: operations["checkPricingHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
+        get?: never;
+        put?: never;
+        /** Calculate dynamic delivery fee quotation */
+        post: operations["calculatePricingQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all active pricing geofence zones */
+        get: operations["listPricingZones"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41,7 +58,156 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        /**
+         * @example STANDARD
+         * @enum {string}
+         */
+        OrderSpeed: "STANDARD" | "EXPRESS" | "SAME_DAY";
+        /**
+         * @example COLOMBO
+         * @enum {string}
+         */
+        SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
+        PricingQuoteRequest: {
+            pickupDistrict: components["schemas"]["SriLankanDistrict"];
+            deliveryDistrict: components["schemas"]["SriLankanDistrict"];
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            actualWeightKg: number;
+            /**
+             * Format: double
+             * @example 25
+             */
+            lengthCm?: number;
+            /**
+             * Format: double
+             * @example 20
+             */
+            widthCm?: number;
+            /**
+             * Format: double
+             * @example 10
+             */
+            heightCm?: number;
+            speed?: components["schemas"]["OrderSpeed"];
+        };
+        PricingQuoteResponse: {
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            /** @example ZONE_WESTERN */
+            pickupZone?: string;
+            /** @example ZONE_CENTRAL */
+            deliveryZone?: string;
+            /** @example false */
+            intraDistrict?: boolean;
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            actualWeightKg?: number;
+            /**
+             * Format: double
+             * @example 1
+             */
+            volumetricWeightKg?: number;
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            chargeableWeightKg?: number;
+            speed?: components["schemas"]["OrderSpeed"];
+            /**
+             * Format: double
+             * @example 550
+             */
+            baseFee?: number;
+            /**
+             * Format: double
+             * @example 60
+             */
+            weightFee?: number;
+            /**
+             * Format: double
+             * @example 0
+             */
+            speedSurcharge?: number;
+            /**
+             * Format: double
+             * @example 610
+             */
+            estimatedFee?: number;
+            /** @example LKR */
+            currency?: string;
+            /** @example PRICING-2026-V1 */
+            pricingRuleVersionId?: string;
+        };
+        PricingZone: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id?: number;
+            /** @example ZONE_WESTERN */
+            zoneCode?: string;
+            /** @example Western Province Metro */
+            zoneName?: string;
+            /** @example METRO */
+            tier?: string;
+            /**
+             * Format: double
+             * @example 350
+             */
+            baseFee?: number;
+            /**
+             * Format: double
+             * @example 80
+             */
+            perKgFee?: number;
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            expressMultiplier?: number;
+            /**
+             * Format: double
+             * @example 2
+             */
+            sameDayMultiplier?: number;
+            /** @example ACTIVE */
+            status?: string;
+        };
+        ApiResponseString: {
+            /** @example true */
+            success?: boolean;
+            /** @example Service is online */
+            message?: string;
+            /** @example Pricing service is online */
+            data?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponsePricingQuoteResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example Quotation calculated successfully */
+            message?: string;
+            data?: components["schemas"]["PricingQuoteResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListPricingZone: {
+            /** @example true */
+            success?: boolean;
+            /** @example Pricing zones retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["PricingZone"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -49,4 +215,69 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    checkPricingHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service health response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseString"];
+                };
+            };
+        };
+    };
+    calculatePricingQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PricingQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Pricing quotation response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponsePricingQuoteResponse"];
+                };
+            };
+        };
+    };
+    listPricingZones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of pricing zones */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListPricingZone"];
+                };
+            };
+        };
+    };
+}

@@ -53,6 +53,11 @@ public record ApiErrorResponse(
         return new ApiErrorResponse(status, error, message, path, null, null, Instant.now());
     }
 
+    public static ApiErrorResponse of(int status, String error, String message, String path,
+                                      String correlationId) {
+        return new ApiErrorResponse(status, error, message, path, correlationId, null, Instant.now());
+    }
+
     public static ApiErrorResponse withValidation(int status, String error, String message,
                                                    String path, Map<String, List<String>> fieldErrors) {
         return new ApiErrorResponse(status, error, message, path, null, fieldErrors, Instant.now());

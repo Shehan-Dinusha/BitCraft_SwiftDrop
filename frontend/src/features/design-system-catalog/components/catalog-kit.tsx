@@ -4,45 +4,35 @@ import { DensityProvider, densityModes, type DensityMode } from '@/design-system
 
 export interface PreviewPaneProps {
   children: ReactNode;
-  /** Applied to both frames, e.g. a fixed height for docks and grids. */
+  /** Applied to the frame, e.g. a fixed height for docks and grids. */
   className?: string;
 }
 
-function Frame({
-  theme,
-  className,
-  children
-}: {
-  theme: 'light' | 'dark';
-  className?: string;
-  children: ReactNode;
-}) {
+/** Renders a demo on the canvas inside a bordered frame. */
+export function PreviewPane({ children, className }: PreviewPaneProps) {
   return (
-    <div
-      className={cn(
-        'overflow-hidden rounded-xl border border-border-subtle',
-        theme === 'light' ? 'light' : 'dark'
-      )}
-    >
-      <div className="border-b border-border-subtle bg-elevated px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
-        {theme}
-      </div>
+    <div className="light overflow-hidden rounded-xl border border-border-subtle">
       <div className={cn('bg-canvas p-4 text-primary', className)}>{children}</div>
     </div>
   );
 }
 
-/** Renders the same demo twice, scoped to the light and dark token sets. */
-export function PreviewPane({ children, className }: PreviewPaneProps) {
+function InlineCode({ text }: { text: string }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      <Frame theme="light" className={className}>
-        {children}
-      </Frame>
-      <Frame theme="dark" className={className}>
-        {children}
-      </Frame>
-    </div>
+    <>
+      {text.split(/(`[^`]+`)/g).map((part, index) =>
+        part.startsWith('`') && part.endsWith('`') && part.length > 2 ? (
+          <code
+            key={index}
+            className="rounded bg-elevated px-1 font-mono text-[0.92em] text-primary"
+          >
+            {part.slice(1, -1)}
+          </code>
+        ) : (
+          part
+        )
+      )}
+    </>
   );
 }
 
@@ -62,7 +52,9 @@ export function CatalogSection({
       <div>
         <h2 className="text-xl font-bold tracking-tight text-primary">{title}</h2>
         {description ? (
-          <p className="mt-1 max-w-3xl text-sm text-secondary">{description}</p>
+          <p className="mt-1 max-w-3xl text-sm text-secondary">
+            <InlineCode text={description} />
+          </p>
         ) : null}
       </div>
       {children}
@@ -83,7 +75,11 @@ export function CatalogRow({
     <div className="space-y-2">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-secondary">{label}</h3>
-        {hint ? <span className="text-xs text-muted">{hint}</span> : null}
+        {hint ? (
+          <span className="text-xs text-muted">
+            <InlineCode text={hint} />
+          </span>
+        ) : null}
       </div>
       <PreviewPane>{children}</PreviewPane>
     </div>

@@ -4,14 +4,14 @@
  */
 
 export interface paths {
-    "/api/v1/webhook-subscription/health": {
+    "/api/v1/webhooks/subscriptions/health": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Check webhook service health */
+        /** Health check for webhook subscription controller */
         get: {
             parameters: {
                 query?: never;
@@ -21,7 +21,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Service health response */
+                /** @description OK */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -38,10 +38,539 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/webhooks/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List webhook endpoints for a merchant or all */
+        get: {
+            parameters: {
+                query?: {
+                    merchantId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of registered webhook endpoints */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListWebhookEndpointResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Register a new webhook subscription endpoint */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateWebhookEndpointRequest"];
+                };
+            };
+            responses: {
+                /** @description Webhook endpoint successfully created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWebhookEndpointResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions/{endpointId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get webhook endpoint details by ID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    endpointId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Webhook endpoint details */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWebhookEndpointResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a webhook endpoint subscription */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    endpointId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Endpoint deleted successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions/{endpointId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Toggle active status for a webhook endpoint */
+        patch: {
+            parameters: {
+                query: {
+                    active: boolean;
+                };
+                header?: never;
+                path: {
+                    endpointId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Webhook endpoint status updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWebhookEndpointResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions/{endpointId}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispatch a test ping to the webhook endpoint */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    endpointId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Ping delivery attempt result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWebhookDeliveryAttemptResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions/{endpointId}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List delivery attempts and history for an endpoint */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    endpointId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of delivery attempts */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListWebhookDeliveryAttemptResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/dlq/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health check for DLQ replay controller */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/dlq": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dead-Letter Queue webhook records */
+        get: {
+            parameters: {
+                query?: {
+                    merchantId?: string;
+                    unreplayedOnly?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of dead-letter queue records */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListDeadLetterWebhookResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/dlq/{dlqId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get detailed DLQ record by ID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dlqId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Dead-letter webhook record details */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseDeadLetterWebhookResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/dlq/{dlqId}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Manually replay a dead-lettered webhook record */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dlqId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Replay execution result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseReplayDlqResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/dlq/replay-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Batch replay all unreplayed DLQ records */
+        post: {
+            parameters: {
+                query?: {
+                    merchantId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Batch replay execution summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListReplayDlqResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        CreateWebhookEndpointRequest: {
+            /** Format: uuid */
+            merchantId: string;
+            /** Format: uri */
+            targetUrl: string;
+            /** @example parcel.status.changed,order.created */
+            subscribedEvents: string;
+            /** @example Main Production ERP Webhook */
+            description?: string;
+        };
+        WebhookEndpointResponse: {
+            /** Format: uuid */
+            endpointId?: string;
+            /** Format: uuid */
+            merchantId?: string;
+            targetUrl?: string;
+            secretKey?: string;
+            subscribedEvents?: string;
+            active?: boolean;
+            description?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        WebhookDeliveryAttemptResponse: {
+            /** Format: uuid */
+            attemptId?: string;
+            /** Format: uuid */
+            endpointId?: string;
+            /** Format: uuid */
+            merchantId?: string;
+            eventType?: string;
+            httpStatusCode?: number;
+            attemptNumber?: number;
+            success?: boolean;
+            responseBody?: string;
+            errorMessage?: string;
+            /** Format: date-time */
+            attemptedAt?: string;
+        };
+        DeadLetterWebhookResponse: {
+            /** Format: uuid */
+            dlqId?: string;
+            /** Format: uuid */
+            endpointId?: string;
+            /** Format: uuid */
+            merchantId?: string;
+            eventType?: string;
+            payload?: string;
+            failureReason?: string;
+            totalAttempts?: number;
+            replayed?: boolean;
+            /** Format: date-time */
+            replayedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        ReplayDlqResponse: {
+            /** Format: uuid */
+            dlqId?: string;
+            status?: string;
+            statusCode?: number;
+            message?: string;
+            /** Format: date-time */
+            replayedAt?: string;
+        };
+        ApiResponseWebhookEndpointResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["WebhookEndpointResponse"];
+        };
+        ApiResponseListWebhookEndpointResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["WebhookEndpointResponse"][];
+        };
+        ApiResponseWebhookDeliveryAttemptResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["WebhookDeliveryAttemptResponse"];
+        };
+        ApiResponseListWebhookDeliveryAttemptResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["WebhookDeliveryAttemptResponse"][];
+        };
+        ApiResponseDeadLetterWebhookResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DeadLetterWebhookResponse"];
+        };
+        ApiResponseListDeadLetterWebhookResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DeadLetterWebhookResponse"][];
+        };
+        ApiResponseReplayDlqResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ReplayDlqResponse"];
+        };
+        ApiResponseListReplayDlqResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ReplayDlqResponse"][];
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;

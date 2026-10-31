@@ -1,22 +1,28 @@
 package com.swiftdrop.gateway.trackinghub.dto;
 
+import com.swiftdrop.contracts.enums.PublicOrderStatus;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.Instant;
+import java.util.List;
 
+/**
+ * PII-free parcel tracking view for public clients.
+ * Only tracking number, public status, districts, and the public timeline are
+ * exposed; courier, merchant, customer, contact, address, and pricing data are
+ * never included.
+ */
 @Schema(name = "PublicTrackingView", description = "PII-free parcel tracking view for public clients.")
 public record PublicTrackingViewDto(
-        @Schema(description = "Public parcel tracking identifier.", example = "parcel-123")
-        String trackingId,
-        @Schema(description = "Current delivery state.", example = "IN_TRANSIT")
-        String status,
-        @Schema(description = "Approximate latitude, rounded by the tracking proxy.", example = "6.9271")
-        Double latitude,
-        @Schema(description = "Approximate longitude, rounded by the tracking proxy.", example = "79.8612")
-        Double longitude,
-        @Schema(description = "Current delivery milestones.")
-        java.util.List<String> milestones,
-        @Schema(description = "Last event time.", example = "2026-10-22T12:00:00Z")
-        Instant updatedAt
+        @Schema(description = "Public parcel tracking number.", example = "SD-2026-000123")
+        String trackingNumber,
+        @Schema(description = "Current public parcel status.", example = "IN_TRANSIT")
+        PublicOrderStatus currentPublicStatus,
+        @Schema(description = "District where the parcel entered the network.", example = "COLOMBO")
+        SriLankanDistrict originDistrict,
+        @Schema(description = "Destination district.", example = "KANDY")
+        SriLankanDistrict destinationDistrict,
+        @Schema(description = "Chronological public status timeline.")
+        List<PublicTrackingTimelineEntry> statusTimeline
 ) {
 }

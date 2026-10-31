@@ -1,15 +1,683 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Auth and IAM API
-  description: Authentication, identity, and role management APIs.
+  description: |
+    Authentication, token rotation, identity, and role management for SwiftDrop.
+    Access tokens are signed JWTs; refresh tokens are opaque, hashed at rest, and rotated on use.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
+    description: API Gateway
+security:
+  - bearerAuth: []
 paths:
   /api/v1/auth/login:
     post:
       tags: [Auth]
-      summary: Authenticate a user
+      summary: Authenticate and issue access and refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
       responses:
-        "200":
-          description: Authentication token response
+        '200':
+          description: Token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Account is not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many failed login attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a customer or merchant account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '201':
+          description: Account registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '400':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Username, email, or phone already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate a refresh token and issue a new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: New token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Refresh token invalid, expired, revoked, or reused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the current refresh token and access token
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '200':
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change the authenticated user's password and revoke all sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '400':
+          description: Validation failure or incorrect current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      summary: Get the authenticated user's profile
+      responses:
+        '200':
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users:
+    get:
+      tags: [Users]
+      summary: List and search users
+      description: Requires SYSTEM_ADMIN.
+      parameters:
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Users retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagedUsers'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: SYSTEM_ADMIN required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    post:
+      tags: [Users]
+      summary: Provision a platform account with any role
+      description: Requires SYSTEM_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '400':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: SYSTEM_ADMIN required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Username, email, or phone already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/{userId}:
+    get:
+      tags: [Users]
+      summary: Get a user by public identifier
+      description: Requires SYSTEM_ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '403':
+          description: SYSTEM_ADMIN required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/{userId}/role:
+    patch:
+      tags: [Users]
+      summary: Change a user's role
+      description: Requires SYSTEM_ADMIN. Revokes the target user's active sessions.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRoleRequest'
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '400':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: SYSTEM_ADMIN required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Cannot remove the last active SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/{userId}/status:
+    patch:
+      tags: [Users]
+      summary: Suspend, deactivate, or reactivate a user
+      description: Requires SYSTEM_ADMIN. Non-active status revokes all active sessions.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '400':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: SYSTEM_ADMIN required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Cannot deactivate the last active SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          maxLength: 320
+          description: Username or email address.
+          example: customer.one
+        password:
+          type: string
+          maxLength: 72
+          format: password
+          example: SwiftDrop123
+    RegisterUserRequest:
+      type: object
+      required: [username, email, firstName, lastName, password, role, district]
+      properties:
+        username:
+          type: string
+          pattern: '^[A-Za-z0-9._-]{3,50}$'
+          example: customer.one
+        email:
+          type: string
+          format: email
+          maxLength: 320
+          example: customer.one@example.com
+        phone:
+          type: string
+          pattern: '^$|^\+?[0-9]{7,15}$'
+          example: '+94771234567'
+        firstName:
+          type: string
+          maxLength: 100
+          example: Nimal
+        lastName:
+          type: string
+          maxLength: 100
+          example: Perera
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          format: password
+          example: SwiftDrop123
+        role:
+          allOf:
+            - $ref: '#/components/schemas/UserRole'
+          description: Self-service registration supports CUSTOMER and MERCHANT only.
+        district:
+          $ref: '#/components/schemas/SriLankanDistrict'
+        merchantId:
+          type: string
+          format: uuid
+          nullable: true
+    CreateUserRequest:
+      type: object
+      required: [username, email, firstName, lastName, password, role, district]
+      properties:
+        username:
+          type: string
+          pattern: '^[A-Za-z0-9._-]{3,50}$'
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        phone:
+          type: string
+          pattern: '^$|^\+?[0-9]{7,15}$'
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          format: password
+        role:
+          $ref: '#/components/schemas/UserRole'
+        district:
+          $ref: '#/components/schemas/SriLankanDistrict'
+        merchantId:
+          type: string
+          format: uuid
+          nullable: true
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+    LogoutRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: Optional refresh token to revoke.
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 72
+          format: password
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 72
+          format: password
+    UpdateUserRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRole'
+    UpdateUserStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/UserStatus'
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          format: int64
+          example: 3600
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/UserRole'
+        district:
+          $ref: '#/components/schemas/SriLankanDistrict'
+    UserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        district:
+          $ref: '#/components/schemas/SriLankanDistrict'
+        merchantId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        lastLoginAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    ApiResponseUserProfile:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/UserProfileResponse'
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseVoid:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponsePagedUsers:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/PagedUserProfileResponse'
+        timestamp:
+          type: string
+          format: date-time
+    PagedUserProfileResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfileResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+    ApiErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+        correlationId:
+          type: string
+        fieldErrors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        timestamp:
+          type: string
+          format: date-time
+    UserRole:
+      type: string
+      enum: [CUSTOMER, MERCHANT, COURIER, DISPATCHER, SYSTEM_ADMIN]
+    UserStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED, DEACTIVATED]
+    SriLankanDistrict:
+      type: string
+      enum:
+        - COLOMBO
+        - GAMPAHA
+        - KALUTARA
+        - KANDY
+        - MATALE
+        - NUWARA_ELIYA
+        - GALLE
+        - MATARA
+        - HAMBANTOTA
+        - JAFFNA
+        - KILINOCHCHI
+        - MANNAR
+        - VAVUNIYA
+        - MULLAITIVU
+        - BATTICALOA
+        - AMPARA
+        - TRINCOMALEE
+        - KURUNEGALA
+        - PUTTALAM
+        - ANURADHAPURA
+        - POLONNARUWA
+        - BADULLA
+        - MONARAGALA
+        - RATNAPURA
+        - KEGALLE

@@ -2,9 +2,9 @@
   "$schema": "https://tr.designtokens.org/format/",
   "meta": {
     "name": "SwiftDrop Velocity Design System",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "package": "@swiftdrop/ui",
-    "description": "Tokenized, HCI-driven design system for the SwiftDrop Courier Management System monorepo."
+    "description": "Generated from Figma variable collections (Velocity / Primitives, Velocity / Theme, Velocity / Density) in file XX3u7zxTDat0l2MbG27niR on 2026-10-29. Light theme only."
   },
   "primitives": {
     "color": {
@@ -153,6 +153,10 @@
           "$value": "#D97706",
           "$type": "color"
         },
+        "700": {
+          "$value": "#B45309",
+          "$type": "color"
+        },
         "800": {
           "$value": "#92400E",
           "$type": "color"
@@ -177,6 +181,10 @@
         },
         "600": {
           "$value": "#7C3AED",
+          "$type": "color"
+        },
+        "700": {
+          "$value": "#7E22CE",
           "$type": "color"
         },
         "800": {
@@ -231,6 +239,10 @@
           "$value": "#DC2626",
           "$type": "color"
         },
+        "700": {
+          "$value": "#B91C1C",
+          "$type": "color"
+        },
         "800": {
           "$value": "#991B1B",
           "$type": "color"
@@ -247,50 +259,61 @@
       "black": {
         "$value": "#000000",
         "$type": "color"
+      },
+      "orange": {
+        "50": {
+          "$value": "#FFEDD5",
+          "$type": "color"
+        },
+        "200": {
+          "$value": "#FED7AA",
+          "$type": "color"
+        },
+        "800": {
+          "$value": "#9A3412",
+          "$type": "color"
+        }
+      },
+      "green": {
+        "700": {
+          "$value": "#15803D",
+          "$type": "color"
+        }
+      },
+      "teal": {
+        "700": {
+          "$value": "#0F766E",
+          "$type": "color"
+        }
       }
     },
     "typography": {
       "fontFamily": {
         "sans": {
-          "$value": [
-            "Plus Jakarta Sans",
-            "Inter",
-            "-apple-system",
-            "BlinkMacSystemFont",
-            "sans-serif"
-          ],
-          "$type": "fontFamily",
-          "$description": "High x-height grotesque sans for sunlight and low-DPI monitor legibility."
+          "$value": "Plus Jakarta Sans",
+          "$type": "fontFamily"
         },
         "mono": {
-          "$value": ["JetBrains Mono", "Fira Code", "monospace"],
-          "$type": "fontFamily",
-          "$description": "Used for Tracking IDs, Webhook HTTP payloads, API keys, and coordinates."
+          "$value": "JetBrains Mono",
+          "$type": "fontFamily"
         }
       },
       "fontWeight": {
         "regular": {
-          "$value": "400",
+          "$value": 400,
           "$type": "fontWeight"
         },
         "medium": {
-          "$value": "500",
+          "$value": 500,
           "$type": "fontWeight"
         },
         "semibold": {
-          "$value": "600",
+          "$value": 600,
           "$type": "fontWeight"
         },
         "bold": {
-          "$value": "700",
+          "$value": 700,
           "$type": "fontWeight"
-        }
-      },
-      "numericDiscipline": {
-        "tabular": {
-          "$value": "tabular-nums",
-          "$type": "string",
-          "$description": "Prevents horizontal jitter during real-time SLA timer and pricing updates."
         }
       }
     },
@@ -303,16 +326,8 @@
         "$value": "4px",
         "$type": "dimension"
       },
-      "1.5": {
-        "$value": "6px",
-        "$type": "dimension"
-      },
       "2": {
         "$value": "8px",
-        "$type": "dimension"
-      },
-      "2.5": {
-        "$value": "10px",
         "$type": "dimension"
       },
       "3": {
@@ -350,6 +365,14 @@
       "16": {
         "$value": "64px",
         "$type": "dimension"
+      },
+      "1.5": {
+        "$value": "6px",
+        "$type": "dimension"
+      },
+      "2.5": {
+        "$value": "10px",
+        "$type": "dimension"
       }
     },
     "radius": {
@@ -386,8 +409,7 @@
         },
         "fast": {
           "$value": "150ms",
-          "$type": "duration",
-          "$description": "Optimistic UI feedback under Doherty Threshold (<400ms)"
+          "$type": "duration"
         },
         "normal": {
           "$value": "240ms",
@@ -395,545 +417,487 @@
         },
         "slow": {
           "$value": "360ms",
-          "$type": "duration",
-          "$description": "Drawer & bottom-sheet snap transitions (<400ms)"
+          "$type": "duration"
         }
       },
       "easing": {
         "standard": {
-          "$value": "cubic-bezier(0.2, 0, 0, 1)",
+          "$value": [
+            0.2,
+            0,
+            0,
+            1
+          ],
           "$type": "cubicBezier"
         },
         "kineticOut": {
-          "$value": "cubic-bezier(0.16, 1, 0.3, 1)",
+          "$value": [
+            0.16,
+            1,
+            0.3,
+            1
+          ],
           "$type": "cubicBezier"
         },
         "spring": {
-          "$value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+          "$value": [
+            0.34,
+            1.56,
+            0.64,
+            1
+          ],
           "$type": "cubicBezier"
         }
       }
     }
   },
-  "semantic": {
-    "surface": {
-      "light": {
-        "canvas": {
-          "$value": "{primitives.color.slate.50}",
-          "$type": "color"
-        },
-        "surface": {
-          "$value": "{primitives.color.white}",
-          "$type": "color"
-        },
-        "elevated": {
-          "$value": "{primitives.color.slate.100}",
-          "$type": "color"
-        },
-        "border": {
-          "$value": "{primitives.color.slate.200}",
-          "$type": "color"
-        },
-        "textPrimary": {
-          "$value": "{primitives.color.slate.900}",
-          "$type": "color"
-        },
-        "textSecondary": {
-          "$value": "{primitives.color.slate.600}",
-          "$type": "color"
-        },
-        "textMuted": {
-          "$value": "{primitives.color.slate.400}",
-          "$type": "color"
-        }
+  "theme": {
+    "light": {
+      "surface-canvas": {
+        "$value": "{primitives.color.slate.50}",
+        "$type": "color"
       },
-      "dark": {
-        "canvas": {
-          "$value": "{primitives.color.slate.950}",
-          "$type": "color"
-        },
-        "surface": {
-          "$value": "{primitives.color.slate.900}",
-          "$type": "color"
-        },
-        "elevated": {
-          "$value": "{primitives.color.slate.800}",
-          "$type": "color"
-        },
-        "border": {
-          "$value": "{primitives.color.slate.700}",
-          "$type": "color"
-        },
-        "textPrimary": {
-          "$value": "{primitives.color.slate.100}",
-          "$type": "color"
-        },
-        "textSecondary": {
-          "$value": "{primitives.color.slate.300}",
-          "$type": "color"
-        },
-        "textMuted": {
-          "$value": "{primitives.color.slate.500}",
-          "$type": "color"
-        }
-      }
-    },
-    "brand": {
-      "primary": {
-        "bgLight": {
-          "$value": "{primitives.color.blue.50}",
-          "$type": "color"
-        },
-        "bgDark": {
-          "$value": "{primitives.color.blue.900}",
-          "$type": "color"
-        },
-        "fgLight": {
-          "$value": "{primitives.color.blue.600}",
-          "$type": "color"
-        },
-        "fgDark": {
-          "$value": "{primitives.color.blue.400}",
-          "$type": "color"
-        },
-        "solid": {
-          "$value": "{primitives.color.blue.600}",
-          "$type": "color"
-        },
-        "solidHover": {
-          "$value": "{primitives.color.blue.700}",
-          "$type": "color"
-        }
-      }
-    },
-    "fsm": {
-      "CREATED": {
-        "code": "CREATED",
-        "stepOrder": 1,
-        "isTerminal": false,
-        "bgLight": {
-          "$value": "{primitives.color.indigo.50}",
-          "$type": "color"
-        },
-        "bgDark": {
-          "$value": "{primitives.color.indigo.950}",
-          "$type": "color"
-        },
-        "fgLight": {
-          "$value": "{primitives.color.indigo.600}",
-          "$type": "color"
-        },
-        "fgDark": {
-          "$value": "{primitives.color.indigo.400}",
-          "$type": "color"
-        },
-        "borderLight": {
-          "$value": "{primitives.color.indigo.200}",
-          "$type": "color"
-        },
-        "borderDark": {
-          "$value": "{primitives.color.indigo.800}",
-          "$type": "color"
-        },
-        "iconSilhouette": "circle-hollow",
-        "glyph": "○",
-        "allowedNextStates": ["ASSIGNED", "CANCELLED"]
+      "surface-card": {
+        "$value": "{primitives.color.white}",
+        "$type": "color"
       },
-      "ASSIGNED": {
-        "code": "ASSIGNED",
-        "stepOrder": 2,
-        "isTerminal": false,
-        "bgLight": {
-          "$value": "{primitives.color.blue.50}",
-          "$type": "color"
-        },
-        "bgDark": {
-          "$value": "{primitives.color.blue.900}",
-          "$type": "color"
-        },
-        "fgLight": {
-          "$value": "{primitives.color.blue.600}",
-          "$type": "color"
-        },
-        "fgDark": {
-          "$value": "{primitives.color.blue.400}",
-          "$type": "color"
-        },
-        "borderLight": {
-          "$value": "{primitives.color.blue.100}",
-          "$type": "color"
-        },
-        "borderDark": {
+      "surface-elevated": {
+        "$value": "{primitives.color.slate.100}",
+        "$type": "color"
+      },
+      "border-subtle": {
+        "$value": "{primitives.color.slate.200}",
+        "$type": "color"
+      },
+      "text-primary": {
+        "$value": "{primitives.color.slate.900}",
+        "$type": "color"
+      },
+      "text-secondary": {
+        "$value": "{primitives.color.slate.600}",
+        "$type": "color"
+      },
+      "text-muted": {
+        "$value": "{primitives.color.slate.500}",
+        "$type": "color"
+      },
+      "border-focus": {
+        "$value": "{primitives.color.blue.600}",
+        "$type": "color"
+      },
+      "brand-primary": {
+        "$value": "{primitives.color.blue.600}",
+        "$type": "color"
+      },
+      "status-success": {
+        "$value": "{primitives.color.emerald.800}",
+        "$type": "color"
+      },
+      "status-warning": {
+        "$value": "{primitives.color.amber.800}",
+        "$type": "color"
+      },
+      "status-danger": {
+        "$value": "{primitives.color.red.600}",
+        "$type": "color"
+      },
+      "status-info": {
+        "$value": "{primitives.color.blue.700}",
+        "$type": "color"
+      },
+      "on-brand": {
+        "$value": "{primitives.color.white}",
+        "$type": "color"
+      },
+      "brand-hover": {
+        "$value": "{primitives.color.blue.700}",
+        "$type": "color"
+      },
+      "brand-pressed": {
+        "$value": "{primitives.color.blue.900}",
+        "$type": "color"
+      },
+      "brand-subtle": {
+        "$value": "{primitives.color.blue.50}",
+        "$type": "color"
+      },
+      "danger-hover": {
+        "$value": "{primitives.color.red.800}",
+        "$type": "color"
+      },
+      "danger-pressed": {
+        "$value": "{primitives.color.red.950}",
+        "$type": "color"
+      },
+      "danger-subtle": {
+        "$value": "{primitives.color.red.50}",
+        "$type": "color"
+      },
+      "disabled-bg": {
+        "$value": "{primitives.color.slate.100}",
+        "$type": "color"
+      },
+      "disabled-fg": {
+        "$value": "{primitives.color.slate.400}",
+        "$type": "color"
+      },
+      "selected-border": {
+        "$value": "{primitives.color.blue.600}",
+        "$type": "color"
+      },
+      "role": {
+        "customer": {
           "$value": "{primitives.color.blue.700}",
           "$type": "color"
         },
-        "iconSilhouette": "user-check",
-        "glyph": "◈",
-        "allowedNextStates": ["PICKED_UP", "FAILED", "CANCELLED"]
-      },
-      "PICKED_UP": {
-        "code": "PICKED_UP",
-        "stepOrder": 3,
-        "isTerminal": false,
-        "bgLight": {
-          "$value": "{primitives.color.sky.50}",
+        "merchant": {
+          "$value": "{primitives.color.purple.700}",
           "$type": "color"
         },
-        "bgDark": {
-          "$value": "{primitives.color.sky.950}",
+        "courier": {
+          "$value": "{primitives.color.green.700}",
           "$type": "color"
         },
-        "fgLight": {
-          "$value": "{primitives.color.sky.600}",
+        "dispatcher": {
+          "$value": "{primitives.color.amber.700}",
           "$type": "color"
         },
-        "fgDark": {
-          "$value": "{primitives.color.sky.400}",
-          "$type": "color"
-        },
-        "borderLight": {
-          "$value": "{primitives.color.sky.200}",
-          "$type": "color"
-        },
-        "borderDark": {
-          "$value": "{primitives.color.sky.800}",
-          "$type": "color"
-        },
-        "iconSilhouette": "box-arrow-up",
-        "glyph": "↑",
-        "allowedNextStates": ["IN_TRANSIT", "FAILED"]
-      },
-      "IN_TRANSIT": {
-        "code": "IN_TRANSIT",
-        "stepOrder": 4,
-        "isTerminal": false,
-        "bgLight": {
-          "$value": "{primitives.color.amber.50}",
-          "$type": "color"
-        },
-        "bgDark": {
-          "$value": "{primitives.color.amber.950}",
-          "$type": "color"
-        },
-        "fgLight": {
-          "$value": "{primitives.color.amber.600}",
-          "$type": "color"
-        },
-        "fgDark": {
-          "$value": "{primitives.color.amber.400}",
-          "$type": "color"
-        },
-        "borderLight": {
-          "$value": "{primitives.color.amber.200}",
-          "$type": "color"
-        },
-        "borderDark": {
-          "$value": "{primitives.color.amber.800}",
-          "$type": "color"
-        },
-        "iconSilhouette": "truck-fast-forward",
-        "glyph": "»",
-        "allowedNextStates": ["DELIVERED", "FAILED"]
-      },
-      "DELIVERED": {
-        "code": "DELIVERED",
-        "stepOrder": 5,
-        "isTerminal": true,
-        "requiresPokaYokeSlide": true,
-        "bgLight": {
-          "$value": "{primitives.color.emerald.50}",
-          "$type": "color"
-        },
-        "bgDark": {
-          "$value": "{primitives.color.emerald.950}",
-          "$type": "color"
-        },
-        "fgLight": {
-          "$value": "{primitives.color.emerald.600}",
-          "$type": "color"
-        },
-        "fgDark": {
-          "$value": "{primitives.color.emerald.400}",
-          "$type": "color"
-        },
-        "borderLight": {
-          "$value": "{primitives.color.emerald.200}",
-          "$type": "color"
-        },
-        "borderDark": {
-          "$value": "{primitives.color.emerald.800}",
-          "$type": "color"
-        },
-        "iconSilhouette": "shield-check-solid",
-        "glyph": "✓",
-        "allowedNextStates": []
-      },
-      "FAILED": {
-        "code": "FAILED",
-        "stepOrder": 5,
-        "isTerminal": true,
-        "requiresPokaYokeSlide": true,
-        "requiresReasonCode": true,
-        "bgLight": {
-          "$value": "{primitives.color.red.50}",
-          "$type": "color"
-        },
-        "bgDark": {
-          "$value": "{primitives.color.red.950}",
-          "$type": "color"
-        },
-        "fgLight": {
-          "$value": "{primitives.color.red.600}",
-          "$type": "color"
-        },
-        "fgDark": {
-          "$value": "{primitives.color.red.400}",
-          "$type": "color"
-        },
-        "borderLight": {
-          "$value": "{primitives.color.red.200}",
-          "$type": "color"
-        },
-        "borderDark": {
-          "$value": "{primitives.color.red.800}",
-          "$type": "color"
-        },
-        "iconSilhouette": "octagon-exclamation",
-        "glyph": "!",
-        "allowedNextStates": []
-      },
-      "CANCELLED": {
-        "code": "CANCELLED",
-        "stepOrder": 5,
-        "isTerminal": true,
-        "bgLight": {
-          "$value": "{primitives.color.slate.100}",
-          "$type": "color"
-        },
-        "bgDark": {
-          "$value": "{primitives.color.slate.800}",
-          "$type": "color"
-        },
-        "fgLight": {
-          "$value": "{primitives.color.slate.600}",
-          "$type": "color"
-        },
-        "fgDark": {
-          "$value": "{primitives.color.slate.400}",
-          "$type": "color"
-        },
-        "borderLight": {
-          "$value": "{primitives.color.slate.200}",
-          "$type": "color"
-        },
-        "borderDark": {
-          "$value": "{primitives.color.slate.700}",
-          "$type": "color"
-        },
-        "iconSilhouette": "ban",
-        "glyph": "—",
-        "allowedNextStates": []
-      }
-    },
-    "domain": {
-      "webhook": {
-        "healthy": {
-          "$value": "{primitives.color.emerald.600}",
-          "$type": "color"
-        },
-        "backoffRetry": {
-          "$value": "{primitives.color.amber.600}",
-          "$type": "color"
-        },
-        "deadLetterQueue": {
-          "$value": "{primitives.color.red.600}",
+        "system-admin": {
+          "$value": "{primitives.color.teal.700}",
           "$type": "color"
         }
       },
-      "pricing": {
-        "baseRate": {
-          "$value": "{primitives.color.slate.700}",
-          "$type": "color"
+      "fsm": {
+        "created": {
+          "bg": {
+            "$value": "{primitives.color.indigo.50}",
+            "$type": "color"
+          },
+          "fg": {
+            "$value": "{primitives.color.indigo.800}",
+            "$type": "color"
+          },
+          "border": {
+            "$value": "{primitives.color.indigo.200}",
+            "$type": "color"
+          }
         },
-        "surgeMultiplier": {
-          "$value": "{primitives.color.amber.600}",
-          "$type": "color"
+        "picked-up": {
+          "bg": {
+            "$value": "{primitives.color.sky.50}",
+            "$type": "color"
+          },
+          "fg": {
+            "$value": "{primitives.color.sky.800}",
+            "$type": "color"
+          },
+          "border": {
+            "$value": "{primitives.color.sky.200}",
+            "$type": "color"
+          }
         },
-        "slaDiscount": {
-          "$value": "{primitives.color.emerald.600}",
-          "$type": "color"
+        "in-transit": {
+          "bg": {
+            "$value": "{primitives.color.amber.50}",
+            "$type": "color"
+          },
+          "fg": {
+            "$value": "{primitives.color.amber.800}",
+            "$type": "color"
+          },
+          "border": {
+            "$value": "{primitives.color.amber.200}",
+            "$type": "color"
+          }
+        },
+        "delivered": {
+          "bg": {
+            "$value": "{primitives.color.emerald.50}",
+            "$type": "color"
+          },
+          "fg": {
+            "$value": "{primitives.color.emerald.800}",
+            "$type": "color"
+          },
+          "border": {
+            "$value": "{primitives.color.emerald.200}",
+            "$type": "color"
+          }
+        },
+        "cancelled": {
+          "bg": {
+            "$value": "{primitives.color.slate.100}",
+            "$type": "color"
+          },
+          "fg": {
+            "$value": "{primitives.color.slate.600}",
+            "$type": "color"
+          },
+          "border": {
+            "$value": "{primitives.color.slate.300}",
+            "$type": "color"
+          }
+        },
+        "out-for-delivery": {
+          "bg": {
+            "$value": "{primitives.color.purple.50}",
+            "$type": "color"
+          },
+          "fg": {
+            "$value": "{primitives.color.purple.800}",
+            "$type": "color"
+          },
+          "border": {
+            "$value": "{primitives.color.purple.200}",
+            "$type": "color"
+          }
+        },
+        "failed": {
+          "bg": {
+            "$value": "{primitives.color.red.50}",
+            "$type": "color"
+          },
+          "fg": {
+            "$value": "{primitives.color.red.800}",
+            "$type": "color"
+          },
+          "border": {
+            "$value": "{primitives.color.red.200}",
+            "$type": "color"
+          }
+        },
+        "returned-to-sender": {
+          "bg": {
+            "$value": "{primitives.color.orange.50}",
+            "$type": "color"
+          },
+          "fg": {
+            "$value": "{primitives.color.orange.800}",
+            "$type": "color"
+          },
+          "border": {
+            "$value": "{primitives.color.orange.200}",
+            "$type": "color"
+          }
+        },
+        "pickup-assigned": {
+          "bg": {
+            "$value": "#EFF6FF",
+            "$type": "color",
+            "$description": "Proposal: not in Figma yet"
+          },
+          "fg": {
+            "$value": "#1E40AF",
+            "$type": "color",
+            "$description": "Proposal: not in Figma yet"
+          },
+          "border": {
+            "$value": "#BFDBFE",
+            "$type": "color",
+            "$description": "Proposal: not in Figma yet"
+          }
         }
       }
     }
   },
   "density": {
-    "kinetic": {
-      "$description": "Courier Mobile App: Field operation under glare, one-handed thumb zone (Fitts's Law W=56px).",
-      "persona": "Courier Mobile",
-      "defaultTheme": "light-high-contrast",
-      "minTargetSize": {
-        "$value": "56px",
-        "$type": "dimension"
-      },
-      "slideTrackHeight": {
-        "$value": "64px",
-        "$type": "dimension"
-      },
-      "fontSizeBase": {
-        "$value": "16px",
-        "$type": "dimension"
-      },
-      "lineHeightBase": {
-        "$value": "24px",
-        "$type": "dimension"
-      },
-      "fontSizeHeading": {
-        "$value": "22px",
-        "$type": "dimension"
-      },
-      "paddingY": {
-        "$value": "16px",
-        "$type": "dimension"
-      },
-      "paddingX": {
-        "$value": "20px",
-        "$type": "dimension"
-      },
-      "stackGap": {
-        "$value": "16px",
-        "$type": "dimension"
-      },
-      "borderRadius": {
-        "$value": "12px",
-        "$type": "dimension"
-      },
-      "hicksLawMaxChoices": 2
-    },
     "comfortable": {
-      "$description": "Customer Web Portal: Guided booking wizard and live parcel tracking stepper.",
-      "persona": "Customer Portal",
-      "defaultTheme": "light",
-      "minTargetSize": {
-        "$value": "44px",
-        "$type": "dimension"
+      "control": {
+        "min-height": {
+          "$value": "44px",
+          "$type": "dimension"
+        },
+        "padding-x": {
+          "$value": "16px",
+          "$type": "dimension"
+        },
+        "padding-y": {
+          "$value": "12px",
+          "$type": "dimension"
+        },
+        "icon-gap": {
+          "$value": "8px",
+          "$type": "dimension"
+        },
+        "icon-size": {
+          "$value": "20px",
+          "$type": "dimension"
+        }
       },
-      "slideTrackHeight": {
-        "$value": "48px",
-        "$type": "dimension"
+      "layout": {
+        "padding": {
+          "$value": "16px",
+          "$type": "dimension"
+        },
+        "stack-gap": {
+          "$value": "12px",
+          "$type": "dimension"
+        },
+        "radius": {
+          "$value": "8px",
+          "$type": "dimension"
+        }
       },
-      "fontSizeBase": {
-        "$value": "16px",
-        "$type": "dimension"
+      "type": {
+        "font-size": {
+          "$value": "14px",
+          "$type": "dimension"
+        },
+        "line-height": {
+          "$value": "20px",
+          "$type": "dimension"
+        }
       },
-      "lineHeightBase": {
-        "$value": "24px",
-        "$type": "dimension"
+      "badge": {
+        "padding-x": {
+          "$value": "10px",
+          "$type": "dimension"
+        },
+        "padding-y": {
+          "$value": "4px",
+          "$type": "dimension"
+        },
+        "gap": {
+          "$value": "6px",
+          "$type": "dimension"
+        }
+      }
+    },
+    "kinetic": {
+      "control": {
+        "min-height": {
+          "$value": "56px",
+          "$type": "dimension"
+        },
+        "padding-x": {
+          "$value": "20px",
+          "$type": "dimension"
+        },
+        "padding-y": {
+          "$value": "16px",
+          "$type": "dimension"
+        },
+        "icon-gap": {
+          "$value": "12px",
+          "$type": "dimension"
+        },
+        "icon-size": {
+          "$value": "24px",
+          "$type": "dimension"
+        }
       },
-      "fontSizeHeading": {
-        "$value": "20px",
-        "$type": "dimension"
+      "layout": {
+        "padding": {
+          "$value": "20px",
+          "$type": "dimension"
+        },
+        "stack-gap": {
+          "$value": "16px",
+          "$type": "dimension"
+        },
+        "radius": {
+          "$value": "12px",
+          "$type": "dimension"
+        }
       },
-      "paddingY": {
-        "$value": "12px",
-        "$type": "dimension"
+      "type": {
+        "font-size": {
+          "$value": "16px",
+          "$type": "dimension"
+        },
+        "line-height": {
+          "$value": "24px",
+          "$type": "dimension"
+        }
       },
-      "paddingX": {
-        "$value": "16px",
-        "$type": "dimension"
-      },
-      "stackGap": {
-        "$value": "12px",
-        "$type": "dimension"
-      },
-      "borderRadius": {
-        "$value": "8px",
-        "$type": "dimension"
-      },
-      "hicksLawMaxChoices": 3
+      "badge": {
+        "padding-x": {
+          "$value": "12px",
+          "$type": "dimension"
+        },
+        "padding-y": {
+          "$value": "6px",
+          "$type": "dimension"
+        },
+        "gap": {
+          "$value": "8px",
+          "$type": "dimension"
+        }
+      }
     },
     "compact": {
-      "$description": "Merchant B2B Portal: High-density bulk order tables, SLA billing, and webhook logs.",
-      "persona": "Merchant B2B",
-      "defaultTheme": "light",
-      "minTargetSize": {
-        "$value": "36px",
-        "$type": "dimension"
+      "control": {
+        "min-height": {
+          "$value": "34px",
+          "$type": "dimension"
+        },
+        "padding-x": {
+          "$value": "12px",
+          "$type": "dimension"
+        },
+        "padding-y": {
+          "$value": "8px",
+          "$type": "dimension"
+        },
+        "icon-gap": {
+          "$value": "6px",
+          "$type": "dimension"
+        },
+        "icon-size": {
+          "$value": "18px",
+          "$type": "dimension"
+        }
       },
-      "slideTrackHeight": {
-        "$value": "40px",
-        "$type": "dimension"
+      "layout": {
+        "padding": {
+          "$value": "12px",
+          "$type": "dimension"
+        },
+        "stack-gap": {
+          "$value": "8px",
+          "$type": "dimension"
+        },
+        "radius": {
+          "$value": "6px",
+          "$type": "dimension"
+        }
       },
-      "fontSizeBase": {
-        "$value": "14px",
-        "$type": "dimension"
+      "type": {
+        "font-size": {
+          "$value": "13px",
+          "$type": "dimension"
+        },
+        "line-height": {
+          "$value": "18px",
+          "$type": "dimension"
+        }
       },
-      "lineHeightBase": {
-        "$value": "20px",
-        "$type": "dimension"
+      "badge": {
+        "padding-x": {
+          "$value": "8px",
+          "$type": "dimension"
+        },
+        "padding-y": {
+          "$value": "3px",
+          "$type": "dimension"
+        },
+        "gap": {
+          "$value": "4px",
+          "$type": "dimension"
+        }
+      }
+    }
+  },
+  "effects": {
+    "elevation-lg": {
+      "$value": {
+        "color": "#0F172A18",
+        "offsetX": "0px",
+        "offsetY": "8px",
+        "blur": "24px",
+        "spread": "0px"
       },
-      "fontSizeHeading": {
-        "$value": "18px",
-        "$type": "dimension"
-      },
-      "paddingY": {
-        "$value": "8px",
-        "$type": "dimension"
-      },
-      "paddingX": {
-        "$value": "12px",
-        "$type": "dimension"
-      },
-      "stackGap": {
-        "$value": "8px",
-        "$type": "dimension"
-      },
-      "borderRadius": {
-        "$value": "6px",
-        "$type": "dimension"
-      },
-      "hicksLawMaxChoices": 4
-    },
-    "compact-dark": {
-      "$description": "Admin & Dispatcher Console: Split-pane geospatial map + virtualized exception queues.",
-      "persona": "Admin Dispatcher",
-      "defaultTheme": "dark",
-      "minTargetSize": {
-        "$value": "32px",
-        "$type": "dimension"
-      },
-      "slideTrackHeight": {
-        "$value": "36px",
-        "$type": "dimension"
-      },
-      "fontSizeBase": {
-        "$value": "13px",
-        "$type": "dimension"
-      },
-      "lineHeightBase": {
-        "$value": "18px",
-        "$type": "dimension"
-      },
-      "fontSizeHeading": {
-        "$value": "16px",
-        "$type": "dimension"
-      },
-      "paddingY": {
-        "$value": "6px",
-        "$type": "dimension"
-      },
-      "paddingX": {
-        "$value": "10px",
-        "$type": "dimension"
-      },
-      "stackGap": {
-        "$value": "6px",
-        "$type": "dimension"
-      },
-      "borderRadius": {
-        "$value": "4px",
-        "$type": "dimension"
-      },
-      "hicksLawMaxChoices": 5
+      "$type": "shadow"
     }
   }
 }

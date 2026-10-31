@@ -1,8 +1,10 @@
 package com.swiftdrop.iam.exception;
 
-public class InvalidCredentialsException extends RuntimeException {
+import org.springframework.http.HttpStatus;
 
-    public InvalidCredentialsException(String message) {
-        super(message);
+public class InvalidCredentialsException extends AuthException {
+
+    public InvalidCredentialsException() {
+        super(HttpStatus.UNAUTHORIZED, "Invalid username or password");
     }
 }

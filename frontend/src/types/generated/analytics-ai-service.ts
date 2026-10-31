@@ -4,14 +4,14 @@
  */
 
 export interface paths {
-    "/api/v1/operational-kpi/health": {
+    "/api/v1/analytics/health": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Check analytics service health */
+        /** Health check endpoint for operational analytics */
         get: {
             parameters: {
                 query?: never;
@@ -23,6 +23,127 @@ export interface paths {
             responses: {
                 /** @description Service health response */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/kpis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieve system-wide and district-level operational KPIs */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Operational KPI summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOperationalKpiSummary"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/couriers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List courier performance analytics across districts */
+        get: {
+            parameters: {
+                query?: {
+                    district?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of courier performance metrics */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseCourierPerformanceList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/couriers/{courierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get performance analytics for a specific courier */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Courier performance response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseCourierPerformance"];
+                    };
+                };
+                /** @description Courier not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -38,10 +159,388 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/snapshots/aggregate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger on-demand SLA snapshot recalculation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Recalculated operational KPIs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseOperationalKpiSummary"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/ai/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health check endpoint for AI assistant service */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description AI assistant health response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/ai/predict-delay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate predictive delay risk score and operational mitigation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DelayRiskPredictionRequest"];
+                };
+            };
+            responses: {
+                /** @description Delay risk prediction response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseDelayRiskPrediction"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/ai/reroute-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate dynamic transit reroute suggestions for delayed parcels */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AnomalyRerouteRequest"];
+                };
+            };
+            responses: {
+                /** @description Anomaly reroute response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAnomalyReroute"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/ai/agent-query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Query the AI logistics assistant agent in natural language */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssistantQueryRequest"];
+                };
+            };
+            responses: {
+                /** @description Agent query response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAssistantQuery"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/ai/audits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieve recent AI tool execution audit logs for compliance */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of AI audit logs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAiAuditList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        ApiResponseString: {
+            success?: boolean;
+            message?: string;
+            data?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        DistrictKpiResponse: {
+            district?: string;
+            totalParcels?: number;
+            deliveredOnTime?: number;
+            breachedSla?: number;
+            failedDeliveries?: number;
+            onTimeRate?: number;
+            avgTransitMinutes?: number;
+        };
+        OperationalKpiSummaryResponse: {
+            totalParcels?: number;
+            deliveredOnTime?: number;
+            breachedSla?: number;
+            failedDeliveries?: number;
+            systemOnTimeRate?: number;
+            avgTransitMinutes?: number;
+            activeCouriers?: number;
+            districtBreakdowns?: components["schemas"]["DistrictKpiResponse"][];
+        };
+        ApiResponseOperationalKpiSummary: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["OperationalKpiSummaryResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        CourierPerformanceResponse: {
+            /** Format: uuid */
+            courierId?: string;
+            courierName?: string;
+            currentDistrict?: string;
+            totalAssigned?: number;
+            deliveredCount?: number;
+            failedCount?: number;
+            avgTransitMinutes?: number;
+            onTimePercentage?: number;
+            customerRating?: number;
+            status?: string;
+            /** Format: date-time */
+            lastEventAt?: string;
+        };
+        ApiResponseCourierPerformance: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierPerformanceResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCourierPerformanceList: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierPerformanceResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        DelayRiskPredictionRequest: {
+            originDistrict: string;
+            destinationDistrict: string;
+            deliverySpeed?: string;
+            weatherCondition?: string;
+            trafficCongestion?: string;
+        };
+        DelayRiskPredictionResponse: {
+            /** Format: uuid */
+            insightId?: string;
+            originDistrict?: string;
+            destinationDistrict?: string;
+            deliverySpeed?: string;
+            riskLevel?: string;
+            riskScore?: number;
+            predictedDelayMinutes?: number;
+            recommendedAction?: string;
+            reasoning?: string;
+            weatherOrTrafficFactor?: string;
+        };
+        ApiResponseDelayRiskPrediction: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DelayRiskPredictionResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        AnomalyRerouteRequest: {
+            trackingNumber: string;
+            currentDistrict: string;
+            destinationDistrict: string;
+            delayMinutes?: number;
+            anomalyReason?: string;
+        };
+        AnomalyRerouteResponse: {
+            trackingNumber?: string;
+            suggestedTransitHub?: string;
+            recommendedSpeed?: string;
+            priorityScore?: number;
+            suggestedSteps?: string[];
+            rationale?: string;
+        };
+        ApiResponseAnomalyReroute: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["AnomalyRerouteResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        AssistantQueryRequest: {
+            query: string;
+            callerPersona?: string;
+            contextTrackingNumber?: string;
+        };
+        AssistantQueryResponse: {
+            answer?: string;
+            detectedIntent?: string;
+            confidence?: number;
+            suggestedActions?: string[];
+            toolInvocations?: string[];
+        };
+        ApiResponseAssistantQuery: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["AssistantQueryResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        AiAuditResponse: {
+            /** Format: uuid */
+            auditId?: string;
+            toolName?: string;
+            callerPersona?: string;
+            promptOrQuery?: string;
+            outputResult?: string;
+            executionTimeMs?: number;
+            success?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        ApiResponseAiAuditList: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["AiAuditResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;

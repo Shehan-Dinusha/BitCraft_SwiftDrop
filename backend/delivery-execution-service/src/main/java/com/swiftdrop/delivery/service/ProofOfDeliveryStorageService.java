@@ -49,6 +49,12 @@ public class ProofOfDeliveryStorageService {
                 .orElse(false);
     }
 
+    public ProofOfDeliveryResponse getByDeliveryId(UUID deliveryId) {
+        return repository.findTopByDeliveryIdOrderByCreatedAtDesc(deliveryId)
+                .map(this::toResponse)
+                .orElse(null);
+    }
+
     private void validate(ProofOfDeliveryUploadRequest request) {
         if (request == null || isBlank(request.photoUrl()) || isBlank(request.recipientSignature())
                 || isBlank(request.confirmationOtp())) {

@@ -76,7 +76,7 @@ export function HighDensityDataGrid<T extends { id: string | number }>({
                   key={String(column.key)}
                   scope="col"
                   className={cn(
-                    'whitespace-nowrap font-semibold',
+                    'whitespace-nowrap text-overline uppercase',
                     recipe.gridCell,
                     column.align === 'right' ? 'text-right' : 'text-left'
                   )}
@@ -100,7 +100,7 @@ export function HighDensityDataGrid<T extends { id: string | number }>({
               filtered.map((row) => (
                 <tr
                   key={String(row.id)}
-                  className="border-t border-border-subtle transition-colors hover:bg-elevated"
+                  className="border-t border-border-subtle transition-colors hover:bg-canvas"
                 >
                   {columns.map((column) => (
                     <td

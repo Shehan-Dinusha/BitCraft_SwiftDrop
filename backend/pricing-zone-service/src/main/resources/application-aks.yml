@@ -4,9 +4,9 @@ spring:
   application:
     name: pricing-zone-service
   datasource:
-    url: jdbc:postgresql://pricing-postgres-0.pricing-postgres-hl.swiftdrop-data.svc.cluster.local:5432/swiftdrop_pricing
+    url: ${DB_URL:jdbc:postgresql://pricing-postgres-0.pricing-postgres-hl.swiftdrop-data.svc.cluster.local:5432/swiftdrop_pricing}
     username: ${DB_USERNAME:swiftdrop}
-    password: ${DB_PASSWORD:swiftdrop}
+    password: ${DB_PASSWORD:changeme_pg}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -15,6 +15,8 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:rabbitmq.default.svc.cluster.local}
     port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:swiftdrop}
+    password: ${RABBITMQ_PASSWORD:changeme_rabbit}
 management:
   endpoints:
     web:

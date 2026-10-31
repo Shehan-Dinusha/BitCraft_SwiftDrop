@@ -1,15 +1,542 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Delivery Execution API
-  description: Delivery execution and tracking APIs.
+  description: Delivery FSM lifecycle, courier transitions, GPS telemetry, and Proof-of-Delivery verification APIs.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
+    description: API Gateway
 paths:
-  /api/v1/delivery-execution/health:
+  /api/v1/deliveries/health:
     get:
-      tags: [DeliveryExecution]
+      tags:
+        - DeliveryExecution
       summary: Check delivery service health
+      operationId: deliveryHealth
       responses:
         "200":
           description: Service health response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+
+  /api/v1/deliveries/{deliveryId}:
+    get:
+      tags:
+        - DeliveryExecution
+      summary: Get delivery session by UUID
+      operationId: getDeliveryById
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Delivery session retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDeliverySessionResponse"
+        "404":
+          description: Delivery not found
+
+  /api/v1/deliveries/order/{orderId}:
+    get:
+      tags:
+        - DeliveryExecution
+      summary: Get delivery session by order UUID
+      operationId: getDeliveryByOrderId
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Delivery session retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDeliverySessionResponse"
+        "404":
+          description: Delivery not found
+
+  /api/v1/deliveries/tracking/{trackingNumber}:
+    get:
+      tags:
+        - DeliveryExecution
+      summary: Get delivery session by tracking number
+      operationId: getDeliveryByTrackingNumber
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Delivery session retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDeliverySessionResponse"
+        "404":
+          description: Delivery not found
+
+  /api/v1/deliveries/courier/{courierId}:
+    get:
+      tags:
+        - DeliveryExecution
+      summary: List delivery sessions for a courier
+      operationId: getDeliveriesByCourier
+      parameters:
+        - name: courierId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: state
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/DeliveryState"
+      responses:
+        "200":
+          description: Courier delivery sessions retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDeliverySessionResponse"
+
+  /api/v1/deliveries/{deliveryId}/transition:
+    post:
+      tags:
+        - DeliveryExecution
+      summary: Transition delivery lifecycle state
+      description: Advances delivery state machine according to 12-state FSM rules and guards.
+      operationId: transitionDelivery
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionDeliveryRequest"
+      responses:
+        "200":
+          description: State transition executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDeliverySessionResponse"
+        "404":
+          description: Delivery session not found
+        "409":
+          description: Invalid state transition or guard requirement failed
+
+  /api/v1/deliveries/{deliveryId}/location:
+    post:
+      tags:
+        - DeliveryExecution
+      summary: Record courier GPS telemetry breadcrumb
+      operationId: recordLocation
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourierLocationUpdatePayload"
+      responses:
+        "200":
+          description: GPS breadcrumb recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTrackingBreadcrumbResponse"
+
+  /api/v1/deliveries/{deliveryId}/breadcrumbs:
+    get:
+      tags:
+        - DeliveryExecution
+      summary: Get recent GPS telemetry breadcrumbs
+      operationId: getBreadcrumbs
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: GPS breadcrumbs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListTrackingBreadcrumbResponse"
+
+  /api/v1/deliveries/{deliveryId}/proof-of-delivery:
+    post:
+      tags:
+        - ProofOfDelivery
+      summary: Upload proof-of-delivery evidence
+      operationId: uploadProofOfDelivery
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProofOfDeliveryUploadRequest"
+      responses:
+        "201":
+          description: Evidence uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseProofOfDeliveryResponse"
+
+    get:
+      tags:
+        - ProofOfDelivery
+      summary: Get proof-of-delivery status for a delivery
+      operationId: getProofOfDelivery
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Proof-of-delivery retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseProofOfDeliveryResponse"
+
+  /api/v1/deliveries/{deliveryId}/proof-of-delivery/verify:
+    post:
+      tags:
+        - ProofOfDelivery
+      summary: Verify proof-of-delivery with recipient OTP
+      operationId: verifyProofOfDelivery
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: otp
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Proof-of-delivery verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseProofOfDeliveryResponse"
+        "400":
+          description: Invalid OTP
+
+components:
+  schemas:
+    DeliveryState:
+      type: string
+      enum:
+        - CREATED
+        - ASSIGNED
+        - PICKED_UP
+        - IN_TRANSIT
+        - OUT_FOR_DELIVERY
+        - DELIVERED
+        - FAILED
+        - CANCELLED
+
+    DeliveryFailureReason:
+      type: string
+      enum:
+        - RECIPIENT_UNAVAILABLE
+        - INCORRECT_ADDRESS
+        - ACCESS_RESTRICTED
+        - RECIPIENT_REJECTED
+        - DAMAGED_IN_TRANSIT
+        - ADVERSE_WEATHER
+        - SYSTEM_CANCELLATION
+        - OTHER
+
+    SriLankanDistrict:
+      type: string
+      enum:
+        - COLOMBO
+        - GAMPAHA
+        - KALUTARA
+        - KANDY
+        - MATALE
+        - NUWARA_ELIYA
+        - GALLE
+        - MATARA
+        - HAMBANTOTA
+        - JAFFNA
+        - KILINOCHCHI
+        - MANNAR
+        - VAVUNIYA
+        - MULLAITIVU
+        - BATTICALOA
+        - AMPARA
+        - TRINCOMALEE
+        - KURUNEGALA
+        - PUTTALAM
+        - ANURADHAPURA
+        - POLONNARUWA
+        - BADULLA
+        - MONARAGALA
+        - RATNAPURA
+        - KEGALLE
+
+    TransitionDeliveryRequest:
+      type: object
+      required:
+        - targetState
+      properties:
+        targetState:
+          $ref: "#/components/schemas/DeliveryState"
+        notes:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        failureReason:
+          $ref: "#/components/schemas/DeliveryFailureReason"
+        actorRole:
+          type: string
+
+    CourierLocationUpdatePayload:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+        bearingDegrees:
+          type: number
+        speedKmh:
+          type: number
+        accuracy:
+          type: number
+
+    ProofOfDeliveryUploadRequest:
+      type: object
+      required:
+        - photoUrl
+        - recipientSignature
+        - confirmationOtp
+      properties:
+        photoUrl:
+          type: string
+        recipientSignature:
+          type: string
+        confirmationOtp:
+          type: string
+
+    ProofOfDeliveryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        deliveryId:
+          type: string
+          format: uuid
+        verified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        verifiedAt:
+          type: string
+          format: date-time
+
+    DeliverySessionResponse:
+      type: object
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        trackingNumber:
+          type: string
+        courierId:
+          type: string
+          format: uuid
+        courierName:
+          type: string
+        pickupDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        currentState:
+          $ref: "#/components/schemas/DeliveryState"
+        previousState:
+          $ref: "#/components/schemas/DeliveryState"
+        failedReason:
+          type: string
+        attemptCount:
+          type: integer
+        pickupAt:
+          type: string
+          format: date-time
+        deliveredAt:
+          type: string
+          format: date-time
+        currentLatitude:
+          type: number
+        currentLongitude:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TrackingBreadcrumbResponse:
+      type: object
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+        courierId:
+          type: string
+          format: uuid
+        latitude:
+          type: number
+        longitude:
+          type: number
+        bearingDegrees:
+          type: number
+        speedKmh:
+          type: number
+        accuracy:
+          type: number
+        recordedAt:
+          type: string
+          format: date-time
+
+    ApiResponseString:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseDeliverySessionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/DeliverySessionResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListDeliverySessionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliverySessionResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseTrackingBreadcrumbResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/TrackingBreadcrumbResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListTrackingBreadcrumbResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackingBreadcrumbResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseProofOfDeliveryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/ProofOfDeliveryResponse"
+        timestamp:
+          type: string
+          format: date-time

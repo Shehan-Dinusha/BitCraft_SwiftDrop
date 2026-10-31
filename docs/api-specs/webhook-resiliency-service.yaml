@@ -1,15 +1,418 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Webhook Resiliency API
-  description: Webhook subscriptions, delivery retries, and DLQ replay APIs.
+  description: Webhook subscriptions, exponential delivery retries, HMAC-SHA256 signatures, and DLQ replay APIs.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
 paths:
-  /api/v1/webhook-subscription/health:
+  /api/v1/webhooks/subscriptions/health:
     get:
       tags: [WebhookSubscription]
-      summary: Check webhook service health
+      summary: Health check for webhook subscription controller
       responses:
         "200":
-          description: Service health response
+          description: OK
+  /api/v1/webhooks/subscriptions:
+    get:
+      tags: [WebhookSubscription]
+      summary: List webhook endpoints for a merchant or all
+      parameters:
+        - name: merchantId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of registered webhook endpoints
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListWebhookEndpointResponse"
+    post:
+      tags: [WebhookSubscription]
+      summary: Register a new webhook subscription endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookEndpointRequest"
+      responses:
+        "201":
+          description: Webhook endpoint successfully created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseWebhookEndpointResponse"
+  /api/v1/webhooks/subscriptions/{endpointId}:
+    get:
+      tags: [WebhookSubscription]
+      summary: Get webhook endpoint details by ID
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Webhook endpoint details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseWebhookEndpointResponse"
+    delete:
+      tags: [WebhookSubscription]
+      summary: Delete a webhook endpoint subscription
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Endpoint deleted successfully
+  /api/v1/webhooks/subscriptions/{endpointId}/status:
+    patch:
+      tags: [WebhookSubscription]
+      summary: Toggle active status for a webhook endpoint
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: active
+          in: query
+          required: true
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Webhook endpoint status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseWebhookEndpointResponse"
+  /api/v1/webhooks/subscriptions/{endpointId}/test:
+    post:
+      tags: [WebhookSubscription]
+      summary: Dispatch a test ping to the webhook endpoint
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Ping delivery attempt result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseWebhookDeliveryAttemptResponse"
+  /api/v1/webhooks/subscriptions/{endpointId}/attempts:
+    get:
+      tags: [WebhookSubscription]
+      summary: List delivery attempts and history for an endpoint
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of delivery attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListWebhookDeliveryAttemptResponse"
+  /api/v1/webhooks/dlq/health:
+    get:
+      tags: [DlqReplay]
+      summary: Health check for DLQ replay controller
+      responses:
+        "200":
+          description: OK
+  /api/v1/webhooks/dlq:
+    get:
+      tags: [DlqReplay]
+      summary: List Dead-Letter Queue webhook records
+      parameters:
+        - name: merchantId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: unreplayedOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: List of dead-letter queue records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDeadLetterWebhookResponse"
+  /api/v1/webhooks/dlq/{dlqId}:
+    get:
+      tags: [DlqReplay]
+      summary: Get detailed DLQ record by ID
+      parameters:
+        - name: dlqId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dead-letter webhook record details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDeadLetterWebhookResponse"
+  /api/v1/webhooks/dlq/{dlqId}/replay:
+    post:
+      tags: [DlqReplay]
+      summary: Manually replay a dead-lettered webhook record
+      parameters:
+        - name: dlqId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Replay execution result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseReplayDlqResponse"
+  /api/v1/webhooks/dlq/replay-all:
+    post:
+      tags: [DlqReplay]
+      summary: Batch replay all unreplayed DLQ records
+      parameters:
+        - name: merchantId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Batch replay execution summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListReplayDlqResponse"
+
+components:
+  schemas:
+    CreateWebhookEndpointRequest:
+      type: object
+      required:
+        - merchantId
+        - targetUrl
+        - subscribedEvents
+      properties:
+        merchantId:
+          type: string
+          format: uuid
+        targetUrl:
+          type: string
+          format: uri
+        subscribedEvents:
+          type: string
+          example: "parcel.status.changed,order.created"
+        description:
+          type: string
+          example: "Main Production ERP Webhook"
+    WebhookEndpointResponse:
+      type: object
+      properties:
+        endpointId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        targetUrl:
+          type: string
+        secretKey:
+          type: string
+        subscribedEvents:
+          type: string
+        active:
+          type: boolean
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    WebhookDeliveryAttemptResponse:
+      type: object
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        endpointId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        httpStatusCode:
+          type: integer
+        attemptNumber:
+          type: integer
+        success:
+          type: boolean
+        responseBody:
+          type: string
+        errorMessage:
+          type: string
+        attemptedAt:
+          type: string
+          format: date-time
+    DeadLetterWebhookResponse:
+      type: object
+      properties:
+        dlqId:
+          type: string
+          format: uuid
+        endpointId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        payload:
+          type: string
+        failureReason:
+          type: string
+        totalAttempts:
+          type: integer
+        replayed:
+          type: boolean
+        replayedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    ReplayDlqResponse:
+      type: object
+      properties:
+        dlqId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        statusCode:
+          type: integer
+        message:
+          type: string
+        replayedAt:
+          type: string
+          format: date-time
+    ApiResponseWebhookEndpointResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/WebhookEndpointResponse"
+    ApiResponseListWebhookEndpointResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookEndpointResponse"
+    ApiResponseWebhookDeliveryAttemptResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/WebhookDeliveryAttemptResponse"
+    ApiResponseListWebhookDeliveryAttemptResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookDeliveryAttemptResponse"
+    ApiResponseDeadLetterWebhookResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/DeadLetterWebhookResponse"
+    ApiResponseListDeadLetterWebhookResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeadLetterWebhookResponse"
+    ApiResponseReplayDlqResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/ReplayDlqResponse"
+    ApiResponseListReplayDlqResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReplayDlqResponse"

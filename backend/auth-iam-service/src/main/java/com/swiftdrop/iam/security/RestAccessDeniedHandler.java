@@ -1,0 +1,41 @@
+package com.swiftdrop.iam.security;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.security.JwtHeaderConstants;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+
+@Component
+public class RestAccessDeniedHandler implements AccessDeniedHandler {
+
+    private final ObjectMapper objectMapper;
+
+    public RestAccessDeniedHandler(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    public void handle(HttpServletRequest request, HttpServletResponse response,
+                       AccessDeniedException accessDeniedException) throws IOException {
+        String correlationId = request.getHeader(JwtHeaderConstants.X_CORRELATION_ID);
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        if (correlationId != null) {
+            response.setHeader(JwtHeaderConstants.X_CORRELATION_ID, correlationId);
+        }
+        objectMapper.writeValue(response.getOutputStream(), ApiErrorResponse.of(
+                HttpServletResponse.SC_FORBIDDEN,
+                "Forbidden",
+                "Access denied",
+                request.getRequestURI(),
+                correlationId
+        ));
+    }
+}

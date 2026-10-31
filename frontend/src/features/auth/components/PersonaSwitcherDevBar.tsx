@@ -11,6 +11,9 @@ export function PersonaSwitcherDevBar({ onSwitch }: PersonaSwitcherDevBarProps) 
   const activeRole = useAuthStore((state) => state.role);
   const setSession = useAuthStore((state) => state.setSession);
 
+  // Developer tool: switching persona uses a fake token, so it is never shown in a production build.
+  if (!import.meta.env.DEV) return null;
+
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-border-subtle bg-elevated px-3 py-1.5">
       <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted">

@@ -1,0 +1,126 @@
+openapi: 3.1.0
+info:
+  title: SwiftDrop API Gateway Public Tracking API
+  description: |
+    PII-free public parcel tracking exposed by the API Gateway Real-Time
+    Tracking Hub. These endpoints do not require a JWT and are rate limited.
+    The WebSocket endpoint `/ws/tracking` accepts STOMP 1.2 clients and exposes
+    `/topic/track/{trackingNumber}` publicly and `/topic/customer/{customerId}`
+    only to the authenticated customer or a system administrator.
+  version: v1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/public/track/{trackingNumber}:
+    get:
+      tags: [Public Tracking]
+      summary: Get the latest PII-free tracking view
+      operationId: getPublicTrackingView
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          example: SD-2026-000123
+      responses:
+        "200":
+          description: Latest sanitized tracking view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicTrackingView"
+        "404":
+          description: Tracking data is not available
+        "429":
+          description: Public tracking rate limit exceeded
+  /api/v1/public/track/{trackingNumber}/stream:
+    get:
+      tags: [Public Tracking]
+      summary: Subscribe to Server-Sent Events tracking updates
+      operationId: streamPublicTrackingView
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server-Sent Events stream of sanitized tracking views
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/PublicTrackingView"
+        "429":
+          description: Public tracking rate limit exceeded
+components:
+  schemas:
+    PublicOrderStatus:
+      type: string
+      enum:
+        - CREATED
+        - PICKUP_ASSIGNED
+        - PICKED_UP
+        - IN_TRANSIT
+        - OUT_FOR_DELIVERY
+        - FAILED
+        - DELIVERED
+        - CANCELLED
+        - RETURNED_TO_SENDER
+    SriLankanDistrict:
+      type: string
+      enum:
+        - COLOMBO
+        - GAMPAHA
+        - KALUTARA
+        - KANDY
+        - MATALE
+        - NUWARA_ELIYA
+        - GALLE
+        - MATARA
+        - HAMBANTOTA
+        - JAFFNA
+        - KILINOCHCHI
+        - MANNAR
+        - VAVUNIYA
+        - MULLAITIVU
+        - BATTICALOA
+        - AMPARA
+        - TRINCOMALEE
+        - KURUNEGALA
+        - PUTTALAM
+        - ANURADHAPURA
+        - POLONNARUWA
+        - BADULLA
+        - MONARAGALA
+        - RATNAPURA
+        - KEGALLE
+    PublicTrackingTimelineEntry:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          $ref: "#/components/schemas/PublicOrderStatus"
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        timestamp:
+          type: string
+          format: date-time
+    PublicTrackingView:
+      type: object
+      required: [trackingNumber, currentPublicStatus, statusTimeline]
+      properties:
+        trackingNumber:
+          type: string
+          example: SD-2026-000123
+        currentPublicStatus:
+          $ref: "#/components/schemas/PublicOrderStatus"
+        originDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        destinationDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        statusTimeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicTrackingTimelineEntry"

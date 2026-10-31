@@ -77,6 +77,24 @@ export default {
             fg: 'var(--color-fsm-assigned-fg)',
             border: 'var(--color-fsm-assigned-border)'
           },
+          'pickup-assigned': {
+            DEFAULT: 'var(--color-fsm-pickup-assigned-fg)',
+            bg: 'var(--color-fsm-pickup-assigned-bg)',
+            fg: 'var(--color-fsm-pickup-assigned-fg)',
+            border: 'var(--color-fsm-pickup-assigned-border)'
+          },
+          'out-for-delivery': {
+            DEFAULT: 'var(--color-fsm-out-for-delivery-fg)',
+            bg: 'var(--color-fsm-out-for-delivery-bg)',
+            fg: 'var(--color-fsm-out-for-delivery-fg)',
+            border: 'var(--color-fsm-out-for-delivery-border)'
+          },
+          'returned-to-sender': {
+            DEFAULT: 'var(--color-fsm-returned-to-sender-fg)',
+            bg: 'var(--color-fsm-returned-to-sender-bg)',
+            fg: 'var(--color-fsm-returned-to-sender-fg)',
+            border: 'var(--color-fsm-returned-to-sender-border)'
+          },
           'picked-up': {
             DEFAULT: 'var(--color-fsm-picked-up-fg)',
             bg: 'var(--color-fsm-picked-up-bg)',
@@ -108,6 +126,13 @@ export default {
             border: 'var(--color-fsm-cancelled-border)'
           }
         },
+        role: {
+          customer: 'var(--color-role-customer)',
+          merchant: 'var(--color-role-merchant)',
+          courier: 'var(--color-role-courier)',
+          dispatcher: 'var(--color-role-dispatcher)',
+          'system-admin': 'var(--color-role-system-admin)'
+        },
         sla: {
           warning: {
             DEFAULT: 'var(--color-sla-warning-fg)',
@@ -126,6 +151,20 @@ export default {
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'IBM Plex Mono', 'ui-monospace', 'monospace']
+      },
+      fontSize: {
+        display: ['36px', { lineHeight: '44px', fontWeight: '700' }],
+        h1: ['28px', { lineHeight: '36px', fontWeight: '700' }],
+        h2: ['22px', { lineHeight: '30px', fontWeight: '600' }],
+        h3: ['18px', { lineHeight: '26px', fontWeight: '600' }],
+        'body-l': ['16px', { lineHeight: '24px', fontWeight: '400' }],
+        body: ['14px', { lineHeight: '20px', fontWeight: '400' }],
+        'body-strong': ['14px', { lineHeight: '20px', fontWeight: '600' }],
+        label: ['13px', { lineHeight: '18px', fontWeight: '500' }],
+        caption: ['12px', { lineHeight: '16px', fontWeight: '400' }],
+        overline: ['11px', { lineHeight: '16px', fontWeight: '600', letterSpacing: '0.06em' }],
+        mono: ['14px', { lineHeight: '20px', fontWeight: '400' }],
+        'mono-l': ['20px', { lineHeight: '28px', fontWeight: '500' }]
       },
       minHeight: { target: '56px' },
       minWidth: { target: '56px' },

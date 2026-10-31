@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/v1/order/health": {
+    "/api/v1/orders/health": {
         parameters: {
             query?: never;
             header?: never;
@@ -12,24 +12,163 @@ export interface paths {
             cookie?: never;
         };
         /** Check order service health */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Service health response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
+        get: operations["checkOrderHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
+        get?: never;
+        put?: never;
+        /** Calculate pre-confirmation delivery fee estimate (FR-C2) */
+        post: operations["calculateFeeEstimate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List customer's orders with pagination */
+        get: operations["listOrders"];
+        put?: never;
+        /** Create and book a new customer order (FR-C1) */
+        post: operations["createOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get order details by order UUID */
+        get: operations["getOrderById"];
+        /** Edit order while in CREATED status */
+        put: operations["updateOrder"];
+        post?: never;
+        /** Delete order while in CREATED status */
+        delete: operations["deleteOrder"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/tracking/{trackingNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get order details by non-sequential tracking number */
+        get: operations["getOrderByTrackingNumber"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request order cancellation (FR-C3) */
+        post: operations["cancelOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}/fee-revision/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Customer accepts courier pickup fee revision (FR-C8, FR-K5) */
+        post: operations["acceptFeeRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}/fee-revision/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Customer rejects courier fee revision (auto-cancels at $0) (FR-C8, FR-K5) */
+        post: operations["rejectFeeRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}/shipping-label": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download 2-page A5 shipping label with QR code and fee receipt (FR-C4, FR-C5) */
+        get: operations["downloadShippingLabel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}/delivery-receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download A5 final delivery & cash collection receipt (FR-C7) */
+        get: operations["downloadDeliveryReceipt"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41,7 +180,332 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        /**
+         * @example STANDARD
+         * @enum {string}
+         */
+        OrderSpeed: "STANDARD" | "EXPRESS" | "SAME_DAY";
+        /**
+         * @example CREATED
+         * @enum {string}
+         */
+        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "FAILED" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
+        /**
+         * @example CREATED
+         * @enum {string}
+         */
+        InternalQueueStatus: "CREATED" | "UNASSIGNED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "AT_HUB" | "OUT_FOR_DELIVERY" | "OUTBOUND" | "INCOMING" | "DELIVERED" | "FAILED_ATTEMPT" | "FAILED_RETURN" | "CANCELLED";
+        /**
+         * @example APPROVED
+         * @enum {string}
+         */
+        FeeRevisionStatus: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+        /**
+         * @example COLOMBO
+         * @enum {string}
+         */
+        SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
+        FeeEstimateRequest: {
+            pickupDistrict: components["schemas"]["SriLankanDistrict"];
+            deliveryDistrict: components["schemas"]["SriLankanDistrict"];
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            actualWeightKg: number;
+            /**
+             * Format: double
+             * @example 25
+             */
+            lengthCm?: number;
+            /**
+             * Format: double
+             * @example 20
+             */
+            widthCm?: number;
+            /**
+             * Format: double
+             * @example 10
+             */
+            heightCm?: number;
+            speed?: components["schemas"]["OrderSpeed"];
+        };
+        FeeEstimateResponse: {
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            /** @example false */
+            intraDistrict?: boolean;
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            actualWeightKg?: number;
+            /**
+             * Format: double
+             * @example 1
+             */
+            volumetricWeightKg?: number;
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            chargeableWeightKg?: number;
+            speed?: components["schemas"]["OrderSpeed"];
+            /**
+             * Format: double
+             * @example 550
+             */
+            baseFee?: number;
+            /**
+             * Format: double
+             * @example 60
+             */
+            weightFee?: number;
+            /**
+             * Format: double
+             * @example 0
+             */
+            speedSurcharge?: number;
+            /**
+             * Format: double
+             * @example 610
+             */
+            estimatedFee?: number;
+            /** @example LKR */
+            currency?: string;
+            /** @example PRICING-2026-V1 */
+            pricingRuleVersionId?: string;
+        };
+        CreateOrderRequest: {
+            /** Format: uuid */
+            customerId?: string;
+            /** Format: uuid */
+            merchantId?: string;
+            /** @example No. 42, Galle Road */
+            pickupAddressLine1: string;
+            /** @example Suite 4B */
+            pickupAddressLine2?: string;
+            /** @example Colombo 03 */
+            pickupCity: string;
+            pickupDistrict: components["schemas"]["SriLankanDistrict"];
+            /** @example 00300 */
+            pickupPostalCode: string;
+            /** @example Sunil Perera */
+            pickupContactName: string;
+            /** @example +94771234567 */
+            pickupContactPhone: string;
+            /** @example No. 18, Peradeniya Road */
+            deliveryAddressLine1: string;
+            /** @example Hilltop Residence */
+            deliveryAddressLine2?: string;
+            /** @example Kandy */
+            deliveryCity: string;
+            deliveryDistrict: components["schemas"]["SriLankanDistrict"];
+            /** @example 20000 */
+            deliveryPostalCode: string;
+            /** @example Anura Fernando */
+            recipientName: string;
+            /** @example +94719876543 */
+            recipientPhone: string;
+            /**
+             * Format: email
+             * @example anura.f@gmail.com
+             */
+            recipientEmail: string;
+            /**
+             * Format: double
+             * @example 25
+             */
+            lengthCm: number;
+            /**
+             * Format: double
+             * @example 20
+             */
+            widthCm: number;
+            /**
+             * Format: double
+             * @example 10
+             */
+            heightCm: number;
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            actualWeightKg: number;
+            speed?: components["schemas"]["OrderSpeed"];
+            /** @example Handicrafts and tea canisters */
+            itemDescription?: string;
+            /**
+             * Format: double
+             * @example 5000
+             */
+            declaredValue?: number;
+            /**
+             * Format: double
+             * @example 0
+             */
+            codAmount?: number;
+            /** @example true */
+            prohibitedItemsDeclared: boolean;
+            /** @example PRICING-2026-V1 */
+            pricingRuleVersionId?: string;
+        };
+        UpdateOrderRequest: {
+            pickupAddressLine1?: string;
+            pickupAddressLine2?: string;
+            pickupCity?: string;
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            pickupPostalCode?: string;
+            pickupContactName?: string;
+            pickupContactPhone?: string;
+            deliveryAddressLine1?: string;
+            deliveryAddressLine2?: string;
+            deliveryCity?: string;
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            deliveryPostalCode?: string;
+            recipientName?: string;
+            recipientPhone?: string;
+            /** Format: email */
+            recipientEmail?: string;
+            /** Format: double */
+            lengthCm?: number;
+            /** Format: double */
+            widthCm?: number;
+            /** Format: double */
+            heightCm?: number;
+            /** Format: double */
+            actualWeightKg?: number;
+            speed?: components["schemas"]["OrderSpeed"];
+            itemDescription?: string;
+            /** Format: double */
+            declaredValue?: number;
+            /** Format: double */
+            codAmount?: number;
+        };
+        CancelOrderRequest: {
+            /** @example Sender no longer needs delivery */
+            reason: string;
+        };
+        CustomerOrderResponse: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id?: number;
+            /**
+             * Format: uuid
+             * @example a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+             */
+            orderId?: string;
+            /** @example SD-7K4M-9QX2 */
+            trackingNumber?: string;
+            /** Format: uuid */
+            customerId?: string;
+            /** Format: uuid */
+            merchantId?: string;
+            orderSpeed?: components["schemas"]["OrderSpeed"];
+            status?: components["schemas"]["PublicOrderStatus"];
+            internalQueueStatus?: components["schemas"]["InternalQueueStatus"];
+            pickupAddressLine1?: string;
+            pickupAddressLine2?: string;
+            pickupCity?: string;
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            pickupPostalCode?: string;
+            pickupContactName?: string;
+            pickupContactPhone?: string;
+            deliveryAddressLine1?: string;
+            deliveryAddressLine2?: string;
+            deliveryCity?: string;
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            deliveryPostalCode?: string;
+            recipientName?: string;
+            recipientPhone?: string;
+            recipientEmail?: string;
+            /** Format: double */
+            lengthCm?: number;
+            /** Format: double */
+            widthCm?: number;
+            /** Format: double */
+            heightCm?: number;
+            /** Format: double */
+            actualWeightKg?: number;
+            /** Format: double */
+            chargeableWeightKg?: number;
+            itemDescription?: string;
+            /** Format: double */
+            declaredValue?: number;
+            /** Format: double */
+            codAmount?: number;
+            prohibitedItemsDeclared?: boolean;
+            pricingRuleVersionId?: string;
+            /** Format: double */
+            estimatedFee?: number;
+            /** Format: double */
+            finalFee?: number;
+            currency?: string;
+            feeRevisionStatus?: components["schemas"]["FeeRevisionStatus"];
+            /** Format: double */
+            revisedFee?: number;
+            feeRevisionReason?: string;
+            cancellationReason?: string;
+            /** Format: date-time */
+            cancelledAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ApiResponseString: {
+            /** @example true */
+            success?: boolean;
+            message?: string;
+            data?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseFeeEstimateResponse: {
+            /** @example true */
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["FeeEstimateResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCustomerOrderResponse: {
+            /** @example true */
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CustomerOrderResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponsePagedCustomerOrderResponse: {
+            /** @example true */
+            success?: boolean;
+            message?: string;
+            data?: {
+                content?: components["schemas"]["CustomerOrderResponse"][];
+                /** @example 0 */
+                page?: number;
+                /** @example 10 */
+                size?: number;
+                /**
+                 * Format: int64
+                 * @example 42
+                 */
+                totalElements?: number;
+                /** @example 5 */
+                totalPages?: number;
+                /** @example true */
+                hasNext?: boolean;
+                /** @example false */
+                hasPrevious?: boolean;
+            };
+            /** Format: date-time */
+            timestamp?: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -49,4 +513,312 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    checkOrderHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service health response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseString"];
+                };
+            };
+        };
+    };
+    calculateFeeEstimate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeeEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description Fee estimate response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseFeeEstimateResponse"];
+                };
+            };
+        };
+    };
+    listOrders: {
+        parameters: {
+            query?: {
+                /** @description Explicit customer UUID override */
+                customerId?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: {
+                /** @description Authenticated customer UUID */
+                "X-User-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated orders response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponsePagedCustomerOrderResponse"];
+                };
+            };
+        };
+    };
+    createOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Distributed tracing correlation ID */
+                "X-Correlation-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Order created response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+        };
+    };
+    getOrderById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order details response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+        };
+    };
+    updateOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated order response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+        };
+    };
+    deleteOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deletion confirmation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseString"];
+                };
+            };
+        };
+    };
+    getOrderByTrackingNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackingNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order details response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+        };
+    };
+    cancelOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancelOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Cancelled order response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+        };
+    };
+    acceptFeeRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted fee revision response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+        };
+    };
+    rejectFeeRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rejected fee revision response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+        };
+    };
+    downloadShippingLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 2-page A5 Shipping Label PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
+    downloadDeliveryReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Final Delivery Receipt PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
+}

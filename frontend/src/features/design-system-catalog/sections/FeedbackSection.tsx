@@ -16,6 +16,11 @@ export function FeedbackSection() {
             </div>
           </DemoRow>
           <Skeleton shape="block" className="h-24 w-full" />
+          <DemoRow className="items-start">
+            <Skeleton preset="text-block" />
+            <Skeleton preset="card" />
+          </DemoRow>
+          <Skeleton preset="table-row" />
         </div>
       </CatalogRow>
 

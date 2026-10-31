@@ -67,7 +67,7 @@ export function DataSection() {
             <ErgonomicActionBar
               density={density}
               next={
-                density === 'touch'
+                density === 'kinetic'
                   ? ['ASSIGNED', 'CANCELLED']
                   : density === 'comfortable'
                     ? ['PICKED_UP', 'FAILED', 'CANCELLED']

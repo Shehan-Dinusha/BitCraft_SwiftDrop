@@ -7,17 +7,20 @@ must be authored as `.tsx` with explicit props and accessible behavior.
 ## Design rules
 
 1. **Use semantic tokens, not raw colors.** Prefer `bg-card`, `text-primary`,
-   `border-border-subtle`, `bg-brand-primary`, and `text-status-danger`. The light
-   and dark themes are defined as CSS variables in `src/index.css`. Note that
+   `border-border-subtle`, `bg-brand-primary`, and `text-status-danger`. The
+   theme is **light only** (a product decision) and is defined as CSS variables
+   in `src/index.css`, mirroring the Figma "Velocity / Theme" collection. Do not
+   add `dark:` variants. Note that
    nested palette keys are flattened: the border color is `border-border-subtle`
    (not `border-subtle`), and the focus color is `outline-border-focus`.
 2. **Keep backend vocabulary unchanged.** `DeliveryState` and `PersonaRole`
    come from `src/types/contracts.ts`, which mirrors
-   `backend/common-contracts`. Do not introduce `OUT_FOR_DELIVERY` or other
-   frontend-only lifecycle values.
+   `backend/common-contracts`. `OUT_FOR_DELIVERY` and `RETURNED_TO_SENDER` are
+   public order statuses; do not introduce other frontend-only lifecycle values.
 3. **Choose density by persona.** `ADMIN_OPS` and `MERCHANT` use `compact`,
-   `COURIER` uses `touch` with 56px minimum targets, and `CUSTOMER` uses
-   `comfortable`.
+   `COURIER` uses `kinetic` (formerly `touch`, kept as an alias) with 56px
+   minimum targets, and `CUSTOMER` uses `comfortable`. These are the Figma
+   "Velocity / Density" modes Kinetic, Comfortable and Compact.
 4. **Use `cn()` for class composition.** This keeps consumer overrides
    predictable and resolves Tailwind conflicts.
 5. **Accessible states are part of the API.** Labels, focus rings,
@@ -32,17 +35,17 @@ must be authored as `.tsx` with explicit props and accessible behavior.
 
 ### Primitives
 
-| Component          | Purpose                                                                                                                                                                            |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Button`           | Primary, secondary, outline, ghost, and destructive actions. Renders at the active persona density and supports default, hover, pressed, focused, disabled, and loading states.    |
-| `Input`            | Bare text control for filters and compact controls. Five archetypes (`text`, `password`, `search`, `currency`, `phone`) and seven visual states.                                   |
-| `Field`            | Labelled form field built on `Input`, with hint and error messaging. Use this for forms.                                                                                           |
-| `SurfaceCard`      | Card surface with `base`, `elevated`, `interactive`, and `selected` roles, plus header/actions/body/footer slots.                                                                  |
-| `Card`             | Alias for `SurfaceCard` with the base role, kept for existing feature pages.                                                                                                       |
-| `Modal`            | Centered dialog. Thin wrapper over `ModalDrawerShell`.                                                                                                                             |
-| `Drawer`           | Right-side dialog. Thin wrapper over `ModalDrawerShell`.                                                                                                                           |
-| `ModalDrawerShell` | Typed dialog shell shared by modal and drawer layouts: title, description, header, scrollable body, and pinned footer.                                                             |
-| `Skeleton`         | Loading placeholder. `shape` is `text`, `block`, or `circle`; `lines` renders stacked text bars. Always decorative (`aria-hidden`), so put `aria-busy` on the region being loaded. |
+| Component          | Purpose                                                                                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`           | Primary, secondary, outline, ghost, and destructive actions. Renders at the active persona density and supports default, hover, pressed, focused, disabled, and loading states.                                                                         |
+| `Input`            | Bare text control for filters and compact controls. Five archetypes (`text`, `password`, `search`, `currency`, `phone`) and seven visual states.                                                                                                        |
+| `Field`            | Labelled form field built on `Input`, with hint and error messaging. Use this for forms.                                                                                                                                                                |
+| `SurfaceCard`      | Card surface with `base`, `elevated`, `interactive`, and `selected` roles, plus header/actions/body/footer slots.                                                                                                                                       |
+| `Card`             | Alias for `SurfaceCard` with the base role, kept for existing feature pages.                                                                                                                                                                            |
+| `Modal`            | Centered dialog. Thin wrapper over `ModalDrawerShell`.                                                                                                                                                                                                  |
+| `Drawer`           | Right-side dialog. Thin wrapper over `ModalDrawerShell`.                                                                                                                                                                                                |
+| `ModalDrawerShell` | Typed dialog shell shared by modal and drawer layouts: title, description, header, scrollable body, and pinned footer.                                                                                                                                  |
+| `Skeleton`         | Loading placeholder. `shape` is `text`, `block`, or `circle`; `lines` renders stacked text bars; `preset` is `text-block`, `table-row` or `card` (the Figma layouts). Always decorative (`aria-hidden`), so put `aria-busy` on the region being loaded. |
 
 ### Domain components
 
@@ -55,10 +58,36 @@ must be authored as `.tsx` with explicit props and accessible behavior.
 | `HighDensityDataGrid`     | Compact merchant and operations table with progressive filtering, a live row count, right-aligned numeric columns, and an empty state.                                                                                                                                                 |
 | `AiAssistantDock`         | AI conversation panel; citations are attributed per message. `onSubmit` may return the assistant reply.                                                                                                                                                                                |
 | `StatusBanner`            | Success, warning, danger, and informational feedback on the tinted `status-*-bg` / `status-*-fg` token triads. `danger` announces as `role="alert"`.                                                                                                                                   |
-| `ThemeToggle`             | Theme switch backed by `useThemeStore`: toggles the `dark` class, persists the choice, and stays in sync across instances. `appearance` is `icon` (default) or `labelled`.                                                                                                             |
 | `SelectDropdown`          | Single-choice select with listbox keyboard support, optional search, and status badges.                                                                                                                                                                                                |
 | `DropdownMenu`            | Floating option panel used by `SelectDropdown` and by action menus.                                                                                                                                                                                                                    |
 | `DropdownItem`            | One option row inside a `DropdownMenu`.                                                                                                                                                                                                                                                |
+
+### Velocity v2 components (from the new Figma)
+
+Source file and node ids: [figma-source.md](../docs/velocity-design-system/figma-source.md).
+Figma is the source of truth; every component below has a section in `/catalog`.
+
+| Figma section                      | Components                                                                                                                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foundations                        | tokens in `src/index.css` and `tokens/swiftdrop-velocity-tokens.json`, text styles (`text-display` ... `text-mono-l`, `velocityTextStyles`)                                                                         |
+| 01 Domain tags                     | `RoleTag`, `SpeedTag`, `QueueChip`, `CashState`                                                                                                                                                                     |
+| 02 Identifiers and money           | `TrackingNumber`, `MoneyAmount`                                                                                                                                                                                     |
+| 03 Status timeline                 | `TimelineStep`, `StatusTimeline`, `StatusProgress`, `LiveIndicator`                                                                                                                                                 |
+| 04 Feedback                        | `Alert` (use for new work; `StatusBanner` stays for existing pages), `Toast` with `ToastProvider` and `useToast`, `EmptyState`, `Skeleton` presets                                                                  |
+| 05 Page structure                  | `Tabs` and `TabItem`, `PageHeader`                                                                                                                                                                                  |
+| 06 Navigation                      | `NavItem`, `SideNav`, `TopBar`, `PublicHeader`, `BottomNav`                                                                                                                                                         |
+| 07 Order patterns                  | `PriceBreakdown` (customer, merchant, recalculated), `OrderCard` (customer, courier pickup, courier delivery)                                                                                                       |
+| 08 Inputs and selection            | `Checkbox`, `Radio`, `Toggle`, `Textarea`, `RadioCard`, `ChoiceChip`, `SpecialField`, `IconButton`, `PhotoUpload`, `SlotChip`, `PickupSlotPicker`                                                                   |
+| 09 Data tables                     | `TableHeaderCell`, `OrderTable` and `OrderTableRow`, `FilterBar`, `Pagination`; `HighDensityDataGrid` keeps the simpler generic grid                                                                                |
+| 11 Cards, sheets, special controls | `BottomSheet`, `SlideToConfirm` (new work; `SlideToTransitionBar` stays for existing pages), `AssistantLauncher`, `AssistantPanel`, `AiAssistant` (`AiAssistantDock` stays), `NotificationItem`, `NotificationTray` |
+
+Rules of thumb:
+
+- Build with the semantic (Theme) tokens, never the primitive palette.
+- Pages should move to these components gradually, each member in their own
+  PR. The old components are not removed.
+- `SlideToConfirm` takes `holdMs` for the optional "keep holding" step. It
+  defaults to `0` (release past 85% confirms), which matches the old bar.
 
 ## Button states and density
 
@@ -68,9 +97,11 @@ matching target height, padding, icon size, radius, and label size from
 
 | Density       | Target height | Padding     | Icon | Radius |
 | ------------- | ------------- | ----------- | ---- | ------ |
-| `touch`       | 56px          | 20px / 16px | 24px | 12px   |
+| `kinetic`     | 56px          | 20px / 16px | 24px | 12px   |
 | `comfortable` | 44px          | 16px / 12px | 20px | 8px    |
-| `compact`     | 36px          | 12px / 8px  | 18px | 6px    |
+| `compact`     | 34px          | 12px / 8px  | 18px | 6px    |
+
+`touch` is a deprecated alias of `kinetic`; both resolve to the same recipe.
 
 `state` renders one explicit visual state instead of the live
 `:hover`/`:active`/`:focus-visible` behaviour. Use it for design reviews and
@@ -82,7 +113,7 @@ renders a spinner, sets `aria-busy`, and disables the control.
   Assign courier
 </Button>
 
-<Button variant="destructive" density="touch" state="hover">
+<Button variant="destructive" density="kinetic" state="hover">
   Cancel delivery
 </Button>
 ```
@@ -221,19 +252,24 @@ modifier is needed.
 
 ## Status and transitions
 
-`FsmStatusBadge` is the only place delivery-state color is decided. It reads
-`deliveryStateColors` (backed by the `--color-fsm-*` tokens) so light and dark
-themes stay in sync and no view invents its own palette.
+`FsmStatusBadge` is the only place parcel-status color is decided. It reads
+`publicStatusColors` (backed by the `--color-fsm-*` tokens) for every
+`PublicOrderStatus` (Created, Pickup Assigned, Picked Up, In Transit, Out for
+Delivery, Failed, Delivered, Cancelled, Returned to Sender), so no view invents
+its own palette. The older `ASSIGNED` delivery state is accepted as an alias of
+`PICKUP_ASSIGNED`. Figma has no Pickup Assigned badge yet; its blue
+(`#1E40AF` / `#EFF6FF` / `#BFDBFE`) is a proposal to add to Figma.
 
-| Size | Default for   | Treatment                          |
-| ---- | ------------- | ---------------------------------- |
-| `sm` | `compact`     | 10px label, 4px dot, `px-2 py-0.5` |
-| `md` | `comfortable` | 12px label, 6px dot, `px-2.5 py-1` |
-| `lg` | `touch`       | 14px label, 8px dot, `px-3 py-1.5` |
+| Size | Figma | Default for                 | Treatment                                        |
+| ---- | ----- | --------------------------- | ------------------------------------------------ |
+| `sm` | S     | `compact`                   | 10px label, 5px dot, `px-1.5 py-0.5`, 4px gap    |
+| `md` | M     | `comfortable` and `kinetic` | 11px label, 6px dot, `px-2.5 py-1`, 6px gap      |
+| `lg` | -     | alias of `md`               | kept so existing `size="lg"` calls still compile |
 
 ```tsx
 <FsmStatusBadge state="IN_TRANSIT" />
-<FsmStatusBadge state="FAILED" size="lg" />
+<FsmStatusBadge state="RETURNED_TO_SENDER" size="sm" />
+<FsmStatusBadge state="DELIVERED" sync />   {/* dashed, "DELIVERED · SYNCING" */}
 <FsmStatusBadge state="DELIVERED" tone="muted" />
 ```
 
@@ -328,22 +364,48 @@ reply; without it the dock stays a prompt surface.
 
 ## Catalog and shell
 
-`/catalog` renders every family twice, once inside a `.light` scope and once
-inside a `.dark` scope. The token blocks in `src/index.css` are declared on
-`:root, .light` and `.dark`, so a nested scope switches themes for its subtree
-regardless of the app theme. Use the same trick for theme previews; never
-hardcode a second palette.
+The catalog is **public**: `/catalog` needs no login, no role and no backend, and
+it does not use `AppShell`. It has its own layout (index, search, Figma links).
 
-Shell behaviour lives in `src/app/AppShell.tsx`:
+| Route                    | What it shows                                                                                                  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `/catalog`               | Overview of all groups and the density by role                                                                 |
+| `/catalog/foundations`   | Colour tokens, status and role colours, spacing, radius, elevation, density, type                              |
+| `/catalog/actions`       | Buttons                                                                                                        |
+| `/catalog/inputs`        | Inputs, fields, selects, selection controls                                                                    |
+| `/catalog/data-display`  | Badges, tags, identifiers, tabs, filters, tables, pagination                                                   |
+| `/catalog/feedback`      | Alerts, toasts, empty states, skeletons, timelines, progress                                                   |
+| `/catalog/patterns`      | Surfaces, dialogs, price breakdown, order cards, sheets, photo upload, slots                                   |
+| `/catalog/courier`       | Slide to confirm and the assistant                                                                             |
+| `/catalog/shells`        | Every role shell (Public, Customer, Merchant, Courier, Dispatcher, System Admin) at Desktop, Tablet and Mobile |
+| `/catalog/preview/:role` | One role shell as a full page. The shells gallery embeds it in a frame                                         |
 
-- The dev persona bar sits above the header and switches the zustand session,
-  which re-derives density and then navigates to the persona home.
-- The header exposes persona navigation, a catalog link, the theme toggle, and
-  sign-out. Sign-out clears the session and replaces the route with `/login`.
-- `ThemeToggle` reads `useThemeStore`, so every instance stays in sync and the
-  choice persists in `localStorage['swiftdrop-theme']`. `index.html` applies the
-  stored or system theme before first paint, so there is no flash of the wrong
-  theme.
+The page map is in `src/features/design-system-catalog/catalogNav.ts`. To add a
+component, put its demo in a section under `sections/`, register the section in
+`families.tsx`, and list its id on the right page in `catalogNav.ts`.
+Forced states (`state` props) exist for the catalog only.
+
+Shell behaviour lives in `src/app/AppShell.tsx`, built from the shell parts in
+`src/design-system/components/Shell/`:
+
+- `AppShell` maps the signed-in persona to a Figma shell role (`customer`,
+  `merchant`, `courier`, `dispatcher`, `system-admin`). `ADMIN_OPS` is a
+  dispatcher unless the backend role is `SYSTEM_ADMIN`.
+- Desktop: `SideNav` (256px, 72px icon rail below 1280px) plus a 56px `TopBar`.
+  Customer and courier get a `BottomNav` tab bar on mobile (below `md`) instead
+  of the side nav.
+- Menu entries come from `routedNav` in `AppShell.tsx`: only pages that have a
+  route today. The full Figma menus live in `roleShellSpec` and are shown in the
+  catalog; add an entry to `routedNav` when its page and route exist.
+- The dev persona bar (development builds only) sits above the top bar and
+  switches the zustand session, which re-derives density and then navigates to
+  the persona home. A dev session uses a fake token, so it is marked
+  `isDevSession` and the API client does not sign you out when the backend
+  answers 401. For a real sign-in per role run `npm run seed:demo`.
+- Sign-out lives in the side nav account footer. It clears the session and
+  replaces the route with `/login`.
+- `PublicHeader` is the two-row header for public pages (no login). It is not
+  used by `AppShell`.
 
 Dialogs and drawers accept `inline` for catalogs and docs: the panel renders in
 normal flow without the scrim, scroll lock, Escape handling, or `aria-modal`.

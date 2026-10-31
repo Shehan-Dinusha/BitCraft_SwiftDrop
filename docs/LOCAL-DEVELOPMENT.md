@@ -90,7 +90,7 @@ The default local PostgreSQL credentials are:
 
 ```text
 Username: swiftdrop
-Password: swiftdrop
+Password: changeme_pg
 ```
 
 ## 4. Backend service matrix
@@ -100,7 +100,7 @@ Use the module name in the `mvn` command and start the matching PostgreSQL conta
 | Team area | Maven module | Application port | PostgreSQL container | PostgreSQL host port |
 |---|---|---:|---|---:|
 | API gateway and tracking hub | `api-gateway` | 8080 | None | None |
-| Auth and IAM | `auth-iam-service` | 8081 | `iam-postgres` | 5432 |
+| Auth and IAM | `auth-iam-service` | 8081 | `iam-postgres` | 5431 |
 | Customer orders | `customer-order-service` | 8082 | `order-postgres` | 5433 |
 | Pricing and zones | `pricing-zone-service` | 8083 | `pricing-postgres` | 5434 |
 | Dispatch and assignment | `dispatch-assignment-service` | 8084 | `dispatch-postgres` | 5435 |
@@ -130,6 +130,50 @@ mvn -f backend\pom.xml -pl delivery-execution-service -am spring-boot:run
 ```
 
 The delivery service runs at `http://localhost:8085`.
+
+### Auth and IAM
+
+Start the database, RabbitMQ, and Redis, then run the service:
+
+```powershell
+docker compose up -d rabbitmq iam-postgres redis
+mvn -f backend\pom.xml -pl auth-iam-service -am spring-boot:run
+```
+
+The Auth/IAM service runs at `http://localhost:8081`. Register a customer directly while developing:
+
+```powershell
+$body = @{
+  username = 'customer.one'
+  email = 'customer.one@example.com'
+  firstName = 'Nimal'
+  lastName = 'Perera'
+  password = 'SwiftDrop123'
+  role = 'CUSTOMER'
+  district = 'COLOMBO'
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri http://localhost:8081/api/v1/auth/register `
+  -ContentType 'application/json' -Body $body
+```
+
+To create the first administrator, set the bootstrap variables before starting the service:
+
+```powershell
+$env:BOOTSTRAP_ADMIN_USERNAME = 'root'
+$env:BOOTSTRAP_ADMIN_PASSWORD = 'ChangeMe123'
+$env:BOOTSTRAP_ADMIN_EMAIL = 'root@example.com'
+$env:BOOTSTRAP_ADMIN_DISTRICT = 'COLOMBO'
+```
+
+The bootstrap runner only creates the account when no active `SYSTEM_ADMIN` exists and the username is unused. Leave the variables unset to skip it. The API gateway must use the same `JWT_SECRET` as Auth/IAM; local development defaults are aligned. AKS deployments read the shared secret from `swiftdrop-jwt-credentials` in `swiftdrop-apps`:
+
+```powershell
+kubectl -n swiftdrop-apps create secret generic swiftdrop-jwt-credentials `
+  --from-literal=secret='<at-least-32-byte-random-value>'
+```
+
+Redis backs the login failure limiter and JWT blacklist. If Redis is unavailable, both checks fail open so local UI work can continue; do not rely on that behavior in production.
 
 ### Any other service
 
@@ -251,15 +295,8 @@ mvn -f backend\pom.xml -pl delivery-execution-service -am spring-boot:run
 
 ## 8. Gateway routing note
 
-The gateway route definitions use service-discovery URIs such as `lb://delivery-execution-service`. This is correct for the containerized/Kubernetes deployment topology, but a gateway started directly with Maven may not discover another service started directly with Maven unless local service discovery is configured.
+Gateway route URLs default to localhost, so Maven-run services are reachable without service discovery. Container deployments set these URLs to Docker or Kubernetes service DNS names.
 
-For direct backend testing, call the service port directly, for example:
-
-```text
-http://localhost:8085
-```
-
-For browser testing, use the gateway at `http://localhost:8080`. If a gateway route returns a service-discovery or connection error during direct-Maven development, use the service directly for backend testing or run the Docker/Kubernetes topology that provides service discovery.
 
 ## 9. Stop local processes and infrastructure
 
@@ -309,13 +346,20 @@ If RabbitMQ connection fails, verify:
 docker compose ps rabbitmq
 ```
 
-## 11. Full local infrastructure
+## 11. Full local application stack
 
-Use this only when testing cross-service behavior:
+Use the default Compose profile for infrastructure only:
 
 ```powershell
 docker compose up -d
 docker compose ps
 ```
 
-This starts RabbitMQ, the API gateway container, and all nine PostgreSQL containers. Backend application services are normally run individually with Maven unless you intentionally use the containerized deployment workflow.
+Start the backend services and frontend with the `apps` profile:
+
+```powershell
+docker compose --profile apps up -d --build
+docker compose ps
+```
+
+Open `http://localhost:5173`. Nginx proxies REST, SSE, and WebSocket traffic through the gateway.
