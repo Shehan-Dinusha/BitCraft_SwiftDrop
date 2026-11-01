@@ -32,7 +32,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +55,9 @@ class CustomerOrderServiceTest {
 
     @Mock
     private OrderEventPublisher orderEventPublisher;
+
+    @Mock
+    private OrderStatusHistoryService orderStatusHistoryService;
 
     @InjectMocks
     private CustomerOrderService customerOrderService;
@@ -155,6 +160,7 @@ class CustomerOrderServiceTest {
         assertThat(response.getFinalFee()).isEqualByComparingTo("610.00");
 
         verify(orderEventPublisher).publishOrderCreated(any(CustomerOrder.class), eq(correlationId));
+        verify(orderStatusHistoryService).recordCurrentStatus(argThat(o -> o.getStatus() == PublicOrderStatus.CREATED), isNull());
     }
 
     @Test
@@ -211,6 +217,7 @@ class CustomerOrderServiceTest {
         assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
         assertThat(response.getCancellationReason()).isEqualTo("No longer needed");
         verify(orderEventPublisher).publishOrderCancelled(any(CustomerOrder.class), eq("No longer needed"), eq("CUSTOMER"), eq(correlationId));
+        verify(orderStatusHistoryService).recordCurrentStatus(argThat(o -> o.getStatus() == PublicOrderStatus.CANCELLED), isNull());
     }
 
     @Test
@@ -249,5 +256,6 @@ class CustomerOrderServiceTest {
         assertThat(response.getInternalQueueStatus()).isEqualTo(InternalQueueStatus.CANCELLED);
 
         verify(orderEventPublisher).publishOrderCancelled(any(CustomerOrder.class), any(), eq("CUSTOMER"), eq(correlationId));
+        verify(orderStatusHistoryService).recordCurrentStatus(argThat(o -> o.getStatus() == PublicOrderStatus.CANCELLED), isNull());
     }
 }

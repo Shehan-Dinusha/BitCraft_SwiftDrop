@@ -238,6 +238,17 @@ paths:
           schema:
             type: string
             example: SD-7K4M-9QX2
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
       responses:
         "200":
           description: Order details response
@@ -245,6 +256,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
+        "404":
+          description: Order not found, or not owned by the caller
+
+  /internal/v1/orders/tracking/{trackingNumber}:
+    get:
+      tags: [Internal Order]
+      summary: Public-safe tracking view by tracking number
+      description: Service-to-service only, for the gateway tracking hub. No user context. Must never be exposed through the API gateway.
+      operationId: getTracking
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^SD-[A-Z0-9]{4}-[A-Z0-9]{4}$'
+            example: SD-7K4M-9QX2
+      responses:
+        "200":
+          description: Status, status history and city/district only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseInternalTrackingView"
+        "400":
+          description: Malformed tracking number
+        "404":
+          description: Unknown tracking number
 
   /api/v1/orders/{orderId}/cancel:
     post:
@@ -948,6 +987,54 @@ components:
           type: string
         data:
           $ref: "#/components/schemas/CustomerOrderResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    InternalTrackingView:
+      type: object
+      description: Public-safe tracking view. No street address, name, phone, email, customer or merchant id, or fee.
+      properties:
+        trackingNumber:
+          type: string
+          example: SD-7K4M-9QX2
+        status:
+          $ref: "#/components/schemas/PublicOrderStatus"
+        history:
+          type: array
+          description: Status history, oldest first
+          items:
+            $ref: "#/components/schemas/InternalTrackingHistoryEntry"
+        pickupCity:
+          type: string
+          example: Colombo 03
+        pickupDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        deliveryCity:
+          type: string
+          example: Kandy
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+
+    InternalTrackingHistoryEntry:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/PublicOrderStatus"
+        occurredAt:
+          type: string
+          format: date-time
+
+    ApiResponseInternalTrackingView:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/InternalTrackingView"
         timestamp:
           type: string
           format: date-time

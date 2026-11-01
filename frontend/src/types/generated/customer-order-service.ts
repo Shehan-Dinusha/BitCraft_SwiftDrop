@@ -92,6 +92,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/v1/orders/tracking/{trackingNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public-safe tracking view by tracking number
+         * @description Service-to-service only, for the gateway tracking hub. No user context. Must never be exposed through the API gateway.
+         */
+        get: operations["getTracking"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/{orderId}/cancel": {
         parameters: {
             query?: never;
@@ -496,6 +516,33 @@ export interface components {
             /** Format: date-time */
             timestamp?: string;
         };
+        /** @description Public-safe tracking view. No street address, name, phone, email, customer or merchant id, or fee. */
+        InternalTrackingView: {
+            /** @example SD-7K4M-9QX2 */
+            trackingNumber?: string;
+            status?: components["schemas"]["PublicOrderStatus"];
+            /** @description Status history, oldest first */
+            history?: components["schemas"]["InternalTrackingHistoryEntry"][];
+            /** @example Colombo 03 */
+            pickupCity?: string;
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            /** @example Kandy */
+            deliveryCity?: string;
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+        };
+        InternalTrackingHistoryEntry: {
+            status?: components["schemas"]["PublicOrderStatus"];
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        ApiResponseInternalTrackingView: {
+            /** @example true */
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["InternalTrackingView"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
         ApiResponsePagedCustomerOrderResponse: {
             /** @example true */
             success?: boolean;
@@ -798,7 +845,12 @@ export interface operations {
     getOrderByTrackingNumber: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 trackingNumber: string;
             };
@@ -814,6 +866,49 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
                 };
+            };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTracking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackingNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Status, status history and city/district only */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseInternalTrackingView"];
+                };
+            };
+            /** @description Malformed tracking number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown tracking number */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

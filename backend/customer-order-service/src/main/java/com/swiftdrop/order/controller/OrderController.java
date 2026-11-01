@@ -82,8 +82,13 @@ public class OrderController {
 
     @GetMapping("/tracking/{trackingNumber}")
     @Operation(summary = "Get order details by non-sequential tracking number")
-    public ApiResponse<CustomerOrderResponse> getOrderByTrackingNumber(@PathVariable("trackingNumber") String trackingNumber) {
-        return ApiResponse.success(customerOrderService.getOrderByTrackingNumber(trackingNumber), "Order retrieved successfully");
+    public ApiResponse<CustomerOrderResponse> getOrderByTrackingNumber(
+            @PathVariable("trackingNumber") String trackingNumber,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
+        return ApiResponse.success(
+                customerOrderService.getOrderByTrackingNumber(trackingNumber, parseUuidSafe(userIdHeader), userRoleHeader),
+                "Order retrieved successfully");
     }
 
     @GetMapping

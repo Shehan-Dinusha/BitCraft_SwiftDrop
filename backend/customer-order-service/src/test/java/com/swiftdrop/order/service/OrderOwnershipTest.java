@@ -57,6 +57,9 @@ class OrderOwnershipTest {
     @Mock
     private OrderEventPublisher orderEventPublisher;
 
+    @Mock
+    private OrderStatusHistoryService orderStatusHistoryService;
+
     @InjectMocks
     private CustomerOrderService customerOrderService;
 
@@ -204,6 +207,24 @@ class OrderOwnershipTest {
     }
 
     // ---- writes and downloads (Stage 3) ----
+
+    @Test
+    @DisplayName("The tracking-number lookup follows the same ownership rule as the id lookup")
+    void trackingLookupFollowsOwnershipRule() {
+        when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.of(orderOfA));
+        when(customerOrderRepository.findByTrackingNumber("SD-0000-0000")).thenReturn(Optional.empty());
+
+        assertThat(customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerA, "CUSTOMER").getOrderId())
+                .isEqualTo(orderId);
+        assertThat(customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerB, "DISPATCHER").getOrderId())
+                .isEqualTo(orderId);
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", null, null))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-0000-0000", customerA, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+    }
 
     @Test
     @DisplayName("Customer B cannot cancel customer A's order, and nothing is saved or published")

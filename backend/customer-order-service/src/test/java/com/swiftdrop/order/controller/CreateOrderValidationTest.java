@@ -270,7 +270,7 @@ class CreateOrderValidationTest {
     @Test
     @DisplayName("Not-found response never contains the requested tracking number")
     void notFoundDoesNotEchoTrackingNumber() throws Exception {
-        when(customerOrderService.getOrderByTrackingNumber("SD-ZZZZ-9999"))
+        when(customerOrderService.getOrderByTrackingNumber("SD-ZZZZ-9999", null, null))
                 .thenThrow(new OrderNotFoundException("Order not found with tracking number: SD-ZZZZ-9999"));
 
         String body = mockMvc.perform(get("/api/v1/orders/tracking/{trackingNumber}", "SD-ZZZZ-9999"))

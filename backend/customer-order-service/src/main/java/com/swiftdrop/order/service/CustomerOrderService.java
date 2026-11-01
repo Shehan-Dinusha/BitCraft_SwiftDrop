@@ -40,6 +40,7 @@ public class CustomerOrderService {
     private final PricingClient pricingClient;
     private final OrderPdfGeneratorService orderPdfGeneratorService;
     private final OrderEventPublisher orderEventPublisher;
+    private final OrderStatusHistoryService orderStatusHistoryService;
 
     public FeeEstimateResponse calculateEstimate(FeeEstimateRequest request) {
         return pricingClient.estimate(request);
@@ -113,6 +114,7 @@ public class CustomerOrderService {
         log.info("Created customer order orderId={}, trackingNumber={}", saved.getOrderId(), saved.getTrackingNumber());
 
         // 4. Publish order.created and parcel.status.changed events
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCreated(saved, correlationId);
 
         return CustomerOrderResponse.fromEntity(saved);
@@ -125,9 +127,10 @@ public class CustomerOrderService {
     }
 
     @Transactional(readOnly = true)
-    public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber) {
+    public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByTrackingNumber(trackingNumber)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+        assertCallerCanAccess(order, callerId, callerRole);
         return CustomerOrderResponse.fromEntity(order);
     }
 
@@ -257,6 +260,7 @@ public class CustomerOrderService {
         order.setUpdatedAt(Instant.now());
 
         CustomerOrder saved = customerOrderRepository.save(order);
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCancelled(saved, order.getCancellationReason(), "CUSTOMER", correlationId);
         return CustomerOrderResponse.fromEntity(saved);
     }
@@ -296,6 +300,7 @@ public class CustomerOrderService {
         order.setUpdatedAt(Instant.now());
 
         CustomerOrder saved = customerOrderRepository.save(order);
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCancelled(saved, order.getCancellationReason(), "CUSTOMER", correlationId);
         log.info("Customer rejected fee revision for order {}: cancelled at LKR 0.00", orderId);
         return CustomerOrderResponse.fromEntity(saved);
