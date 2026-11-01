@@ -2,9 +2,11 @@ package com.swiftdrop.order;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import com.swiftdrop.order.domain.entity.OrderSource;
 import com.swiftdrop.order.domain.entity.OrderStatusHistory;
@@ -39,6 +41,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -283,5 +286,100 @@ class OrderPersistenceAndEventIT {
         assertThat(orderRepository.findAll().stream().filter(o -> merchantId.equals(o.getMerchantId())).count()).isEqualTo(1);
         assertThat(awaitEvents(1)).hasSize(1);
         assertNoFurtherEvents();
+    }
+
+    // ---- status sync (Stage 12) ----
+
+    private CustomerOrder createCustomerOrder() throws Exception {
+        String response = mockMvc.perform(post("/api/v1/orders")
+                        .header("X-User-Id", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(customerOrderJson()))
+                .andReturn().getResponse().getContentAsString();
+        String trackingNumber = objectMapper.readTree(response).at("/data/trackingNumber").asText();
+        return orderRepository.findByTrackingNumber(trackingNumber).orElseThrow();
+    }
+
+    private ParcelStatusChangedEvent statusEvent(CustomerOrder order, PublicOrderStatus from, PublicOrderStatus to,
+                                                 InternalQueueStatus sub, Instant at) {
+        return new ParcelStatusChangedEvent(UUID.randomUUID(), UUID.randomUUID(), order.getTrackingNumber(), order.getOrderId(),
+                order.getCustomerId(), from, to, sub, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, null, at);
+    }
+
+    private void awaitStatus(UUID orderId, PublicOrderStatus expected) {
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+                assertThat(orderRepository.findByOrderId(orderId).orElseThrow().getStatus()).isEqualTo(expected));
+    }
+
+    private List<PublicOrderStatus> historyOf(UUID orderId) {
+        return historyRepository.findByOrderIdOrderByOccurredAtAscIdAsc(orderId).stream()
+                .map(OrderStatusHistory::getStatus).toList();
+    }
+
+    @Test
+    @DisplayName("The order service's own parcel.status.changed event on creation is ignored: no loop, no duplicate history")
+    void ownCreationEventDoesNotLoop() throws Exception {
+        CustomerOrder order = createCustomerOrder();
+
+        // Give the consumer time to receive the order's own event, then check nothing changed.
+        await().during(Duration.ofSeconds(3)).atMost(Duration.ofSeconds(8)).untilAsserted(() -> {
+            assertThat(orderRepository.findByOrderId(order.getOrderId()).orElseThrow().getStatus()).isEqualTo(PublicOrderStatus.CREATED);
+            assertThat(historyOf(order.getOrderId())).containsExactly(PublicOrderStatus.CREATED);
+        });
+    }
+
+    @Test
+    @DisplayName("Delivery status events move the order along, on both the bare and the dotted routing key")
+    void deliveryEventsUpdateTheOrder() throws Exception {
+        CustomerOrder order = createCustomerOrder();
+        Instant base = Instant.now().plusSeconds(60);
+
+        rabbitTemplate.convertAndSend(EXCHANGE, "parcel.status.changed",
+                statusEvent(order, PublicOrderStatus.CREATED, PublicOrderStatus.IN_TRANSIT, InternalQueueStatus.OUTBOUND, base));
+        awaitStatus(order.getOrderId(), PublicOrderStatus.IN_TRANSIT);
+        assertThat(orderRepository.findByOrderId(order.getOrderId()).orElseThrow().getInternalQueueStatus())
+                .isEqualTo(InternalQueueStatus.OUTBOUND);
+
+        rabbitTemplate.convertAndSend(EXCHANGE, "parcel.status.changed.out_for_delivery",
+                statusEvent(order, PublicOrderStatus.IN_TRANSIT, PublicOrderStatus.OUT_FOR_DELIVERY, InternalQueueStatus.OUT_FOR_DELIVERY, base.plusSeconds(60)));
+        awaitStatus(order.getOrderId(), PublicOrderStatus.OUT_FOR_DELIVERY);
+
+        assertThat(historyOf(order.getOrderId())).containsExactly(
+                PublicOrderStatus.CREATED, PublicOrderStatus.IN_TRANSIT, PublicOrderStatus.OUT_FOR_DELIVERY);
+    }
+
+    @Test
+    @DisplayName("A duplicate event, an older event and an event for an unknown order change nothing and do not block later events")
+    void duplicatesOutOfOrderAndUnknownOrdersAreHarmless() throws Exception {
+        CustomerOrder order = createCustomerOrder();
+        Instant base = Instant.now().plusSeconds(60);
+        ParcelStatusChangedEvent inTransit =
+                statusEvent(order, PublicOrderStatus.CREATED, PublicOrderStatus.IN_TRANSIT, InternalQueueStatus.OUTBOUND, base.plusSeconds(60));
+
+        rabbitTemplate.convertAndSend(EXCHANGE, "parcel.status.changed", inTransit);
+        awaitStatus(order.getOrderId(), PublicOrderStatus.IN_TRANSIT);
+
+        // same event id delivered again
+        rabbitTemplate.convertAndSend(EXCHANGE, "parcel.status.changed", inTransit);
+        // an older event arriving late
+        rabbitTemplate.convertAndSend(EXCHANGE, "parcel.status.changed",
+                statusEvent(order, PublicOrderStatus.CREATED, PublicOrderStatus.PICKED_UP, InternalQueueStatus.PICKED_UP, base));
+        // an event for an order this service does not have
+        rabbitTemplate.convertAndSend(EXCHANGE, "parcel.status.changed", new ParcelStatusChangedEvent(
+                UUID.randomUUID(), UUID.randomUUID(), "SD-ZZZZ-ZZZZ", UUID.randomUUID(), UUID.randomUUID(),
+                PublicOrderStatus.CREATED, PublicOrderStatus.IN_TRANSIT, null, null, null, null, base.plusSeconds(120)));
+        // a later valid event must still be processed after the harmless ones
+        rabbitTemplate.convertAndSend(EXCHANGE, "parcel.status.changed",
+                statusEvent(order, PublicOrderStatus.IN_TRANSIT, PublicOrderStatus.DELIVERED, InternalQueueStatus.DELIVERED, base.plusSeconds(180)));
+        awaitStatus(order.getOrderId(), PublicOrderStatus.DELIVERED);
+
+        assertThat(historyOf(order.getOrderId())).containsExactly(
+                PublicOrderStatus.CREATED, PublicOrderStatus.IN_TRANSIT, PublicOrderStatus.DELIVERED);
+
+        // a delivered order does not move again
+        rabbitTemplate.convertAndSend(EXCHANGE, "parcel.status.changed",
+                statusEvent(order, PublicOrderStatus.DELIVERED, PublicOrderStatus.IN_TRANSIT, null, base.plusSeconds(240)));
+        await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(6)).untilAsserted(() ->
+                assertThat(orderRepository.findByOrderId(order.getOrderId()).orElseThrow().getStatus()).isEqualTo(PublicOrderStatus.DELIVERED));
     }
 }

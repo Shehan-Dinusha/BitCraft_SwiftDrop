@@ -81,3 +81,47 @@ Your current `BulkOrderIngestItem` does not carry several of these (pickup addre
 Response: the same `CustomerOrderResponse` wrapped in `ApiResponse` that the customer endpoint returns (`data.orderId`, `data.trackingNumber`, `data.estimatedFee`, ...). Errors: `400` validation (field names only), `503` pricing service unavailable (nothing was saved or published, safe to retry), `502` pricing service rejected the request.
 
 `order.created` for a merchant order has `customerId = merchantId`, `merchantId` set, districts only (no addresses, names or phones).
+
+## Member 9 (broker topology): add the order status-sync queue to `definitions.json`
+
+Added in: PR 3, Stage 12.
+
+The order service now keeps each order's status in step with `parcel.status.changed` events (from delivery, dispatch and from itself). The queue and binding are declared by the service's own `RabbitMQConfig`, so the service starts fine on its own. Please add the same two entries to `infra/local/rabbitmq/definitions.json` so the file and the Java declarations stay identical. **The arguments must match exactly**: RabbitMQ refuses to re-declare an existing queue with different arguments (`PRECONDITION_FAILED`). The arguments are copied from the sibling queues in the same file (`order.events.queue`, `dispatch.parcel-status.queue`).
+
+Queue (add to `"queues"`):
+
+```json
+{
+  "name": "customer-order.status-sync.queue",
+  "vhost": "/",
+  "durable": true,
+  "auto_delete": false,
+  "arguments": {
+    "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+    "x-dead-letter-routing-key": "dlq.order.events",
+    "x-message-ttl": 86400000,
+    "x-queue-type": "quorum"
+  }
+}
+```
+
+Binding (add to `"bindings"`):
+
+```json
+{
+  "source": "swiftdrop.events.exchange",
+  "vhost": "/",
+  "destination": "customer-order.status-sync.queue",
+  "destination_type": "queue",
+  "routing_key": "parcel.status.changed.#",
+  "arguments": {}
+}
+```
+
+Notes for Member 9 and the publishers of `parcel.status.changed`:
+
+- `parcel.status.changed.#` also matches the bare key `parcel.status.changed` (tested against a real broker with both keys).
+- Messages that fail three delivery attempts are dead-lettered to `swiftdrop.dlx.exchange` with key `dlq.order.events`, which `dlq.order.events.queue` already receives. The same retry setting now also applies to the existing `customer-order.fee-revision.queue` listener.
+- `customer-order.fee-revision.queue` (routing key `parcel.fee.revised`) is also declared only by the order service and is not in `definitions.json` yet.
+- Events are matched to orders by `orderId`, then by `trackingNumber`. The order service ignores an event that repeats an earlier `eventId`, that is older than the order's latest status, or that tries to move an order out of DELIVERED, CANCELLED or RETURNED_TO_SENDER. A FAILED order may still move on (retries).
+- Please keep `eventId` unique per event and `timestamp` in UTC; both drive the duplicate and ordering checks.
