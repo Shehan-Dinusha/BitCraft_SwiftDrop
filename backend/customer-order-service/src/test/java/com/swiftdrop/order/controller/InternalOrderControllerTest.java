@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.order.dto.InternalTrackingView;
 import com.swiftdrop.order.exception.OrderNotFoundException;
+import com.swiftdrop.order.service.InternalOrderService;
 import com.swiftdrop.order.service.InternalTrackingService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class InternalOrderControllerTest {
 
     @MockitoBean
     private InternalTrackingService internalTrackingService;
+
+    @MockitoBean
+    private InternalOrderService internalOrderService;
 
     @Test
     @DisplayName("Returns the tracking view without any user headers")

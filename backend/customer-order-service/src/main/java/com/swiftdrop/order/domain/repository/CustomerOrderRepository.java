@@ -18,5 +18,7 @@ public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Lo
 
     boolean existsByTrackingNumber(String trackingNumber);
 
+    Optional<CustomerOrder> findByMerchantIdAndExternalRef(UUID merchantId, String externalRef);
+
     Page<CustomerOrder> findByCustomerIdOrderByCreatedAtDesc(UUID customerId, Pageable pageable);
 }
