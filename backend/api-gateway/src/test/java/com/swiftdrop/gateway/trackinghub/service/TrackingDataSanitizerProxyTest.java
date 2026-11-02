@@ -92,7 +92,7 @@ class TrackingDataSanitizerProxyTest {
         assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.PICKED_UP)).isEqualTo(PublicOrderStatus.PICKED_UP);
         assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.IN_TRANSIT)).isEqualTo(PublicOrderStatus.IN_TRANSIT);
         assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.DELIVERED)).isEqualTo(PublicOrderStatus.DELIVERED);
-        assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.FAILED)).isEqualTo(PublicOrderStatus.RETURNED_TO_SENDER);
+        assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.FAILED)).isEqualTo(PublicOrderStatus.FAILED);
         assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.CANCELLED)).isEqualTo(PublicOrderStatus.CANCELLED);
         assertThat(PublicOrderStatus.fromDeliveryState(null)).isNull();
     }

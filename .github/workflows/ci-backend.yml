@@ -31,6 +31,9 @@ jobs:
         ports:
           - 5672:5672
           - 15672:15672
+        env:
+          RABBITMQ_DEFAULT_USER: swiftdrop
+          RABBITMQ_DEFAULT_PASS: changeme_rabbit
         options: >-
           --health-cmd "rabbitmq-diagnostics -q check_running"
           --health-interval 10s

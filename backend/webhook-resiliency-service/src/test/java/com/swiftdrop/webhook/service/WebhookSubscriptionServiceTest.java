@@ -126,8 +126,11 @@ class WebhookSubscriptionServiceTest {
     @DisplayName("toggleEndpointActive should update active status")
     void testToggleEndpointActive() {
         when(endpointRepository.findByEndpointId(endpointId)).thenReturn(Optional.of(sampleEndpoint));
-        when(endpointRepository.save(any(WebhookEndpoint.class))).thenReturn(sampleEndpoint);
+        when(endpointRepository.save(any(WebhookEndpoint.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        WebhookEndpointResponse response = subscriptionService.toggleEndpointActive(endpointId, false);
+
+        assertThat(response.active()).isFalse();
         assertThat(sampleEndpoint.isActive()).isFalse();
         verify(endpointRepository).save(sampleEndpoint);
     }
