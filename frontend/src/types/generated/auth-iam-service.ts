@@ -4,6 +4,50 @@
  */
 
 export interface paths {
+    "/api/v1/auth/.well-known/jwks.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the public JSON Web Key Set
+         * @description Anonymous at IAM. Member 1 must separately allow this exact path through the gateway.
+         *     Returns RSA public parameters only, with Cache-Control public, max-age=300.
+         *     In default HS256 mode keys is empty unless an RSA pair is explicitly configured
+         *     for migration. Do not enable RS256 until gateway verification is ready.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Standard unwrapped JSON Web Key Set */
+                200: {
+                    headers: {
+                        /** @description Public cache lifetime of 300 seconds */
+                        "Cache-Control"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JwksResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -668,10 +712,230 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/users/couriers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List couriers in the caller's scope
+         * @description Active DISPATCHER sees only their district; SYSTEM_ADMIN sees all districts. Current IAM data supplies scope.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    status?: components["schemas"]["UserStatus"];
+                    search?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Scoped courier identities */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePagedUsers"];
+                    };
+                };
+                401: components["responses"]["Unauthenticated"];
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        /**
+         * Provision a courier identity within the caller's scope
+         * @description Active DISPATCHER may provision only their district; SYSTEM_ADMIN may use any district. Role is always COURIER; no merchant association or dispatch operational data is accepted.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCourierRequest"];
+                };
+            };
+            responses: {
+                /** @description Courier created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                400: components["responses"]["InvalidRequest"];
+                401: components["responses"]["Unauthenticated"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["AccountConflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/couriers/{courierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        /** Get a courier identity within the caller's scope */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Courier identity */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                401: components["responses"]["Unauthenticated"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["CourierNotFound"];
+            };
+        };
+        /**
+         * Replace courier contact details within the caller's scope
+         * @description Role and district remain unchanged. Email changes revoke existing access and refresh sessions. Vehicle, capacity, shifts and availability belong to dispatch.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateCourierRequest"];
+                };
+            };
+            responses: {
+                /** @description Contact details replaced */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                400: components["responses"]["InvalidRequest"];
+                401: components["responses"]["Unauthenticated"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["CourierNotFound"];
+                409: components["responses"]["AccountConflict"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/couriers/{courierId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Suspend, deactivate or reactivate a courier within the caller's scope */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateUserStatusRequest"];
+                };
+            };
+            responses: {
+                /** @description Courier status updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                400: components["responses"]["InvalidRequest"];
+                401: components["responses"]["Unauthenticated"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["CourierNotFound"];
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        JwksResponse: {
+            /** @description Public RSA keys; no symmetric or private key material. */
+            keys: components["schemas"]["JwkResponse"][];
+        };
+        JwkResponse: {
+            /** @enum {string} */
+            kty: "RSA";
+            /** @enum {string} */
+            use: "sig";
+            /** @enum {string} */
+            alg: "RS256";
+            /** @description Stable base64url SHA-256 fingerprint of the X.509 public key. */
+            kid: string;
+            /** @description Unsigned RSA modulus encoded as base64url without padding. */
+            n: string;
+            /** @description Unsigned RSA exponent encoded as base64url without padding. */
+            e: string;
+        };
         LoginRequest: {
             /**
              * @description Username or email address.
@@ -706,9 +970,10 @@ export interface components {
             /** @description Self-service registration supports CUSTOMER and MERCHANT only. */
             role: components["schemas"]["UserRole"];
             district: components["schemas"]["SriLankanDistrict"];
-            /** Format: uuid */
-            merchantId?: string | null;
+            /** @description Must be omitted or null. Only the trusted approval workflow may assign an association. */
+            merchantId?: null;
         };
+        /** @description Administrator provisioning. District is mandatory; only one ACTIVE DISPATCHER may occupy a district. Caller-chosen merchant associations are rejected. */
         CreateUserRequest: {
             username: string;
             /** Format: email */
@@ -720,8 +985,27 @@ export interface components {
             password: string;
             role: components["schemas"]["UserRole"];
             district: components["schemas"]["SriLankanDistrict"];
-            /** Format: uuid */
-            merchantId?: string | null;
+            /** @description Must be omitted or null. Only the trusted approval workflow may assign an association. */
+            merchantId?: null;
+        };
+        CreateCourierRequest: {
+            username: string;
+            /** Format: email */
+            email: string;
+            phone?: string;
+            firstName: string;
+            lastName: string;
+            /** Format: password */
+            password: string;
+            district: components["schemas"]["SriLankanDistrict"];
+        };
+        UpdateCourierRequest: {
+            /** Format: email */
+            email: string;
+            /** @description Omit or supply null to clear the phone number. */
+            phone?: string;
+            firstName: string;
+            lastName: string;
         };
         RefreshTokenRequest: {
             refreshToken: string;
@@ -829,7 +1113,53 @@ export interface components {
         /** @enum {string} */
         SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
     };
-    responses: never;
+    responses: {
+        /** @description Valid authentication required */
+        Unauthenticated: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description Current role, account status or district does not permit this operation */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description Request validation failed */
+        InvalidRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description Courier identity not found; target must have COURIER role */
+        CourierNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description Unique account detail or one-active-dispatcher district rule conflicts with existing data */
+        AccountConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+    };
     parameters: {
         UserId: string;
     };
