@@ -14,6 +14,26 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /api/v1/auth/.well-known/jwks.json:
+    get:
+      tags: [Signing keys]
+      summary: Get the public JSON Web Key Set
+      description: |
+        Anonymous at IAM. Member 1 must separately allow this exact path through the gateway.
+        Returns RSA public parameters only, with Cache-Control public, max-age=300.
+        In default HS256 mode keys is empty unless an RSA pair is explicitly configured
+        for migration. Do not enable RS256 until gateway verification is ready.
+      security: []
+      responses:
+        '200':
+          description: Standard unwrapped JSON Web Key Set
+          headers:
+            Cache-Control:
+              schema: {type: string}
+              description: Public cache lifetime of 300 seconds
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/JwksResponse'}
   /api/v1/auth/login:
     post:
       tags: [Auth]
@@ -372,7 +392,126 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/couriers:
+    get:
+      tags: [Courier accounts]
+      summary: List couriers in the caller's scope
+      description: Active DISPATCHER sees only their district; SYSTEM_ADMIN sees all districts. Current IAM data supplies scope.
+      parameters:
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/UserStatus'}}
+        - {name: search, in: query, schema: {type: string}}
+        - {name: page, in: query, schema: {type: integer, default: 0}}
+        - {name: size, in: query, schema: {type: integer, default: 20}}
+      responses:
+        '200':
+          description: Scoped courier identities
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponsePagedUsers'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      tags: [Courier accounts]
+      summary: Provision a courier identity within the caller's scope
+      description: Active DISPATCHER may provision only their district; SYSTEM_ADMIN may use any district. Role is always COURIER; no merchant association or dispatch operational data is accepted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCourierRequest'}
+      responses:
+        '201':
+          description: Courier created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseUserProfile'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/AccountConflict'}
+  /api/v1/users/couriers/{courierId}:
+    parameters:
+      - {name: courierId, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [Courier accounts]
+      summary: Get a courier identity within the caller's scope
+      responses:
+        '200':
+          description: Courier identity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseUserProfile'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/CourierNotFound'}
+    put:
+      tags: [Courier accounts]
+      summary: Replace courier contact details within the caller's scope
+      description: Role and district remain unchanged. Email changes revoke existing access and refresh sessions. Vehicle, capacity, shifts and availability belong to dispatch.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateCourierRequest'}
+      responses:
+        '200':
+          description: Contact details replaced
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseUserProfile'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/CourierNotFound'}
+        '409': {$ref: '#/components/responses/AccountConflict'}
+  /api/v1/users/couriers/{courierId}/status:
+    parameters:
+      - {name: courierId, in: path, required: true, schema: {type: string, format: uuid}}
+    patch:
+      tags: [Courier accounts]
+      summary: Suspend, deactivate or reactivate a courier within the caller's scope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateUserStatusRequest'}
+      responses:
+        '200':
+          description: Courier status updated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseUserProfile'}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/CourierNotFound'}
 components:
+  responses:
+    Unauthenticated:
+      description: Valid authentication required
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    Forbidden:
+      description: Current role, account status or district does not permit this operation
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    InvalidRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    CourierNotFound:
+      description: Courier identity not found; target must have COURIER role
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
+    AccountConflict:
+      description: Unique account detail or one-active-dispatcher district rule conflicts with existing data
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiErrorResponse'}
   securitySchemes:
     bearerAuth:
       type: http
@@ -387,6 +526,24 @@ components:
         type: string
         format: uuid
   schemas:
+    JwksResponse:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          description: Public RSA keys; no symmetric or private key material.
+          items: {$ref: '#/components/schemas/JwkResponse'}
+    JwkResponse:
+      type: object
+      required: [kty, use, alg, kid, n, e]
+      properties:
+        kty: {type: string, enum: [RSA]}
+        use: {type: string, enum: [sig]}
+        alg: {type: string, enum: [RS256]}
+        kid: {type: string, description: Stable base64url SHA-256 fingerprint of the X.509 public key.}
+        n: {type: string, description: Unsigned RSA modulus encoded as base64url without padding.}
+        e: {type: string, description: Unsigned RSA exponent encoded as base64url without padding.}
     LoginRequest:
       type: object
       required: [username, password]
@@ -439,11 +596,11 @@ components:
         district:
           $ref: '#/components/schemas/SriLankanDistrict'
         merchantId:
-          type: string
-          format: uuid
-          nullable: true
+          type: 'null'
+          description: Must be omitted or null. Only the trusted approval workflow may assign an association.
     CreateUserRequest:
       type: object
+      description: Administrator provisioning. District is mandatory; only one ACTIVE DISPATCHER may occupy a district. Caller-chosen merchant associations are rejected.
       required: [username, email, firstName, lastName, password, role, district]
       properties:
         username:
@@ -472,9 +629,27 @@ components:
         district:
           $ref: '#/components/schemas/SriLankanDistrict'
         merchantId:
-          type: string
-          format: uuid
-          nullable: true
+          type: 'null'
+          description: Must be omitted or null. Only the trusted approval workflow may assign an association.
+    CreateCourierRequest:
+      type: object
+      required: [username, email, firstName, lastName, password, district]
+      properties:
+        username: {type: string, pattern: '^[A-Za-z0-9._-]{3,50}$'}
+        email: {type: string, format: email, maxLength: 320}
+        phone: {type: string, pattern: '^$|^\+?[0-9]{7,15}$', maxLength: 32}
+        firstName: {type: string, maxLength: 100}
+        lastName: {type: string, maxLength: 100}
+        password: {type: string, minLength: 8, maxLength: 72, format: password}
+        district: {$ref: '#/components/schemas/SriLankanDistrict'}
+    UpdateCourierRequest:
+      type: object
+      required: [email, firstName, lastName]
+      properties:
+        email: {type: string, format: email, maxLength: 320}
+        phone: {type: string, pattern: '^$|^\+?[0-9]{7,15}$', maxLength: 32, description: Omit or supply null to clear the phone number.}
+        firstName: {type: string, maxLength: 100}
+        lastName: {type: string, maxLength: 100}
     RefreshTokenRequest:
       type: object
       required: [refreshToken]
