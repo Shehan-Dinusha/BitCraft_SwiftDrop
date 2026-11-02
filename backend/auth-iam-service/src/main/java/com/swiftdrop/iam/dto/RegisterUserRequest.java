@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Null;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -53,7 +54,8 @@ public record RegisterUserRequest(
         @Schema(description = "Primary operating district.", example = "COLOMBO")
         SriLankanDistrict district,
 
-        @Schema(description = "Merchant identifier required for MERCHANT accounts.", example = "0f5e8c4a-2c6d-4a58-9c8f-4c2c4e7b8a11")
+        @Null(message = "Merchant association is assigned only by the trusted approval workflow")
+        @Schema(description = "Must be omitted or null. Association is assigned only by the trusted approval workflow.")
         UUID merchantId
 ) {
 }
