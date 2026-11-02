@@ -2,9 +2,13 @@ package com.swiftdrop.iam.service;
 
 import com.swiftdrop.contracts.security.JwtSessionRevocation;
 import com.swiftdrop.iam.config.JwtConfig;
+import com.swiftdrop.iam.config.JwtKeyProvider;
 import com.swiftdrop.iam.domain.entity.UserAccount;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import com.swiftdrop.contracts.enums.UserRole;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -32,11 +36,14 @@ public class TokenIssuanceService {
     private final JwtConfig jwtConfig;
     private final StringRedisTemplate redisTemplate;
     private final SecretKey signingKey;
+    private final JwtKeyProvider keys;
 
-    public TokenIssuanceService(JwtConfig jwtConfig, StringRedisTemplate redisTemplate) {
+    public TokenIssuanceService(JwtConfig jwtConfig, StringRedisTemplate redisTemplate, JwtKeyProvider keys) {
         this.jwtConfig = jwtConfig;
         this.redisTemplate = redisTemplate;
-        this.signingKey = Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
+        this.keys = keys;
+        this.signingKey = keys.isRsaEnabled() ? null
+                : Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
     public IssuedAccessToken issueAccessToken(UserAccount user) {
@@ -44,7 +51,7 @@ public class TokenIssuanceService {
         Instant expiresAt = issuedAt.plusMillis(jwtConfig.getAccessTokenExpirationMs());
         String jwtId = UUID.randomUUID().toString();
 
-        String token = Jwts.builder()
+        var builder = Jwts.builder()
                 .issuer(jwtConfig.getIssuer())
                 .audience().add(jwtConfig.getAudience()).and()
                 .subject(user.getPublicId().toString())
@@ -56,9 +63,10 @@ public class TokenIssuanceService {
                 .claim("username", user.getUsername())
                 .claim("email", user.getEmail())
                 .claim("districtId", user.getDistrict() == null ? null : user.getDistrict().name())
-                .claim("merchantId", user.getMerchantId() == null ? null : user.getMerchantId().toString())
-                .signWith(signingKey)
-                .compact();
+                .claim("merchantId", user.getMerchantId() == null ? null : user.getMerchantId().toString());
+        String token = keys.isRsaEnabled()
+                ? builder.header().keyId(keys.keyId()).and().signWith(keys.signingKey(), Jwts.SIG.RS256).compact()
+                : builder.signWith(signingKey, Jwts.SIG.HS256).compact();
 
         return new IssuedAccessToken(
                 token,
@@ -75,11 +83,37 @@ public class TokenIssuanceService {
     }
 
     public Claims parse(String token) {
-        return Jwts.parser()
-                .verifyWith(signingKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        var parser = Jwts.parser().requireIssuer(jwtConfig.getIssuer()).requireAudience(jwtConfig.getAudience());
+        var allowed = parser.sig();
+        String algorithm = keys.isRsaEnabled() ? "RS256" : "HS256";
+        // JJWT 0.12.6 rejects an empty registry, so retain the selected algorithm while removing others.
+        for (var candidate : Jwts.SIG.get().values()) {
+            if (!algorithm.equals(candidate.getId())) allowed.remove(candidate);
+        }
+        allowed.and();
+        if (keys.isRsaEnabled()) {
+            parser.verifyWith(keys.verificationKey());
+        } else {
+            parser.verifyWith(signingKey);
+        }
+        var signed = parser.build().parseSignedClaims(token);
+        if (keys.isRsaEnabled() && !keys.keyId().equals(signed.getHeader().getKeyId())) {
+            throw new UnsupportedJwtException("Unknown signing key identifier");
+        }
+        Claims claims = signed.getPayload();
+        if (claims.getExpiration() == null || claims.getIssuedAt() == null
+                || claims.getId() == null || claims.getId().isBlank()) {
+            throw new MalformedJwtException("Required access-token lifecycle claims are missing");
+        }
+        try {
+            if (!UUID.fromString(claims.getSubject()).toString().equalsIgnoreCase(claims.getSubject())) {
+                throw new IllegalArgumentException();
+            }
+            UserRole.valueOf(claims.get("role", String.class));
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            throw new MalformedJwtException("Required access-token identity claims are invalid");
+        }
+        return claims;
     }
 
     public boolean isBlacklisted(String token, Claims claims) {
