@@ -133,6 +133,7 @@ class UserAccountServiceTest {
         user.setPublicId(UUID.randomUUID());
         user.setUsername("courier");
         user.setRole(UserRole.CUSTOMER);
+        user.setDistrict(SriLankanDistrict.COLOMBO);
         user.setStatus(UserStatus.ACTIVE);
         when(userAccountRepository.findByPublicId(user.getPublicId())).thenReturn(Optional.of(user));
         when(userAccountRepository.save(user)).thenReturn(user);
@@ -159,5 +160,60 @@ class UserAccountServiceTest {
         verify(passwordPolicy).validate("NewPass123");
         verify(refreshTokenService).revokeAll(admin);
         verify(tokenIssuanceService).blacklistUser(admin.getPublicId());
+    }
+
+    @Test
+    void registrationCannotClaimMerchantAssociation() {
+        var request = new RegisterUserRequest("merchant", "merchant@example.com", null, "Owner", "Test",
+                "Secret123", UserRole.MERCHANT, SriLankanDistrict.COLOMBO, UUID.randomUUID());
+        assertThatThrownBy(() -> userAccountService.register(request))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("trusted approval");
+        verify(userAccountRepository, never()).save(any());
+    }
+
+    @Test
+    void administrationCannotClaimMerchantAssociation() {
+        var request = new com.swiftdrop.iam.dto.CreateUserRequest("merchant", "merchant@example.com", null,
+                "Owner", "Test", "Secret123", UserRole.MERCHANT, SriLankanDistrict.COLOMBO, UUID.randomUUID());
+        assertThatThrownBy(() -> userAccountService.create(request)).isInstanceOf(IllegalArgumentException.class);
+        verify(userAccountRepository, never()).save(any());
+    }
+
+    @Test
+    void staffCreationRequiresDistrict() {
+        var request = new com.swiftdrop.iam.dto.CreateUserRequest("staff", "staff@example.com", null,
+                "Staff", "Test", "Secret123", UserRole.DISPATCHER, null, null);
+        assertThatThrownBy(() -> userAccountService.create(request)).isInstanceOf(IllegalArgumentException.class);
+        verify(userAccountRepository, never()).save(any());
+    }
+
+    @Test
+    void staffPromotionRequiresDistrict() {
+        admin.setRole(UserRole.CUSTOMER);
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+        assertThatThrownBy(() -> userAccountService.updateRole(admin.getPublicId(), UserRole.COURIER))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("district");
+    }
+
+    @Test
+    void inactiveAdminCanBeDemotedAndOldMerchantAssociationIsCleared() {
+        admin.setStatus(UserStatus.DEACTIVATED);
+        admin.setMerchantId(UUID.randomUUID());
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+        when(userAccountRepository.save(admin)).thenReturn(admin);
+        userAccountService.updateRole(admin.getPublicId(), UserRole.CUSTOMER);
+        assertThat(admin.getMerchantId()).isNull();
+        verify(userAccountRepository).lockAccountAdministration();
+        verify(userAccountRepository, never()).countByRoleAndStatus(any(), any());
+    }
+
+    @Test
+    void alreadyInactiveAdminCanBeSuspendedWithoutLastAdminConflict() {
+        admin.setStatus(UserStatus.DEACTIVATED);
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+        when(userAccountRepository.save(admin)).thenReturn(admin);
+        assertThat(userAccountService.updateStatus(admin.getPublicId(), UserStatus.SUSPENDED).status())
+                .isEqualTo(UserStatus.SUSPENDED);
+        verify(userAccountRepository).lockAccountAdministration();
     }
 }
