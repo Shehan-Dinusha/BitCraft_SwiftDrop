@@ -7,8 +7,8 @@ name: CI – Backend
 on:
   pull_request:
     paths:
-      - "services/**"
-      - "pom.xml"
+      - "backend/**"
+      - "backend/pom.xml"
       - ".github/workflows/ci-backend.yml"
 
 concurrency:
@@ -57,13 +57,13 @@ jobs:
             maven-${{ runner.os }}-
 
       - name: Compile all modules
-        run: mvn -B -T 1C compile -DskipTests --no-transfer-progress
+        run: mvn -B -T 1C -f backend/pom.xml compile -DskipTests --no-transfer-progress
 
       - name: Run unit tests
-        run: mvn -B -T 1C test --no-transfer-progress -Dspring.profiles.active=test
+        run: mvn -B -T 1C -f backend/pom.xml test --no-transfer-progress -Dspring.profiles.active=test
 
       - name: Run integration tests (Testcontainers)
-        run: mvn -B verify --no-transfer-progress -Dspring.profiles.active=integration-test
+        run: mvn -B -f backend/pom.xml verify --no-transfer-progress -Dspring.profiles.active=integration-test
         env:
           TESTCONTAINERS_REUSE_ENABLE: "true"
           SPRING_RABBITMQ_HOST: localhost

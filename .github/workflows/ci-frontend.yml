@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# CI – Frontend (Node 20 / Vite / TypeScript / ESLint / Tailwind)
+# CI – Frontend (Node 20 / Vite / TypeScript / Tailwind)
 # Triggers on pull requests touching frontend apps or shared UI libraries.
 # ──────────────────────────────────────────────────────────────────────────────
 name: CI – Frontend
@@ -7,8 +7,7 @@ name: CI – Frontend
 on:
   pull_request:
     paths:
-      - "apps/**"
-      - "packages/**"
+      - "frontend/**"
       - ".github/workflows/ci-frontend.yml"
 
 concurrency:
@@ -33,23 +32,19 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: "**/package-lock.json"
+          cache-dependency-path: "frontend/package-lock.json"
 
       - name: Install dependencies
         run: npm ci
-        working-directory: apps/swiftdrop-dashboard
+        working-directory: frontend
 
-      - name: TypeScript type check
-        run: npx tsc --noEmit
-        working-directory: apps/swiftdrop-dashboard
-
-      - name: ESLint
-        run: npx eslint . --max-warnings 0
-        working-directory: apps/swiftdrop-dashboard
+      - name: Lint and type check
+        run: npm run lint
+        working-directory: frontend
 
       - name: Build (Vite + Tailwind)
         run: npm run build
-        working-directory: apps/swiftdrop-dashboard
+        working-directory: frontend
         env:
           NODE_ENV: production
 
@@ -57,5 +52,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: apps/swiftdrop-dashboard/dist/
+          path: frontend/dist/
           retention-days: 7
