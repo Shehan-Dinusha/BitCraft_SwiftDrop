@@ -5,6 +5,7 @@ import com.swiftdrop.contracts.enums.UserStatus;
 import com.swiftdrop.iam.domain.entity.UserAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +26,14 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long>,
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByPhone(String phone);
+
+    boolean existsByEmailIgnoreCaseAndPublicIdNot(String email, UUID publicId);
+
+    boolean existsByPhoneAndPublicIdNot(String phone, UUID publicId);
+
+    // Serialize low-volume staff administration within the IAM database transaction.
+    @Query(value = "SELECT 1 FROM pg_advisory_xact_lock(73020541)", nativeQuery = true)
+    Integer lockAccountAdministration();
 
     long countByRole(UserRole role);
 
