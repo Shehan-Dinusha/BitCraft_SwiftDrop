@@ -6,13 +6,35 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springdoc.core.customizers.OpenApiCustomizer;
+
+import java.util.List;
+import java.util.Set;
 
 @Configuration
 public class OpenApiConfig {
+    @Bean
+    public OpenApiCustomizer accountAssociationSchema() {
+        // UUID inference does not express Jakarta @Null; keep live OpenAPI aligned with validation.
+        return api -> {
+            for (String name : List.of("RegisterUserRequest", "CreateUserRequest")) {
+                var schema = api.getComponents().getSchemas().get(name);
+                if (schema != null && schema.getProperties() != null) {
+                    if (schema.getProperties().get("merchantId") instanceof Schema<?> merchantId) {
+                        merchantId.setType(null);
+                        merchantId.setTypes(Set.of("null"));
+                        merchantId.setFormat(null);
+                    }
+                }
+            }
+        };
+    }
+
     @Bean
     public OpenAPI authIamOpenAPI() {
         return new OpenAPI()
