@@ -15,11 +15,10 @@
  */
 const GATEWAY = process.env.GATEWAY_URL ?? 'http://localhost:8080';
 const PASSWORD = process.env.SEED_PASSWORD ?? 'Demo@12345';
-const MERCHANT_ID = '0f5e8c4a-2c6d-4a58-9c8f-4c2c4e7b8a11';
 
 const accounts = [
   { role: 'CUSTOMER', username: 'demo.customer', selfService: true },
-  { role: 'MERCHANT', username: 'demo.merchant', selfService: true, merchantId: MERCHANT_ID },
+  { role: 'MERCHANT', username: 'demo.merchant', selfService: true },
   { role: 'COURIER', username: 'demo.courier', selfService: false },
   { role: 'DISPATCHER', username: 'demo.dispatcher', selfService: false },
   { role: 'SYSTEM_ADMIN', username: 'demo.admin', selfService: false }
@@ -33,8 +32,7 @@ const body = (account, index) => ({
   lastName: account.role.replace(/_/g, ' ').toLowerCase(),
   password: PASSWORD,
   role: account.role,
-  district: 'COLOMBO',
-  ...(account.merchantId ? { merchantId: account.merchantId } : {})
+  district: 'COLOMBO'
 });
 
 async function call(path, init) {
