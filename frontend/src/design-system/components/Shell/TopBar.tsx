@@ -25,6 +25,8 @@ export interface TopBarProps {
   onNotificationsClick?: () => void;
   /** Shows the red dot on the bell. */
   hasUnread?: boolean;
+  /** Replaces the built-in notification bell, e.g. Member 9's notification component. */
+  notificationSlot?: ReactNode;
   /** Extra controls before the standard actions. */
   children?: ReactNode;
   className?: string;
@@ -43,6 +45,7 @@ export function TopBar({
   onAssistantClick,
   onNotificationsClick,
   hasUnread = false,
+  notificationSlot,
   children,
   className
 }: TopBarProps) {
@@ -114,20 +117,22 @@ export function TopBar({
         >
           <Sparkles aria-hidden="true" className="size-[18px]" />
         </button>
-        <button
-          type="button"
-          onClick={onNotificationsClick}
-          aria-label={hasUnread ? 'Notifications, unread' : 'Notifications'}
-          className={iconButton}
-        >
-          <Bell aria-hidden="true" className="size-[18px]" />
-          {hasUnread ? (
-            <span
-              aria-hidden="true"
-              className="absolute right-2 top-2 size-2 rounded-full border-2 border-card bg-status-danger"
-            />
-          ) : null}
-        </button>
+        {notificationSlot ?? (
+          <button
+            type="button"
+            onClick={onNotificationsClick}
+            aria-label={hasUnread ? 'Notifications, unread' : 'Notifications'}
+            className={iconButton}
+          >
+            <Bell aria-hidden="true" className="size-[18px]" />
+            {hasUnread ? (
+              <span
+                aria-hidden="true"
+                className="absolute right-2 top-2 size-2 rounded-full border-2 border-card bg-status-danger"
+              />
+            ) : null}
+          </button>
+        )}
       </div>
     </header>
   );

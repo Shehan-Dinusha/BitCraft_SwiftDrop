@@ -12,6 +12,8 @@ import {
   type ShellRole
 } from '@/design-system';
 import { PersonaSwitcherDevBar } from '@/features/auth/components/PersonaSwitcherDevBar';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
+import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
 import { logoutUser } from '@/services/api/authApi';
 import { roleHome } from '@/app/roleHome';
@@ -159,6 +161,7 @@ export function AppShell() {
           section={spec.label}
           page={pageTitle}
           district={shellRole === 'dispatcher' ? user?.district : undefined}
+          notificationSlot={<NotificationBell />}
         />
         <main className={hasTabs ? 'flex-1 pb-[68px] md:pb-0' : 'flex-1'}>
           <Outlet />
@@ -181,6 +184,10 @@ export function AppShell() {
           )}
         />
       ) : null}
+
+      <div className="fixed bottom-6 right-6 z-40">
+        <AiAssistantSlot />
+      </div>
     </div>
   );
 }
