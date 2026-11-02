@@ -62,6 +62,7 @@ public class UserAccountService {
 
     @Transactional
     public UserProfileResponse create(CreateUserRequest request) {
+        userAccountRepository.lockAccountAdministration();
         return createUser(request.username(), request.email(), request.phone(), request.firstName(),
                 request.lastName(), request.password(), request.role(), request.district(), request.merchantId());
     }
@@ -89,17 +90,22 @@ public class UserAccountService {
 
     @Transactional
     public UserProfileResponse updateRole(UUID publicId, UserRole role) {
+        userAccountRepository.lockAccountAdministration();
+        if (role == null) throw new IllegalArgumentException("Role is required");
         UserAccount user = requireUser(publicId);
         if (user.getRole() == role) {
             return AuthMapper.toProfile(user);
         }
         if (user.getRole() == UserRole.SYSTEM_ADMIN
+                && user.getStatus() == UserStatus.ACTIVE
                 && activeSystemAdmins() <= 1
                 && role != UserRole.SYSTEM_ADMIN) {
             throw new AuthException(HttpStatus.CONFLICT, "Cannot remove the last active SYSTEM_ADMIN");
         }
 
+        validateStaffDistrict(role, user.getDistrict());
         user.setRole(role);
+        user.setMerchantId(null);
         userAccountRepository.save(user);
         refreshTokenService.revokeAll(user);
         tokenIssuanceService.blacklistUser(user.getPublicId());
@@ -108,12 +114,15 @@ public class UserAccountService {
 
     @Transactional
     public UserProfileResponse updateStatus(UUID publicId, UserStatus status) {
+        userAccountRepository.lockAccountAdministration();
+        if (status == null) throw new IllegalArgumentException("Status is required");
         UserAccount user = requireUser(publicId);
         if (user.getStatus() == status) {
             return AuthMapper.toProfile(user);
         }
         if (status != UserStatus.ACTIVE
                 && user.getRole() == UserRole.SYSTEM_ADMIN
+                && user.getStatus() == UserStatus.ACTIVE
                 && activeSystemAdmins() <= 1) {
             throw new AuthException(HttpStatus.CONFLICT, "Cannot deactivate the last active SYSTEM_ADMIN");
         }
@@ -154,6 +163,11 @@ public class UserAccountService {
                                            String firstName, String lastName, String rawPassword,
                                            UserRole role, com.swiftdrop.contracts.enums.SriLankanDistrict district,
                                            UUID merchantId) {
+        if (merchantId != null) {
+            throw new IllegalArgumentException("Merchant association must be assigned by the trusted approval workflow");
+        }
+        if (role == null) throw new IllegalArgumentException("Role is required");
+        validateStaffDistrict(role, district);
         String normalizedUsername = username.trim();
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         String normalizedPhone = normalizeNullable(phone);
@@ -209,6 +223,13 @@ public class UserAccountService {
 
     private long activeSystemAdmins() {
         return userAccountRepository.countByRoleAndStatus(UserRole.SYSTEM_ADMIN, UserStatus.ACTIVE);
+    }
+
+    private void validateStaffDistrict(UserRole role,
+                                       com.swiftdrop.contracts.enums.SriLankanDistrict district) {
+        if ((role == UserRole.COURIER || role == UserRole.DISPATCHER) && district == null) {
+            throw new IllegalArgumentException("A district is required for COURIER and DISPATCHER accounts");
+        }
     }
 
     private String normalizeNullable(String value) {
