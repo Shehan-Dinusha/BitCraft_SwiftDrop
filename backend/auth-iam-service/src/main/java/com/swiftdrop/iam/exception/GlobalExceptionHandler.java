@@ -2,6 +2,8 @@ package com.swiftdrop.iam.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
+import com.swiftdrop.contracts.security.CallerContextException;
+import org.springframework.security.access.AccessDeniedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,18 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(CallerContextException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallerContext(CallerContextException exception,
+                                                               HttpServletRequest request) {
+        return build(HttpStatus.valueOf(exception.statusCode()), exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException exception,
+                                                              HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "Caller role is not permitted", request, null);
+    }
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthException(AuthException exception,
