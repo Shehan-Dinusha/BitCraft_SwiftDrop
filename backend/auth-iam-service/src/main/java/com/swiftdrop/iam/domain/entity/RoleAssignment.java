@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/** Legacy schema retained for compatibility. Authorization uses {@link UserAccount#getRole()} exclusively. */
 @Entity
 @Table(name = "role_assignments")
 public class RoleAssignment {
