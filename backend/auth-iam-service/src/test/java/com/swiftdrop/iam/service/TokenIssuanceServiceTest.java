@@ -4,6 +4,8 @@ import com.swiftdrop.contracts.security.JwtSessionRevocation;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.iam.config.JwtConfig;
+import com.swiftdrop.iam.config.JwtKeyProvider;
+import org.springframework.mock.env.MockEnvironment;
 import com.swiftdrop.iam.domain.entity.UserAccount;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +46,7 @@ class TokenIssuanceServiceTest {
         config.setAudience("swiftdrop");
         config.setAccessTokenExpirationMs(3_600_000L);
 
-        tokenIssuanceService = new TokenIssuanceService(config, redisTemplate);
+        tokenIssuanceService = new TokenIssuanceService(config, redisTemplate, new JwtKeyProvider(config, new MockEnvironment()));
 
         user = new UserAccount();
         user.setPublicId(UUID.randomUUID());
