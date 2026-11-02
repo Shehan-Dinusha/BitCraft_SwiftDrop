@@ -44,6 +44,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/refresh",
+                                "/api/v1/auth/.well-known/jwks.json",
                                 "/api/v1/health",
                                 "/actuator/health",
                                 "/actuator/health/**",
@@ -55,6 +56,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
                         .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/change-password").authenticated()
+                        .requestMatchers("/api/v1/users/couriers", "/api/v1/users/couriers/**")
+                            .hasAnyRole("DISPATCHER", "SYSTEM_ADMIN")
                         .requestMatchers("/api/v1/users/**").hasRole("SYSTEM_ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
