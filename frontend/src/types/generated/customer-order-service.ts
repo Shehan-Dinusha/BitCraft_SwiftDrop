@@ -572,6 +572,20 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseFeeEstimateResponse"];
                 };
             };
+            /** @description Pricing service rejected a request this service had validated */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pricing service is temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     listOrders: {
@@ -645,6 +659,20 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Pricing service rejected a request this service had validated */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pricing service is temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getOrderById: {
@@ -712,6 +740,20 @@ export interface operations {
             };
             /** @description Order not found, or not owned by the caller */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pricing service rejected a request this service had validated */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pricing service is temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
