@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import com.swiftdrop.contracts.security.JwtSessionRevocation;
 import com.swiftdrop.iam.config.JwtConfig;
 import com.swiftdrop.iam.domain.entity.UserAccount;
 import io.jsonwebtoken.Claims;
@@ -50,6 +51,7 @@ public class TokenIssuanceService {
                 .id(jwtId)
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
+                .claim(JwtSessionRevocation.ISSUED_AT_CLAIM, issuedAt.toString())
                 .claim("role", user.getRole().name())
                 .claim("username", user.getUsername())
                 .claim("email", user.getEmail())
@@ -80,16 +82,21 @@ public class TokenIssuanceService {
                 .getPayload();
     }
 
-    public boolean isBlacklisted(String token, String publicId, String jwtId) {
+    public boolean isBlacklisted(String token, Claims claims) {
+        String publicId = claims.getSubject();
+        String jwtId = claims.getId();
         try {
             if (Boolean.TRUE.equals(redisTemplate.hasKey(
                     jwtConfig.getBlacklistPrefix() + "token:" + hashToken(token)))) {
                 return true;
             }
-            if (publicId != null && !publicId.isBlank()
-                    && Boolean.TRUE.equals(redisTemplate.hasKey(
-                    jwtConfig.getBlacklistPrefix() + "user:" + publicId))) {
-                return true;
+            if (publicId != null && !publicId.isBlank()) {
+                String cutoff = redisTemplate.opsForValue().get(jwtConfig.getBlacklistPrefix() + "user:" + publicId);
+                if (JwtSessionRevocation.isRevoked(cutoff,
+                        claims.get(JwtSessionRevocation.ISSUED_AT_CLAIM, String.class),
+                        claims.getIssuedAt() == null ? null : claims.getIssuedAt().toInstant())) {
+                    return true;
+                }
             }
             return jwtId != null && !jwtId.isBlank()
                     && Boolean.TRUE.equals(redisTemplate.hasKey(
@@ -118,11 +125,12 @@ public class TokenIssuanceService {
         }
     }
 
+    /** Revoke existing access tokens while permitting tokens from later logins. */
     public void blacklistUser(UUID publicId) {
         try {
             redisTemplate.opsForValue().set(
                     jwtConfig.getBlacklistPrefix() + "user:" + publicId,
-                    "1",
+                    Instant.now().toString(),
                     Duration.ofMillis(Math.max(1_000L, jwtConfig.getAccessTokenExpirationMs()))
             );
         } catch (RuntimeException exception) {
