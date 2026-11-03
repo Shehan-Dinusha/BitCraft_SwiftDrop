@@ -78,6 +78,9 @@ spec:
               value: redis.swiftdrop-messaging.svc.cluster.local
             - name: REDIS_PORT
               value: "6379"
+            # Local-only default; change when a deployed frontend origin exists.
+            - name: CORS_ALLOWED_ORIGINS
+              value: "http://localhost:5173"
             - name: AUTH_SERVICE_URL
               value: http://auth-iam-service.swiftdrop-apps.svc.cluster.local:8080
             - name: ORDER_SERVICE_URL
