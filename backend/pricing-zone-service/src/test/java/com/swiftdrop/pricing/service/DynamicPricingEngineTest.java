@@ -70,12 +70,12 @@ class DynamicPricingEngineTest {
 
         PricingQuoteResponse response = pricingEngine.calculateQuote(request);
 
-        assertThat(response.isIntraDistrict()).isTrue();
-        assertThat(response.getChargeableWeightKg()).isEqualByComparingTo("0.80");
-        assertThat(response.getBaseFee()).isEqualByComparingTo("350.00");
-        assertThat(response.getWeightFee()).isEqualByComparingTo("0.00");
-        assertThat(response.getEstimatedFee()).isEqualByComparingTo("350.00");
-        assertThat(response.getPricingRuleVersionId()).isEqualTo(DynamicPricingEngine.CURRENT_RULE_VERSION);
+        assertThat(response.intraDistrict()).isTrue();
+        assertThat(response.chargeableWeightKg()).isEqualByComparingTo("0.80");
+        assertThat(response.baseFee()).isEqualByComparingTo("350.00");
+        assertThat(response.weightFee()).isEqualByComparingTo("0.00");
+        assertThat(response.estimatedFee()).isEqualByComparingTo("350.00");
+        assertThat(response.pricingRuleVersionId()).isEqualTo(DynamicPricingEngine.CURRENT_RULE_VERSION);
     }
 
     @Test
@@ -99,11 +99,11 @@ class DynamicPricingEngineTest {
 
         PricingQuoteResponse response = pricingEngine.calculateQuote(request);
 
-        assertThat(response.getVolumetricWeightKg()).isEqualByComparingTo("12.00");
-        assertThat(response.getChargeableWeightKg()).isEqualByComparingTo("12.00");
+        assertThat(response.volumetricWeightKg()).isEqualByComparingTo("12.00");
+        assertThat(response.chargeableWeightKg()).isEqualByComparingTo("12.00");
         // Extra kg = 12 - 1 = 11 kg * 80.00 = 880.00. Base = 350.00. Total = 1230.00
-        assertThat(response.getWeightFee()).isEqualByComparingTo("880.00");
-        assertThat(response.getEstimatedFee()).isEqualByComparingTo("1230.00");
+        assertThat(response.weightFee()).isEqualByComparingTo("880.00");
+        assertThat(response.estimatedFee()).isEqualByComparingTo("1230.00");
     }
 
     @Test
@@ -130,10 +130,10 @@ class DynamicPricingEngineTest {
 
         PricingQuoteResponse response = pricingEngine.calculateQuote(request);
 
-        assertThat(response.isIntraDistrict()).isFalse();
-        assertThat(response.getBaseFee()).isEqualByComparingTo("550.00");
-        assertThat(response.getWeightFee()).isEqualByComparingTo("240.00");
-        assertThat(response.getEstimatedFee()).isEqualByComparingTo("1185.00");
-        assertThat(response.getSpeedSurcharge()).isEqualByComparingTo("395.00");
+        assertThat(response.intraDistrict()).isFalse();
+        assertThat(response.baseFee()).isEqualByComparingTo("550.00");
+        assertThat(response.weightFee()).isEqualByComparingTo("240.00");
+        assertThat(response.estimatedFee()).isEqualByComparingTo("1185.00");
+        assertThat(response.speedSurcharge()).isEqualByComparingTo("395.00");
     }
 }
