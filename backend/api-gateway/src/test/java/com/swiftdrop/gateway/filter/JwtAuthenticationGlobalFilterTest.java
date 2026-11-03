@@ -97,6 +97,17 @@ class JwtAuthenticationGlobalFilterTest {
     }
 
     @Test
+    void merchantApiKeyPathSkipsJwtValidation() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/merchant-order-ingest/orders").build());
+        RecordingChain chain = new RecordingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertNotNull(chain.exchange.get());
+    }
+
+    @Test
     void expiredTokenReturnsUnauthorized() {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/orders/123")
