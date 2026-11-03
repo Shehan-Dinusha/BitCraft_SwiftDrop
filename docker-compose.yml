@@ -179,6 +179,10 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+      PRICING_MODE: ${PRICING_MODE:-local}
+      PRICING_SERVICE_URL: http://pricing-zone-service:8083
+      PRICING_CONNECT_TIMEOUT_MS: ${PRICING_CONNECT_TIMEOUT_MS:-1000}
+      PRICING_READ_TIMEOUT_MS: ${PRICING_READ_TIMEOUT_MS:-2000}
     depends_on:
       order-postgres:
         condition: service_healthy

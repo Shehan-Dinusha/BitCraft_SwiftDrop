@@ -10,6 +10,7 @@ import com.swiftdrop.order.dto.CreateOrderRequest;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
+import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.service.CustomerOrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -128,12 +129,58 @@ class OrderControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/orders/{orderId} passes caller id and role to the service")
+    void testGetOrderPassesCallerIdentity() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
+        CustomerOrderResponse response = CustomerOrderResponse.builder()
+                .orderId(orderId)
+                .trackingNumber("SD-7K4M-9QX2")
+                .build();
+
+        when(customerOrderService.getOrderById(orderId, callerId, "CUSTOMER")).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}", orderId)
+                        .header("X-User-Id", callerId.toString())
+                        .header("X-User-Role", "CUSTOMER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.trackingNumber").value("SD-7K4M-9QX2"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders/{orderId} returns 404 when the caller does not own the order")
+    void testGetOrderOfAnotherCustomerReturns404() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
+
+        when(customerOrderService.getOrderById(orderId, callerId, "CUSTOMER"))
+                .thenThrow(new OrderNotFoundException("Order not found"));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}", orderId)
+                        .header("X-User-Id", callerId.toString())
+                        .header("X-User-Role", "CUSTOMER"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders without identity headers passes null caller to the service")
+    void testGetOrderWithoutHeadersPassesNullCaller() throws Exception {
+        UUID orderId = UUID.randomUUID();
+
+        when(customerOrderService.getOrderById(orderId, null, null))
+                .thenThrow(new OrderNotFoundException("Order not found"));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}", orderId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("GET /api/v1/orders/{orderId}/shipping-label returns application/pdf (FR-C4, FR-C5)")
     void testDownloadShippingLabel() throws Exception {
         UUID orderId = UUID.randomUUID();
         byte[] dummyPdf = "%PDF-1.4 test".getBytes();
 
-        when(customerOrderService.getShippingLabelPdf(orderId)).thenReturn(dummyPdf);
+        when(customerOrderService.getShippingLabelPdf(eq(orderId), any(), any())).thenReturn(dummyPdf);
 
         mockMvc.perform(get("/api/v1/orders/{orderId}/shipping-label", orderId))
                 .andExpect(status().isOk())
@@ -151,7 +198,7 @@ class OrderControllerTest {
                 .cancellationReason("Customer changed mind")
                 .build();
 
-        when(customerOrderService.cancelOrder(eq(orderId), any(), any(), any())).thenReturn(cancelledResponse);
+        when(customerOrderService.cancelOrder(eq(orderId), any(), any(), any(), any())).thenReturn(cancelledResponse);
 
         CancelOrderRequest req = CancelOrderRequest.builder().reason("Customer changed mind").build();
 
@@ -173,7 +220,7 @@ class OrderControllerTest {
                 .feeRevisionStatus(FeeRevisionStatus.REJECTED)
                 .build();
 
-        when(customerOrderService.rejectFeeRevision(eq(orderId), any(), any())).thenReturn(rejectedResponse);
+        when(customerOrderService.rejectFeeRevision(eq(orderId), any(), any(), any())).thenReturn(rejectedResponse);
 
         mockMvc.perform(post("/api/v1/orders/{orderId}/fee-revision/reject", orderId))
                 .andExpect(status().isOk())

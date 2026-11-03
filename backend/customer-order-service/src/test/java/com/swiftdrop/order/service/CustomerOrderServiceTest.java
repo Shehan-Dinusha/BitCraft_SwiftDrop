@@ -15,6 +15,7 @@ import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
+import com.swiftdrop.order.service.pricing.PricingClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,7 @@ class CustomerOrderServiceTest {
     private TrackingNumberGenerator trackingNumberGenerator;
 
     @Mock
-    private PricingCalculationService pricingCalculationService;
+    private PricingClient pricingClient;
 
     @Mock
     private OrderPdfGeneratorService orderPdfGeneratorService;
@@ -117,7 +118,7 @@ class CustomerOrderServiceTest {
                 .currency("LKR")
                 .build();
 
-        when(pricingCalculationService.calculateEstimate(any(FeeEstimateRequest.class)))
+        when(pricingClient.estimate(any(FeeEstimateRequest.class)))
                 .thenReturn(mockEstimate);
 
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -167,7 +168,7 @@ class CustomerOrderServiceTest {
                 .recipientPhone("+94779998877")
                 .build();
 
-        CustomerOrderResponse response = customerOrderService.updateOrder(orderId, updateReq, customerId);
+        CustomerOrderResponse response = customerOrderService.updateOrder(orderId, updateReq, customerId, "CUSTOMER");
 
         assertThat(response.getRecipientName()).isEqualTo("Sunil Perera");
         assertThat(response.getRecipientPhone()).isEqualTo("+94779998877");
@@ -181,7 +182,7 @@ class CustomerOrderServiceTest {
 
         UpdateOrderRequest updateReq = UpdateOrderRequest.builder().recipientName("Sunil").build();
 
-        assertThatThrownBy(() -> customerOrderService.updateOrder(orderId, updateReq, customerId))
+        assertThatThrownBy(() -> customerOrderService.updateOrder(orderId, updateReq, customerId, "CUSTOMER"))
                 .isInstanceOf(InvalidOrderStateException.class)
                 .hasMessageContaining("cannot be updated once it leaves CREATED status");
     }
@@ -191,7 +192,7 @@ class CustomerOrderServiceTest {
     void testDeleteOrder() {
         when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(sampleOrder));
 
-        customerOrderService.deleteOrder(orderId, customerId);
+        customerOrderService.deleteOrder(orderId, customerId, "CUSTOMER");
 
         verify(customerOrderRepository).delete(sampleOrder);
     }
@@ -205,7 +206,7 @@ class CustomerOrderServiceTest {
         CancelOrderRequest cancelReq = CancelOrderRequest.builder().reason("No longer needed").build();
         UUID correlationId = UUID.randomUUID();
 
-        CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, cancelReq, customerId, correlationId);
+        CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, cancelReq, customerId, "CUSTOMER", correlationId);
 
         assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
         assertThat(response.getCancellationReason()).isEqualTo("No longer needed");
@@ -223,7 +224,7 @@ class CustomerOrderServiceTest {
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UUID correlationId = UUID.randomUUID();
-        CustomerOrderResponse response = customerOrderService.acceptFeeRevision(orderId, customerId, correlationId);
+        CustomerOrderResponse response = customerOrderService.acceptFeeRevision(orderId, customerId, "CUSTOMER", correlationId);
 
         assertThat(response.getFeeRevisionStatus()).isEqualTo(FeeRevisionStatus.APPROVED);
         assertThat(response.getFinalFee()).isEqualByComparingTo("780.00");
@@ -240,7 +241,7 @@ class CustomerOrderServiceTest {
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UUID correlationId = UUID.randomUUID();
-        CustomerOrderResponse response = customerOrderService.rejectFeeRevision(orderId, customerId, correlationId);
+        CustomerOrderResponse response = customerOrderService.rejectFeeRevision(orderId, customerId, "CUSTOMER", correlationId);
 
         assertThat(response.getFeeRevisionStatus()).isEqualTo(FeeRevisionStatus.REJECTED);
         assertThat(response.getFinalFee()).isEqualByComparingTo("0.00");
