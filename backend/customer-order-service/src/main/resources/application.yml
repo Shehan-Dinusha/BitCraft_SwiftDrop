@@ -20,16 +20,6 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:swiftdrop}
     password: ${RABBITMQ_PASSWORD:changeme_rabbit}
-    listener:
-      simple:
-        # A failing message is retried 3 times, then rejected without requeue so the queue's dead-letter
-        # exchange takes it. Without this a failing message is requeued forever.
-        default-requeue-rejected: false
-        retry:
-          enabled: true
-          max-attempts: 3
-          initial-interval: 1s
-          multiplier: 2
 management:
   endpoints:
     web:

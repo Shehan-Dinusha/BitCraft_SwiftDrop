@@ -2,7 +2,6 @@ package com.swiftdrop.order.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -53,9 +52,9 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(400, "Validation Failed", errors, safePath(request)));
     }
 
-    @ExceptionHandler({HandlerMethodValidationException.class, ConstraintViolationException.class})
-    public ResponseEntity<ApiErrorResponse> handleParameterValidation(Exception ex, HttpServletRequest request) {
-        // Constraint failures on path or query parameters. The rejected value is never read or returned.
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiErrorResponse> handleParameterValidation(HandlerMethodValidationException ex, HttpServletRequest request) {
+        // Method validation failures on path or query parameters (not persistence-time constraint violations). The rejected value is never read or returned.
         log.warn("Invalid request parameter on {}", safePath(request));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(400, "Bad Request", "A request parameter has an invalid format", safePath(request)));

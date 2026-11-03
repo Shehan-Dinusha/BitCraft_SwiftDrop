@@ -61,7 +61,7 @@ public class InternalOrderController {
             @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationIdHeader) {
 
         InternalOrderService.CreateResult result =
-                internalOrderService.createMerchantOrder(request, parseUuidSafe(correlationIdHeader));
+                internalOrderService.createMerchantOrder(request, HeaderParsing.parseUuidSafe(correlationIdHeader));
 
         if (result.created()) {
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -70,16 +70,5 @@ public class InternalOrderController {
         }
         return ResponseEntity.ok(ApiResponse.success(result.order(),
                 "Order already exists for this external reference"));
-    }
-
-    private UUID parseUuidSafe(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return UUID.fromString(value.trim());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
     }
 }

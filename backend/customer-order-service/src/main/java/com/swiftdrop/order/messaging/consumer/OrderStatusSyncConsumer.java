@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 /**
  * Applies {@code parcel.status.changed} events to the matching order. Skips are handled inside the service
  * and never thrown. A genuine failure propagates, so the listener's retry and then dead-letter
- * configuration (see application.yml) takes over instead of the message looping forever.
+ * configuration (see {@code RabbitMQConfig#statusSyncListenerContainerFactory}) takes over instead of the message looping forever.
  */
 @Component
 @RequiredArgsConstructor
@@ -20,7 +20,8 @@ public class OrderStatusSyncConsumer {
 
     private final OrderStatusSyncService orderStatusSyncService;
 
-    @RabbitListener(queues = RabbitMQConfig.STATUS_SYNC_QUEUE)
+    @RabbitListener(queues = RabbitMQConfig.STATUS_SYNC_QUEUE,
+            containerFactory = RabbitMQConfig.STATUS_SYNC_LISTENER_FACTORY)
     public void onParcelStatusChanged(ParcelStatusChangedEvent event) {
         OrderStatusSyncService.Outcome outcome = orderStatusSyncService.apply(event);
         log.debug("Handled parcel status event eventId={}, outcome={}", event.eventId(), outcome);

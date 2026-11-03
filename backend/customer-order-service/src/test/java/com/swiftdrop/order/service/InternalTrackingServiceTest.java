@@ -117,13 +117,13 @@ class InternalTrackingServiceTest {
     }
 
     @Test
-    @DisplayName("History is returned oldest to newest even if the repository returns it out of order")
-    void historyIsOrderedOldestFirst() {
+    @DisplayName("History keeps the oldest-to-newest order of the repository query (ascending by time, then id)")
+    void historyKeepsRepositoryOrder() {
         when(customerOrderRepository.findByTrackingNumber(TRACKING)).thenReturn(Optional.of(order));
         when(historyRepository.findByOrderIdOrderByOccurredAtAscIdAsc(orderId)).thenReturn(List.of(
-                row(3, PublicOrderStatus.IN_TRANSIT, "2026-10-30T12:00:00Z"),
                 row(1, PublicOrderStatus.CREATED, "2026-10-30T08:00:00Z"),
-                row(2, PublicOrderStatus.PICKED_UP, "2026-10-30T10:00:00Z")));
+                row(2, PublicOrderStatus.PICKED_UP, "2026-10-30T10:00:00Z"),
+                row(3, PublicOrderStatus.IN_TRANSIT, "2026-10-30T12:00:00Z")));
 
         InternalTrackingView view = internalTrackingService.getTrackingView(TRACKING);
 
