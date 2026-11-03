@@ -1,28 +1,43 @@
 package com.swiftdrop.gateway.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Global CORS configuration for the reactive gateway.
- * In production, allowed origins are restricted to the SwiftDrop dashboard domain.
+ * Allowed origins are supplied through {@code CORS_ALLOWED_ORIGINS} as a
+ * comma-separated list so each environment can restrict browser access.
  */
 @Configuration
 public class CorsGlobalConfiguration {
 
+    private final List<String> allowedOrigins;
+
+    public CorsGlobalConfiguration(
+            @Value("${swiftdrop.cors.allowed-origins:http://localhost:5173}") String allowedOrigins) {
+        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
+    }
+
     @Bean
     public CorsWebFilter corsWebFilter() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", corsConfiguration());
+        return new CorsWebFilter(source);
+    }
+
+    CorsConfiguration corsConfiguration() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOriginPatterns(List.of(
-                "https://app.swiftdrop.io",
-                "https://*.swiftdrop.io",
-                "http://localhost:[*]"
-        ));
+        corsConfig.setAllowedOriginPatterns(allowedOrigins);
         corsConfig.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
@@ -45,10 +60,6 @@ public class CorsGlobalConfiguration {
         ));
         corsConfig.setAllowCredentials(true);
         corsConfig.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", corsConfig);
-
-        return new CorsWebFilter(source);
+        return corsConfig;
     }
 }

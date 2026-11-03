@@ -61,6 +61,8 @@ springdoc:
 
 # ─── JWT Configuration ────────────────────────────────────────────────────────
 swiftdrop:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   routes:
     auth: ${AUTH_SERVICE_URL:http://localhost:8081}
     order: ${ORDER_SERVICE_URL:http://localhost:8082}
