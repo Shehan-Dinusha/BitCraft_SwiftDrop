@@ -14,4 +14,7 @@ public interface OrderStatusHistoryRepository extends JpaRepository<OrderStatusH
     List<OrderStatusHistory> findByOrderIdOrderByOccurredAtAscIdAsc(UUID orderId);
 
     Optional<OrderStatusHistory> findFirstByOrderIdOrderByOccurredAtDescIdDesc(UUID orderId);
+
+    /** Latest history row written from a status event (not this service's own create/cancel rows). */
+    Optional<OrderStatusHistory> findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(UUID orderId);
 }

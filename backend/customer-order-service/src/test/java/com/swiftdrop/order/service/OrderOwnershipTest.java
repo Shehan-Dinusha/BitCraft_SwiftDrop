@@ -95,6 +95,10 @@ class OrderOwnershipTest {
                 .build();
     }
 
+    private void orderExistsForUpdate() {
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(orderOfA));
+    }
+
     private void orderExists() {
         when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(orderOfA));
     }
@@ -229,7 +233,7 @@ class OrderOwnershipTest {
     @Test
     @DisplayName("Customer B cannot cancel customer A's order, and nothing is saved or published")
     void nonOwnerCannotCancel() {
-        orderExists();
+        orderExistsForUpdate();
 
         assertThatThrownBy(() -> customerOrderService.cancelOrder(orderId, null, customerB, "CUSTOMER", UUID.randomUUID()))
                 .isInstanceOf(OrderNotFoundException.class);
@@ -242,7 +246,7 @@ class OrderOwnershipTest {
     @Test
     @DisplayName("Owner can cancel their own order")
     void ownerCanCancel() {
-        orderExists();
+        orderExistsForUpdate();
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerA, "CUSTOMER", UUID.randomUUID());
@@ -254,7 +258,7 @@ class OrderOwnershipTest {
     @Test
     @DisplayName("Dispatcher can cancel any order")
     void dispatcherCanCancel() {
-        orderExists();
+        orderExistsForUpdate();
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerB, "DISPATCHER", UUID.randomUUID());
@@ -306,7 +310,7 @@ class OrderOwnershipTest {
     void nonOwnerCannotActOnFeeRevision() {
         orderOfA.setFeeRevisionStatus(FeeRevisionStatus.PENDING);
         orderOfA.setRevisedFee(new BigDecimal("900.00"));
-        orderExists();
+        orderExistsForUpdate();
 
         assertThatThrownBy(() -> customerOrderService.acceptFeeRevision(orderId, customerB, "CUSTOMER", UUID.randomUUID()))
                 .isInstanceOf(OrderNotFoundException.class);
@@ -323,7 +327,7 @@ class OrderOwnershipTest {
     void ownerCanAcceptFeeRevision() {
         orderOfA.setFeeRevisionStatus(FeeRevisionStatus.PENDING);
         orderOfA.setRevisedFee(new BigDecimal("900.00"));
-        orderExists();
+        orderExistsForUpdate();
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CustomerOrderResponse response = customerOrderService.acceptFeeRevision(orderId, customerA, "CUSTOMER", UUID.randomUUID());

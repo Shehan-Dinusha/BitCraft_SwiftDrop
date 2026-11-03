@@ -181,6 +181,14 @@ public class CustomerOrderService {
         return order;
     }
 
+    /** Same as {@link #findAccessibleOrder} but takes a row lock so it serialises with status sync. */
+    private CustomerOrder findAccessibleOrderForUpdate(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = customerOrderRepository.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+        assertCallerCanAccess(order, callerId, callerRole);
+        return order;
+    }
+
     private void assertCallerCanAccess(CustomerOrder order, UUID callerId, String callerRole) {
         if (isPrivilegedRole(callerRole)) {
             return;
@@ -266,7 +274,7 @@ public class CustomerOrderService {
 
     @Transactional
     public CustomerOrderResponse cancelOrder(UUID orderId, CancelOrderRequest request, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getStatus().isTerminal()) {
             throw new InvalidOrderStateException("Order " + orderId + " is already in terminal state " + order.getStatus());
@@ -286,7 +294,7 @@ public class CustomerOrderService {
 
     @Transactional
     public CustomerOrderResponse acceptFeeRevision(UUID orderId, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getFeeRevisionStatus() != FeeRevisionStatus.PENDING || order.getRevisedFee() == null) {
             throw new InvalidOrderStateException("Order " + orderId + " does not have a pending fee revision.");
@@ -303,7 +311,7 @@ public class CustomerOrderService {
 
     @Transactional
     public CustomerOrderResponse rejectFeeRevision(UUID orderId, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getFeeRevisionStatus() != FeeRevisionStatus.PENDING) {
             throw new InvalidOrderStateException("Order " + orderId + " does not have a pending fee revision.");

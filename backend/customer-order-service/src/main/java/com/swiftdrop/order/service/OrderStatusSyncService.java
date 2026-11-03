@@ -19,8 +19,9 @@ import java.util.Set;
 /**
  * Keeps an order's status in step with {@code parcel.status.changed} events from delivery and dispatch.
  *
- * <p>The event id is claimed first, in the same transaction as the update, so a message delivered twice is
- * applied once. Events that do not apply are skipped, never thrown: a skipped message is acknowledged
+ * <p>The order is looked up and row-locked first, then the event id is claimed in the same transaction as the
+ * update, so a message delivered twice is applied once. An event for an unknown order is not claimed, so a
+ * redelivery is processed again. Events that do not apply are skipped, never thrown: a skipped message is acknowledged
  * instead of being redelivered forever. Only genuine failures (for example the database being down) throw,
  * so the listener's retry and dead-letter handling takes over. Logs carry ids only, never addresses,
  * phones or names.</p>
@@ -55,24 +56,31 @@ public class OrderStatusSyncService {
 
     @Transactional
     public Outcome apply(ParcelStatusChangedEvent event) {
+        Optional<CustomerOrder> found = Optional.empty();
+        if (event.newPublicStatus() != null) {
+            // Look the order up (and lock it) before claiming, so an event for an order that is not here yet
+            // leaves no claim and is processed again when it is redelivered.
+            found = findOrderForUpdate(event);
+            if (found.isEmpty()) {
+                log.warn("No order for status event eventId={}, orderId={}, trackingNumber={}, correlationId={}",
+                        event.eventId(), event.orderId(), event.trackingNumber(), event.correlationId());
+                return Outcome.UNKNOWN_ORDER;
+            }
+        }
+
         if (processedEventRepository.claim(event.eventId()) == 0) {
             log.debug("Skipping duplicate event eventId={}", event.eventId());
             return Outcome.DUPLICATE_EVENT;
         }
-        if (event.newPublicStatus() == null) {
+        if (found.isEmpty()) {
             log.debug("Skipping event without a public status eventId={}", event.eventId());
             return Outcome.NO_STATUS;
         }
-
-        Optional<CustomerOrder> found = findOrder(event);
-        if (found.isEmpty()) {
-            log.warn("No order for status event eventId={}, orderId={}, trackingNumber={}, correlationId={}",
-                    event.eventId(), event.orderId(), event.trackingNumber(), event.correlationId());
-            return Outcome.UNKNOWN_ORDER;
-        }
         CustomerOrder order = found.get();
 
-        Optional<OrderStatusHistory> latest = historyRepository.findFirstByOrderIdOrderByOccurredAtDescIdDesc(order.getOrderId());
+        // Only events are compared with each other: this service's own create/cancel rows use its own clock.
+        Optional<OrderStatusHistory> latest =
+                historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(order.getOrderId());
         if (latest.isPresent() && event.timestamp().isBefore(latest.get().getOccurredAt())) {
             log.info("Skipping out-of-order event eventId={}, orderId={}, correlationId={}",
                     event.eventId(), order.getOrderId(), event.correlationId());
@@ -113,12 +121,15 @@ public class OrderStatusSyncService {
         return Outcome.APPLIED;
     }
 
-    private Optional<CustomerOrder> findOrder(ParcelStatusChangedEvent event) {
+    private Optional<CustomerOrder> findOrderForUpdate(ParcelStatusChangedEvent event) {
         Optional<CustomerOrder> order = event.orderId() != null
-                ? customerOrderRepository.findByOrderId(event.orderId())
+                ? customerOrderRepository.findByOrderIdForUpdate(event.orderId())
                 : Optional.empty();
         if (order.isEmpty() && event.trackingNumber() != null) {
-            order = customerOrderRepository.findByTrackingNumber(event.trackingNumber());
+            Optional<CustomerOrder> byTracking = customerOrderRepository.findByTrackingNumber(event.trackingNumber());
+            if (byTracking.isPresent()) {
+                order = customerOrderRepository.findByOrderIdForUpdate(byTracking.get().getOrderId());
+            }
         }
         return order;
     }

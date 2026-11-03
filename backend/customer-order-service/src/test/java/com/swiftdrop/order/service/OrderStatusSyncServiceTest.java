@@ -72,9 +72,9 @@ class OrderStatusSyncServiceTest {
     }
 
     private void orderFound() {
-        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(order));
-        when(historyRepository.findFirstByOrderIdOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.of(
-                OrderStatusHistory.builder().orderId(orderId).status(PublicOrderStatus.PICKED_UP).occurredAt(T0).build()));
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(order));
+        when(historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.of(
+                OrderStatusHistory.builder().orderId(orderId).status(PublicOrderStatus.PICKED_UP).eventId(UUID.randomUUID()).occurredAt(T0).build()));
     }
 
     @Test
@@ -92,40 +92,57 @@ class OrderStatusSyncServiceTest {
         assertThat(order.getInternalQueueStatus()).isEqualTo(InternalQueueStatus.OUTBOUND);
         verify(customerOrderRepository).save(order);
         verify(orderStatusHistoryService).recordStatus(orderId, PublicOrderStatus.IN_TRANSIT, InternalQueueStatus.OUTBOUND, event.eventId(), T1);
+        verify(customerOrderRepository).findByOrderIdForUpdate(orderId);
+        verify(customerOrderRepository, never()).findByOrderId(any());
     }
 
     @Test
     @DisplayName("A duplicate event id is ignored and changes nothing")
     void duplicateEventIsIgnored() {
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(order));
         when(processedEventRepository.claim(any())).thenReturn(0);
 
         Outcome outcome = service.apply(event(PublicOrderStatus.PICKED_UP, PublicOrderStatus.IN_TRANSIT, null, T1));
 
         assertThat(outcome).isEqualTo(Outcome.DUPLICATE_EVENT);
-        verifyNoInteractions(customerOrderRepository, orderStatusHistoryService, historyRepository);
+        verify(customerOrderRepository, never()).save(any());
+        verifyNoInteractions(orderStatusHistoryService, historyRepository);
     }
 
     @Test
-    @DisplayName("An unknown order is skipped without throwing, after trying the tracking number")
+    @DisplayName("An unknown order is skipped without throwing, after trying the tracking number, and the event id is not claimed")
     void unknownOrderIsSkipped() {
-        claimed();
-        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.empty());
         when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.empty());
 
         Outcome outcome = service.apply(event(PublicOrderStatus.PICKED_UP, PublicOrderStatus.IN_TRANSIT, null, T1));
 
         assertThat(outcome).isEqualTo(Outcome.UNKNOWN_ORDER);
+        verifyNoInteractions(processedEventRepository, orderStatusHistoryService);
         verify(customerOrderRepository, never()).save(any());
-        verifyNoInteractions(orderStatusHistoryService);
     }
 
     @Test
-    @DisplayName("The order is found by tracking number when the order id is unknown")
+    @DisplayName("A redelivered event for an order that was unknown is processed once the order exists")
+    void unknownOrderEventIsRetried() {
+        ParcelStatusChangedEvent event = event(PublicOrderStatus.PICKED_UP, PublicOrderStatus.IN_TRANSIT, null, T1);
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.empty(), Optional.of(order));
+        when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.empty());
+        when(processedEventRepository.claim(event.eventId())).thenReturn(1);
+        when(historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.empty());
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(service.apply(event)).isEqualTo(Outcome.UNKNOWN_ORDER);
+        assertThat(service.apply(event)).isEqualTo(Outcome.APPLIED);
+    }
+
+    @Test
+    @DisplayName("The order is found by tracking number when the order id is unknown, and locked by its id")
     void fallsBackToTrackingNumber() {
         claimed();
-        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.empty(), Optional.of(order));
         when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.of(order));
-        when(historyRepository.findFirstByOrderIdOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.empty());
+        when(historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.empty());
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThat(service.apply(event(PublicOrderStatus.PICKED_UP, PublicOrderStatus.IN_TRANSIT, null, T1)))
@@ -192,12 +209,12 @@ class OrderStatusSyncServiceTest {
     }
 
     @Test
-    @DisplayName("An event older than the latest history entry is skipped")
+    @DisplayName("An event older than the latest event-sourced history entry is skipped")
     void outOfOrderEventIsSkipped() {
         claimed();
-        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(order));
-        when(historyRepository.findFirstByOrderIdOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.of(
-                OrderStatusHistory.builder().orderId(orderId).status(PublicOrderStatus.OUT_FOR_DELIVERY).occurredAt(T1).build()));
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(order));
+        when(historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.of(
+                OrderStatusHistory.builder().orderId(orderId).status(PublicOrderStatus.OUT_FOR_DELIVERY).eventId(UUID.randomUUID()).occurredAt(T1).build()));
 
         Outcome outcome = service.apply(event(PublicOrderStatus.CREATED, PublicOrderStatus.IN_TRANSIT, null, T0));
 
@@ -205,6 +222,38 @@ class OrderStatusSyncServiceTest {
         assertThat(order.getStatus()).isEqualTo(PublicOrderStatus.PICKED_UP);
         verify(customerOrderRepository, never()).save(any());
         verifyNoInteractions(orderStatusHistoryService);
+    }
+
+    @Test
+    @DisplayName("An event older than this service's own CREATED row but newer than any event is applied")
+    void eventOlderThanOwnRowButNewerThanLastEventIsApplied() {
+        claimed();
+        order.setStatus(PublicOrderStatus.CREATED);
+        order.setInternalQueueStatus(InternalQueueStatus.CREATED);
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(order));
+        // no event-sourced row exists; our own CREATED row (stamped later than the event) must not count
+        when(historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.empty());
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Outcome outcome = service.apply(event(PublicOrderStatus.CREATED, PublicOrderStatus.PICKED_UP, InternalQueueStatus.PICKED_UP, T0));
+
+        assertThat(outcome).isEqualTo(Outcome.APPLIED);
+        assertThat(order.getStatus()).isEqualTo(PublicOrderStatus.PICKED_UP);
+        verify(historyRepository, never()).findFirstByOrderIdOrderByOccurredAtDescIdDesc(any());
+    }
+
+    @Test
+    @DisplayName("An event older than this service's own CANCELLED row is not judged against it: the final-status rule decides")
+    void ownCancelledRowIsIgnoredByOrderGuard() {
+        claimed();
+        order.setStatus(PublicOrderStatus.CANCELLED);
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(order));
+        when(historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.empty());
+
+        Outcome outcome = service.apply(event(PublicOrderStatus.PICKED_UP, PublicOrderStatus.IN_TRANSIT, null, T0));
+
+        assertThat(outcome).isEqualTo(Outcome.FINAL_STATUS);
+        verify(customerOrderRepository, never()).save(any());
     }
 
     @Test

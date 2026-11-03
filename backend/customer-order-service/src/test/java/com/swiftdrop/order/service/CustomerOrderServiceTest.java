@@ -206,7 +206,7 @@ class CustomerOrderServiceTest {
     @Test
     @DisplayName("Cancel order sets status CANCELLED and publishes event")
     void testCancelOrder() {
-        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(sampleOrder));
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(sampleOrder));
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CancelOrderRequest cancelReq = CancelOrderRequest.builder().reason("No longer needed").build();
@@ -217,6 +217,7 @@ class CustomerOrderServiceTest {
         assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
         assertThat(response.getCancellationReason()).isEqualTo("No longer needed");
         verify(orderEventPublisher).publishOrderCancelled(any(CustomerOrder.class), eq("No longer needed"), eq("CUSTOMER"), eq(correlationId));
+        verify(customerOrderRepository).findByOrderIdForUpdate(orderId);
         verify(orderStatusHistoryService).recordCurrentStatus(argThat(o -> o.getStatus() == PublicOrderStatus.CANCELLED), isNull());
     }
 
@@ -227,7 +228,7 @@ class CustomerOrderServiceTest {
         sampleOrder.setRevisedFee(new BigDecimal("780.00"));
         sampleOrder.setFeeRevisionReason("Actual weight was 2.8kg instead of 1.5kg");
 
-        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(sampleOrder));
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(sampleOrder));
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UUID correlationId = UUID.randomUUID();
@@ -244,7 +245,7 @@ class CustomerOrderServiceTest {
         sampleOrder.setRevisedFee(new BigDecimal("950.00"));
         sampleOrder.setFeeRevisionReason("Package exceeded standard box limit");
 
-        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(sampleOrder));
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(sampleOrder));
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UUID correlationId = UUID.randomUUID();
@@ -256,6 +257,7 @@ class CustomerOrderServiceTest {
         assertThat(response.getInternalQueueStatus()).isEqualTo(InternalQueueStatus.CANCELLED);
 
         verify(orderEventPublisher).publishOrderCancelled(any(CustomerOrder.class), any(), eq("CUSTOMER"), eq(correlationId));
+        verify(customerOrderRepository).findByOrderIdForUpdate(orderId);
         verify(orderStatusHistoryService).recordCurrentStatus(argThat(o -> o.getStatus() == PublicOrderStatus.CANCELLED), isNull());
     }
 }
