@@ -2,7 +2,6 @@ package com.swiftdrop.gateway.trackinghub.messaging;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.swiftdrop.contracts.events.delivery.DeliveryStateChangedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelFeeRevisedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.gateway.config.RabbitMQConfig;
@@ -18,9 +17,8 @@ import java.io.IOException;
  * Consumes delivery and fee events for the Real-Time Tracking Hub.
  *
  * <p>The listener accepts raw {@link Message} instances and performs explicit
- * routing so the gateway can safely receive both the new SRS
- * {@code parcel.status.changed} contract and legacy
- * {@code DeliveryStateChangedEvent} messages during the migration window.</p>
+ * routing so location-only events are ignored and every public view is keyed by
+ * the {@code parcel.status.changed} tracking number.</p>
  */
 @Slf4j
 @Component
@@ -40,9 +38,6 @@ public class ParcelStatusEventConsumer {
             JsonNode payload = objectMapper.readTree(message.getBody());
             if (payload.has("latitude") || payload.has("longitude")) {
                 log.debug("Ignoring location-only tracking event; public views use status milestones");
-            } else if (payload.has("deliveryId") && payload.has("newState")) {
-                broadcastHub.onLegacyStateChanged(
-                        objectMapper.treeToValue(payload, DeliveryStateChangedEvent.class));
             } else {
                 broadcastHub.onStatusChanged(
                         objectMapper.treeToValue(payload, ParcelStatusChangedEvent.class));

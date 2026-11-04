@@ -5,7 +5,6 @@ import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.contracts.events.delivery.DeliveryStateChangedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
 import org.junit.jupiter.api.Test;
@@ -95,22 +94,5 @@ class TrackingDataSanitizerProxyTest {
         assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.FAILED)).isEqualTo(PublicOrderStatus.FAILED);
         assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.CANCELLED)).isEqualTo(PublicOrderStatus.CANCELLED);
         assertThat(PublicOrderStatus.fromDeliveryState(null)).isNull();
-    }
-
-    @Test
-    void appendsLegacyMilestoneWithoutDroppingEarlierHistory() {
-        DeliveryStateChangedEvent first = new DeliveryStateChangedEvent(
-                null, null, UUID.randomUUID(), UUID.randomUUID(), null,
-                null, DeliveryState.CREATED, null, Instant.parse("2026-10-26T06:00:00Z")
-        );
-        DeliveryStateChangedEvent second = new DeliveryStateChangedEvent(
-                null, null, first.deliveryId(), first.orderId(), null,
-                DeliveryState.CREATED, DeliveryState.PICKED_UP, null, Instant.parse("2026-10-26T07:00:00Z")
-        );
-
-        PublicTrackingViewDto view = sanitizer.appendLegacy(sanitizer.fromLegacy(first), second);
-
-        assertThat(view.currentPublicStatus()).isEqualTo(PublicOrderStatus.PICKED_UP);
-        assertThat(view.statusTimeline()).hasSize(2);
     }
 }
