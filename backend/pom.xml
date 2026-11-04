@@ -84,6 +84,12 @@
         <maven-surefire-plugin.version>3.5.1</maven-surefire-plugin.version>
         <maven-failsafe-plugin.version>3.5.1</maven-failsafe-plugin.version>
         <jib-maven-plugin.version>3.4.4</jib-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.16</jacoco-maven-plugin.version>
+
+        <!-- JaCoCo writes the agent arguments here at initialize; surefire picks
+             them up through late replacement so tests still run uninstrumented
+             when coverage is skipped. -->
+        <argLine></argLine>
     </properties>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -256,7 +262,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
                     <configuration>
-                        <argLine>-XX:+EnableDynamicAgentLoading</argLine>
+                        <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
                     </configuration>
                 </plugin>
 
@@ -265,7 +271,7 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${maven-failsafe-plugin.version}</version>
                     <configuration>
-                        <argLine>-XX:+EnableDynamicAgentLoading</argLine>
+                        <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
                     </configuration>
                     <executions>
                         <execution>
@@ -302,6 +308,29 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 
 </project>
