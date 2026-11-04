@@ -3,13 +3,13 @@ package com.swiftdrop.gateway.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.ReactiveValueOperations;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -95,7 +95,7 @@ class PublicTrackingRateLimitFilterTest {
         return String.format("SD-%04d-0000", sequence);
     }
 
-    private static final class CountingChain implements GatewayFilterChain {
+    private static final class CountingChain implements WebFilterChain {
 
         private int calls;
 
