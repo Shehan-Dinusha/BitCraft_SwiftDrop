@@ -115,7 +115,9 @@ export function AppShell() {
     [shellRole]
   );
   const entries = groups.flatMap((group) => group.items);
-  const activeEntry = entries.find((entry) => entry.to === pathname);
+  const activeEntry = entries
+    .filter((entry) => entry.to && (pathname === entry.to || pathname.startsWith(`${entry.to}/`)))
+    .sort((left, right) => (right.to?.length ?? 0) - (left.to?.length ?? 0))[0];
   const pageTitle = activeEntry?.label ?? spec.label;
 
   const handleSignOut = () => {

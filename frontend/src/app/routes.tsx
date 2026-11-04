@@ -51,6 +51,14 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/customer/tracking/:trackingNumber',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <LiveTrackingPage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/customer/book',
         element: (
           <RoleGuard roles={['CUSTOMER']}>
