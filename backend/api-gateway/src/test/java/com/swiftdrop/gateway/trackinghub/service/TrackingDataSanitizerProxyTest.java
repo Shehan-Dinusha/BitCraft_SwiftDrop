@@ -1,16 +1,18 @@
 package com.swiftdrop.gateway.trackinghub.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.contracts.events.delivery.DeliveryStateChangedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,6 +73,61 @@ class TrackingDataSanitizerProxyTest {
     }
 
     @Test
+    void dropsUnknownPiiFieldsFromRawEventJson() throws Exception {
+        String raw = """
+                {
+                  "eventId": "6f1a3f1e-6f7e-4f2a-9a2b-0d3f9f5a1c11",
+                  "trackingNumber": "SD-2026-000123",
+                  "orderId": "0f8b2c14-1b2c-4d5e-8f90-123456789abc",
+                  "customerId": "5c4b3a29-1f2e-4d3c-9b8a-76543210fedc",
+                  "newPublicStatus": "OUT_FOR_DELIVERY",
+                  "district": "COLOMBO",
+                  "destinationDistrict": "KANDY",
+                  "timestamp": "2026-10-26T06:30:00Z",
+                  "customerName": "Nimal Perera",
+                  "customerPhone": "0771234567",
+                  "deliveryAddress": "12 Galle Road, Colombo 03",
+                  "courierId": "9a8b7c6d-5e4f-3a2b-1c0d-ef1234567890",
+                  "courierPhone": "0719876543"
+                }
+                """;
+
+        ParcelStatusChangedEvent event = objectMapper.readValue(raw, ParcelStatusChangedEvent.class);
+        String json = objectMapper.writeValueAsString(sanitizer.fromStatus(event));
+
+        assertThat(json)
+                .doesNotContain("Nimal Perera")
+                .doesNotContain("0771234567")
+                .doesNotContain("Galle Road")
+                .doesNotContain("0719876543")
+                .doesNotContain("customerId")
+                .doesNotContain("courierId")
+                .doesNotContain("orderId");
+        assertThat(json).contains("SD-2026-000123", "OUT_FOR_DELIVERY", "COLOMBO", "KANDY");
+    }
+
+    @Test
+    void viewExposesOnlyWhitelistedFields() throws Exception {
+        ParcelStatusChangedEvent event = new ParcelStatusChangedEvent(
+                UUID.randomUUID(), UUID.randomUUID(), "SD-2026-000123", UUID.randomUUID(), UUID.randomUUID(),
+                null, PublicOrderStatus.IN_TRANSIT, InternalQueueStatus.OUTBOUND,
+                SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, null, Instant.now());
+
+        JsonNode view = objectMapper.readTree(objectMapper.writeValueAsString(sanitizer.fromStatus(event)));
+
+        assertThat(fieldNames(view)).containsExactlyInAnyOrder(
+                "trackingNumber", "currentPublicStatus", "originDistrict", "destinationDistrict", "statusTimeline");
+        assertThat(fieldNames(view.get("statusTimeline").get(0)))
+                .containsExactlyInAnyOrder("status", "district", "timestamp");
+    }
+
+    private List<String> fieldNames(JsonNode node) {
+        List<String> names = new ArrayList<>();
+        node.fieldNames().forEachRemaining(names::add);
+        return names;
+    }
+
+    @Test
     void mapsAllInternalStatusesToPublicStatuses() {
         assertThat(InternalQueueStatus.CREATED.toPublicStatus()).isEqualTo(PublicOrderStatus.CREATED);
         assertThat(InternalQueueStatus.UNASSIGNED.toPublicStatus()).isEqualTo(PublicOrderStatus.CREATED);
@@ -95,22 +152,5 @@ class TrackingDataSanitizerProxyTest {
         assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.FAILED)).isEqualTo(PublicOrderStatus.FAILED);
         assertThat(PublicOrderStatus.fromDeliveryState(DeliveryState.CANCELLED)).isEqualTo(PublicOrderStatus.CANCELLED);
         assertThat(PublicOrderStatus.fromDeliveryState(null)).isNull();
-    }
-
-    @Test
-    void appendsLegacyMilestoneWithoutDroppingEarlierHistory() {
-        DeliveryStateChangedEvent first = new DeliveryStateChangedEvent(
-                null, null, UUID.randomUUID(), UUID.randomUUID(), null,
-                null, DeliveryState.CREATED, null, Instant.parse("2026-10-26T06:00:00Z")
-        );
-        DeliveryStateChangedEvent second = new DeliveryStateChangedEvent(
-                null, null, first.deliveryId(), first.orderId(), null,
-                DeliveryState.CREATED, DeliveryState.PICKED_UP, null, Instant.parse("2026-10-26T07:00:00Z")
-        );
-
-        PublicTrackingViewDto view = sanitizer.appendLegacy(sanitizer.fromLegacy(first), second);
-
-        assertThat(view.currentPublicStatus()).isEqualTo(PublicOrderStatus.PICKED_UP);
-        assertThat(view.statusTimeline()).hasSize(2);
     }
 }

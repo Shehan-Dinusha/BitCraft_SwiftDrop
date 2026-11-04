@@ -2,8 +2,6 @@ package com.swiftdrop.gateway.filter;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpMethod;
@@ -11,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
@@ -19,12 +19,14 @@ import java.time.Instant;
 
 /**
  * Redis-backed fixed-window rate limiter for unauthenticated public tracking
- * endpoints. The limiter fails open when Redis is unavailable so a cache outage
- * cannot take down parcel tracking.
+ * endpoints. It is a {@link WebFilter} because the tracking hub serves these
+ * paths from controllers inside the gateway rather than through a gateway
+ * route, so a {@code GlobalFilter} would not run. The limiter fails open when
+ * Redis is unavailable so a cache outage cannot take down parcel tracking.
  */
 @Slf4j
 @Component
-public class PublicTrackingRateLimitFilter implements GlobalFilter, Ordered {
+public class PublicTrackingRateLimitFilter implements WebFilter, Ordered {
 
     private final ReactiveStringRedisTemplate redisTemplate;
     private final GatewayErrorWriter errorWriter;
@@ -43,7 +45,7 @@ public class PublicTrackingRateLimitFilter implements GlobalFilter, Ordered {
     }
 
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         if (request.getMethod() != HttpMethod.GET || !isPublicTrackingPath(request.getURI().getPath())) {
             return chain.filter(exchange);
@@ -68,7 +70,7 @@ public class PublicTrackingRateLimitFilter implements GlobalFilter, Ordered {
     }
 
     private Mono<Void> applyLimit(ServerWebExchange exchange,
-                                  GatewayFilterChain chain,
+                                  WebFilterChain chain,
                                   long count,
                                   long epochSecond) {
         var responseHeaders = exchange.getResponse().getHeaders();
