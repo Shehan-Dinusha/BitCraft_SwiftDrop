@@ -2,7 +2,7 @@ export type TrackingMessage = {
   body: string;
 };
 
-type TrackingClient = {
+export type TrackingClient = {
   activate: () => void;
   deactivate: () => Promise<void>;
 };
