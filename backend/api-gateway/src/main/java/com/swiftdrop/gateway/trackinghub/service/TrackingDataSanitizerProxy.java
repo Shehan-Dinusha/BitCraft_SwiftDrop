@@ -1,5 +1,6 @@
 package com.swiftdrop.gateway.trackinghub.service;
 
+import com.swiftdrop.contracts.dto.tracking.InternalTrackingView;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
@@ -73,5 +74,20 @@ public class TrackingDataSanitizerProxy {
 
     private Instant timestamp(Instant timestamp) {
         return timestamp == null ? Instant.now() : timestamp;
+    }
+
+    public PublicTrackingViewDto fromInternalView(InternalTrackingView view) {
+        List<PublicTrackingTimelineEntry> timeline = view.history().stream()
+                .map(h -> new PublicTrackingTimelineEntry(
+                        h.status(),
+                        view.pickupDistrict(),
+                        h.occurredAt()))
+                .toList();
+        return new PublicTrackingViewDto(
+                view.trackingNumber(),
+                view.status(),
+                view.pickupDistrict(),
+                view.deliveryDistrict(),
+                timeline);
     }
 }
