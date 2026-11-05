@@ -3,6 +3,8 @@ package com.swiftdrop.pricing.controller;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.pricing.domain.entity.PricingZone;
 import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
+import com.swiftdrop.pricing.dto.EstimateRequest;
+import com.swiftdrop.pricing.dto.EstimateResponse;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
 import com.swiftdrop.pricing.service.DynamicPricingEngine;
@@ -37,6 +39,13 @@ public class PricingQuoteController {
     @Operation(summary = "Calculate dynamic delivery fee quotation")
     public ApiResponse<PricingQuoteResponse> calculateQuote(@Valid @RequestBody PricingQuoteRequest request) {
         return ApiResponse.success(dynamicPricingEngine.calculateQuote(request), "Quotation calculated successfully");
+    }
+
+    @PostMapping("/estimate")
+    @Operation(summary = "Calculate a delivery fee estimate")
+    public ApiResponse<EstimateResponse> estimate(@Valid @RequestBody EstimateRequest request) {
+        EstimateResponse estimate = EstimateResponse.from(dynamicPricingEngine.calculateQuote(request.toQuoteRequest()));
+        return ApiResponse.success(estimate, "Estimate calculated successfully");
     }
 
     @GetMapping("/zones")
