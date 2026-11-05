@@ -14,12 +14,14 @@ import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
+import com.swiftdrop.order.exception.PricingUnavailableException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
 import com.swiftdrop.order.service.pricing.PricingClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -155,6 +158,66 @@ class CustomerOrderServiceTest {
         assertThat(response.getFinalFee()).isEqualByComparingTo("610.00");
 
         verify(orderEventPublisher).publishOrderCreated(any(CustomerOrder.class), eq(correlationId));
+    }
+
+    private CreateOrderRequest validCreateRequest() {
+        return CreateOrderRequest.builder()
+                .pickupAddressLine1("No. 1, Main St")
+                .pickupCity("Colombo")
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .pickupPostalCode("00100")
+                .pickupContactName("Kamal")
+                .pickupContactPhone("+94771234567")
+                .deliveryAddressLine1("No. 2, Cross St")
+                .deliveryCity("Kandy")
+                .deliveryDistrict(SriLankanDistrict.KANDY)
+                .deliveryPostalCode("20000")
+                .recipientName("Nimal")
+                .recipientPhone("+94711234567")
+                .recipientEmail("nimal@gmail.com")
+                .lengthCm(new BigDecimal("20.0"))
+                .widthCm(new BigDecimal("15.0"))
+                .heightCm(new BigDecimal("10.0"))
+                .actualWeightKg(new BigDecimal("1.50"))
+                .speed(OrderSpeed.STANDARD)
+                .prohibitedItemsDeclared(true)
+                .build();
+    }
+
+    @Test
+    @DisplayName("Create stores the fee, chargeable weight and rule version exactly as the pricing service returned them")
+    void createStoresValuesFromPricingResponse() {
+        when(trackingNumberGenerator.generateUniqueTrackingNumber()).thenReturn("SD-7K4M-9QX2");
+        when(pricingClient.estimate(any(FeeEstimateRequest.class))).thenReturn(FeeEstimateResponse.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.KANDY)
+                .chargeableWeightKg(new BigDecimal("2.00"))
+                .speed(OrderSpeed.STANDARD)
+                .estimatedFee(new BigDecimal("790.00"))
+                .pricingRuleVersionId("PRICING-2026-V7")
+                .currency("LKR")
+                .build());
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        customerOrderService.createOrder(validCreateRequest(), customerId, UUID.randomUUID());
+
+        ArgumentCaptor<CustomerOrder> saved = ArgumentCaptor.forClass(CustomerOrder.class);
+        verify(customerOrderRepository).save(saved.capture());
+        assertThat(saved.getValue().getEstimatedFee()).isEqualByComparingTo("790.00");
+        assertThat(saved.getValue().getFinalFee()).isEqualByComparingTo("790.00");
+        assertThat(saved.getValue().getChargeableWeightKg()).isEqualByComparingTo("2.00");
+        assertThat(saved.getValue().getPricingRuleVersionId()).isEqualTo("PRICING-2026-V7");
+    }
+
+    @Test
+    @DisplayName("When pricing is unavailable nothing is saved and no order.created event is published")
+    void createSavesAndPublishesNothingWhenPricingIsDown() {
+        when(pricingClient.estimate(any(FeeEstimateRequest.class))).thenThrow(new PricingUnavailableException());
+
+        assertThatThrownBy(() -> customerOrderService.createOrder(validCreateRequest(), customerId, UUID.randomUUID()))
+                .isInstanceOf(PricingUnavailableException.class);
+
+        verifyNoInteractions(customerOrderRepository, orderEventPublisher);
     }
 
     @Test
