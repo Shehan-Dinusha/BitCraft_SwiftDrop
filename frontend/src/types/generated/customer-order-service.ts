@@ -1149,7 +1149,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 2-page A5 Shipping Label PDF */
+            /** @description 2-page A5 Shipping Label PDF, sent as an attachment named receipt-{trackingNumber}.pdf with Cache-Control no-store */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1183,7 +1183,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Final Delivery Receipt PDF */
+            /** @description Final Delivery Receipt PDF, sent as an attachment named delivery-receipt-{trackingNumber}.pdf with Cache-Control no-store */
             200: {
                 headers: {
                     [name: string]: unknown;

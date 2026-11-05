@@ -334,14 +334,23 @@ public class CustomerOrderService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] getShippingLabelPdf(UUID orderId, UUID callerId, String callerRole) {
+    public PdfDownload getShippingLabelPdf(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
-        return orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(order);
+        return new PdfDownload(order.getTrackingNumber(), orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(order));
     }
 
     @Transactional(readOnly = true)
-    public byte[] getDeliveryReceiptPdf(UUID orderId, UUID callerId, String callerRole) {
+    public PdfDownload getDeliveryReceiptPdf(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
-        return orderPdfGeneratorService.generateDeliveryReceiptPdf(order);
+        return new PdfDownload(order.getTrackingNumber(), orderPdfGeneratorService.generateDeliveryReceiptPdf(order));
+    }
+
+    /** A generated PDF together with the tracking number used to name the download. */
+    public record PdfDownload(String trackingNumber, byte[] content) {
+
+        /** Download name such as {@code receipt-SD-7K4M-9QX2.pdf}; only letters, digits and hyphens survive from the tracking number. */
+        public String fileName(String prefix) {
+            return prefix + "-" + trackingNumber.replaceAll("[^A-Za-z0-9-]", "") + ".pdf";
+        }
     }
 }
