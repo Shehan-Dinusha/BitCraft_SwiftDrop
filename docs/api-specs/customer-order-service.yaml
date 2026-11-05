@@ -452,7 +452,7 @@ paths:
           description: Caller role set by the gateway
       responses:
         "200":
-          description: 2-page A5 Shipping Label PDF
+          description: 2-page A5 Shipping Label PDF, sent as an attachment named receipt-{trackingNumber}.pdf with Cache-Control no-store
           content:
             application/pdf:
               schema:
@@ -486,7 +486,7 @@ paths:
           description: Caller role set by the gateway
       responses:
         "200":
-          description: Final Delivery Receipt PDF
+          description: Final Delivery Receipt PDF, sent as an attachment named delivery-receipt-{trackingNumber}.pdf with Cache-Control no-store
           content:
             application/pdf:
               schema:

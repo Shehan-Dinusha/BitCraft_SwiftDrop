@@ -359,9 +359,9 @@ class OrderOwnershipTest {
         when(orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(orderOfA)).thenReturn(label);
         when(orderPdfGeneratorService.generateDeliveryReceiptPdf(orderOfA)).thenReturn(receipt);
 
-        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerA, "CUSTOMER")).isEqualTo(label);
-        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerB, "DISPATCHER")).isEqualTo(label);
-        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerA, "CUSTOMER")).isEqualTo(receipt);
-        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerB, "SYSTEM_ADMIN")).isEqualTo(receipt);
+        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerA, "CUSTOMER").content()).isEqualTo(label);
+        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerB, "DISPATCHER").content()).isEqualTo(label);
+        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerA, "CUSTOMER").content()).isEqualTo(receipt);
+        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerB, "SYSTEM_ADMIN").content()).isEqualTo(receipt);
     }
 }

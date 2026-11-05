@@ -175,30 +175,35 @@ public class OrderController {
     }
 
     @GetMapping(value = "/{orderId}/shipping-label", produces = MediaType.APPLICATION_PDF_VALUE)
-    @Operation(summary = "Download 2-page A5 shipping label with QR code and fee estimate receipt (FR-C4, FR-C5)")
+    @Operation(summary = "Download 2-page A5 shipping label with QR code and fee estimate receipt (FR-C4, FR-C5)",
+            description = "Sent as an attachment named receipt-{trackingNumber}.pdf with Cache-Control: no-store.")
     public ResponseEntity<byte[]> downloadShippingLabel(
             @Parameter(description = "Order UUID") @PathVariable("orderId") UUID orderId,
             @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
             @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
 
-        byte[] pdfBytes = customerOrderService.getShippingLabelPdf(orderId, HeaderParsing.parseUuidSafe(userIdHeader), userRoleHeader);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"shipping-label-" + orderId + ".pdf\"")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdfBytes);
+        CustomerOrderService.PdfDownload label = customerOrderService.getShippingLabelPdf(orderId, HeaderParsing.parseUuidSafe(userIdHeader), userRoleHeader);
+        return pdfAttachment(label, "receipt");
     }
 
     @GetMapping(value = "/{orderId}/delivery-receipt", produces = MediaType.APPLICATION_PDF_VALUE)
-    @Operation(summary = "Download A5 final delivery & cash collection receipt (FR-C7)")
+    @Operation(summary = "Download A5 final delivery & cash collection receipt (FR-C7)",
+            description = "Sent as an attachment named delivery-receipt-{trackingNumber}.pdf with Cache-Control: no-store.")
     public ResponseEntity<byte[]> downloadDeliveryReceipt(
             @Parameter(description = "Order UUID") @PathVariable("orderId") UUID orderId,
             @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
             @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
 
-        byte[] pdfBytes = customerOrderService.getDeliveryReceiptPdf(orderId, HeaderParsing.parseUuidSafe(userIdHeader), userRoleHeader);
+        CustomerOrderService.PdfDownload receipt = customerOrderService.getDeliveryReceiptPdf(orderId, HeaderParsing.parseUuidSafe(userIdHeader), userRoleHeader);
+        return pdfAttachment(receipt, "delivery-receipt");
+    }
+
+    /** PDFs hold personal data: download as a named attachment and never cache. */
+    private static ResponseEntity<byte[]> pdfAttachment(CustomerOrderService.PdfDownload pdf, String fileNamePrefix) {
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"delivery-receipt-" + orderId + ".pdf\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + pdf.fileName(fileNamePrefix) + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .contentType(MediaType.APPLICATION_PDF)
-                .body(pdfBytes);
+                .body(pdf.content());
     }
 }
