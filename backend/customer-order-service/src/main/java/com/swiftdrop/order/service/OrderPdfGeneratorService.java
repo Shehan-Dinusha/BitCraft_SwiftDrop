@@ -18,6 +18,7 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -37,6 +38,22 @@ public class OrderPdfGeneratorService {
     private static final Color BRAND_AMBER = new Color(245, 158, 11); // amber-500
     private static final Color LIGHT_BG = new Color(248, 250, 252); // slate-50
     private static final Color BORDER_COLOR = new Color(226, 232, 240); // slate-200
+
+    private final String trackingUrlPrefix;
+
+    public OrderPdfGeneratorService(
+            @Value("${swiftdrop.public-tracking-base-url:https://swiftdrop.lk}") String publicTrackingBaseUrl) {
+        String base = publicTrackingBaseUrl == null ? "" : publicTrackingBaseUrl.trim().replaceAll("/+$", "");
+        if (!base.matches("(?i)^https?://[^\\s/]+(/\\S*)?$")) {
+            throw new IllegalArgumentException("swiftdrop.public-tracking-base-url must be an http(s) URL");
+        }
+        this.trackingUrlPrefix = base + "/track/";
+    }
+
+    /** The public tracking page for an order, as encoded in the QR codes. */
+    String trackingUrl(CustomerOrder order) {
+        return trackingUrlPrefix + order.getTrackingNumber();
+    }
 
     /**
      * Generates a 2-page A5 PDF:
@@ -141,12 +158,11 @@ public class OrderPdfGeneratorService {
         trackInfoCell.setPadding(8);
         trackInfoCell.addElement(new Paragraph("TRACKING NUMBER", subFont));
         trackInfoCell.addElement(new Paragraph(order.getTrackingNumber(), trackingFont));
-        trackInfoCell.addElement(new Paragraph("Order ID: " + order.getOrderId(), subFont));
         trackInfoCell.addElement(new Paragraph("Booked: " + DATE_FORMATTER.format(order.getCreatedAt()), subFont));
         trackingTable.addCell(trackInfoCell);
 
         // Generate ZXing QR Code
-        byte[] qrBytes = generateQrCodeBytes("https://swiftdrop.lk/track/" + order.getTrackingNumber(), 120, 120);
+        byte[] qrBytes = generateQrCodeBytes(trackingUrl(order), 120, 120);
         Image qrImage = Image.getInstance(qrBytes);
         qrImage.setAlignment(Image.ALIGN_CENTER);
         qrImage.scalePercent(65);
@@ -173,7 +189,6 @@ public class OrderPdfGeneratorService {
         pickupCell.setPadding(8);
         pickupCell.addElement(new Paragraph("FROM (ORIGIN / SENDER)", boldFont));
         pickupCell.addElement(new Paragraph(order.getPickupContactName(), boldFont));
-        pickupCell.addElement(new Paragraph("Phone: " + order.getPickupContactPhone(), textFont));
         pickupCell.addElement(new Paragraph(order.getPickupAddressLine1(), textFont));
         if (order.getPickupAddressLine2() != null && !order.getPickupAddressLine2().isBlank()) {
             pickupCell.addElement(new Paragraph(order.getPickupAddressLine2(), textFont));
@@ -188,9 +203,6 @@ public class OrderPdfGeneratorService {
         deliveryCell.addElement(new Paragraph("TO (DESTINATION / RECIPIENT)", boldFont));
         deliveryCell.addElement(new Paragraph(order.getRecipientName(), boldFont));
         deliveryCell.addElement(new Paragraph("Phone: " + order.getRecipientPhone(), boldFont));
-        if (order.getRecipientEmail() != null && !order.getRecipientEmail().isBlank()) {
-            deliveryCell.addElement(new Paragraph("Email: " + order.getRecipientEmail(), textFont));
-        }
         deliveryCell.addElement(new Paragraph(order.getDeliveryAddressLine1(), textFont));
         if (order.getDeliveryAddressLine2() != null && !order.getDeliveryAddressLine2().isBlank()) {
             deliveryCell.addElement(new Paragraph(order.getDeliveryAddressLine2(), textFont));
@@ -230,8 +242,8 @@ public class OrderPdfGeneratorService {
             codCell.addElement(new Paragraph("COD: LKR " + order.getCodAmount(), boldFont));
             codCell.addElement(new Paragraph("Collect from recipient", textFont));
         } else {
-            codCell.addElement(new Paragraph("NO CASH COLLECTION", boldFont));
-            codCell.addElement(new Paragraph("Prepaid / Standard", textFont));
+            codCell.addElement(new Paragraph("NO COD", boldFont));
+            codCell.addElement(new Paragraph("No cash to collect", textFont));
         }
         metricsTable.addCell(codCell);
 
@@ -297,12 +309,7 @@ public class OrderPdfGeneratorService {
         breakdownTable.addCell(th1);
         breakdownTable.addCell(th2);
 
-        boolean isIntra = order.getPickupDistrict() == order.getDeliveryDistrict();
-        BigDecimal baseRate = isIntra ? new BigDecimal("350.00") : new BigDecimal("550.00");
-        BigDecimal weightRate = order.getEstimatedFee().subtract(baseRate).max(BigDecimal.ZERO);
-
-        addBreakdownRow(breakdownTable, "Base Delivery Service (First 1.0 kg included)", baseRate.toString(), textFont);
-        addBreakdownRow(breakdownTable, "Weight Surcharge & Speed Service Multiplier", weightRate.toString(), textFont);
+        addBreakdownRow(breakdownTable, "Delivery fee (" + order.getOrderSpeed() + ", " + order.getChargeableWeightKg() + " kg billable)", order.getEstimatedFee().toString(), textFont);
 
         if (order.getCodAmount() != null && order.getCodAmount().compareTo(BigDecimal.ZERO) > 0) {
             addBreakdownRow(breakdownTable, "Cash On Delivery (COD) Collection Amount", order.getCodAmount().toString(), textFont);
@@ -365,24 +372,35 @@ public class OrderPdfGeneratorService {
         PdfPCell c1 = new PdfPCell();
         c1.setBorderColor(BORDER_COLOR);
         c1.setPadding(8);
-        c1.addElement(new Paragraph("RECIPIENT ACKNOWLEDGMENT", boldFont));
+        c1.addElement(new Paragraph("DELIVERY DETAILS", boldFont));
         c1.addElement(new Paragraph("Delivered To: " + order.getRecipientName(), textFont));
-        c1.addElement(new Paragraph("Contact Phone: " + order.getRecipientPhone(), textFont));
-        c1.addElement(new Paragraph("Address: " + order.getDeliveryAddressLine1() + ", " + order.getDeliveryCity(), textFont));
+        c1.addElement(new Paragraph("From: " + order.getPickupCity() + ", " + order.getPickupDistrict(), textFont));
+        c1.addElement(new Paragraph("To: " + order.getDeliveryCity() + ", " + order.getDeliveryDistrict(), textFont));
+        c1.addElement(new Paragraph("Booked: " + DATE_FORMATTER.format(order.getCreatedAt()), textFont));
+        c1.addElement(new Paragraph("Last update: " + DATE_FORMATTER.format(order.getUpdatedAt()), textFont));
         table.addCell(c1);
 
         PdfPCell c2 = new PdfPCell();
         c2.setBorderColor(BORDER_COLOR);
         c2.setPadding(8);
         c2.addElement(new Paragraph("FINAL CASH COLLECTION SUMMARY", boldFont));
-        c2.addElement(new Paragraph("Delivery Fee: LKR " + order.getFinalFee(), textFont));
+        BigDecimal fee = order.getFinalFee() != null ? order.getFinalFee() : order.getEstimatedFee();
+        c2.addElement(new Paragraph("Delivery Fee: LKR " + fee, textFont));
         BigDecimal cod = order.getCodAmount() != null ? order.getCodAmount() : BigDecimal.ZERO;
         c2.addElement(new Paragraph("COD Amount Collected: LKR " + cod, textFont));
-        BigDecimal totalPaid = order.getFinalFee().add(cod);
-        c2.addElement(new Paragraph("TOTAL PAID: LKR " + totalPaid, totalFont));
+        c2.addElement(new Paragraph("TOTAL PAID: LKR " + fee.add(cod), totalFont));
         table.addCell(c2);
 
         doc.add(table);
+        doc.add(new Paragraph(" "));
+
+        Image qrImage = Image.getInstance(generateQrCodeBytes(trackingUrl(order), 120, 120));
+        qrImage.setAlignment(Image.ALIGN_CENTER);
+        qrImage.scalePercent(55);
+        doc.add(qrImage);
+        Paragraph qrCaption = new Paragraph("Scan to view tracking", subFont);
+        qrCaption.setAlignment(Element.ALIGN_CENTER);
+        doc.add(qrCaption);
         doc.add(new Paragraph(" "));
 
         // Signatures
