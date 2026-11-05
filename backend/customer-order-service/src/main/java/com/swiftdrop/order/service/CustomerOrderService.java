@@ -7,12 +7,14 @@ import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
+import com.swiftdrop.order.domain.entity.OrderSource;
 import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CancelOrderRequest;
 import com.swiftdrop.order.dto.CreateOrderRequest;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
+import com.swiftdrop.order.dto.InternalCreateOrderRequest;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.CallerIdentityRequiredException;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
@@ -40,6 +42,7 @@ public class CustomerOrderService {
     private final PricingClient pricingClient;
     private final OrderPdfGeneratorService orderPdfGeneratorService;
     private final OrderEventPublisher orderEventPublisher;
+    private final OrderStatusHistoryService orderStatusHistoryService;
 
     public FeeEstimateResponse calculateEstimate(FeeEstimateRequest request) {
         return pricingClient.estimate(request);
@@ -51,7 +54,22 @@ public class CustomerOrderService {
         if (effectiveCustomerId == null) {
             throw new CallerIdentityRequiredException("Customer identification is required");
         }
+        return persistNewOrder(request, effectiveCustomerId, OrderSource.CUSTOMER, null, correlationId);
+    }
 
+    /**
+     * Creates an order for a merchant (called by the internal endpoint). It follows the same path as a customer
+     * order, so pricing, tracking number, history and the {@code order.created} event are identical.
+     * The merchant id is stored as the customer id, the convention the merchant service already uses.
+     */
+    @Transactional
+    public CustomerOrderResponse createMerchantOrder(InternalCreateOrderRequest request, UUID correlationId) {
+        return persistNewOrder(request.toCreateOrderRequest(), request.merchantId(), OrderSource.MERCHANT,
+                request.externalRef(), correlationId);
+    }
+
+    private CustomerOrderResponse persistNewOrder(CreateOrderRequest request, UUID customerId, OrderSource source,
+                                                  String externalRef, UUID correlationId) {
         // 1. Calculate price and chargeable weight
         FeeEstimateRequest estimateReq = FeeEstimateRequest.builder()
                 .pickupDistrict(request.getPickupDistrict())
@@ -71,8 +89,10 @@ public class CustomerOrderService {
         CustomerOrder order = CustomerOrder.builder()
                 .orderId(UUID.randomUUID())
                 .trackingNumber(trackingNumber)
-                .customerId(effectiveCustomerId)
+                .customerId(customerId)
                 .merchantId(request.getMerchantId())
+                .source(source)
+                .externalRef(externalRef)
                 .orderSpeed(estimate.getSpeed())
                 .status(PublicOrderStatus.CREATED)
                 .internalQueueStatus(InternalQueueStatus.CREATED)
@@ -113,6 +133,7 @@ public class CustomerOrderService {
         log.info("Created customer order orderId={}, trackingNumber={}", saved.getOrderId(), saved.getTrackingNumber());
 
         // 4. Publish order.created and parcel.status.changed events
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCreated(saved, correlationId);
 
         return CustomerOrderResponse.fromEntity(saved);
@@ -125,9 +146,10 @@ public class CustomerOrderService {
     }
 
     @Transactional(readOnly = true)
-    public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber) {
+    public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByTrackingNumber(trackingNumber)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+        assertCallerCanAccess(order, callerId, callerRole);
         return CustomerOrderResponse.fromEntity(order);
     }
 
@@ -154,6 +176,14 @@ public class CustomerOrderService {
      */
     private CustomerOrder findAccessibleOrder(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+        assertCallerCanAccess(order, callerId, callerRole);
+        return order;
+    }
+
+    /** Same as {@link #findAccessibleOrder} but takes a row lock so it serialises with status sync. */
+    private CustomerOrder findAccessibleOrderForUpdate(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = customerOrderRepository.findByOrderIdForUpdate(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
         assertCallerCanAccess(order, callerId, callerRole);
         return order;
@@ -244,7 +274,7 @@ public class CustomerOrderService {
 
     @Transactional
     public CustomerOrderResponse cancelOrder(UUID orderId, CancelOrderRequest request, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getStatus().isTerminal()) {
             throw new InvalidOrderStateException("Order " + orderId + " is already in terminal state " + order.getStatus());
@@ -257,13 +287,14 @@ public class CustomerOrderService {
         order.setUpdatedAt(Instant.now());
 
         CustomerOrder saved = customerOrderRepository.save(order);
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCancelled(saved, order.getCancellationReason(), "CUSTOMER", correlationId);
         return CustomerOrderResponse.fromEntity(saved);
     }
 
     @Transactional
     public CustomerOrderResponse acceptFeeRevision(UUID orderId, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getFeeRevisionStatus() != FeeRevisionStatus.PENDING || order.getRevisedFee() == null) {
             throw new InvalidOrderStateException("Order " + orderId + " does not have a pending fee revision.");
@@ -280,7 +311,7 @@ public class CustomerOrderService {
 
     @Transactional
     public CustomerOrderResponse rejectFeeRevision(UUID orderId, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getFeeRevisionStatus() != FeeRevisionStatus.PENDING) {
             throw new InvalidOrderStateException("Order " + orderId + " does not have a pending fee revision.");
@@ -296,6 +327,7 @@ public class CustomerOrderService {
         order.setUpdatedAt(Instant.now());
 
         CustomerOrder saved = customerOrderRepository.save(order);
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCancelled(saved, order.getCancellationReason(), "CUSTOMER", correlationId);
         log.info("Customer rejected fee revision for order {}: cancelled at LKR 0.00", orderId);
         return CustomerOrderResponse.fromEntity(saved);

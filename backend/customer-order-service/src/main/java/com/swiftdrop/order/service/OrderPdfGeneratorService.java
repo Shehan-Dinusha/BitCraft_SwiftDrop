@@ -188,7 +188,9 @@ public class OrderPdfGeneratorService {
         deliveryCell.addElement(new Paragraph("TO (DESTINATION / RECIPIENT)", boldFont));
         deliveryCell.addElement(new Paragraph(order.getRecipientName(), boldFont));
         deliveryCell.addElement(new Paragraph("Phone: " + order.getRecipientPhone(), boldFont));
-        deliveryCell.addElement(new Paragraph("Email: " + order.getRecipientEmail(), textFont));
+        if (order.getRecipientEmail() != null && !order.getRecipientEmail().isBlank()) {
+            deliveryCell.addElement(new Paragraph("Email: " + order.getRecipientEmail(), textFont));
+        }
         deliveryCell.addElement(new Paragraph(order.getDeliveryAddressLine1(), textFont));
         if (order.getDeliveryAddressLine2() != null && !order.getDeliveryAddressLine2().isBlank()) {
             deliveryCell.addElement(new Paragraph(order.getDeliveryAddressLine2(), textFont));

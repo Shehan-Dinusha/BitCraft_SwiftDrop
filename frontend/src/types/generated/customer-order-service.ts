@@ -92,6 +92,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/v1/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create an order on behalf of a merchant (idempotent)
+         * @description Called by the merchant service. Idempotent on (merchantId, externalRef). Internal, no user context, must never be exposed through the API gateway.
+         */
+        post: operations["createMerchantOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/v1/orders/tracking/{trackingNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public-safe tracking view by tracking number
+         * @description Service-to-service only, for the gateway tracking hub. No user context. Must never be exposed through the API gateway.
+         */
+        get: operations["getTracking"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/{orderId}/cancel": {
         parameters: {
             query?: never;
@@ -496,6 +536,72 @@ export interface components {
             /** Format: date-time */
             timestamp?: string;
         };
+        /** @description Order created on behalf of a merchant. The merchant id is also stored as the order customer id. Recipient email and dimensions are optional (dimensions default to 10 cm). */
+        InternalCreateOrderRequest: {
+            /** Format: uuid */
+            merchantId: string;
+            /** @example SHOP-2026-000123 */
+            externalRef: string;
+            pickupAddressLine1: string;
+            pickupAddressLine2?: string;
+            pickupCity: string;
+            pickupDistrict: components["schemas"]["SriLankanDistrict"];
+            pickupPostalCode: string;
+            pickupContactName: string;
+            pickupContactPhone: string;
+            deliveryAddressLine1: string;
+            deliveryAddressLine2?: string;
+            deliveryCity: string;
+            deliveryDistrict: components["schemas"]["SriLankanDistrict"];
+            deliveryPostalCode: string;
+            recipientName: string;
+            recipientPhone: string;
+            /**
+             * Format: email
+             * @description Optional for merchant orders
+             */
+            recipientEmail?: string;
+            /** @description Optional, defaults to 10 */
+            lengthCm?: number;
+            /** @description Optional, defaults to 10 */
+            widthCm?: number;
+            /** @description Optional, defaults to 10 */
+            heightCm?: number;
+            actualWeightKg: number;
+            speed?: components["schemas"]["OrderSpeed"];
+            itemDescription?: string;
+            declaredValue?: number;
+            codAmount?: number;
+            /** @example true */
+            prohibitedItemsDeclared: boolean;
+        };
+        /** @description Public-safe tracking view. No street address, name, phone, email, customer or merchant id, or fee. */
+        InternalTrackingView: {
+            /** @example SD-7K4M-9QX2 */
+            trackingNumber?: string;
+            status?: components["schemas"]["PublicOrderStatus"];
+            /** @description Status history, oldest first */
+            history?: components["schemas"]["InternalTrackingHistoryEntry"][];
+            /** @example Colombo 03 */
+            pickupCity?: string;
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            /** @example Kandy */
+            deliveryCity?: string;
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+        };
+        InternalTrackingHistoryEntry: {
+            status?: components["schemas"]["PublicOrderStatus"];
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        ApiResponseInternalTrackingView: {
+            /** @example true */
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["InternalTrackingView"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
         ApiResponsePagedCustomerOrderResponse: {
             /** @example true */
             success?: boolean;
@@ -798,7 +904,12 @@ export interface operations {
     getOrderByTrackingNumber: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
             path: {
                 trackingNumber: string;
             };
@@ -814,6 +925,105 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
                 };
+            };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createMerchantOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Correlation-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InternalCreateOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description An order already exists for this (merchantId, externalRef); it is returned unchanged and no event is published */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+            /** @description Order created and order.created published */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+            /** @description Validation failed (field names only, never the submitted values) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pricing service rejected a request this service had validated */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pricing service is temporarily unavailable; nothing was saved or published */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTracking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackingNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Status, status history and city/district only */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseInternalTrackingView"];
+                };
+            };
+            /** @description Malformed tracking number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown tracking number */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -2,7 +2,6 @@ package com.swiftdrop.order.config;
 
 import com.swiftdrop.order.service.pricing.HttpPricingClient;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -12,14 +11,13 @@ import java.net.http.HttpClient;
 import java.time.Duration;
 
 /**
- * Selects the pricing implementation: {@code pricing.mode=remote} calls the pricing service,
- * anything else keeps the local fallback (see {@code LocalPricingFallback}).
+ * Builds the pricing client. {@link HttpPricingClient} is the only implementation: the pricing service is the
+ * single source of prices, so there is no local copy to fall back to.
  */
 @Configuration
 public class PricingClientConfig {
 
     @Bean
-    @ConditionalOnProperty(name = "pricing.mode", havingValue = "remote")
     public HttpPricingClient httpPricingClient(
             RestClient.Builder builder,
             @Value("${pricing.service.url}") String baseUrl,

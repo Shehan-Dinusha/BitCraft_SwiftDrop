@@ -50,6 +50,15 @@ public class CustomerOrder {
     private UUID merchantId;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 16)
+    @Builder.Default
+    private OrderSource source = OrderSource.CUSTOMER;
+
+    /** The merchant's own reference for the order; with merchant_id it identifies a merchant order uniquely. */
+    @Column(name = "external_ref", length = 128)
+    private String externalRef;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "order_speed", nullable = false, length = 32)
     @Builder.Default
     private OrderSpeed orderSpeed = OrderSpeed.STANDARD;
@@ -110,7 +119,7 @@ public class CustomerOrder {
     @Column(name = "recipient_phone", nullable = false, length = 32)
     private String recipientPhone;
 
-    @Column(name = "recipient_email", nullable = false, length = 128)
+    @Column(name = "recipient_email", length = 128)
     private String recipientEmail;
 
     // Physical dimensions & weight

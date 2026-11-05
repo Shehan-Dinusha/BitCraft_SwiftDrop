@@ -41,6 +41,14 @@ public final class ValidationPatterns {
     public static final String RULE_VERSION = "^[A-Za-z0-9._-]*$";
     public static final String RULE_VERSION_MESSAGE = "Contains characters that are not allowed";
 
+    /** A merchant's own order reference: letters, digits and . _ : / # - only. */
+    public static final String EXTERNAL_REF = "^[A-Za-z0-9._:/#-]+$";
+    public static final String EXTERNAL_REF_MESSAGE = "Contains characters that are not allowed";
+
+    /** Tracking number, for example SD-7K4M-9QX2. */
+    public static final String TRACKING_NUMBER = "^SD-[A-Z0-9]{4}-[A-Z0-9]{4}$";
+    public static final String TRACKING_NUMBER_MESSAGE = "Must be a tracking number such as SD-7K4M-9QX2";
+
     public static final String WEIGHT_MIN = "0.01";
     public static final String WEIGHT_MAX = "50";
     public static final String WEIGHT_MIN_MESSAGE = "Weight must be at least 0.01 kg";
