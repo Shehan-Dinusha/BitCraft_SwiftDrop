@@ -121,7 +121,7 @@ Binding (add to `"bindings"`):
 Notes for Member 9 and the publishers of `parcel.status.changed`:
 
 - `parcel.status.changed.#` also matches the bare key `parcel.status.changed` (tested against a real broker with both keys).
-- Messages that fail three delivery attempts are dead-lettered to `swiftdrop.dlx.exchange` with key `dlq.order.events`, which `dlq.order.events.queue` already receives. The same retry setting now also applies to the existing `customer-order.fee-revision.queue` listener.
+- Messages that fail three delivery attempts are dead-lettered to `swiftdrop.dlx.exchange` with key `dlq.order.events`, which `dlq.order.events.queue` already receives. This retry and dead-letter behaviour applies only to the new status-sync listener; the existing `customer-order.fee-revision.queue` listener is unchanged.
 - `customer-order.fee-revision.queue` (routing key `parcel.fee.revised`) is also declared only by the order service and is not in `definitions.json` yet.
 - Events are matched to orders by `orderId`, then by `trackingNumber`. The order service ignores an event that repeats an earlier `eventId`, that is older than the order's latest status, or that tries to move an order out of DELIVERED, CANCELLED or RETURNED_TO_SENDER. A FAILED order may still move on (retries).
 - Please keep `eventId` unique per event and `timestamp` in UTC; both drive the duplicate and ordering checks.
