@@ -85,6 +85,12 @@ public class TrackingBroadcastHubService {
         return trackingNumber == null ? null : latestViews.get(trackingNumber);
     }
 
+    public void updateCache(String trackingNumber, PublicTrackingViewDto view) {
+        if (trackingNumber != null && view != null) {
+            latestViews.put(trackingNumber, view);
+        }
+    }
+
     public Flux<PublicTrackingViewDto> stream(String trackingNumber) {
         PublicTrackingViewDto current = latestViews.get(trackingNumber);
         Flux<PublicTrackingViewDto> updates = trackChannel(trackingNumber).asFlux();
