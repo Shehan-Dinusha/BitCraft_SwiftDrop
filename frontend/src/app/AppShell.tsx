@@ -111,7 +111,11 @@ export function AppShell() {
   const hasTabs = shellRole === 'customer' || shellRole === 'courier';
 
   const groups = useMemo<NavGroup[]>(
-    () => [...routedNav[shellRole], { label: 'Design system', items: [catalogEntry] }],
+    // The design catalog is a developer tool, so real users never see it in their menu.
+    () =>
+      import.meta.env.DEV
+        ? [...routedNav[shellRole], { label: 'Design system', items: [catalogEntry] }]
+        : routedNav[shellRole],
     [shellRole]
   );
   const entries = groups.flatMap((group) => group.items);
