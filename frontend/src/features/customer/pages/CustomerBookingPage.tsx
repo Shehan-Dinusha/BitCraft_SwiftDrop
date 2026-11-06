@@ -1,75 +1,52 @@
 import { useState } from 'react';
-import { Card } from '@/design-system/primitives/Card';
+import { PageHeader, SurfaceCard, Tabs } from '@/design-system';
 import { OrderBookingWizard } from '../components/OrderBookingWizard';
 import { CustomerOrderHistory } from '../components/CustomerOrderHistory';
 import { NotificationPreferencesCard } from '../components/NotificationPreferencesCard';
-import { PlusCircle, History, Bell } from 'lucide-react';
+import { usePageTitle } from '../components/usePageTitle';
 
+type BookingTab = 'book' | 'orders' | 'preferences';
+
+const TABS: { id: BookingTab; label: string }[] = [
+  { id: 'book', label: 'Book a parcel' },
+  { id: 'orders', label: 'My parcels' },
+  { id: 'preferences', label: 'Notifications' }
+];
+
+/** Booking, the parcel list (until it gets its own page) and notification settings. */
 export function CustomerBookingPage() {
-  const [activeTab, setActiveTab] = useState<'book' | 'history' | 'preferences'>('book');
+  const [activeTab, setActiveTab] = useState<BookingTab>('book');
+  usePageTitle('Book a parcel');
 
   return (
-    <main className="mx-auto max-w-4xl p-4 sm:p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle pb-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-primary tracking-tight">
-            Customer Delivery Portal
-          </h1>
-          <p className="text-xs sm:text-sm text-secondary mt-1">
-            Book deliveries with dynamic quoting, generate A5 waybills with QR codes, and configure omnichannel notifications.
-          </p>
-        </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
+      <PageHeader title="Book a parcel" subtitle="Pickup and delivery anywhere in Sri Lanka." />
 
-        {/* Tab Toggle */}
-        <div className="flex rounded-xl bg-elevated p-1 border border-border-subtle">
-          <button
-            type="button"
-            onClick={() => setActiveTab('book')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              activeTab === 'book'
-                ? 'bg-brand-primary text-brand-on shadow-sm'
-                : 'text-secondary hover:text-primary'
-            }`}
-          >
-            <PlusCircle className="size-3.5" />
-            Book Delivery
-          </button>
+      <Tabs
+        aria-label="Booking, parcels and notifications"
+        tabs={TABS}
+        value={activeTab}
+        onChange={(id) => setActiveTab(id as BookingTab)}
+      />
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              activeTab === 'history'
-                ? 'bg-brand-primary text-brand-on shadow-sm'
-                : 'text-secondary hover:text-primary'
-            }`}
-          >
-            <History className="size-3.5" />
-            My Orders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('preferences')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              activeTab === 'preferences'
-                ? 'bg-brand-primary text-brand-on shadow-sm'
-                : 'text-secondary hover:text-primary'
-            }`}
-          >
-            <Bell className="size-3.5" />
-            Notifications
-          </button>
-        </div>
-      </div>
-
-      <Card className="p-5 sm:p-7">
-        {activeTab === 'book' && (
-          <OrderBookingWizard onOrderCreated={() => setActiveTab('history')} />
-        )}
-        {activeTab === 'history' && <CustomerOrderHistory />}
-        {activeTab === 'preferences' && <NotificationPreferencesCard />}
-      </Card>
-    </main>
+      {/* The booking and notification panels stay mounted so switching tabs never clears a half-filled booking. */}
+      <section role="tabpanel" aria-label="Book a parcel" hidden={activeTab !== 'book'}>
+        <SurfaceCard>
+          <OrderBookingWizard onViewOrders={() => setActiveTab('orders')} />
+        </SurfaceCard>
+      </section>
+      {activeTab === 'orders' ? (
+        <section role="tabpanel" aria-label="My parcels">
+          <SurfaceCard>
+            <CustomerOrderHistory />
+          </SurfaceCard>
+        </section>
+      ) : null}
+      <section role="tabpanel" aria-label="Notifications" hidden={activeTab !== 'preferences'}>
+        <SurfaceCard>
+          <NotificationPreferencesCard />
+        </SurfaceCard>
+      </section>
+    </div>
   );
 }
