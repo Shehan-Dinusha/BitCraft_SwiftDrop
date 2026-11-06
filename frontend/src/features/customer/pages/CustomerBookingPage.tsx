@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { PageHeader, SurfaceCard, Tabs } from '@/design-system';
 import { OrderBookingWizard } from '../components/OrderBookingWizard';
-import { CustomerOrderHistory } from '../components/CustomerOrderHistory';
 import { NotificationPreferencesCard } from '../components/NotificationPreferencesCard';
 import { usePageTitle } from '../components/usePageTitle';
 
-type BookingTab = 'book' | 'orders' | 'preferences';
+type BookingTab = 'book' | 'preferences';
 
 const TABS: { id: BookingTab; label: string }[] = [
   { id: 'book', label: 'Book a parcel' },
-  { id: 'orders', label: 'My parcels' },
   { id: 'preferences', label: 'Notifications' }
 ];
 
-/** Booking, the parcel list (until it gets its own page) and notification settings. */
+/** Booking lives here; past parcels have their own page at `/customer/orders` ("My parcels"). */
 export function CustomerBookingPage() {
   const [activeTab, setActiveTab] = useState<BookingTab>('book');
   usePageTitle('Book a parcel');
@@ -27,27 +25,20 @@ export function CustomerBookingPage() {
       />
 
       <Tabs
-        aria-label="Booking, parcels and notifications"
+        aria-label="Booking and notifications"
         tabs={TABS}
         value={activeTab}
         onChange={(id) => setActiveTab(id as BookingTab)}
         className="overflow-y-hidden"
       />
 
-      {/* The booking and notification panels stay mounted so switching tabs never clears a half-filled booking. */}
+      {/* Both panels stay mounted so switching tabs never clears a half-filled booking. */}
       <section role="tabpanel" aria-label="Book a parcel" hidden={activeTab !== 'book'}>
         {/* The dropdown lists open below their field, so the card must not clip them. */}
         <SurfaceCard className="overflow-visible">
-          <OrderBookingWizard onViewOrders={() => setActiveTab('orders')} />
+          <OrderBookingWizard />
         </SurfaceCard>
       </section>
-      {activeTab === 'orders' ? (
-        <section role="tabpanel" aria-label="My parcels">
-          <SurfaceCard>
-            <CustomerOrderHistory />
-          </SurfaceCard>
-        </section>
-      ) : null}
       <section role="tabpanel" aria-label="Notifications" hidden={activeTab !== 'preferences'}>
         <SurfaceCard>
           <NotificationPreferencesCard />
