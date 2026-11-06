@@ -175,6 +175,24 @@ class OrderControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/orders/{orderId}/status-history returns status and time only")
+    void statusHistoryReturnsStatusAndTime() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
+        when(customerOrderService.getStatusHistory(orderId, callerId, "CUSTOMER")).thenReturn(java.util.List.of(
+                new com.swiftdrop.order.dto.OrderStatusHistoryEntry(
+                        com.swiftdrop.contracts.enums.PublicOrderStatus.CREATED, java.time.Instant.parse("2026-11-05T08:30:00Z"))));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}/status-history", orderId)
+                        .header("X-User-Id", callerId.toString()).header("X-User-Role", "CUSTOMER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("CREATED"))
+                .andExpect(jsonPath("$.data[0].occurredAt").exists())
+                .andExpect(jsonPath("$.data[0].eventId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].internalSubStatus").doesNotExist());
+    }
+
+    @Test
     @DisplayName("GET /api/v1/orders/{orderId}/shipping-label returns application/pdf (FR-C4, FR-C5)")
     void testDownloadShippingLabel() throws Exception {
         UUID orderId = UUID.randomUUID();

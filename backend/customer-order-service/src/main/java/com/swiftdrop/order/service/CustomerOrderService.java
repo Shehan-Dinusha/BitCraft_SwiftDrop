@@ -12,6 +12,7 @@ import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CancelOrderRequest;
 import com.swiftdrop.order.dto.CreateOrderRequest;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
+import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.InternalCreateOrderRequest;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -146,6 +148,13 @@ public class CustomerOrderService {
     public CustomerOrderResponse getOrderById(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
         return CustomerOrderResponse.fromEntity(order);
+    }
+
+    /** The statuses an order has been through, oldest first. Owner only (404 for anyone else), like the other reads. */
+    @Transactional(readOnly = true)
+    public List<OrderStatusHistoryEntry> getStatusHistory(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        return orderStatusHistoryService.listForOrder(order.getOrderId());
     }
 
     @Transactional(readOnly = true)
@@ -288,6 +297,11 @@ public class CustomerOrderService {
 
         if (order.getStatus().isTerminal()) {
             throw new InvalidOrderStateException("Order " + orderId + " is already in terminal state " + order.getStatus());
+        }
+        // A customer can cancel only a booked parcel that no courier has been assigned to. Dispatchers
+        // and admins keep the wider right, because they have to stop parcels that are already moving.
+        if (!isPrivilegedRole(callerRole) && order.getStatus() != PublicOrderStatus.CREATED) {
+            throw new InvalidOrderStateException("Only a booked parcel with no courier assigned yet can be cancelled.");
         }
 
         order.setStatus(PublicOrderStatus.CANCELLED);
