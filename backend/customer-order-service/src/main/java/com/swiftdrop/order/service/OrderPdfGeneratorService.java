@@ -353,8 +353,18 @@ public class OrderPdfGeneratorService {
         if (has(order.getRecipientPhone())) {
             text(cb, "Tel " + formatPhone(order.getRecipientPhone()), monoBold, 12, CONTENT_LEFT, y - 15, Element.ALIGN_LEFT);
             y -= 20;
+            if (has(order.getRecipientAlternatePhone())) {
+                text(cb, "Alt " + formatPhone(order.getRecipientAlternatePhone()), monoBold, 9, CONTENT_LEFT, y - 8, Element.ALIGN_LEFT);
+                y -= 13;
+            }
         } else {
             y -= 5;
+        }
+        if (has(order.getCustomerNotes())) {
+            // One line only: the full text is on the booking receipt, and the label has little room.
+            float width = columnRight - CONTENT_LEFT;
+            text(cb, oneLine(order.getCustomerNotes(), sans, 7.5f, width), sans, 7.5f, CONTENT_LEFT, y - 6, Element.ALIGN_LEFT, BODY);
+            y -= 11;
         }
         // The city line is pinned to the bottom of the zone. The street address shrinks to fit above
         // it, wrapping beside the QR code and using the full width once it is below it.
@@ -487,6 +497,18 @@ public class OrderPdfGeneratorService {
     }
 
     /** Largest size between {@code max} and {@code min} at which one line fits {@code width}. */
+    /** The text on one line, cut with an ellipsis if it is wider than {@code width} at {@code size}. */
+    private static String oneLine(String value, BaseFont base, float size, float width) {
+        String line = value.trim().replaceAll("\\s+", " ");
+        if (base.getWidthPoint(line, size) <= width) {
+            return line;
+        }
+        while (line.length() > 1 && base.getWidthPoint(line + "...", size) > width) {
+            line = line.substring(0, line.length() - 1);
+        }
+        return line.trim() + "...";
+    }
+
     private static float fit(String value, BaseFont base, float max, float min, float width) {
         float size = max;
         while (size > min && base.getWidthPoint(value, size) > width) {
@@ -615,6 +637,9 @@ public class OrderPdfGeneratorService {
         }));
 
         doc.add(routeTable(order));
+        if (has(order.getCustomerNotes())) {
+            doc.add(instructionsTable(order));
+        }
 
         // Fee table: one line per charge, then the total. Cash on delivery is not a fee, so it sits
         // below the total as information.
@@ -798,6 +823,23 @@ public class OrderPdfGeneratorService {
         route.addCell(arrow);
         route.addCell(place("TO", order.getDeliveryCity(), order.getDeliveryDistrict()));
         return route;
+    }
+
+    /**
+     * The customer's delivery instructions. Phone numbers stay off the receipt because customers share
+     * and email it; the courier gets them on the label instead.
+     */
+    private PdfPTable instructionsTable(CustomerOrder order) {
+        PdfPTable table = table(new float[]{1f});
+        if (has(order.getCustomerNotes())) {
+            table.setSpacingBefore(10);
+            PdfPCell notes = cell(Rectangle.BOTTOM, 8, 0);
+            notes.setBorderColor(RULE);
+            notes.addElement(label("DELIVERY INSTRUCTIONS"));
+            notes.addElement(new Paragraph(order.getCustomerNotes().trim(), font(sans, 9, BODY)));
+            table.addCell(notes);
+        }
+        return table;
     }
 
     private PdfPCell place(String heading, String city, SriLankanDistrict district) {
