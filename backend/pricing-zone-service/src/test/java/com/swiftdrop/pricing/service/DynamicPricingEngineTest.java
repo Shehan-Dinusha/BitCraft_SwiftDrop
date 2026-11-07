@@ -8,6 +8,10 @@ import com.swiftdrop.pricing.domain.repository.DistrictZoneMappingRepository;
 import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
+import com.swiftdrop.pricing.exception.UnsupportedPricingSpeedException;
+import com.swiftdrop.pricing.service.strategy.ExpressPricingStrategy;
+import com.swiftdrop.pricing.service.strategy.SameDayPricingStrategy;
+import com.swiftdrop.pricing.service.strategy.StandardPricingStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,8 +22,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,7 +37,6 @@ class DynamicPricingEngineTest {
     @Mock
     private PricingZoneRepository pricingZoneRepository;
 
-    @InjectMocks
     private DynamicPricingEngine pricingEngine;
 
     private PricingZone westernZone;
@@ -48,6 +53,13 @@ class DynamicPricingEngineTest {
                 .sameDayMultiplier(new BigDecimal("2.00"))
                 .status("ACTIVE")
                 .build();
+
+        pricingEngine = new DynamicPricingEngine(
+                districtZoneMappingRepository,
+                pricingZoneRepository,
+                List.of(new StandardPricingStrategy(),
+                        new ExpressPricingStrategy(),
+                        new SameDayPricingStrategy()));
     }
 
     @Test
@@ -135,5 +147,57 @@ class DynamicPricingEngineTest {
         assertThat(response.weightFee()).isEqualByComparingTo("240.00");
         assertThat(response.estimatedFee()).isEqualByComparingTo("1185.00");
         assertThat(response.speedSurcharge()).isEqualByComparingTo("395.00");
+    }
+
+    @Test
+    @DisplayName("Same-day delivery applies the 2.0x same-day multiplier")
+    void testSameDayMultiplier() {
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("COLOMBO").zoneCode("ZONE_WESTERN").build()));
+        when(pricingZoneRepository.findByZoneCode("ZONE_WESTERN"))
+                .thenReturn(Optional.of(westernZone));
+
+        // Base 350.00 for under 1 kg, same-day 2.0x -> 700.00
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.COLOMBO)
+                .actualWeightKg(new BigDecimal("0.80"))
+                .lengthCm(new BigDecimal("15.0"))
+                .widthCm(new BigDecimal("10.0"))
+                .heightCm(new BigDecimal("5.0"))
+                .speed(OrderSpeed.SAME_DAY)
+                .build();
+
+        PricingQuoteResponse response = pricingEngine.calculateQuote(request);
+
+        assertThat(response.estimatedFee()).isEqualByComparingTo("700.00");
+        assertThat(response.speedSurcharge()).isEqualByComparingTo("350.00");
+    }
+
+    @Test
+    @DisplayName("Speed without a registered strategy throws UnsupportedPricingSpeedException")
+    void testUnsupportedSpeedThrowsException() {
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("COLOMBO").zoneCode("ZONE_WESTERN").build()));
+        when(pricingZoneRepository.findByZoneCode("ZONE_WESTERN"))
+                .thenReturn(Optional.of(westernZone));
+
+        DynamicPricingEngine standardOnlyEngine = new DynamicPricingEngine(
+                districtZoneMappingRepository,
+                pricingZoneRepository,
+                List.of(new StandardPricingStrategy()));
+
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.COLOMBO)
+                .actualWeightKg(new BigDecimal("0.80"))
+                .lengthCm(new BigDecimal("15.0"))
+                .widthCm(new BigDecimal("10.0"))
+                .heightCm(new BigDecimal("5.0"))
+                .speed(OrderSpeed.EXPRESS)
+                .build();
+
+        assertThatThrownBy(() -> standardOnlyEngine.calculateQuote(request))
+                .isInstanceOf(UnsupportedPricingSpeedException.class);
     }
 }
