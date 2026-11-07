@@ -13,7 +13,12 @@ const SPEEDS: { value: OrderSpeed; title: string; caption: string; icon: JSX.Ele
     caption: 'Our regular delivery service',
     icon: <Package />
   },
-  { value: 'EXPRESS', title: 'Express', caption: 'Faster delivery for a higher fee', icon: <Zap /> },
+  {
+    value: 'EXPRESS',
+    title: 'Express',
+    caption: 'Faster delivery for a higher fee',
+    icon: <Zap />
+  },
   {
     value: 'SAME_DAY',
     title: 'Same day',
@@ -67,27 +72,29 @@ export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps)
         Weight and size set the fee. The courier checks them at pickup.
       </p>
 
-      <Field
-        label="Weight"
-        required
-        inputMode="decimal"
-        className="sm:max-w-[220px]"
-        value={form.actualWeightKg}
-        error={errors.actualWeightKg}
-        hint={`Up to ${WEIGHT_MAX_KG} kg`}
-        trailing={unit('kg')}
-        onChange={(event) => onChange('actualWeightKg', decimal(event.target.value))}
-        onBlur={() => onBlur('actualWeightKg')}
-      />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <Field
+          label="Weight"
+          required
+          inputMode="decimal"
+          className="sm:max-w-[220px]"
+          value={form.actualWeightKg}
+          error={errors.actualWeightKg}
+          hint={`Up to ${WEIGHT_MAX_KG} kg`}
+          trailing={unit('kg')}
+          onChange={(event) => onChange('actualWeightKg', decimal(event.target.value))}
+          onBlur={() => onBlur('actualWeightKg')}
+        />
 
-      <div role="group" aria-labelledby="parcel-size-label" className="flex flex-col gap-2">
-        <span id="parcel-size-label" className="text-label font-semibold text-primary">
-          Size of the packed parcel
-        </span>
-        <div className="grid grid-cols-3 gap-3">
-          {sizeField('lengthCm', 'Length')}
-          {sizeField('widthCm', 'Width')}
-          {sizeField('heightCm', 'Height')}
+        <div role="group" aria-labelledby="parcel-size-label" className="flex flex-col gap-2">
+          <span id="parcel-size-label" className="text-label font-semibold text-primary">
+            Size of the packed parcel
+          </span>
+          <div className="grid grid-cols-3 gap-3">
+            {sizeField('lengthCm', 'Length')}
+            {sizeField('widthCm', 'Width')}
+            {sizeField('heightCm', 'Height')}
+          </div>
         </div>
       </div>
 
@@ -95,7 +102,7 @@ export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps)
         <span id="parcel-speed-label" className="text-label font-semibold text-primary">
           Delivery speed
         </span>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {SPEEDS.map((speed) => (
             <RadioCard
               key={speed.value}

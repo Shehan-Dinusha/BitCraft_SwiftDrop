@@ -19,19 +19,25 @@ export function CustomerBookingPage() {
   usePageTitle('Book a parcel');
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
-      <PageHeader title="Book a parcel" subtitle="Pickup and delivery anywhere in Sri Lanka." />
+    <div className="flex w-full flex-col gap-5 p-4 sm:p-6 lg:px-8">
+      <PageHeader
+        title="Book a parcel"
+        subtitle="Pickup and delivery anywhere in Sri Lanka."
+        className="border-0 bg-transparent p-0"
+      />
 
       <Tabs
         aria-label="Booking, parcels and notifications"
         tabs={TABS}
         value={activeTab}
         onChange={(id) => setActiveTab(id as BookingTab)}
+        className="overflow-y-hidden"
       />
 
       {/* The booking and notification panels stay mounted so switching tabs never clears a half-filled booking. */}
       <section role="tabpanel" aria-label="Book a parcel" hidden={activeTab !== 'book'}>
-        <SurfaceCard>
+        {/* The dropdown lists open below their field, so the card must not clip them. */}
+        <SurfaceCard className="overflow-visible">
           <OrderBookingWizard onViewOrders={() => setActiveTab('orders')} />
         </SurfaceCard>
       </section>

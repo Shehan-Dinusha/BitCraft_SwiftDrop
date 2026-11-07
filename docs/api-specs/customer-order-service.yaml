@@ -707,6 +707,11 @@ components:
           type: string
           pattern: '^(0\d{9}|\+94\d{9})$'
           example: "+94771234567"
+        pickupContactAlternatePhone:
+          type: string
+          description: Optional second phone number for the sender
+          pattern: '^(0\d{9}|\+94\d{9})$'
+          example: "+94715550101"
         deliveryAddressLine1:
           type: string
           minLength: 5
@@ -738,6 +743,11 @@ components:
           type: string
           pattern: '^(0\d{9}|\+94\d{9})$'
           example: "+94719876543"
+        recipientAlternatePhone:
+          type: string
+          description: Optional second phone number for the recipient
+          pattern: '^(0\d{9}|\+94\d{9})$'
+          example: "+94112345678"
         recipientEmail:
           type: string
           maxLength: 128
@@ -767,6 +777,11 @@ components:
           type: string
           maxLength: 512
           example: Handicrafts and tea canisters
+        customerNotes:
+          type: string
+          description: Optional notes for the courier, such as a gate code or a landmark
+          maxLength: 500
+          example: Call when you reach the gate
         declaredValue:
           type: number
           format: double
@@ -812,6 +827,11 @@ components:
         pickupContactPhone:
           type: string
           pattern: '^(0\d{9}|\+94\d{9})$'
+        pickupContactAlternatePhone:
+          type: string
+          description: Optional second phone number for the sender
+          pattern: '^(0\d{9}|\+94\d{9})$'
+          example: "+94715550101"
         deliveryAddressLine1:
           type: string
           minLength: 5
@@ -837,6 +857,11 @@ components:
         recipientPhone:
           type: string
           pattern: '^(0\d{9}|\+94\d{9})$'
+        recipientAlternatePhone:
+          type: string
+          description: Optional second phone number for the recipient
+          pattern: '^(0\d{9}|\+94\d{9})$'
+          example: "+94112345678"
         recipientEmail:
           type: string
           maxLength: 128
@@ -860,6 +885,11 @@ components:
         itemDescription:
           type: string
           maxLength: 512
+        customerNotes:
+          type: string
+          description: Optional notes for the courier, such as a gate code or a landmark
+          maxLength: 500
+          example: Call when you reach the gate
         declaredValue:
           type: number
           format: double
@@ -917,6 +947,9 @@ components:
           type: string
         pickupContactPhone:
           type: string
+        pickupContactAlternatePhone:
+          type: string
+          description: Optional second phone number for the sender
         deliveryAddressLine1:
           type: string
         deliveryAddressLine2:
@@ -931,6 +964,9 @@ components:
           type: string
         recipientPhone:
           type: string
+        recipientAlternatePhone:
+          type: string
+          description: Optional second phone number for the recipient
         recipientEmail:
           type: string
         lengthCm:
@@ -950,6 +986,9 @@ components:
           format: double
         itemDescription:
           type: string
+        customerNotes:
+          type: string
+          description: Optional notes for the courier
         declaredValue:
           type: number
           format: double

@@ -12,7 +12,7 @@ export function PickupStep(props: BookingStepProps) {
       </legend>
       <p className="text-body text-secondary">The courier collects the parcel from this address.</p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Field
           label="Contact name"
           required
@@ -37,6 +37,19 @@ export function PickupStep(props: BookingStepProps) {
             onChange('pickupContactPhone', normalisePhoneDigits(event.target.value))
           }
           onBlur={() => onBlur('pickupContactPhone')}
+        />
+        <Field
+          label="Backup phone"
+          variant="phone"
+          autoComplete="section-pickup tel-national"
+          inputMode="numeric"
+          value={form.pickupContactAlternatePhone}
+          error={errors.pickupContactAlternatePhone}
+          hint="Optional. Called if the main number can't be reached"
+          onChange={(event) =>
+            onChange('pickupContactAlternatePhone', normalisePhoneDigits(event.target.value))
+          }
+          onBlur={() => onBlur('pickupContactAlternatePhone')}
         />
       </div>
 

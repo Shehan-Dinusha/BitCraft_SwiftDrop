@@ -12,7 +12,7 @@ import {
 } from '@/design-system';
 import type { FeeEstimateResponse } from '@/services/api/orderApi';
 import { SPEED_LABEL, toSpeed } from '../orders/orderDisplay';
-import { placeLabel, type BookingForm } from './bookingForm';
+import { addressLine1, addressLine2, placeLabel, type BookingForm } from './bookingForm';
 import type { BookingErrors, BookingStepId } from './validation';
 import type { FeeEstimateStatus } from './useFeeEstimate';
 
@@ -47,13 +47,21 @@ export function ReviewStep({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-3">
           <Summary title="Pickup" onEdit={() => onEdit('pickup')}>
             <Line strong>{form.pickupContactName}</Line>
             <Line mono>{formatPhone(form.pickupContactPhone)}</Line>
+            {form.pickupContactAlternatePhone ? (
+              <Line mono>{formatPhone(form.pickupContactAlternatePhone)} (backup phone)</Line>
+            ) : null}
             <Line>
-              {[form.pickupAddressLine1, form.pickupAddressLine2].filter(Boolean).join(', ')}
+              {[
+                addressLine1(form.pickupHouse, form.pickupStreet),
+                addressLine2(form.pickupArea, form.pickupLandmark)
+              ]
+                .filter(Boolean)
+                .join(', ')}
             </Line>
             <Line>
               {placeLabel(form.pickupCity, form.pickupDistrict)} ·{' '}
@@ -64,10 +72,19 @@ export function ReviewStep({
           <Summary title="Drop-off" onEdit={() => onEdit('dropoff')}>
             <Line strong>{form.recipientName}</Line>
             <Line mono>{formatPhone(form.recipientPhone)}</Line>
+            {form.recipientAlternatePhone ? (
+              <Line mono>{formatPhone(form.recipientAlternatePhone)} (second phone)</Line>
+            ) : null}
             <Line>{form.recipientEmail}</Line>
             <Line>
-              {[form.deliveryAddressLine1, form.deliveryAddressLine2].filter(Boolean).join(', ')}
+              {[
+                addressLine1(form.deliveryHouse, form.deliveryStreet),
+                addressLine2(form.deliveryArea, form.deliveryLandmark)
+              ]
+                .filter(Boolean)
+                .join(', ')}
             </Line>
+            {form.customerNotes ? <Line>Instructions: {form.customerNotes}</Line> : null}
             <Line>
               {placeLabel(form.deliveryCity, form.deliveryDistrict)} ·{' '}
               <span className="tabular-nums">{form.deliveryPostalCode}</span>

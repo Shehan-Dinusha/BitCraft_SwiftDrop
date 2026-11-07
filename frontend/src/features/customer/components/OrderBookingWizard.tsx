@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Alert, Button } from '@/design-system';
+import { fetchCurrentUser } from '@/services/api/authApi';
 import { orderApi, readOrderApiError, type CustomerOrderResponse } from '@/services/api/orderApi';
 import {
   initialBookingForm,
+  normalisePhoneDigits,
+  provinceOf,
   toCreateOrderRequest,
   toFeeEstimateRequest,
   type BookingField,
@@ -83,6 +87,29 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
   const [focusRequest, setFocusRequest] = useState<'invalid' | 'top' | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
+
+  // Fill in the sender from the customer's profile, once, and never over something already typed.
+  // If the profile can't be loaded the form simply starts empty.
+  const profile = useQuery({
+    queryKey: ['current-user'],
+    queryFn: fetchCurrentUser,
+    retry: false,
+    staleTime: 5 * 60 * 1000
+  });
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!profile.data || prefilled.current) return;
+    prefilled.current = true;
+    const { firstName, lastName, phone, district } = profile.data;
+    const name = [firstName, lastName].filter(Boolean).join(' ').trim();
+    setForm((previous) => ({
+      ...previous,
+      pickupContactName: previous.pickupContactName || name,
+      pickupContactPhone: previous.pickupContactPhone || normalisePhoneDigits(phone ?? ''),
+      pickupDistrict: previous.pickupDistrict || district || '',
+      pickupProvince: previous.pickupProvince || provinceOf(district)
+    }));
+  }, [profile.data]);
 
   // Only price the parcel on the review step, and only once the inputs the fee depends on are valid.
   const estimateRequest = useMemo(() => {
@@ -269,7 +296,11 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
                   Sign in
                 </Button>
               ) : submitProblem === 'failed' ? (
-                <Button type="button" variant="ghost" onClick={() => (onViewOrders ? onViewOrders() : navigate('/customer/orders'))}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => (onViewOrders ? onViewOrders() : navigate('/customer/orders'))}
+                >
                   Open My parcels
                 </Button>
               ) : undefined

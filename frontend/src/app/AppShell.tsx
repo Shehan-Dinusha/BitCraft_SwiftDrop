@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Package } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BottomNav,
@@ -97,6 +98,25 @@ const catalogEntry: NavEntry = {
   to: '/catalog'
 };
 
+/** The SwiftDrop mark for phones, where the sidebar that normally carries it is hidden. */
+function MobileBrand({ to }: { to: string }) {
+  return (
+    <Link
+      to={to}
+      aria-label="SwiftDrop home"
+      className="mr-1 flex shrink-0 items-center gap-2 md:hidden"
+    >
+      <span
+        aria-hidden="true"
+        className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
+      >
+        <Package className="size-[18px]" />
+      </span>
+      <span className="text-body-strong text-primary">SwiftDrop</span>
+    </Link>
+  );
+}
+
 export function AppShell() {
   const role = useAuthStore((state) => state.role);
   const user = useAuthStore((state) => state.user);
@@ -168,6 +188,7 @@ export function AppShell() {
           page={pageTitle}
           district={shellRole === 'dispatcher' ? user?.district : undefined}
           notificationSlot={<NotificationBell />}
+          leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}
         />
         <main className={hasTabs ? 'flex-1 pb-[68px] md:pb-0' : 'flex-1'}>
           <Outlet />

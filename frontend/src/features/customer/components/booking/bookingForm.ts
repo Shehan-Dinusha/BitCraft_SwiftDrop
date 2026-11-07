@@ -13,16 +13,27 @@ import type {
 export interface BookingForm {
   pickupContactName: string;
   pickupContactPhone: string;
-  pickupAddressLine1: string;
-  pickupAddressLine2: string;
+  /** Optional second number for the sender: the 9 digits after `+94`, or empty. */
+  pickupContactAlternatePhone: string;
+  pickupHouse: string;
+  pickupStreet: string;
+  pickupArea: string;
+  pickupLandmark: string;
+  /** Only narrows the district list; the order stores the district. */
+  pickupProvince: ProvinceId | '';
   pickupCity: string;
   pickupDistrict: SriLankanDistrict | '';
   pickupPostalCode: string;
   recipientName: string;
   recipientPhone: string;
+  /** Optional second number for the recipient: the 9 digits after `+94`, or empty. */
+  recipientAlternatePhone: string;
   recipientEmail: string;
-  deliveryAddressLine1: string;
-  deliveryAddressLine2: string;
+  deliveryHouse: string;
+  deliveryStreet: string;
+  deliveryArea: string;
+  deliveryLandmark: string;
+  deliveryProvince: ProvinceId | '';
   deliveryCity: string;
   deliveryDistrict: SriLankanDistrict | '';
   deliveryPostalCode: string;
@@ -32,6 +43,8 @@ export interface BookingForm {
   actualWeightKg: string;
   speed: OrderSpeed;
   itemDescription: string;
+  /** Optional notes for the courier, such as a gate code or a landmark. */
+  customerNotes: string;
   declaredValue: string;
   /** UI only: the customer turned on "Collect cash on delivery", so an amount is required. */
   collectCash: boolean;
@@ -44,16 +57,24 @@ export type BookingField = keyof BookingForm;
 export const initialBookingForm: BookingForm = {
   pickupContactName: '',
   pickupContactPhone: '',
-  pickupAddressLine1: '',
-  pickupAddressLine2: '',
+  pickupContactAlternatePhone: '',
+  pickupHouse: '',
+  pickupStreet: '',
+  pickupArea: '',
+  pickupLandmark: '',
+  pickupProvince: '',
   pickupCity: '',
   pickupDistrict: '',
   pickupPostalCode: '',
   recipientName: '',
   recipientPhone: '',
+  recipientAlternatePhone: '',
   recipientEmail: '',
-  deliveryAddressLine1: '',
-  deliveryAddressLine2: '',
+  deliveryHouse: '',
+  deliveryStreet: '',
+  deliveryArea: '',
+  deliveryLandmark: '',
+  deliveryProvince: '',
   deliveryCity: '',
   deliveryDistrict: '',
   deliveryPostalCode: '',
@@ -63,6 +84,7 @@ export const initialBookingForm: BookingForm = {
   actualWeightKg: '',
   speed: 'STANDARD',
   itemDescription: '',
+  customerNotes: '',
   declaredValue: '',
   collectCash: false,
   codAmount: '',
@@ -96,6 +118,49 @@ export const DISTRICTS: { value: SriLankanDistrict; label: string }[] = [
   { value: 'RATNAPURA', label: 'Ratnapura' },
   { value: 'KEGALLE', label: 'Kegalle' }
 ];
+
+/** The nine provinces and their districts (fixed administrative map). */
+export type ProvinceId =
+  | 'WESTERN'
+  | 'CENTRAL'
+  | 'SOUTHERN'
+  | 'NORTHERN'
+  | 'EASTERN'
+  | 'NORTH_WESTERN'
+  | 'NORTH_CENTRAL'
+  | 'UVA'
+  | 'SABARAGAMUWA';
+
+export const PROVINCES: { id: ProvinceId; label: string; districts: SriLankanDistrict[] }[] = [
+  { id: 'WESTERN', label: 'Western', districts: ['COLOMBO', 'GAMPAHA', 'KALUTARA'] },
+  { id: 'CENTRAL', label: 'Central', districts: ['KANDY', 'MATALE', 'NUWARA_ELIYA'] },
+  { id: 'SOUTHERN', label: 'Southern', districts: ['GALLE', 'MATARA', 'HAMBANTOTA'] },
+  {
+    id: 'NORTHERN',
+    label: 'Northern',
+    districts: ['JAFFNA', 'KILINOCHCHI', 'MANNAR', 'VAVUNIYA', 'MULLAITIVU']
+  },
+  { id: 'EASTERN', label: 'Eastern', districts: ['BATTICALOA', 'AMPARA', 'TRINCOMALEE'] },
+  { id: 'NORTH_WESTERN', label: 'North Western', districts: ['KURUNEGALA', 'PUTTALAM'] },
+  { id: 'NORTH_CENTRAL', label: 'North Central', districts: ['ANURADHAPURA', 'POLONNARUWA'] },
+  { id: 'UVA', label: 'Uva', districts: ['BADULLA', 'MONARAGALA'] },
+  { id: 'SABARAGAMUWA', label: 'Sabaragamuwa', districts: ['RATNAPURA', 'KEGALLE'] }
+];
+
+export function provinceOf(district: SriLankanDistrict | '' | undefined): ProvinceId | '' {
+  return PROVINCES.find((province) => district && province.districts.includes(district))?.id ?? '';
+}
+
+/**
+ * The order stores one street line and one optional extra line. The form collects house, street,
+ * area and landmark separately and joins them here ("No. 45, Galle Road" / "Kollupitiya, Opposite
+ * Liberty Plaza"). The length limits in `validation.ts` keep the joined text within 200 characters.
+ */
+export const addressLine1 = (house: string, street: string) => `${house.trim()}, ${street.trim()}`;
+export const addressLine2 = (area: string, landmark: string) => {
+  const parts = [area.trim(), landmark.trim()].filter(Boolean);
+  return parts.length ? parts.join(', ') : undefined;
+};
 
 export function districtLabel(value: SriLankanDistrict | '' | undefined): string {
   return DISTRICTS.find((district) => district.value === value)?.label ?? '';
@@ -140,16 +205,22 @@ export function toCreateOrderRequest(form: BookingForm): CreateOrderRequest {
   return {
     pickupContactName: form.pickupContactName.trim(),
     pickupContactPhone: toE164(form.pickupContactPhone),
-    pickupAddressLine1: form.pickupAddressLine1.trim(),
-    pickupAddressLine2: optionalText(form.pickupAddressLine2),
+    pickupContactAlternatePhone: form.pickupContactAlternatePhone
+      ? toE164(form.pickupContactAlternatePhone)
+      : undefined,
+    pickupAddressLine1: addressLine1(form.pickupHouse, form.pickupStreet),
+    pickupAddressLine2: addressLine2(form.pickupArea, form.pickupLandmark),
     pickupCity: form.pickupCity.trim(),
     pickupDistrict: form.pickupDistrict as SriLankanDistrict,
     pickupPostalCode: form.pickupPostalCode,
     recipientName: form.recipientName.trim(),
     recipientPhone: toE164(form.recipientPhone),
+    recipientAlternatePhone: form.recipientAlternatePhone
+      ? toE164(form.recipientAlternatePhone)
+      : undefined,
     recipientEmail: form.recipientEmail.trim(),
-    deliveryAddressLine1: form.deliveryAddressLine1.trim(),
-    deliveryAddressLine2: optionalText(form.deliveryAddressLine2),
+    deliveryAddressLine1: addressLine1(form.deliveryHouse, form.deliveryStreet),
+    deliveryAddressLine2: addressLine2(form.deliveryArea, form.deliveryLandmark),
     deliveryCity: form.deliveryCity.trim(),
     deliveryDistrict: form.deliveryDistrict as SriLankanDistrict,
     deliveryPostalCode: form.deliveryPostalCode,
@@ -159,6 +230,7 @@ export function toCreateOrderRequest(form: BookingForm): CreateOrderRequest {
     actualWeightKg: toNumber(form.actualWeightKg),
     speed: form.speed,
     itemDescription: optionalText(form.itemDescription),
+    customerNotes: optionalText(form.customerNotes),
     declaredValue: form.declaredValue.trim() ? toNumber(form.declaredValue) : 0,
     codAmount: form.collectCash && form.codAmount.trim() ? toNumber(form.codAmount) : 0,
     prohibitedItemsDeclared: form.prohibitedItemsDeclared

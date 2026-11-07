@@ -26,8 +26,12 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
   pickup: [
     'pickupContactName',
     'pickupContactPhone',
-    'pickupAddressLine1',
-    'pickupAddressLine2',
+    'pickupContactAlternatePhone',
+    'pickupHouse',
+    'pickupStreet',
+    'pickupArea',
+    'pickupLandmark',
+    'pickupProvince',
     'pickupCity',
     'pickupDistrict',
     'pickupPostalCode'
@@ -35,12 +39,17 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
   dropoff: [
     'recipientName',
     'recipientPhone',
+    'recipientAlternatePhone',
     'recipientEmail',
-    'deliveryAddressLine1',
-    'deliveryAddressLine2',
+    'deliveryHouse',
+    'deliveryStreet',
+    'deliveryArea',
+    'deliveryLandmark',
+    'deliveryProvince',
     'deliveryCity',
     'deliveryDistrict',
-    'deliveryPostalCode'
+    'deliveryPostalCode',
+    'customerNotes'
   ],
   parcel: [
     'lengthCm',
@@ -75,14 +84,6 @@ function text(
 
 const SYMBOLS = 'Remove symbols such as < > = ; " @';
 
-const address = (value: string, required: boolean) =>
-  text(value, {
-    empty: required ? 'Enter the house number and street' : undefined,
-    min: required ? 5 : undefined,
-    max: 200,
-    pattern: PATTERNS.address,
-    symbols: SYMBOLS
-  });
 const personName = (value: string, who: string) =>
   text(value, {
     empty: `Enter the ${who}'s name`,
@@ -99,6 +100,27 @@ const city = (value: string) =>
     pattern: PATTERNS.city,
     symbols: 'Use letters, numbers and spaces only'
   });
+
+/** An optional second phone: empty is fine, otherwise 9 digits that differ from the main number. */
+function alternatePhone(digits: string, main: string) {
+  if (!digits) return undefined;
+  if (!PATTERNS.phoneDigits.test(digits)) return 'Enter the 9 digits after +94';
+  return digits === main ? 'Use a different number from the main phone' : undefined;
+}
+
+/** One box of the address; the backend's address rule applies to the joined text. */
+function part(
+  value: string,
+  { label, required, min, max }: { label: string; required: boolean; min?: number; max: number }
+) {
+  return text(value, {
+    empty: required ? `Enter ${label}` : undefined,
+    min,
+    max,
+    pattern: PATTERNS.address,
+    symbols: SYMBOLS
+  });
+}
 
 function postalCode(value: string) {
   if (!value) return 'Enter the 5-digit postal code';
@@ -139,12 +161,24 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
     case 'pickupContactPhone':
     case 'recipientPhone':
       return phone(form[field]);
-    case 'pickupAddressLine1':
-    case 'deliveryAddressLine1':
-      return address(form[field], true);
-    case 'pickupAddressLine2':
-    case 'deliveryAddressLine2':
-      return address(form[field], false);
+    case 'pickupContactAlternatePhone':
+      return alternatePhone(form.pickupContactAlternatePhone, form.pickupContactPhone);
+    case 'pickupHouse':
+    case 'deliveryHouse':
+      return part(form[field], { label: 'the house or building number', required: true, max: 40 });
+    case 'pickupStreet':
+    case 'deliveryStreet':
+      return part(form[field], { label: 'the street or road', required: true, min: 2, max: 150 });
+    case 'pickupArea':
+    case 'deliveryArea':
+      return part(form[field], { label: 'the area', required: false, max: 98 });
+    case 'pickupLandmark':
+    case 'deliveryLandmark':
+      return part(form[field], { label: 'the landmark', required: false, max: 100 });
+    case 'pickupProvince':
+      return form.pickupProvince || form.pickupDistrict ? undefined : 'Choose a province';
+    case 'deliveryProvince':
+      return form.deliveryProvince || form.deliveryDistrict ? undefined : 'Choose a province';
     case 'pickupCity':
     case 'deliveryCity':
       return city(form[field]);
@@ -154,6 +188,14 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
     case 'pickupPostalCode':
     case 'deliveryPostalCode':
       return postalCode(form[field]);
+    case 'recipientAlternatePhone':
+      return alternatePhone(form.recipientAlternatePhone, form.recipientPhone);
+    case 'customerNotes':
+      return text(form.customerNotes, {
+        max: 500,
+        pattern: PATTERNS.freeText,
+        symbols: 'Remove the < and > characters'
+      });
     case 'recipientEmail': {
       const value = form.recipientEmail.trim();
       if (!value) return 'Enter an email address for delivery updates';
@@ -216,11 +258,18 @@ export function firstInvalidStep(form: BookingForm): BookingStepId | null {
 export function parseServerFieldErrors(message: string | undefined): BookingErrors {
   if (!message) return {};
   const known = new Set<string>(Object.values(STEP_FIELDS).flat());
+  const joined: Record<string, BookingField> = {
+    pickupAddressLine1: 'pickupStreet',
+    pickupAddressLine2: 'pickupArea',
+    deliveryAddressLine1: 'deliveryStreet',
+    deliveryAddressLine2: 'deliveryArea'
+  };
   const errors: BookingErrors = {};
   for (const part of message.split(';')) {
     const separator = part.indexOf(':');
     if (separator < 0) continue;
-    const field = part.slice(0, separator).trim();
+    const name = part.slice(0, separator).trim();
+    const field = joined[name] ?? name;
     const text = part.slice(separator + 1).trim();
     if (known.has(field) && text) errors[field as BookingField] = text;
   }
