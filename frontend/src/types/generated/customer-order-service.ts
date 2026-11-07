@@ -342,6 +342,11 @@ export interface components {
             /** @example +94771234567 */
             pickupContactPhone: string;
             /**
+             * @description Optional second phone number for the sender
+             * @example +94715550101
+             */
+            pickupContactAlternatePhone?: string;
+            /**
              * @description Letters, digits, spaces and . , / # ( ) & ' : - only
              * @example No. 18, Peradeniya Road
              */
@@ -360,6 +365,11 @@ export interface components {
             recipientName: string;
             /** @example +94719876543 */
             recipientPhone: string;
+            /**
+             * @description Optional second phone number for the recipient
+             * @example +94112345678
+             */
+            recipientAlternatePhone?: string;
             /**
              * Format: email
              * @example anura.f@gmail.com
@@ -389,6 +399,11 @@ export interface components {
             /** @example Handicrafts and tea canisters */
             itemDescription?: string;
             /**
+             * @description Optional notes for the courier, such as a gate code or a landmark
+             * @example Call when you reach the gate
+             */
+            customerNotes?: string;
+            /**
              * Format: double
              * @example 5000
              */
@@ -413,6 +428,11 @@ export interface components {
             pickupPostalCode?: string;
             pickupContactName?: string;
             pickupContactPhone?: string;
+            /**
+             * @description Optional second phone number for the sender
+             * @example +94715550101
+             */
+            pickupContactAlternatePhone?: string;
             /** @description Letters, digits, spaces and . , / # ( ) & ' : - only */
             deliveryAddressLine1?: string;
             /** @description Letters, digits, spaces and . , / # ( ) & ' : - only */
@@ -422,6 +442,11 @@ export interface components {
             deliveryPostalCode?: string;
             recipientName?: string;
             recipientPhone?: string;
+            /**
+             * @description Optional second phone number for the recipient
+             * @example +94112345678
+             */
+            recipientAlternatePhone?: string;
             /** Format: email */
             recipientEmail?: string;
             /** Format: double */
@@ -434,6 +459,11 @@ export interface components {
             actualWeightKg?: number;
             speed?: components["schemas"]["OrderSpeed"];
             itemDescription?: string;
+            /**
+             * @description Optional notes for the courier, such as a gate code or a landmark
+             * @example Call when you reach the gate
+             */
+            customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
             /** Format: double */
@@ -470,6 +500,8 @@ export interface components {
             pickupPostalCode?: string;
             pickupContactName?: string;
             pickupContactPhone?: string;
+            /** @description Optional second phone number for the sender */
+            pickupContactAlternatePhone?: string;
             deliveryAddressLine1?: string;
             deliveryAddressLine2?: string;
             deliveryCity?: string;
@@ -477,6 +509,8 @@ export interface components {
             deliveryPostalCode?: string;
             recipientName?: string;
             recipientPhone?: string;
+            /** @description Optional second phone number for the recipient */
+            recipientAlternatePhone?: string;
             recipientEmail?: string;
             /** Format: double */
             lengthCm?: number;
@@ -489,6 +523,8 @@ export interface components {
             /** Format: double */
             chargeableWeightKg?: number;
             itemDescription?: string;
+            /** @description Optional notes for the courier */
+            customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
             /** Format: double */

@@ -69,6 +69,9 @@ public class CustomerOrderResponse {
     @Schema(description = "Pickup contact phone", example = "+94771234567")
     private String pickupContactPhone;
 
+    @Schema(description = "Optional second phone number for the sender", example = "+94715550101")
+    private String pickupContactAlternatePhone;
+
     // Delivery
     @Schema(description = "Delivery address line 1", example = "No. 18, Peradeniya Road")
     private String deliveryAddressLine1;
@@ -91,6 +94,9 @@ public class CustomerOrderResponse {
     @Schema(description = "Recipient phone", example = "+94719876543")
     private String recipientPhone;
 
+    @Schema(description = "Optional second phone number for the recipient", example = "+94112345678")
+    private String recipientAlternatePhone;
+
     @Schema(description = "Recipient email", example = "anura.f@gmail.com")
     private String recipientEmail;
 
@@ -112,6 +118,9 @@ public class CustomerOrderResponse {
 
     @Schema(description = "Item description", example = "Handicrafts and tea canisters")
     private String itemDescription;
+
+    @Schema(description = "Optional notes for the courier", example = "Call when you reach the gate")
+    private String customerNotes;
 
     @Schema(description = "Declared merchandise value in LKR", example = "5000.00")
     private BigDecimal declaredValue;
@@ -176,6 +185,7 @@ public class CustomerOrderResponse {
                 .pickupPostalCode(order.getPickupPostalCode())
                 .pickupContactName(order.getPickupContactName())
                 .pickupContactPhone(order.getPickupContactPhone())
+                .pickupContactAlternatePhone(order.getPickupContactAlternatePhone())
                 .deliveryAddressLine1(order.getDeliveryAddressLine1())
                 .deliveryAddressLine2(order.getDeliveryAddressLine2())
                 .deliveryCity(order.getDeliveryCity())
@@ -183,6 +193,7 @@ public class CustomerOrderResponse {
                 .deliveryPostalCode(order.getDeliveryPostalCode())
                 .recipientName(order.getRecipientName())
                 .recipientPhone(order.getRecipientPhone())
+                .recipientAlternatePhone(order.getRecipientAlternatePhone())
                 .recipientEmail(order.getRecipientEmail())
                 .lengthCm(order.getLengthCm())
                 .widthCm(order.getWidthCm())
@@ -190,6 +201,7 @@ public class CustomerOrderResponse {
                 .actualWeightKg(order.getActualWeightKg())
                 .chargeableWeightKg(order.getChargeableWeightKg())
                 .itemDescription(order.getItemDescription())
+                .customerNotes(order.getCustomerNotes())
                 .declaredValue(order.getDeclaredValue())
                 .codAmount(order.getCodAmount())
                 .prohibitedItemsDeclared(order.getProhibitedItemsDeclared())

@@ -41,4 +41,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(
                 400, "Bad Request", ex.getMessage(), request.getRequestURI()));
     }
+
+    @ExceptionHandler(UnsupportedPricingSpeedException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnsupportedSpeed(UnsupportedPricingSpeedException ex,
+                                                                   HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(
+                400, "Bad Request", ex.getMessage(), request.getRequestURI()));
+    }
 }

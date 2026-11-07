@@ -96,6 +96,9 @@ public class CustomerOrder {
     @Column(name = "pickup_contact_phone", nullable = false, length = 32)
     private String pickupContactPhone;
 
+    @Column(name = "pickup_contact_alternate_phone", length = 32)
+    private String pickupContactAlternatePhone;
+
     // Delivery details
     @Column(name = "delivery_address_line1", nullable = false)
     private String deliveryAddressLine1;
@@ -121,6 +124,12 @@ public class CustomerOrder {
 
     @Column(name = "recipient_email", length = 128)
     private String recipientEmail;
+
+    @Column(name = "recipient_alternate_phone", length = 32)
+    private String recipientAlternatePhone;
+
+    @Column(name = "customer_notes", length = 500)
+    private String customerNotes;
 
     // Physical dimensions & weight
     @Column(name = "length_cm", nullable = false, precision = 8, scale = 2)

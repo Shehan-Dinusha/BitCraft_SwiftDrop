@@ -29,6 +29,8 @@ export interface TopBarProps {
   notificationSlot?: ReactNode;
   /** Extra controls before the standard actions. */
   children?: ReactNode;
+  /** Content before the breadcrumb, e.g. the brand mark where there is no sidebar. */
+  leading?: ReactNode;
   className?: string;
 }
 
@@ -47,6 +49,7 @@ export function TopBar({
   hasUnread = false,
   notificationSlot,
   children,
+  leading,
   className
 }: TopBarProps) {
   const placeholder = searchPlaceholder ?? roleShellSpec[role].searchPlaceholder;
@@ -61,6 +64,7 @@ export function TopBar({
         className
       )}
     >
+      {leading}
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
         <span className="hidden text-label text-muted sm:inline">{section}</span>
         <ChevronRight aria-hidden="true" className="hidden size-3.5 text-muted sm:block" />

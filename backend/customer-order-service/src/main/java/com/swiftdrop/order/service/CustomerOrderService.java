@@ -103,6 +103,7 @@ public class CustomerOrderService {
                 .pickupPostalCode(request.getPickupPostalCode())
                 .pickupContactName(request.getPickupContactName())
                 .pickupContactPhone(request.getPickupContactPhone())
+                .pickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()))
                 .deliveryAddressLine1(request.getDeliveryAddressLine1())
                 .deliveryAddressLine2(request.getDeliveryAddressLine2())
                 .deliveryCity(request.getDeliveryCity())
@@ -110,6 +111,7 @@ public class CustomerOrderService {
                 .deliveryPostalCode(request.getDeliveryPostalCode())
                 .recipientName(request.getRecipientName())
                 .recipientPhone(request.getRecipientPhone())
+                .recipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()))
                 .recipientEmail(request.getRecipientEmail())
                 .lengthCm(request.getLengthCm())
                 .widthCm(request.getWidthCm())
@@ -117,6 +119,7 @@ public class CustomerOrderService {
                 .actualWeightKg(request.getActualWeightKg())
                 .chargeableWeightKg(estimate.getChargeableWeightKg())
                 .itemDescription(request.getItemDescription())
+                .customerNotes(blankToNull(request.getCustomerNotes()))
                 .declaredValue(request.getDeclaredValue() != null ? request.getDeclaredValue() : BigDecimal.ZERO)
                 .codAmount(request.getCodAmount() != null ? request.getCodAmount() : BigDecimal.ZERO)
                 .prohibitedItemsDeclared(request.getProhibitedItemsDeclared())
@@ -198,6 +201,10 @@ public class CustomerOrderService {
         }
     }
 
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     private boolean isPrivilegedRole(String callerRole) {
         UserRole role = UserRole.fromClaim(callerRole);
         return role == UserRole.DISPATCHER || role == UserRole.SYSTEM_ADMIN;
@@ -218,6 +225,7 @@ public class CustomerOrderService {
         if (request.getPickupPostalCode() != null) order.setPickupPostalCode(request.getPickupPostalCode());
         if (request.getPickupContactName() != null) order.setPickupContactName(request.getPickupContactName());
         if (request.getPickupContactPhone() != null) order.setPickupContactPhone(request.getPickupContactPhone());
+        if (request.getPickupContactAlternatePhone() != null) order.setPickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()));
 
         if (request.getDeliveryAddressLine1() != null) order.setDeliveryAddressLine1(request.getDeliveryAddressLine1());
         if (request.getDeliveryAddressLine2() != null) order.setDeliveryAddressLine2(request.getDeliveryAddressLine2());
@@ -226,9 +234,11 @@ public class CustomerOrderService {
         if (request.getDeliveryPostalCode() != null) order.setDeliveryPostalCode(request.getDeliveryPostalCode());
         if (request.getRecipientName() != null) order.setRecipientName(request.getRecipientName());
         if (request.getRecipientPhone() != null) order.setRecipientPhone(request.getRecipientPhone());
+        if (request.getRecipientAlternatePhone() != null) order.setRecipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()));
         if (request.getRecipientEmail() != null) order.setRecipientEmail(request.getRecipientEmail());
 
         if (request.getItemDescription() != null) order.setItemDescription(request.getItemDescription());
+        if (request.getCustomerNotes() != null) order.setCustomerNotes(blankToNull(request.getCustomerNotes()));
         if (request.getDeclaredValue() != null) order.setDeclaredValue(request.getDeclaredValue());
         if (request.getCodAmount() != null) order.setCodAmount(request.getCodAmount());
 
