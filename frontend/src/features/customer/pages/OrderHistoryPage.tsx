@@ -89,9 +89,10 @@ export function OrderHistoryPage() {
   const isEmpty = ordersQuery.isSuccess && orders.length === 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-4 sm:p-6">
+    <div className="flex w-full flex-col gap-5 p-4 sm:p-6 lg:px-8">
       <PageHeader
         title="My parcels"
+        className="border-0 bg-transparent p-0"
         subtitle="Follow your parcels, answer fee changes and download labels and receipts."
         actions={
           isEmpty ? undefined : (

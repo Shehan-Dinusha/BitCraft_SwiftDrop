@@ -53,7 +53,7 @@ function problemFor(error: unknown): ActionProblem {
   return 'failed';
 }
 
-const PAGE = 'mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6';
+const PAGE = 'mx-auto flex w-full max-w-4xl flex-col gap-5 p-4 sm:p-6';
 
 export function OrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -284,6 +284,7 @@ export function OrderDetailPage() {
   return (
     <div className={PAGE}>
       <PageHeader
+        className="border-0 bg-transparent p-0"
         breadcrumb={[{ label: 'My parcels', onClick: backToList }, { label: trackingNumber }]}
         title={<span className="font-mono tabular-nums">{trackingNumber}</span>}
         badges={
