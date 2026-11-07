@@ -30,11 +30,11 @@ export function LiveTrackingPage() {
   const fatalError = error !== null && view === null;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 sm:p-6">
+    <main className="flex w-full flex-col gap-5 p-4 sm:p-6 lg:px-8">
       <PageHeader
         title="Live tracking"
         subtitle="Follow your parcel and see each public checkpoint as it happens."
-        className="rounded-xl border border-border-subtle px-5 py-5 sm:px-8"
+        className="border-0 bg-transparent p-0"
       />
 
       <SurfaceCard title={trackingNumber ? 'Track another parcel' : 'Find a parcel'}>
