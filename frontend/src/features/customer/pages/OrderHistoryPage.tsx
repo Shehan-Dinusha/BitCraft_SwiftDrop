@@ -229,7 +229,7 @@ export function OrderHistoryPage() {
               const trackingNumber = order.trackingNumber ?? '';
               const status = orderStatus(order);
               return (
-                <li key={order.orderId ?? trackingNumber} className="flex items-center gap-2">
+                <li key={order.orderId ?? trackingNumber} className="relative">
                   <OrderCard
                     type="customer"
                     trackingNumber={trackingNumber}
@@ -240,10 +240,11 @@ export function OrderHistoryPage() {
                     speed={toSpeed(order.orderSpeed)}
                     fee={listedFee(order)}
                     onOpen={() => navigate(`/customer/orders/${order.orderId}`)}
-                    className="min-w-0 max-w-none flex-1"
+                    className="w-full min-w-0 max-w-none pr-14"
                   />
                   {status !== 'CANCELLED' ? (
                     <IconButton
+                      className="absolute right-2 top-1/2 -translate-y-1/2"
                       variant="ghost"
                       icon={<FileDown />}
                       aria-label={`Download label and receipt for ${trackingNumber}`}
@@ -251,10 +252,7 @@ export function OrderHistoryPage() {
                       loading={receipts.isPending(order.orderId)}
                       onClick={() => void receipts.download(order)}
                     />
-                  ) : (
-                    // Keeps the cards aligned when there is no label to download.
-                    <span aria-hidden="true" className="w-11 shrink-0" />
-                  )}
+                  ) : null}
                 </li>
               );
             })}

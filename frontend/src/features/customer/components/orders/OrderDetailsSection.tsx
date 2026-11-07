@@ -34,6 +34,9 @@ export function OrderDetailsSection({ order }: { order: CustomerOrderResponse })
           <Group title="Pickup">
             <Line strong>{order.pickupContactName}</Line>
             <Line numeric>{formatPhone(order.pickupContactPhone)}</Line>
+            {order.pickupContactAlternatePhone ? (
+              <Line numeric>Backup {formatPhone(order.pickupContactAlternatePhone)}</Line>
+            ) : null}
             <Line>{joinLines(order.pickupAddressLine1, order.pickupAddressLine2)}</Line>
             <Line>
               {placeLabel(order.pickupCity, order.pickupDistrict)} ·{' '}
@@ -43,6 +46,9 @@ export function OrderDetailsSection({ order }: { order: CustomerOrderResponse })
           <Group title="Drop-off">
             <Line strong>{order.recipientName}</Line>
             <Line numeric>{formatPhone(order.recipientPhone)}</Line>
+            {order.recipientAlternatePhone ? (
+              <Line numeric>Backup {formatPhone(order.recipientAlternatePhone)}</Line>
+            ) : null}
             <Line>{order.recipientEmail}</Line>
             <Line>{joinLines(order.deliveryAddressLine1, order.deliveryAddressLine2)}</Line>
             <Line>
@@ -55,6 +61,7 @@ export function OrderDetailsSection({ order }: { order: CustomerOrderResponse })
               {order.actualWeightKg} kg · {order.lengthCm} × {order.widthCm} × {order.heightCm} cm
             </Line>
             {order.itemDescription ? <Line>{order.itemDescription}</Line> : null}
+            {order.customerNotes ? <Line>Delivery instructions: {order.customerNotes}</Line> : null}
             {order.declaredValue ? (
               <Line>
                 Declared value <MoneyAmount amount={order.declaredValue} size="sm" />
