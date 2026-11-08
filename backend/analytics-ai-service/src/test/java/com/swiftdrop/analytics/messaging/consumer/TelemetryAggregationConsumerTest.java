@@ -1,78 +1,137 @@
 package com.swiftdrop.analytics.messaging.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.swiftdrop.analytics.service.SlaMetricsAggregationService;
-import com.swiftdrop.contracts.enums.PublicOrderStatus;
-import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.swiftdrop.analytics.messaging.TelemetryEvent;
+import com.swiftdrop.analytics.messaging.TelemetryEventDecoder;
+import com.swiftdrop.analytics.service.TelemetryProcessingService;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
-import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 
-import java.time.Instant;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class TelemetryAggregationConsumerTest {
-
-    @Mock
-    private SlaMetricsAggregationService metricsService;
-
-    private ObjectMapper objectMapper;
+    private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+    private TelemetryProcessingService processing;
     private TelemetryAggregationConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        consumer = new TelemetryAggregationConsumer(metricsService, objectMapper);
+        processing = mock(TelemetryProcessingService.class);
+        consumer = new TelemetryAggregationConsumer(new TelemetryEventDecoder(mapper), processing);
+    }
+
+    private ObjectNode status() {
+        ObjectNode tree = mapper.createObjectNode();
+        tree.put("eventId", UUID.randomUUID().toString());
+        tree.put("orderId", UUID.randomUUID().toString());
+        tree.put("correlationId", UUID.randomUUID().toString());
+        tree.put("timestamp", "2026-11-08T06:00:00Z");
+        tree.put("trackingNumber", "SD-TEST-001");
+        tree.put("newPublicStatus", "DELIVERED");
+        tree.put("district", "COLOMBO");
+        return tree;
+    }
+
+    private Message message(String key, String body) {
+        MessageProperties properties = new MessageProperties();
+        properties.setReceivedRoutingKey(key);
+        return new Message(body.getBytes(StandardCharsets.UTF_8), properties);
     }
 
     @Test
-    @DisplayName("processMessage routes ParcelStatusChangedEvent to metricsService")
-    void processMessage_parcelStatusChangedEvent() {
-        ParcelStatusChangedEvent event = new ParcelStatusChangedEvent(
-                UUID.randomUUID(), UUID.randomUUID(), "SWD-123", UUID.randomUUID(), UUID.randomUUID(),
-                PublicOrderStatus.IN_TRANSIT, PublicOrderStatus.DELIVERED, null,
-                SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, null, Instant.now()
-        );
+    void preservesProducerIdentityTimeAndCorrelation() {
+        ObjectNode tree = status();
+        consumer.processMessage(message("parcel.status.changed", tree.toString()));
+        var captor = org.mockito.ArgumentCaptor.forClass(TelemetryEvent.class);
+        verify(processing).process(captor.capture());
+        TelemetryEvent event = captor.getValue();
+        assertThat(event.eventId().toString()).isEqualTo(tree.get("eventId").asText());
+        assertThat(event.correlationId().toString()).isEqualTo(tree.get("correlationId").asText());
+        assertThat(event.occurredAt().toString()).isEqualTo("2026-11-08T06:00:00Z");
+        assertThat(event.payload()).isInstanceOf(ParcelStatusChangedEvent.class);
+    }
 
-        consumer.processMessage(event);
+    @ParameterizedTest
+    @ValueSource(strings = {"eventId", "orderId", "correlationId", "timestamp", "trackingNumber", "district", "newPublicStatus"})
+    void missingRequiredValueIsRejectedBeforeRecordDefaults(String field) {
+        ObjectNode tree = status();
+        tree.remove(field);
+        assertThatThrownBy(() -> consumer.processMessage(message("parcel.status.changed", tree.toString())))
+                .isInstanceOf(AmqpRejectAndDontRequeueException.class);
+        verifyNoInteractions(processing);
+    }
 
-        verify(metricsService).recordDeliveryEvent(event);
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "[]", "not-json", "null", "{} {}"})
+    void malformedSupportedMessagesAreRejected(String body) {
+        assertThatThrownBy(() -> consumer.processMessage(message("parcel.status.changed", body)))
+                .isInstanceOf(AmqpRejectAndDontRequeueException.class)
+                .hasMessage("Invalid supported analytics event: parcel.status.changed");
+        verifyNoInteractions(processing);
     }
 
     @Test
-    @DisplayName("processMessage routes CourierAssignedEvent to metricsService")
-    void processMessage_courierAssignedEvent() {
-        CourierAssignedEvent event = new CourierAssignedEvent(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                "Kamal Gunaratne", 20, Instant.now(), Instant.now()
-        );
-
-        consumer.processMessage(event);
-
-        verify(metricsService).recordCourierAssigned(event);
+    void rejectsInvalidUuidEnumAndTimestamp() {
+        for (String field : new String[]{"eventId", "timestamp", "newPublicStatus"}) {
+            ObjectNode tree = status();
+            tree.put(field, "invalid");
+            assertThatThrownBy(() -> consumer.processMessage(message("parcel.status.changed", tree.toString())))
+                    .isInstanceOf(AmqpRejectAndDontRequeueException.class);
+        }
+        verifyNoInteractions(processing);
     }
 
     @Test
-    @DisplayName("processMessage converts Map payload to ParcelStatusChangedEvent")
-    void processMessage_mapPayloadHandling() {
-        Map<String, Object> map = Map.of(
-                "trackingNumber", "SWD-999",
-                "newPublicStatus", "DELIVERED",
-                "district", "COLOMBO"
-        );
+    void acceptsSharedParcelAliasesAndInternalStatusMapping() {
+        ObjectNode tree = status();
+        tree.set("traceId", tree.remove("correlationId"));
+        tree.remove("newPublicStatus");
+        tree.put("internalSubStatus", "DELIVERED");
+        consumer.processMessage(message("parcel.status.changed", tree.toString()));
+        verify(processing).process(any(TelemetryEvent.class));
+    }
 
-        consumer.processMessage(map);
+    @Test
+    void rejectsConflictingCorrelationAliases() {
+        ObjectNode tree = status();
+        tree.put("traceId", UUID.randomUUID().toString());
+        assertThatThrownBy(() -> consumer.processMessage(message("parcel.status.changed", tree.toString())))
+                .isInstanceOf(AmqpRejectAndDontRequeueException.class);
+        verifyNoInteractions(processing);
+    }
 
-        verify(metricsService).recordDeliveryEvent(any(ParcelStatusChangedEvent.class));
+    @Test
+    void ignoresUnsupportedRoutingEvenWithMalformedOrMisleadingBody() {
+        consumer.processMessage(message("dispatch.failed", "not-json"));
+        consumer.processMessage(message("dispatch.future", status().toString()));
+        verifyNoInteractions(processing);
+    }
+
+    @Test
+    void rejectsDuplicateJsonKeys() {
+        String body = status().toString().replaceFirst("\\{", "{\"eventId\":\"another-value\",");
+        assertThatThrownBy(() -> consumer.processMessage(message("parcel.status.changed", body)))
+                .isInstanceOf(AmqpRejectAndDontRequeueException.class);
+        verifyNoInteractions(processing);
+    }
+
+    @Test
+    void forwardsDatabaseFailureForBoundedRetry() {
+        doThrow(new IllegalStateException("database unavailable")).when(processing).process(any());
+        assertThatThrownBy(() -> consumer.processMessage(message("parcel.status.changed", status().toString())))
+                .isInstanceOf(IllegalStateException.class);
     }
 }
