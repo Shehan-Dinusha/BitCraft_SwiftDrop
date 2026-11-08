@@ -140,6 +140,8 @@ docs(m10): define report semantics and integration contracts
 
 **Branch:** `feature/m10-event-reliability`
 
+**Implementation branch:** `Buddhika/feat/event-reliability`. See the [implementation explanation](part-2-event-reliability.md) and [self-verification/viva guide](part-2-self-verification.md). Shared broker changes require M9 review; producer guarantees remain recorded as handoffs rather than assumed approvals.
+
 ### Implementation steps
 
 1. Add a new Flyway migration for processed event IDs.
