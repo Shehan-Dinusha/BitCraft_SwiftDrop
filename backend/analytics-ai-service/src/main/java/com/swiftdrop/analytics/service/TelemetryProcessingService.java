@@ -3,29 +3,31 @@ package com.swiftdrop.analytics.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.analytics.domain.repository.ProcessedTelemetryEventRepository;
+import com.swiftdrop.analytics.domain.repository.AnalyticsProjectionRepository;
 import com.swiftdrop.analytics.messaging.TelemetryEvent;
-import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
-import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
-import com.swiftdrop.contracts.events.order.OrderCreatedEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TelemetryProcessingService {
     private final ProcessedTelemetryEventRepository events;
-    private final SlaMetricsAggregationService metrics;
+    private final AnalyticsProjectionService projections;
+    private final AnalyticsProjectionRepository projectionRepository;
     private final ObjectMapper objectMapper;
 
     public TelemetryProcessingService(ProcessedTelemetryEventRepository events,
-                                      SlaMetricsAggregationService metrics, ObjectMapper objectMapper) {
+                                      AnalyticsProjectionService projections, AnalyticsProjectionRepository projectionRepository,
+                                      ObjectMapper objectMapper) {
         this.events = events;
-        this.metrics = metrics;
+        this.projections = projections;
+        this.projectionRepository = projectionRepository;
         this.objectMapper = objectMapper;
     }
 
-    /** JDBC inbox insert and existing JPA updates share the same datasource transaction. */
+    /** Inbox registration and all projection effects share one datasource transaction. */
     @Transactional
     public void process(TelemetryEvent event) {
+        projectionRepository.lockWrites();
         String canonicalPayload;
         try {
             canonicalPayload = objectMapper.writeValueAsString(event.payload());
@@ -34,13 +36,6 @@ public class TelemetryProcessingService {
         }
         if (!events.register(event, canonicalPayload)) return;
 
-        switch (event.payload()) {
-            case ParcelStatusChangedEvent status -> metrics.recordDeliveryEvent(status);
-            case CourierAssignedEvent assignment -> metrics.recordCourierAssigned(assignment);
-            case OrderCreatedEvent ignored -> {
-                // Retain for Part 3; do not increment legacy parcel totals again.
-            }
-            default -> throw new IllegalArgumentException("Unsupported analytics event payload");
-        }
+        projections.reconcile(event.orderId());
     }
 }

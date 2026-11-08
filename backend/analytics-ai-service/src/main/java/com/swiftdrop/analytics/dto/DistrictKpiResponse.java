@@ -10,21 +10,21 @@ public record DistrictKpiResponse(
         @Schema(description = "Sri Lankan District", example = "COLOMBO")
         SriLankanDistrict district,
 
-        @Schema(description = "Total parcels processed in this district", example = "142")
+        @Schema(description = "Distinct orders created today with this pickup district", example = "4")
         int totalParcels,
 
-        @Schema(description = "Parcels delivered within SLA", example = "138")
-        int deliveredOnTime,
+        @Schema(description = "SLA measurement unavailable; null", types = {"integer", "null"}, deprecated = true)
+        Integer deliveredOnTime,
 
-        @Schema(description = "Parcels that breached SLA", example = "2")
-        int breachedSla,
+        @Schema(description = "SLA measurement unavailable; null", types = {"integer", "null"}, deprecated = true)
+        Integer breachedSla,
 
         @Schema(description = "Failed parcel deliveries", example = "2")
         int failedDeliveries,
 
-        @Schema(description = "On-time delivery percentage (0-100)", example = "97.18")
+        @Schema(description = "SLA measurement unavailable; null", types = {"number", "null"}, deprecated = true)
         BigDecimal onTimeRate,
 
-        @Schema(description = "Average transit duration in minutes", example = "42.50")
+        @Schema(description = "Measured transit duration unavailable; null", types = {"number", "null"}, deprecated = true)
         BigDecimal avgTransitMinutes
 ) {}
