@@ -194,6 +194,13 @@ export function PublicHeader({
     if (!isMobile) setIsExpanded(false);
   }, [isMobile]);
 
+  // Auto-expand on mobile when tracking exists
+  useEffect(() => {
+    if (isMobile && hasTracking) {
+      setIsExpanded(true);
+    }
+  }, [isMobile, hasTracking]);
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = inputValue.trim();
@@ -224,7 +231,7 @@ export function PublicHeader({
 
   return (
     <header className={cn('border-b border-border-subtle bg-card', className)}>
-      <div className="flex items-center gap-5 bg-canvas px-10 py-1.5 text-caption text-secondary">
+      <div className="flex items-center gap-5 bg-canvas px-4 py-1.5 text-caption text-secondary">
         <span className="truncate">Island-wide delivery · 25 districts · cash on pickup</span>
         <span className="ml-auto hidden gap-5 md:flex">
           <a href="#help">Help centre</a>
@@ -233,8 +240,8 @@ export function PublicHeader({
           <span>English / Sinhala / Tamil</span>
         </span>
       </div>
-      <div className="flex items-center gap-7 px-10 py-3.5">
-        <span className="flex items-center gap-2.5">
+      <div className="flex items-center gap-4 px-4 py-3.5 w-full max-w-screen-2xl mx-auto">
+        <span className="flex items-center gap-2.5 shrink-0">
           <span
             aria-hidden="true"
             className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
@@ -243,7 +250,7 @@ export function PublicHeader({
           </span>
           <span className="text-h3 text-primary">SwiftDrop</span>
         </span>
-        <nav aria-label="Primary" className="hidden gap-7 text-label text-primary md:flex">
+        <nav aria-label="Primary" className="hidden gap-7 text-label text-primary md:flex shrink-0">
           <a href="#ship">Ship</a>
           <a href="#track">Track</a>
           <a href="#pricing">Pricing</a>
@@ -288,19 +295,31 @@ export function PublicHeader({
             )}
           </form>
         )}
-        {isMobile && !hasTracking && !shouldShowSearch && (
+        {!shouldShowSearch && !hasTracking && (
           <button
             type="button"
             onClick={toggleExpanded}
             aria-label={isExpanded ? 'Close search' : 'Open search'}
             aria-expanded={isExpanded}
-            className="lg:hidden inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors"
+            className="lg:hidden inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors shrink-0"
           >
             <Search aria-hidden="true" className="size-4" />
             <span>Track parcel</span>
           </button>
         )}
-        <Button variant="ghost" density="compact" onClick={onSignIn} className="ml-auto lg:ml-0">
+        {hasTracking && onClearInput && !shouldShowSearch && (
+          <Button
+            type="button"
+            variant="outline"
+            density="comfortable"
+            leftIcon={<X className="size-3.5" />}
+            className="shrink-0"
+            onClick={handleClear}
+          >
+            Clear
+          </Button>
+        )}
+        <Button variant="ghost" density="compact" onClick={onSignIn} className="shrink-0">
           Sign in
         </Button>
       </div>
