@@ -8,6 +8,7 @@ import com.swiftdrop.order.dto.CreateOrderRequest;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
+import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.service.CustomerOrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -78,6 +80,18 @@ public class OrderController {
         return ApiResponse.success(
                 customerOrderService.getOrderById(orderId, HeaderParsing.parseUuidSafe(userIdHeader), userRoleHeader),
                 "Order retrieved successfully");
+    }
+
+    @GetMapping("/{orderId}/status-history")
+    @Operation(summary = "Get the statuses an order has been through",
+            description = "Status and time only, oldest first. Only the order's owner (or a dispatcher or admin) can read it; anyone else gets 404.")
+    public ApiResponse<List<OrderStatusHistoryEntry>> getStatusHistory(
+            @PathVariable("orderId") UUID orderId,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
+        return ApiResponse.success(
+                customerOrderService.getStatusHistory(orderId, HeaderParsing.parseUuidSafe(userIdHeader), userRoleHeader),
+                "Status history retrieved successfully");
     }
 
     @GetMapping("/tracking/{trackingNumber}")

@@ -327,6 +327,7 @@ paths:
     post:
       tags: [Order]
       summary: Request order cancellation (FR-C3)
+      description: A customer can cancel only an order that is still CREATED (no courier assigned yet). Dispatchers and admins can cancel any order that is not already in a final status.
       operationId: cancelOrder
       parameters:
         - name: orderId
@@ -358,6 +359,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCustomerOrderResponse"
+        "404":
+          description: Order not found, or not owned by the caller
+        "409":
+          description: The order is no longer CREATED (for a customer), or is already in a final status
+
+  /api/v1/orders/{orderId}/status-history:
+    get:
+      tags: [Order]
+      summary: Get the statuses an order has been through
+      description: Status and time only, oldest first. Only the order's owner (or a dispatcher or admin) can read it; anyone else gets 404.
+      operationId: getStatusHistory
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway
+      responses:
+        "200":
+          description: Status history, oldest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListOrderStatusHistoryEntry"
         "404":
           description: Order not found, or not owned by the caller
 
@@ -1054,6 +1091,32 @@ components:
           type: string
           format: date-time
 
+    OrderStatusHistoryEntry:
+      type: object
+      description: A status the order reached and when.
+      properties:
+        status:
+          $ref: "#/components/schemas/PublicOrderStatus"
+        occurredAt:
+          type: string
+          format: date-time
+          description: When the order reached this status
+          example: "2026-11-05T08:30:00Z"
+    ApiResponseListOrderStatusHistoryEntry:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderStatusHistoryEntry"
+        timestamp:
+          type: string
+          format: date-time
     ApiResponseCustomerOrderResponse:
       type: object
       properties:

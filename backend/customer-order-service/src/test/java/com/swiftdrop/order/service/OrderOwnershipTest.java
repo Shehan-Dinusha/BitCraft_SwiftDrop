@@ -11,6 +11,8 @@ import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.CallerIdentityRequiredException;
+import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
+import com.swiftdrop.order.exception.InvalidOrderStateException;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
 import com.swiftdrop.order.service.pricing.PricingClient;
@@ -18,6 +20,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -258,6 +262,57 @@ class OrderOwnershipTest {
     @Test
     @DisplayName("Dispatcher can cancel any order")
     void dispatcherCanCancel() {
+        orderExistsForUpdate();
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerB, "DISPATCHER", UUID.randomUUID());
+
+        assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("Customer B cannot read the status history of customer A's order")
+    void nonOwnerCannotReadStatusHistory() {
+        orderExists();
+
+        assertThatThrownBy(() -> customerOrderService.getStatusHistory(orderId, customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        verifyNoInteractions(orderStatusHistoryService);
+    }
+
+    @Test
+    @DisplayName("The owner and a dispatcher can read the status history")
+    void ownerAndDispatcherCanReadStatusHistory() {
+        orderExists();
+        List<OrderStatusHistoryEntry> history = List.of(
+                new OrderStatusHistoryEntry(PublicOrderStatus.CREATED, java.time.Instant.parse("2026-11-05T08:30:00Z")));
+        when(orderStatusHistoryService.listForOrder(orderId)).thenReturn(history);
+
+        assertThat(customerOrderService.getStatusHistory(orderId, customerA, "CUSTOMER")).isEqualTo(history);
+        assertThat(customerOrderService.getStatusHistory(orderId, customerB, "DISPATCHER")).isEqualTo(history);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PublicOrderStatus.class, names = {"PICKUP_ASSIGNED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY"})
+    @DisplayName("A customer cannot cancel a parcel once it has left CREATED, and nothing is saved or published")
+    void customerCannotCancelAfterCreated(PublicOrderStatus status) {
+        orderOfA.setStatus(status);
+        orderExistsForUpdate();
+
+        assertThatThrownBy(() -> customerOrderService.cancelOrder(orderId, null, customerA, "CUSTOMER", UUID.randomUUID()))
+                .isInstanceOf(InvalidOrderStateException.class)
+                .hasMessage("Only a booked parcel with no courier assigned yet can be cancelled.");
+
+        assertThat(orderOfA.getStatus()).isEqualTo(status);
+        verify(customerOrderRepository, never()).save(any());
+        verifyNoInteractions(orderEventPublisher);
+    }
+
+    @Test
+    @DisplayName("A dispatcher can still cancel a parcel that is already moving")
+    void dispatcherCanCancelAfterCreated() {
+        orderOfA.setStatus(PublicOrderStatus.IN_TRANSIT);
         orderExistsForUpdate();
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 

@@ -7,6 +7,7 @@ export type UpdateOrderRequest = components['schemas']['UpdateOrderRequest'];
 export type FeeEstimateRequest = components['schemas']['FeeEstimateRequest'];
 export type FeeEstimateResponse = components['schemas']['FeeEstimateResponse'];
 export type CustomerOrderResponse = components['schemas']['CustomerOrderResponse'];
+export type OrderStatusHistoryEntry = components['schemas']['OrderStatusHistoryEntry'];
 export type CancelOrderRequest = components['schemas']['CancelOrderRequest'];
 export type SriLankanDistrict = components['schemas']['SriLankanDistrict'];
 export type OrderSpeed = components['schemas']['OrderSpeed'];
@@ -43,6 +44,14 @@ export const orderApi = {
       `/v1/orders/${orderId}`
     );
     return data.data;
+  },
+
+  /** The statuses the order has been through, oldest first. */
+  getStatusHistory: async (orderId: string) => {
+    const { data } = await apiClient.get<{ success: boolean; data: OrderStatusHistoryEntry[] }>(
+      `/v1/orders/${orderId}/status-history`
+    );
+    return data.data ?? [];
   },
 
   getOrderByTrackingNumber: async (trackingNumber: string) => {

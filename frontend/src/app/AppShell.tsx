@@ -47,6 +47,7 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
       label: 'Send & track',
       items: [
         { id: 'book', label: 'Book a parcel', icon: 'plus', to: '/customer' },
+        { id: 'parcels', label: 'My parcels', icon: 'package', to: '/customer/orders' },
         { id: 'track', label: 'Track a parcel', icon: 'route', to: '/customer/tracking' }
       ]
     }
