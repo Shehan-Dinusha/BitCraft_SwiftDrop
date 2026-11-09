@@ -1,6 +1,8 @@
-import { Bell, ChevronDown, ChevronRight, Package, Search, Sparkles } from 'lucide-react';
+import { Bell, ChevronDown, ChevronRight, Package, Search, Sparkles, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/utils/cn';
+import { useMediaQuery } from '@/design-system/components/Shell/useMediaQuery';
 import { Button } from '@/design-system/primitives/Button';
 import {
   LiveIndicator,
@@ -146,11 +148,67 @@ export interface PublicHeaderProps {
   /** Quick-track submit. */
   onTrack?: (trackingNumber: string) => void;
   onSignIn?: () => void;
+  /** Pre-filled tracking number; shows search form with value when provided. */
+  trackingNumber?: string;
+  /** Clear handler; replaces "Track" button with "Clear" when trackingNumber is provided. */
+  onClear?: () => void;
   className?: string;
 }
 
 /** Figma TopBar (Role = Public): a utility strip plus the main marketing bar with quick track. */
-export function PublicHeader({ onTrack, onSignIn, className }: PublicHeaderProps) {
+export function PublicHeader({
+  onTrack,
+  onSignIn,
+  trackingNumber,
+  onClear,
+  className
+}: PublicHeaderProps) {
+  const isMobile = useMediaQuery('(max-width: 639px)');
+  const hasTracking = Boolean(trackingNumber?.trim());
+  const [isExpanded, setIsExpanded] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus input when expanded on mobile
+  useEffect(() => {
+    if (isMobile && isExpanded) {
+      inputRef.current?.focus();
+    }
+  }, [isExpanded, isMobile]);
+
+  // Close expanded state on route change (optional, but good UX)
+  useEffect(() => {
+    if (!isMobile) setIsExpanded(false);
+  }, [isMobile]);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const value = String(data.get('tracking') ?? '').trim();
+    if (value) onTrack?.(value);
+  };
+
+  const handleClear = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onClear?.();
+    setIsExpanded(false);
+  };
+
+  const toggleExpanded = () => {
+    setIsExpanded((prev) => !prev);
+  };
+
+  const searchFormClasses = cn(
+    'flex items-center gap-2 w-[352px] max-w-[30vw] transition-all duration-200 ease-out overflow-hidden',
+    hasTracking
+      ? 'h-10 opacity-100 max-h-20 lg:flex'
+      : isMobile
+        ? isExpanded
+          ? 'h-10 opacity-100 max-h-20'
+          : 'h-0 opacity-0 max-h-0'
+        : 'hidden lg:flex'
+  );
+
   return (
     <header className={cn('border-b border-border-subtle bg-card', className)}>
       <div className="flex items-center gap-5 bg-canvas px-10 py-1.5 text-caption text-secondary">
@@ -178,27 +236,50 @@ export function PublicHeader({ onTrack, onSignIn, className }: PublicHeaderProps
           <a href="#pricing">Pricing</a>
           <a href="#business">Business</a>
         </nav>
-        <form
-          className="ml-auto hidden h-10 w-[352px] overflow-hidden rounded-lg border border-border-subtle lg:flex"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            onTrack?.(String(data.get('tracking') ?? '').trim());
-          }}
-        >
+        <form className={searchFormClasses} onSubmit={handleSubmit}>
+          <label htmlFor="public-tracking-input" className="sr-only">
+            Enter tracking number
+          </label>
           <input
+            ref={inputRef}
+            id="public-tracking-input"
             name="tracking"
             aria-label="Enter tracking number"
             placeholder="Enter tracking number"
-            className="min-w-0 flex-1 bg-transparent px-3 text-body text-primary outline-none placeholder:text-muted"
+            defaultValue={hasTracking ? trackingNumber : undefined}
+            className="min-w-0 flex-1 bg-transparent px-3 text-body text-primary outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
+            disabled={hasTracking}
           />
-          <button
-            type="submit"
-            className="w-[72px] bg-brand-primary text-label text-brand-on hover:bg-brand-hover"
-          >
-            Track
-          </button>
+          {hasTracking ? (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="w-[72px] shrink-0 bg-brand-primary text-label text-brand-on hover:bg-brand-hover flex items-center justify-center gap-1.5"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+              <span className="text-label">Clear</span>
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="w-[72px] shrink-0 bg-brand-primary text-label text-brand-on hover:bg-brand-hover"
+            >
+              Track
+            </button>
+          )}
         </form>
+        {isMobile && !hasTracking && (
+          <button
+            type="button"
+            onClick={toggleExpanded}
+            aria-label={isExpanded ? 'Close search' : 'Open search'}
+            aria-expanded={isExpanded}
+            className="lg:hidden inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors"
+          >
+            <Search aria-hidden="true" className="size-4" />
+            <span>Track parcel</span>
+          </button>
+        )}
         <Button variant="ghost" density="compact" onClick={onSignIn} className="ml-auto lg:ml-0">
           Sign in
         </Button>
