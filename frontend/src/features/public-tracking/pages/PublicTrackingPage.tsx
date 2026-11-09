@@ -8,6 +8,7 @@ import {
   PublicHeader,
   Skeleton
 } from '@/design-system';
+import { TrackingSearchForm } from '../components/TrackingSearchForm';
 import { TrackingDetails } from '../components/TrackingDetails';
 import { useTrackingStream } from '@/hooks/useTrackingStream';
 import { isTerminalPublicStatus, TrackingApiError } from '@/services/api/trackingHubApi';
@@ -35,6 +36,8 @@ export function PublicTrackingPage() {
   const rateLimited = error instanceof TrackingApiError && error.status === 429;
   const fatalError = error !== null && view === null;
 
+  const hasTracking = Boolean(trackingNumber?.trim());
+
   return (
     <VelocityDensityProvider density="comfortable">
       <div className="min-h-screen bg-canvas text-primary">
@@ -42,7 +45,8 @@ export function PublicTrackingPage() {
           onTrack={openTracking}
           onSignIn={() => navigate('/login')}
           trackingNumber={trackingNumber}
-          onClear={clearTracking}
+          onClearInput={clearTracking}
+          showSearchInHeader={hasTracking}
         />
 
         <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6">
@@ -52,7 +56,11 @@ export function PublicTrackingPage() {
             className="rounded-xl border border-border-subtle px-5 py-5 sm:px-8"
           />
 
-          {!trackingNumber ? (
+          {!hasTracking && (
+            <TrackingSearchForm defaultValue="" onTrack={openTracking} onClear={clearTracking} />
+          )}
+
+          {!hasTracking ? (
             <EmptyState
               type="no-results"
               title="Enter a tracking number"
