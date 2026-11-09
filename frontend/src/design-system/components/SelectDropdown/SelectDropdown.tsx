@@ -113,7 +113,8 @@ export function SelectDropdown({
   };
 
   useEffect(() => {
-    if (isMenuOpen && searchable) searchRef.current?.focus();
+    // preventScroll: focusing the filter field must not scroll the page out from under the list.
+    if (isMenuOpen && searchable) searchRef.current?.focus({ preventScroll: true });
   }, [isMenuOpen, searchable]);
 
   useEffect(() => {
