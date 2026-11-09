@@ -74,7 +74,8 @@ class TelemetryConsumptionIT {
     }
 
     private void startApplication() {
-        context = new SpringApplicationBuilder(AnalyticsAiApplication.class).web(WebApplicationType.NONE).run(
+        context = new SpringApplicationBuilder(AnalyticsAiApplication.class).web(WebApplicationType.SERVLET).run(
+                "--server.port=0",
                 "--spring.datasource.url=" + postgres.getJdbcUrl(),
                 "--spring.datasource.username=" + postgres.getUsername(),
                 "--spring.datasource.password=" + postgres.getPassword(),
@@ -382,6 +383,65 @@ class TelemetryConsumptionIT {
 
     private com.swiftdrop.analytics.service.AnalyticsReportService reports() {
         return context.getBean(com.swiftdrop.analytics.service.AnalyticsReportService.class);
+    }
+
+    private java.net.http.HttpResponse<String> reportHttp(String path, String role) throws Exception {
+        var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://localhost:"
+                + context.getEnvironment().getProperty("local.server.port") + "/api/v1/analytics" + path));
+        if (role != null) request.header("X-User-Id", "00000000-0000-0000-0000-000000000001").header("X-User-Role", role);
+        return java.net.http.HttpClient.newHttpClient().send(request.build(), java.net.http.HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test
+    void reportingHttpMatchesSqlWithInclusiveBoundariesAndZeroFilledDates() throws Exception {
+        UUID c1 = UUID.randomUUID(), c2 = UUID.randomUUID();
+        for (int i = 0; i < 4; i++) {
+            UUID order = UUID.randomUUID();
+            apply(CREATED, created(order, "2026-11-07T18:30:00Z")); // first instant of included day
+            apply(ASSIGNED, assigned(order, i < 2 ? c1 : c2, "2026-11-08T06:10:00Z"));
+            if (i < 3) apply(STATUS, changed(order, i < 2 ? "DELIVERED" : "FAILED", "2026-11-08T18:29:59Z"));
+        }
+        apply(CREATED, created(UUID.randomUUID(), "2026-11-07T18:29:59Z")); // excluded prior day
+        apply(CREATED, created(UUID.randomUUID(), "2026-11-08T18:30:00Z")); // next day
+        var daily = reportHttp("/deliveries/daily?from=2026-11-08&to=2026-11-10", "DISPATCHER");
+        assertThat(daily.statusCode()).isEqualTo(200);
+        var days = mapper.readTree(daily.body()).path("data").path("days");
+        assertThat(days.size()).isEqualTo(3);
+        assertThat(days.get(0).path("created").asLong()).isEqualTo(4);
+        assertThat(days.get(0).path("delivered").asLong()).isEqualTo(2);
+        assertThat(days.get(0).path("failed").asLong()).isEqualTo(1);
+        assertThat(days.get(1).path("created").asLong()).isEqualTo(1);
+        assertThat(days.get(2).path("created").asLong()).isZero();
+        assertThat(jdbc.queryForObject("SELECT created FROM daily_delivery_stats WHERE report_date=?", Long.class, DAY)).isEqualTo(4);
+        var rates = mapper.readTree(reportHttp("/success-rate?from=2026-11-08&to=2026-11-08", "SYSTEM_ADMIN").body()).path("data");
+        assertThat(rates.path("completed").asLong()).isEqualTo(3);
+        assertThat(rates.path("successRatePercent").decimalValue()).isEqualByComparingTo("66.67");
+        var workload = mapper.readTree(reportHttp("/couriers/workload", "DISPATCHER").body()).path("data");
+        assertThat(workload.path("totalActiveOrders").asLong()).isEqualTo(1);
+        assertThat(workload.path("couriers").size()).isEqualTo(2);
+        assertThat(reportHttp("/couriers/workload", "CUSTOMER").statusCode()).isEqualTo(403);
+        assertThat(reportHttp("/couriers/workload", null).statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void emptyReportingHttpAndLiveOpenApiMatchPublicContract() throws Exception {
+        var response = reportHttp("/success-rate?from=2026-11-08&to=2026-11-08", "DISPATCHER");
+        assertThat(response.statusCode()).isEqualTo(200);
+        var data = mapper.readTree(response.body()).path("data");
+        assertThat(data.has("successRatePercent")).isTrue();
+        assertThat(data.path("successRatePercent").isNull()).isTrue();
+        assertThat(data.path("failureRatePercent").isNull()).isTrue();
+        var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://localhost:"
+                + context.getEnvironment().getProperty("local.server.port") + "/v3/api-docs")).build();
+        var docs = java.net.http.HttpClient.newHttpClient().send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+        assertThat(docs.statusCode()).isEqualTo(200);
+        var schema = mapper.readTree(docs.body());
+        assertThat(schema.path("paths").path("/api/v1/analytics/couriers/workload").path("get").path("security").toString())
+                .contains("bearerAuth");
+        assertThat(schema.path("paths").path("/api/v1/analytics/kpis").path("get").path("security").toString())
+                .contains("bearerAuth");
+        assertThat(reportHttp("/success-rate?from=2026-11-09&to=2026-11-08", "DISPATCHER").statusCode()).isEqualTo(400);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM daily_delivery_stats", Long.class)).isZero();
     }
 
     @Test

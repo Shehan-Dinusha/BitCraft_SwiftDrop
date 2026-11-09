@@ -3,6 +3,7 @@ package com.swiftdrop.analytics.controller;
 import com.swiftdrop.analytics.dto.CourierPerformanceResponse;
 import com.swiftdrop.analytics.dto.OperationalKpiSummaryResponse;
 import com.swiftdrop.analytics.service.SlaMetricsAggregationService;
+import com.swiftdrop.analytics.security.OperationalReportAccess;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,12 +32,14 @@ public class OperationalKpiController {
     }
 
     @GetMapping("/kpis")
+    @OperationalReportAccess
     @Operation(summary = "Retrieve system-wide and district-level operational KPIs")
     public ApiResponse<OperationalKpiSummaryResponse> getKpis() {
         return ApiResponse.success(metricsService.getSystemKpiSummary(), "Operational KPIs retrieved successfully");
     }
 
     @GetMapping("/couriers")
+    @OperationalReportAccess
     @Operation(summary = "List courier performance analytics across districts")
     public ApiResponse<List<CourierPerformanceResponse>> getCouriers(
             @RequestParam(required = false) SriLankanDistrict district) {
@@ -44,6 +47,7 @@ public class OperationalKpiController {
     }
 
     @GetMapping("/couriers/{courierId}")
+    @OperationalReportAccess
     @Operation(summary = "Get performance analytics for a specific courier")
     public ResponseEntity<ApiResponse<CourierPerformanceResponse>> getCourier(
             @PathVariable UUID courierId) {
@@ -53,6 +57,7 @@ public class OperationalKpiController {
     }
 
     @PostMapping("/snapshots/aggregate")
+    @OperationalReportAccess
     @Operation(summary = "Read current persisted analytics projections")
     public ApiResponse<OperationalKpiSummaryResponse> aggregateSnapshots() {
         return ApiResponse.success(metricsService.getSystemKpiSummary(), "Current analytics projections retrieved");

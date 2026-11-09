@@ -6,6 +6,65 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1/analytics/deliveries/daily:
+    get:
+      tags: [AnalyticsReports]
+      operationId: dailyDeliveryReport
+      summary: Daily event-time counts for DISPATCHER or SYSTEM_ADMIN
+      description: Inclusive Asia/Colombo dates, maximum 90 days. Every requested date is returned, with zero counts for missing days. Creations and outcomes use their respective occurrence dates.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        "200":
+          description: Zero-filled daily counts, sorted by date
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponseDailyDeliveryReport' }
+        "400": { $ref: '#/components/responses/InvalidReportRequest' }
+        "401": { $ref: '#/components/responses/Unauthenticated' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "500": { $ref: '#/components/responses/ReportFailure' }
+
+  /api/v1/analytics/success-rate:
+    get:
+      tags: [AnalyticsReports]
+      operationId: deliverySuccessRate
+      summary: Weighted delivery outcome rates for DISPATCHER or SYSTEM_ADMIN
+      description: Inclusive Asia/Colombo dates, maximum 90 days. Percentages use summed outcomes and HALF_UP rounding to two decimals. Cancellations and returns are excluded. Both rates are explicitly null when there are no completed outcomes.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        "200":
+          description: Delivered and failed counts and rates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponseDeliverySuccessRate' }
+        "400": { $ref: '#/components/responses/InvalidReportRequest' }
+        "401": { $ref: '#/components/responses/Unauthenticated' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "500": { $ref: '#/components/responses/ReportFailure' }
+
+  /api/v1/analytics/couriers/workload:
+    get:
+      tags: [AnalyticsReports]
+      operationId: courierWorkloadReport
+      summary: Current projected courier workload for DISPATCHER or SYSTEM_ADMIN
+      description: Known couriers sorted by ID, including zero-workload couriers. No date filters. Empty storage returns zero total and an empty list. Read time does not guarantee broker completeness or online availability.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Current active orders across known couriers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponseCourierWorkloadReport' }
+        "401": { $ref: '#/components/responses/Unauthenticated' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "500": { $ref: '#/components/responses/ReportFailure' }
+
   /api/v1/analytics/health:
     get:
       tags: [OperationalKpi]
@@ -22,6 +81,7 @@ paths:
     get:
       tags: [OperationalKpi]
       summary: Retrieve system-wide and district-level operational KPIs
+      security: [{ bearerAuth: [] }]
       responses:
         "200":
           description: Operational KPI summary
@@ -34,6 +94,7 @@ paths:
     get:
       tags: [OperationalKpi]
       summary: List courier performance analytics across districts
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: district
           in: query
@@ -52,6 +113,7 @@ paths:
     get:
       tags: [OperationalKpi]
       summary: Get performance analytics for a specific courier
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: courierId
           in: path
@@ -73,6 +135,7 @@ paths:
     post:
       tags: [OperationalKpi]
       summary: Read current persisted analytics projections
+      security: [{ bearerAuth: [] }]
       responses:
         "200":
           description: Current event-projected operational KPIs
@@ -97,6 +160,7 @@ paths:
     post:
       tags: [AiDeliveryAssistant]
       summary: Calculate predictive delay risk score and operational mitigation
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
@@ -115,6 +179,7 @@ paths:
     post:
       tags: [AiDeliveryAssistant]
       summary: Generate dynamic transit reroute suggestions for delayed parcels
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
@@ -151,6 +216,7 @@ paths:
     get:
       tags: [AiDeliveryAssistant]
       summary: Retrieve recent AI tool execution audit logs for compliance
+      security: [{ bearerAuth: [] }]
       responses:
         "200":
           description: List of AI audit logs
@@ -160,7 +226,124 @@ paths:
                 $ref: '#/components/schemas/ApiResponseAiAuditList'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Gateway validates JWT and replaces caller identity headers. Downstream ports must remain internal.
+  parameters:
+    FromDate:
+      name: from
+      in: query
+      required: true
+      description: First included Asia/Colombo date; range must contain 1 to 90 inclusive days.
+      schema: { type: string, format: date }
+    ToDate:
+      name: to
+      in: query
+      required: true
+      description: Last included Asia/Colombo date; must be on or after from.
+      schema: { type: string, format: date }
+  responses:
+    InvalidReportRequest:
+      description: Missing or invalid ISO date, reversed range, or more than 90 inclusive days
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+    Unauthenticated:
+      description: Missing or invalid gateway authentication
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+    Forbidden:
+      description: Verified role is neither DISPATCHER nor SYSTEM_ADMIN
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+    ReportFailure:
+      description: Unexpected service failure; internal details are not exposed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
   schemas:
+    ApiErrorResponse:
+      type: object
+      required: [status, error, message, path, timestamp]
+      properties:
+        status: { type: integer }
+        error: { type: string }
+        message: { type: string }
+        path: { type: string }
+        correlationId: { type: string }
+        timestamp: { type: string, format: date-time }
+    DailyDeliveryReportResponse:
+      type: object
+      required: [from, to, timezone, days]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        timezone: { type: string, const: Asia/Colombo }
+        days:
+          type: array
+          items:
+            type: object
+            required: [date, created, delivered, failed]
+            properties:
+              date: { type: string, format: date }
+              created: { type: integer, format: int64, minimum: 0 }
+              delivered: { type: integer, format: int64, minimum: 0 }
+              failed: { type: integer, format: int64, minimum: 0 }
+    DeliverySuccessRateResponse:
+      type: object
+      required: [from, to, timezone, delivered, failed, completed, successRatePercent, failureRatePercent]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        timezone: { type: string, const: Asia/Colombo }
+        delivered: { type: integer, format: int64, minimum: 0 }
+        failed: { type: integer, format: int64, minimum: 0 }
+        completed: { type: integer, format: int64, minimum: 0 }
+        successRatePercent: { type: [number, 'null'], minimum: 0, maximum: 100 }
+        failureRatePercent: { type: [number, 'null'], minimum: 0, maximum: 100 }
+    CourierWorkloadReportResponse:
+      type: object
+      required: [asOf, totalActiveOrders, couriers]
+      properties:
+        asOf: { type: string, format: date-time }
+        totalActiveOrders: { type: integer, format: int64, minimum: 0 }
+        couriers:
+          type: array
+          items:
+            type: object
+            required: [courierId, activeOrders]
+            properties:
+              courierId: { type: string, format: uuid }
+              activeOrders: { type: integer, format: int64, minimum: 0 }
+    ApiResponseDailyDeliveryReport:
+      type: object
+      required: [success, message, data, timestamp]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/DailyDeliveryReportResponse' }
+        timestamp: { type: string, format: date-time }
+    ApiResponseDeliverySuccessRate:
+      type: object
+      required: [success, message, data, timestamp]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/DeliverySuccessRateResponse' }
+        timestamp: { type: string, format: date-time }
+    ApiResponseCourierWorkloadReport:
+      type: object
+      required: [success, message, data, timestamp]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/CourierWorkloadReportResponse' }
+        timestamp: { type: string, format: date-time }
     ApiResponseString:
       type: object
       properties:

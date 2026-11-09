@@ -22,7 +22,7 @@ public class AnalyticsReportService {
     private final JdbcTemplate jdbc;
     public AnalyticsReportService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    // Internal read models; public report endpoints are introduced in Part 4.
+    // Internal database read models mapped to public record DTOs by the report controller.
     public record DailyStats(LocalDate date, long created, long delivered, long failed) {}
     public record OutcomeTotals(long delivered, long failed) {
         public long completed() { return delivered + failed; }
