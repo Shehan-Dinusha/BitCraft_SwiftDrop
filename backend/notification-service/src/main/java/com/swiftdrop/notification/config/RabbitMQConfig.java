@@ -31,14 +31,19 @@ public class RabbitMQConfig {
     @Bean
     public Queue notificationEventsQueue() {
         return QueueBuilder.durable(NOTIFICATION_EVENTS_QUEUE)
+                .quorum()
                 .deadLetterExchange(DLX_EXCHANGE)
                 .deadLetterRoutingKey(DLQ_ROUTING_KEY)
+                .ttl(86_400_000)
                 .build();
     }
 
     @Bean
     public Queue dlqNotificationEventsQueue() {
-        return QueueBuilder.durable(DLQ_NOTIFICATION_EVENTS_QUEUE).build();
+        return QueueBuilder.durable(DLQ_NOTIFICATION_EVENTS_QUEUE)
+                .quorum()
+                .ttl(604_800_000)
+                .build();
     }
 
     @Bean
