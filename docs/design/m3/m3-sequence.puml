@@ -1,0 +1,96 @@
+@startuml m3-sequence
+title Member 3: Customer Books a Parcel (customer-order-service, port 8082)
+
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 360
+skinparam ParticipantPadding 14
+autonumber
+
+actor Customer
+participant "Booking page\n(React)" as UI
+participant "API Gateway\n(8080)" as GW
+participant "Order Service\n(8082)" as OS
+participant "Pricing Service\n(8083)" as PS
+database "Order Database\n(swiftdrop_order)" as DB
+queue "RabbitMQ\n(swiftdrop.events.exchange)" as MQ
+participant "Dispatch\nService" as DS
+participant "Webhook\nService" as WS
+participant "Notification\nService" as NS
+
+== Part 1: Fill in the form and see the fee ==
+
+Customer -> UI : Fill in pickup, drop-off and parcel details\n(names, backup phones, address parts, size, weight, speed, notes)
+UI -> UI : Check each step (required fields, phone format, postal code)
+alt a step has mistakes
+  UI --> Customer : Show the errors next to the fields
+end
+UI -> GW : POST /api/v1/orders/estimate (login token)
+GW -> GW : Check the token and the customer role
+alt not logged in / wrong role
+  GW --> UI : 401 / 403
+end
+GW -> OS : Pass the request on (X-User-Id, X-User-Role, X-Correlation-Id)
+OS -> OS : Check and clean the input again
+alt input is invalid
+  OS --> UI : 400 "Please check the highlighted fields"\n(no personal details in the message)
+end
+OS -> PS : POST /api/v1/pricing/quote\n(districts, weight, size, speed)
+alt pricing works
+  PS --> OS : Fee, breakdown and rule version (LKR)
+  OS --> UI : Estimated fee and breakdown
+  UI --> Customer : Show the fee before confirming
+else pricing is down or too slow
+  OS --> UI : 503 "Pricing service is temporarily unavailable"
+  UI --> Customer : Show the message, Confirm stays off
+end
+
+== Part 2: Confirm the booking ==
+
+Customer -> UI : Tick the prohibited-items declaration, click "Confirm and book"
+UI -> GW : POST /api/v1/orders
+GW -> OS : Pass the request on (customer id from the token)
+OS -> OS : Check and clean the input
+OS -> PS : Get the fee again (the price from the browser is never trusted)
+PS --> OS : Final fee
+OS -> OS : Make a tracking number (SD-XXXX-XXXX, not in sequence)
+OS -> DB : Save the parcel in customer_orders (status CREATED)\nand add the first status history row
+DB --> OS : Saved
+OS ->> MQ : order.created\n(tracking number, districts, speed, fee; no addresses or phones)
+OS ->> MQ : parcel.status.changed (CREATED)
+OS --> UI : 201 Created (tracking number, fee)
+UI --> Customer : Show "Parcel booked", the tracking number,\nlabel and receipt download, Track parcel
+
+== Part 3: Other services react on their own ==
+
+par order.created
+  MQ ->> DS : dispatch.order-created.queue
+  DS -> DS : Add to the list of parcels waiting for a courier
+else order.created
+  MQ ->> WS : webhook.events.queue
+  WS -> WS : Send it to the webhook endpoints that subscribe to it
+else parcel.status.changed
+  MQ ->> NS : notification.events.queue
+  NS -> NS : Send the customer a "parcel booked" SMS
+end
+note over MQ, NS
+  The Real-Time Tracking Hub in the gateway also listens to
+  parcel.status.changed, so the public tracking page starts at CREATED.
+end note
+
+== Part 4: Download the label and receipt ==
+
+Customer -> UI : Click "Download label and receipt"
+UI -> GW : GET /api/v1/orders/{id}/shipping-label (login token)
+GW -> OS : Pass the request on
+OS -> DB : Load the parcel
+DB --> OS : Parcel
+alt the parcel belongs to this customer
+  OS -> OS : Make the 2-page PDF in memory\n(shipping label, then booking receipt; no file saved)
+  OS --> UI : PDF file (receipt-<tracking number>.pdf)
+  UI --> Customer : Label and receipt download
+else the parcel belongs to someone else
+  OS --> UI : 404 Not found (does not reveal the parcel exists)
+end
+
+@enduml

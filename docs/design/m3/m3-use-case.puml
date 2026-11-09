@@ -1,0 +1,60 @@
+@startuml m3-use-case
+!pragma layout smetana
+title Member 3: Customer Booking & Parcels (Use Case Diagram)
+
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+actor Customer
+actor "Pricing Service" as PS <<system>>
+actor "Dispatch Service" as DS <<system>>
+actor "Notification Service" as NS <<system>>
+
+note as N1
+  <b>Notes</b>
+  * The customer must be logged in first
+    (login belongs to Member 2).
+  * On confirm, order-service saves the parcel and
+    announces "order created" and "parcel status changed",
+    so Dispatch and Notification react on their own.
+  * A customer can cancel only a parcel that is still
+    Booked (CREATED), before a courier is assigned.
+end note
+
+rectangle "SwiftDrop: Booking & Parcels (customer-order-service)" {
+  usecase "Book a Parcel" as UC1
+  usecase "Enter Pickup Details\n(sender, backup phone, address)" as UC1a
+  usecase "Enter Drop-off Details\n(recipient, second phone, address,\ndelivery instructions)" as UC1b
+  usecase "Enter Parcel Details\n(size, weight, speed)" as UC1c
+  usecase "See Delivery Fee\nBefore Confirming" as UC1d
+  usecase "Confirm Booking\n(get tracking number)" as UC1e
+
+  usecase "View My Parcels\n(search and filter by status)" as UC2
+  usecase "View Parcel Details" as UC3
+  usecase "View Status History" as UC4
+  usecase "Download Label and Receipt" as UC5
+  usecase "Cancel Parcel\n(only while Booked)" as UC6
+  usecase "Accept or Decline\na Changed Fee" as UC7
+}
+
+Customer -- UC1
+Customer -- UC2
+
+UC1 ..> UC1a : <<include>>
+UC1 ..> UC1b : <<include>>
+UC1 ..> UC1c : <<include>>
+UC1 ..> UC1d : <<include>>
+UC1 ..> UC1e : <<include>>
+
+UC3 .> UC2 : <<extend>>
+UC4 .> UC3 : <<extend>>
+UC5 .> UC3 : <<extend>>
+UC6 .> UC3 : <<extend>>
+UC7 .> UC3 : <<extend>>
+
+UC1d -- PS
+UC1e -- DS
+UC1e -- NS
+
+N1 -[hidden]- Customer
+@enduml
