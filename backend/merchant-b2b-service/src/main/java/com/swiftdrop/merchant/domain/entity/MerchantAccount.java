@@ -39,9 +39,25 @@ public class MerchantAccount {
     @Column(name = "operating_district", nullable = false, length = 50)
     private SriLankanDistrict operatingDistrict;
 
-    @Column(name = "status", nullable = false, length = 64)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
     @Builder.Default
-    private String status = "ACTIVE";
+    private MerchantStatus status = MerchantStatus.PENDING_APPROVAL;
+
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
+
+    @Column(name = "business_reg_no", length = 64)
+    private String businessRegNo;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -62,7 +78,7 @@ public class MerchantAccount {
             this.updatedAt = now;
         }
         if (this.status == null) {
-            this.status = "ACTIVE";
+            this.status = MerchantStatus.PENDING_APPROVAL;
         }
         if (this.operatingDistrict == null) {
             this.operatingDistrict = SriLankanDistrict.COLOMBO;
