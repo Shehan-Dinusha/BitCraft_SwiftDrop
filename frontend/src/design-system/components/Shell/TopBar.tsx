@@ -240,88 +240,172 @@ export function PublicHeader({
           <span>English / Sinhala / Tamil</span>
         </span>
       </div>
-      <div className="flex items-center gap-4 px-4 py-3.5 w-full max-w-screen-2xl mx-auto">
-        <span className="flex items-center gap-2.5 shrink-0">
-          <span
-            aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
-          >
-            <Package className="size-[18px]" />
-          </span>
-          <span className="text-h3 text-primary">SwiftDrop</span>
-        </span>
-        <nav aria-label="Primary" className="hidden gap-7 text-label text-primary md:flex shrink-0">
-          <a href="#ship">Ship</a>
-          <a href="#track">Track</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#business">Business</a>
-        </nav>
-        {shouldShowSearch && (
-          <form className={searchFormClasses} onSubmit={handleSubmit}>
-            <label htmlFor="public-tracking-input" className="sr-only">
-              Enter tracking number
-            </label>
-            <input
-              ref={inputRef}
-              id="public-tracking-input"
-              name="tracking"
-              aria-label="Enter tracking number"
-              placeholder="Enter tracking number"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent px-3 text-body text-primary outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
-              disabled={hasTracking}
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              density="comfortable"
-              className="shrink-0"
-              disabled={hasTracking}
+      <div className="flex items-center justify-between gap-4 px-4 py-3.5 w-full max-w-screen-2xl mx-auto">
+        <div className="flex items-center gap-4 shrink-0">
+          <span className="flex items-center gap-2.5 shrink-0">
+            <span
+              aria-hidden="true"
+              className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
             >
-              Track
-            </Button>
-            {hasTracking && onClearInput && (
+              <Package className="size-[18px]" />
+            </span>
+            <span className="text-h3 text-primary">SwiftDrop</span>
+          </span>
+          <nav aria-label="Primary" className="hidden gap-7 text-label text-primary md:flex shrink-0">
+            <a href="#ship">Ship</a>
+            <a href="#track">Track</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#business">Business</a>
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Desktop: full search form when shouldShowSearch */}
+          {shouldShowSearch && (
+            <form className={searchFormClasses} onSubmit={handleSubmit}>
+              <label htmlFor="public-tracking-input" className="sr-only">
+                Enter tracking number
+              </label>
+              <input
+                ref={inputRef}
+                id="public-tracking-input"
+                name="tracking"
+                aria-label="Enter tracking number"
+                placeholder="Enter tracking number"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="min-w-0 w-[352px] max-w-[30vw] bg-transparent px-3 text-body text-primary outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
+                disabled={hasTracking}
+              />
               <Button
-                type="button"
-                variant="outline"
+                type="submit"
+                variant="primary"
                 density="comfortable"
-                leftIcon={<X className="size-3.5" />}
                 className="shrink-0"
-                onClick={handleClear}
+                disabled={hasTracking}
               >
-                Clear
+                Track
               </Button>
-            )}
-          </form>
-        )}
-        {!shouldShowSearch && !hasTracking && (
-          <button
-            type="button"
-            onClick={toggleExpanded}
-            aria-label={isExpanded ? 'Close search' : 'Open search'}
-            aria-expanded={isExpanded}
-            className="lg:hidden inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors shrink-0"
-          >
-            <Search aria-hidden="true" className="size-4" />
-            <span>Track parcel</span>
-          </button>
-        )}
-        {hasTracking && onClearInput && !shouldShowSearch && (
-          <Button
-            type="button"
-            variant="outline"
-            density="comfortable"
-            leftIcon={<X className="size-3.5" />}
-            className="shrink-0"
-            onClick={handleClear}
-          >
-            Clear
+              {hasTracking && onClearInput && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  density="comfortable"
+                  leftIcon={<X className="size-3.5" />}
+                  className="shrink-0"
+                  onClick={handleClear}
+                >
+                  Clear
+                </Button>
+              )}
+            </form>
+          )}
+
+          {/* Mobile: icon/badge toggle */}
+          {isMobile && (
+            <>
+              {/* No tracking: search icon button */}
+              {!hasTracking && !shouldShowSearch && (
+                <button
+                  type="button"
+                  onClick={toggleExpanded}
+                  aria-label={isExpanded ? 'Close search' : 'Open search'}
+                  aria-expanded={isExpanded}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors shrink-0"
+                >
+                  <Search aria-hidden="true" className="size-4" />
+                  <span className="hidden sm:inline">Track parcel</span>
+                </button>
+              )}
+
+              {/* Has tracking: badge + clear */}
+              {hasTracking && !shouldShowSearch && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={toggleExpanded}
+                    aria-label={isExpanded ? 'Close tracking' : 'Open tracking'}
+                    aria-expanded={isExpanded}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors shrink-0"
+                  >
+                    <span className="font-mono tabular-nums text-body">{inputValue}</span>
+                    <Search aria-hidden="true" className="size-4 text-muted" />
+                  </button>
+                  {onClearInput && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      density="comfortable"
+                      leftIcon={<X className="size-3.5" />}
+                      className="shrink-0"
+                      onClick={handleClear}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Expanded inline form on mobile */}
+              {isExpanded && (
+                <form className="fixed inset-x-0 bottom-0 z-50 flex items-center gap-2 p-4 bg-card border-t border-border-subtle shadow-lg animate-slide-up" onSubmit={handleSubmit}>
+                  <label htmlFor="mobile-tracking-input" className="sr-only">Enter tracking number</label>
+                  <input
+                    ref={inputRef}
+                    id="mobile-tracking-input"
+                    name="tracking"
+                    aria-label="Enter tracking number"
+                    placeholder="Enter tracking number"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="min-w-0 flex-1 bg-transparent px-3 text-body text-primary outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
+                    disabled={hasTracking}
+                    autoFocus
+                  />
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    density="comfortable"
+                    className="shrink-0"
+                    disabled={hasTracking}
+                  >
+                    Track
+                  </Button>
+                  {hasTracking && onClearInput && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      density="comfortable"
+                      leftIcon={<X className="size-3.5" />}
+                      className="shrink-0"
+                      onClick={handleClear}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </form>
+              )}
+            </>
+          )}
+
+          {/* Desktop clear button when tracking exists but form not shown */}
+          {!isMobile && hasTracking && !shouldShowSearch && onClearInput && (
+            <Button
+              type="button"
+              variant="outline"
+              density="comfortable"
+              leftIcon={<X className="size-3.5" />}
+              className="shrink-0"
+              onClick={handleClear}
+            >
+              Clear
+            </Button>
+          )}
+
+          <Button variant="ghost" density="compact" onClick={onSignIn} className="shrink-0">
+            Sign in
           </Button>
-        )}
-        <Button variant="ghost" density="compact" onClick={onSignIn} className="shrink-0">
-          Sign in
-        </Button>
+        </div>
       </div>
     </header>
   );
