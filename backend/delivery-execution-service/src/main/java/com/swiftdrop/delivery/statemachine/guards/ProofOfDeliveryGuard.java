@@ -14,6 +14,9 @@ public class ProofOfDeliveryGuard {
     }
 
     public boolean isSatisfied(UUID deliveryId) {
+        if (deliveryId == null) {
+            return false;
+        }
         return storageService.isVerified(deliveryId);
     }
 }
