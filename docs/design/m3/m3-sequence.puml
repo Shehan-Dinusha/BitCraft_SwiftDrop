@@ -58,7 +58,7 @@ OS -> DB : Save the parcel in customer_orders (status CREATED)\nand add the firs
 DB --> OS : Saved
 OS ->> MQ : order.created\n(tracking number, districts, speed, fee; no addresses or phones)
 OS ->> MQ : parcel.status.changed (CREATED)
-OS --> UI : 201 Created (tracking number, fee)
+OS --> UI : 200 OK (tracking number, fee)
 UI --> Customer : Show "Parcel booked", the tracking number,\nlabel and receipt download, Track parcel
 
 == Part 3: Other services react on their own ==
