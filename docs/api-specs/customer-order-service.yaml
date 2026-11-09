@@ -1244,7 +1244,7 @@ components:
 
     InternalTrackingView:
       type: object
-      description: Public-safe tracking view. No street address, name, phone, email, customer or merchant id, or fee.
+      description: Public-safe tracking view. Masked contact only; no raw name, phone, street address, email, customer or merchant id, or fee.
       properties:
         trackingNumber:
           type: string
@@ -1266,6 +1266,22 @@ components:
           example: Kandy
         deliveryDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
+        senderNameMasked:
+          type: string
+          description: Masked sender name (initials only)
+          example: N. P.
+        senderPhoneMasked:
+          type: string
+          description: Masked sender phone
+          example: 07X***4567
+        receiverNameMasked:
+          type: string
+          description: Masked receiver name (initials only)
+          example: K. S.
+        receiverPhoneMasked:
+          type: string
+          description: Masked receiver phone
+          example: 07X***1234
 
     InternalTrackingHistoryEntry:
       type: object

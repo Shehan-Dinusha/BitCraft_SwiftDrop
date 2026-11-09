@@ -35,6 +35,10 @@ public class InternalTrackingService {
                 order.getPickupCity(),
                 order.getPickupDistrict(),
                 order.getDeliveryCity(),
-                order.getDeliveryDistrict());
+                order.getDeliveryDistrict(),
+                TrackingContactMasker.maskName(order.getPickupContactName()),
+                TrackingContactMasker.maskPhone(order.getPickupContactPhone()),
+                TrackingContactMasker.maskName(order.getRecipientName()),
+                TrackingContactMasker.maskPhone(order.getRecipientPhone()));
     }
 }
