@@ -46,7 +46,7 @@ export function PublicTrackingPage() {
           onSignIn={() => navigate('/login')}
           trackingNumber={trackingNumber}
           onClearInput={clearTracking}
-          showSearchInHeader={false}
+          showEmptySearch={false}
         />
 
         <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6">

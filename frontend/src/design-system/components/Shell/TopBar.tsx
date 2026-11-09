@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, ChevronRight, Package, Search, Sparkles, X } from 'lucide-react';
+import { Bell, ChevronDown, ChevronRight, Package, Pencil, Search, Sparkles, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/utils/cn';
@@ -148,14 +148,15 @@ export interface PublicHeaderProps {
   /** Quick-track submit. */
   onTrack?: (trackingNumber: string) => void;
   onSignIn?: () => void;
-  /** Pre-filled tracking number; shows search form with value when provided. */
+  /** Active tracking number; shows the tracking chip with edit and clear. */
   trackingNumber?: string;
-  /** Clear handler; replaces "Track" button with "Clear" when trackingNumber is provided. */
-  onClear?: () => void;
-  /** Clears the header input value AND navigates. Used on /track/:tn. */
+  /** Clears the active tracking number and returns to the empty state. */
   onClearInput?: () => void;
-  /** When true, renders the search form in the header. Used on /track/:tn. */
-  showSearchInHeader?: boolean;
+  /**
+   * Renders the header quick-track control while no number is active.
+   * Set to false when the page already provides its own search form (e.g. /track).
+   */
+  showEmptySearch?: boolean;
   className?: string;
 }
 
@@ -165,69 +166,62 @@ export function PublicHeader({
   onSignIn,
   trackingNumber,
   onClearInput,
-  showSearchInHeader,
+  showEmptySearch = true,
   className
 }: PublicHeaderProps) {
   const isMobile = useMediaQuery('(max-width: 639px)');
   const hasTracking = Boolean(trackingNumber?.trim());
-  const shouldShowSearch = showSearchInHeader && hasTracking;
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(trackingNumber ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync input value with trackingNumber prop when it changes
+  // Keep the editor in sync with the active tracking number.
   useEffect(() => {
-    if (trackingNumber !== undefined) {
-      setInputValue(trackingNumber ?? '');
-    }
+    setInputValue(trackingNumber ?? '');
   }, [trackingNumber]);
 
-  // Auto-focus input when expanded on mobile
+  // Collapse the editor after navigation.
   useEffect(() => {
-    if (isMobile && isExpanded) {
-      inputRef.current?.focus();
-    }
-  }, [isExpanded, isMobile]);
+    setIsEditing(false);
+  }, [trackingNumber]);
 
-  // Close expanded state on route change (optional, but good UX)
+  // Collapse the editor when leaving mobile.
   useEffect(() => {
-    if (!isMobile) setIsExpanded(false);
+    if (!isMobile) setIsEditing(false);
   }, [isMobile]);
 
-  // Auto-expand on mobile when tracking exists
+  // Focus the editor when it opens on mobile.
   useEffect(() => {
-    if (isMobile && hasTracking) {
-      setIsExpanded(true);
+    if (isMobile && isEditing) {
+      inputRef.current?.focus();
     }
-  }, [isMobile, hasTracking]);
+  }, [isEditing, isMobile]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = inputValue.trim();
-    if (value) onTrack?.(value);
+    if (!value) return;
+    onTrack?.(value);
+    setIsEditing(false);
   };
 
   const handleClear = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     setInputValue('');
+    setIsEditing(false);
     onClearInput?.();
   };
 
-  const toggleExpanded = () => {
-    setIsExpanded((prev) => !prev);
+  const cancelEditing = () => {
+    setInputValue(trackingNumber ?? '');
+    setIsEditing(false);
   };
 
-  const searchFormClasses = cn(
-    'flex items-center gap-2 w-[352px] max-w-[30vw] transition-all duration-200 ease-out overflow-hidden',
-    shouldShowSearch
-      ? 'h-10 opacity-100 max-h-20 lg:flex'
-      : isMobile
-        ? isExpanded
-          ? 'h-10 opacity-100 max-h-20'
-          : 'h-0 opacity-0 max-h-0'
-        : 'hidden lg:flex'
-  );
+  const showChip = hasTracking && !(!isMobile && isEditing);
+  const showInlineForm = !isMobile && (isEditing || (showEmptySearch && !hasTracking));
+  const showMobileSearchButton = isMobile && showEmptySearch && !hasTracking && !isEditing;
+  const showMobileEditor = isMobile && isEditing;
 
   return (
     <header className={cn('border-b border-border-subtle bg-card', className)}>
@@ -259,10 +253,40 @@ export function PublicHeader({
           </nav>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          {/* Desktop: full search form when shouldShowSearch */}
-          {shouldShowSearch && (
-            <form className={searchFormClasses} onSubmit={handleSubmit}>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Active tracking chip with edit and clear */}
+          {showChip && (
+            <div className="flex h-9 min-w-0 max-w-[55vw] items-center gap-1 rounded-lg border border-border-subtle bg-canvas pl-3 pr-1 sm:max-w-none">
+              <span
+                className="min-w-0 truncate font-mono text-body tabular-nums text-primary"
+                title={trackingNumber}
+              >
+                {trackingNumber}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                aria-label="Edit tracking number"
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+              >
+                <Pencil aria-hidden="true" className="size-3.5" />
+              </button>
+              {onClearInput && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  aria-label="Clear tracking number"
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                >
+                  <X aria-hidden="true" className="size-4" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Desktop inline search / edit form */}
+          {showInlineForm && (
+            <form className="flex items-center gap-2" onSubmit={handleSubmit}>
               <label htmlFor="public-tracking-input" className="sr-only">
                 Enter tracking number
               </label>
@@ -273,136 +297,86 @@ export function PublicHeader({
                 aria-label="Enter tracking number"
                 placeholder="Enter tracking number"
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                className="min-w-0 w-[352px] max-w-[30vw] bg-transparent px-3 text-body text-primary outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
-                disabled={hasTracking}
+                onChange={(event) => setInputValue(event.target.value)}
+                className="h-9 w-56 min-w-0 rounded-lg border border-border-subtle bg-canvas px-3 font-mono text-body tabular-nums text-primary outline-none placeholder:font-sans placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus [&::-webkit-search-cancel-button]:hidden"
+                autoFocus={isEditing}
+                spellCheck={false}
+                autoComplete="off"
               />
-              <Button
-                type="submit"
-                variant="primary"
-                density="comfortable"
-                className="shrink-0"
-                disabled={hasTracking}
-              >
+              <Button type="submit" variant="primary" density="comfortable" className="shrink-0">
                 Track
               </Button>
-              {hasTracking && onClearInput && (
+              {isEditing && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   density="comfortable"
-                  leftIcon={<X className="size-3.5" />}
                   className="shrink-0"
-                  onClick={handleClear}
+                  onClick={cancelEditing}
                 >
-                  Clear
+                  Cancel
                 </Button>
               )}
             </form>
           )}
 
-          {/* Mobile: icon/badge toggle */}
-          {isMobile && (
-            <>
-              {/* No tracking: search icon button */}
-              {!hasTracking && !shouldShowSearch && (
-                <button
-                  type="button"
-                  onClick={toggleExpanded}
-                  aria-label={isExpanded ? 'Close search' : 'Open search'}
-                  aria-expanded={isExpanded}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors shrink-0"
-                >
-                  <Search aria-hidden="true" className="size-4" />
-                  <span className="hidden sm:inline">Track parcel</span>
-                </button>
-              )}
-
-              {/* Has tracking: badge + clear */}
-              {hasTracking && !shouldShowSearch && (
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={toggleExpanded}
-                    aria-label={isExpanded ? 'Close tracking' : 'Open tracking'}
-                    aria-expanded={isExpanded}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors shrink-0"
-                  >
-                    <span className="font-mono tabular-nums text-body">{inputValue}</span>
-                    <Search aria-hidden="true" className="size-4 text-muted" />
-                  </button>
-                  {onClearInput && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      density="comfortable"
-                      leftIcon={<X className="size-3.5" />}
-                      className="shrink-0"
-                      onClick={handleClear}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {/* Expanded inline form on mobile */}
-              {isExpanded && (
-                <form className="fixed inset-x-0 bottom-0 z-50 flex items-center gap-2 p-4 bg-card border-t border-border-subtle shadow-lg animate-slide-up" onSubmit={handleSubmit}>
-                  <label htmlFor="mobile-tracking-input" className="sr-only">Enter tracking number</label>
-                  <input
-                    ref={inputRef}
-                    id="mobile-tracking-input"
-                    name="tracking"
-                    aria-label="Enter tracking number"
-                    placeholder="Enter tracking number"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    className="min-w-0 flex-1 bg-transparent px-3 text-body text-primary outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
-                    disabled={hasTracking}
-                    autoFocus
-                  />
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    density="comfortable"
-                    className="shrink-0"
-                    disabled={hasTracking}
-                  >
-                    Track
-                  </Button>
-                  {hasTracking && onClearInput && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      density="comfortable"
-                      leftIcon={<X className="size-3.5" />}
-                      className="shrink-0"
-                      onClick={handleClear}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </form>
-              )}
-            </>
-          )}
-
-          {/* Desktop clear button when tracking exists but form not shown */}
-          {!isMobile && hasTracking && !shouldShowSearch && onClearInput && (
-            <Button
+          {/* Mobile: search button while no number is active */}
+          {showMobileSearchButton && (
+            <button
               type="button"
-              variant="outline"
-              density="comfortable"
-              leftIcon={<X className="size-3.5" />}
-              className="shrink-0"
-              onClick={handleClear}
+              onClick={() => setIsEditing(true)}
+              aria-label="Search tracking number"
+              aria-expanded={isEditing}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors shrink-0"
             >
-              Clear
-            </Button>
+              <Search aria-hidden="true" className="size-4" />
+              <span className="hidden sm:inline">Track parcel</span>
+            </button>
           )}
 
-          <Button variant="ghost" density="compact" onClick={onSignIn} className="shrink-0">
+          {/* Mobile bottom-sheet editor */}
+          {showMobileEditor && (
+            <form
+              className="fixed inset-x-0 bottom-0 z-50 flex items-center gap-2 p-4 bg-card border-t border-border-subtle shadow-lg animate-slide-up"
+              onSubmit={handleSubmit}
+            >
+              <label htmlFor="mobile-tracking-input" className="sr-only">
+                Enter tracking number
+              </label>
+              <input
+                ref={inputRef}
+                id="mobile-tracking-input"
+                name="tracking"
+                aria-label="Enter tracking number"
+                placeholder="Enter tracking number"
+                value={inputValue}
+                onChange={(event) => setInputValue(event.target.value)}
+                className="h-10 min-w-0 flex-1 rounded-lg border border-border-subtle bg-canvas px-3 font-mono text-body tabular-nums text-primary outline-none placeholder:font-sans placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus [&::-webkit-search-cancel-button]:hidden"
+                autoFocus
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <Button type="submit" variant="primary" density="comfortable" className="shrink-0">
+                Track
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                density="comfortable"
+                className="shrink-0"
+                onClick={cancelEditing}
+              >
+                Cancel
+              </Button>
+            </form>
+          )}
+
+          <Button
+            variant="ghost"
+            density="compact"
+            onClick={onSignIn}
+            className={cn('shrink-0', hasTracking && 'hidden sm:inline-flex')}
+          >
             Sign in
           </Button>
         </div>

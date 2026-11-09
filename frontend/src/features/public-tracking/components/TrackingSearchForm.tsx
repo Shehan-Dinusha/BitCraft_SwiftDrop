@@ -45,11 +45,11 @@ export function TrackingSearchForm({
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="flex flex-col gap-2 sm:flex-row sm:items-center gap-2"
+      className="flex flex-col gap-2 sm:flex-row sm:items-center"
     >
       <Field
         label="Tracking number"
-        hint="Example: SD-2026-000123"
+        hint="Example: SD-XXXX-XXXXXX"
         error={error ?? undefined}
         className="min-w-0 flex-1"
       >
