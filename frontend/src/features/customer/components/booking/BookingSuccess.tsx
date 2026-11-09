@@ -3,7 +3,7 @@ import { CheckCircle2, FileDown, Plus, Route } from 'lucide-react';
 import { Alert, Button, MoneyAmount, SpeedTag, SurfaceCard, TrackingNumber } from '@/design-system';
 import type { CustomerOrderResponse } from '@/services/api/orderApi';
 import { placeLabel } from './bookingForm';
-import { toSpeed } from '../orders/orderDisplay';
+import { PAYMENT_NOTE, toSpeed } from '../orders/orderDisplay';
 import { useReceiptDownload } from '../orders/useReceiptDownload';
 
 const money = (value: number) =>
@@ -50,6 +50,7 @@ export function BookingSuccess({ order, quotedFee, onBookAnother }: BookingSucce
             <span className="text-body text-secondary">Estimated fee</span>
             <MoneyAmount amount={fee} currency={currency} size="lg" />
           </div>
+          <p className="text-caption text-secondary">{PAYMENT_NOTE}</p>
         </div>
       </SurfaceCard>
 
