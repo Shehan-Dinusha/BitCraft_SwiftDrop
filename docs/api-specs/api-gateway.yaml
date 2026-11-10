@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: SwiftDrop API Gateway Public Tracking API
   description: |
-    PII-free public parcel tracking exposed by the API Gateway Real-Time
+    Sanitized public parcel tracking exposed by the API Gateway Real-Time
     Tracking Hub. These endpoints do not require a JWT and are rate limited.
     The WebSocket endpoint `/ws/tracking` accepts STOMP 1.2 clients and exposes
     `/topic/track/{trackingNumber}` publicly and `/topic/customer/{customerId}`
@@ -14,7 +14,7 @@ paths:
   /api/v1/public/track/{trackingNumber}:
     get:
       tags: [Public Tracking]
-      summary: Get the latest PII-free tracking view
+      summary: Get the latest sanitized tracking view
       operationId: getPublicTrackingView
       parameters:
         - name: trackingNumber
@@ -120,6 +120,30 @@ components:
           $ref: "#/components/schemas/SriLankanDistrict"
         destinationDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
+        originCity:
+          type: string
+          description: City where the parcel was handed over.
+          example: Colombo 03
+        destinationCity:
+          type: string
+          description: Destination city.
+          example: Kandy
+        senderNameMasked:
+          type: string
+          description: Sender name reduced to initials only.
+          example: N. P.
+        senderPhoneMasked:
+          type: string
+          description: Sender phone with the middle digits hidden.
+          example: 07X***4567
+        receiverNameMasked:
+          type: string
+          description: Receiver name reduced to initials only.
+          example: K. S.
+        receiverPhoneMasked:
+          type: string
+          description: Receiver phone with the middle digits hidden.
+          example: 07X***1234
         statusTimeline:
           type: array
           items:

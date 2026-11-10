@@ -2,6 +2,8 @@ package com.swiftdrop.gateway.trackinghub.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.contracts.dto.tracking.HistoryEntry;
+import com.swiftdrop.contracts.dto.tracking.InternalTrackingView;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
@@ -116,9 +118,97 @@ class TrackingDataSanitizerProxyTest {
         JsonNode view = objectMapper.readTree(objectMapper.writeValueAsString(sanitizer.fromStatus(event)));
 
         assertThat(fieldNames(view)).containsExactlyInAnyOrder(
-                "trackingNumber", "currentPublicStatus", "originDistrict", "destinationDistrict", "statusTimeline");
+                "trackingNumber", "currentPublicStatus", "originDistrict", "destinationDistrict",
+                "originCity", "destinationCity", "senderNameMasked", "senderPhoneMasked",
+                "receiverNameMasked", "receiverPhoneMasked", "statusTimeline");
         assertThat(fieldNames(view.get("statusTimeline").get(0)))
                 .containsExactlyInAnyOrder("status", "district", "timestamp");
+    }
+
+    @Test
+    void mapsCityAndMaskedContactFromInternalView() {
+        InternalTrackingView internal = new InternalTrackingView(
+                "SD-INT-001",
+                PublicOrderStatus.IN_TRANSIT,
+                List.of(new HistoryEntry(PublicOrderStatus.CREATED, Instant.parse("2026-10-26T06:00:00Z"))),
+                "Colombo 03",
+                SriLankanDistrict.COLOMBO,
+                "Kandy",
+                SriLankanDistrict.KANDY,
+                "N. P.",
+                "07X***4567",
+                "K. S.",
+                "07X***1234");
+
+        PublicTrackingViewDto view = sanitizer.fromInternalView(internal);
+
+        assertThat(view.originCity()).isEqualTo("Colombo 03");
+        assertThat(view.destinationCity()).isEqualTo("Kandy");
+        assertThat(view.senderNameMasked()).isEqualTo("N. P.");
+        assertThat(view.senderPhoneMasked()).isEqualTo("07X***4567");
+        assertThat(view.receiverNameMasked()).isEqualTo("K. S.");
+        assertThat(view.receiverPhoneMasked()).isEqualTo("07X***1234");
+        assertThat(view.statusTimeline()).singleElement()
+                .satisfies(entry -> {
+                    assertThat(entry.district()).isNull();
+                    assertThat(entry.status()).isEqualTo(PublicOrderStatus.CREATED);
+                });
+    }
+
+    @Test
+    void appendKeepsCityAndMaskedContactFromTheCachedView() {
+        InternalTrackingView internal = new InternalTrackingView(
+                "SD-APP-001",
+                PublicOrderStatus.PICKED_UP,
+                List.of(new HistoryEntry(PublicOrderStatus.CREATED, Instant.parse("2026-10-26T06:00:00Z"))),
+                "Colombo 03",
+                SriLankanDistrict.COLOMBO,
+                "Kandy",
+                SriLankanDistrict.KANDY,
+                "N. P.",
+                "07X***4567",
+                "K. S.",
+                "07X***1234");
+        PublicTrackingViewDto current = sanitizer.fromInternalView(internal);
+
+        ParcelStatusChangedEvent event = new ParcelStatusChangedEvent(
+                UUID.randomUUID(), UUID.randomUUID(), "SD-APP-001", UUID.randomUUID(), UUID.randomUUID(),
+                null, PublicOrderStatus.IN_TRANSIT, InternalQueueStatus.OUTBOUND,
+                SriLankanDistrict.MATALE, SriLankanDistrict.KANDY, null, Instant.now());
+
+        PublicTrackingViewDto view = sanitizer.append(current, event);
+
+        assertThat(view.originCity()).isEqualTo("Colombo 03");
+        assertThat(view.destinationCity()).isEqualTo("Kandy");
+        assertThat(view.senderNameMasked()).isEqualTo("N. P.");
+        assertThat(view.receiverPhoneMasked()).isEqualTo("07X***1234");
+        assertThat(view.statusTimeline()).hasSize(2);
+    }
+
+    @Test
+    void needsContactDetailsOnlyWhenNoCityOrMaskedContactIsCached() {
+        PublicTrackingViewDto empty = new PublicTrackingViewDto(
+                "SD-EMPTY-001",
+                PublicOrderStatus.IN_TRANSIT,
+                SriLankanDistrict.COLOMBO,
+                SriLankanDistrict.KANDY,
+                List.of());
+        PublicTrackingViewDto enriched = sanitizer.fromInternalView(new InternalTrackingView(
+                "SD-FULL-001",
+                PublicOrderStatus.IN_TRANSIT,
+                List.of(),
+                "Colombo 03",
+                SriLankanDistrict.COLOMBO,
+                "Kandy",
+                SriLankanDistrict.KANDY,
+                "N. P.",
+                "07X***4567",
+                "K. S.",
+                "07X***1234"));
+
+        assertThat(sanitizer.needsContactDetails(empty)).isTrue();
+        assertThat(sanitizer.needsContactDetails(enriched)).isFalse();
+        assertThat(sanitizer.needsContactDetails(null)).isFalse();
     }
 
     private List<String> fieldNames(JsonNode node) {
