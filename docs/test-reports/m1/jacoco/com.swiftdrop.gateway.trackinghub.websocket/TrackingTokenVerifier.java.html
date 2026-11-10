@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TrackingTokenVerifier.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.trackinghub.websocket</a> &gt; <span class="el_source">TrackingTokenVerifier.java</span></div><h1>TrackingTokenVerifier.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.trackinghub.websocket;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.contracts.enums.UserRole;
+import com.swiftdrop.gateway.security.JwksKeyStore;
+import com.swiftdrop.gateway.security.JwsHeader;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParserBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.security.interfaces.RSAPublicKey;
+import java.util.Locale;
+
+/**
+ * Verifies the JWT supplied in the STOMP CONNECT frame and authorizes access to
+ * private customer topics. Public tracking topics remain anonymous.
+ *
+ * &lt;p&gt;HS256 uses the shared secret. RS256 resolves the public key by the token's
+ * {@code kid}; an unknown key id triggers a throttled background JWKS refresh
+ * and rejects the CONNECT so the client reconnects once the key is available.&lt;/p&gt;
+ */
+@Component
+public class TrackingTokenVerifier {
+
+    private static final String TRACK_TOPIC_PREFIX = &quot;/topic/track/&quot;;
+    private static final String CUSTOMER_TOPIC_PREFIX = &quot;/topic/customer/&quot;;
+    private static final String BEARER_PREFIX = &quot;Bearer &quot;;
+
+    private final SecretKey signingKey;
+    private final boolean rs256;
+    private final String issuer;
+    private final String audience;
+    private final JwksKeyStore jwksKeyStore;
+    private final ObjectMapper objectMapper;
+
+    public TrackingTokenVerifier(
+            @Value(&quot;${swiftdrop.jwt.algorithm:HS256}&quot;) String algorithm,
+            @Value(&quot;${swiftdrop.jwt.secret}&quot;) String jwtSecret,
+            @Value(&quot;${swiftdrop.jwt.issuer:swiftdrop-iam}&quot;) String issuer,
+            @Value(&quot;${swiftdrop.jwt.audience:swiftdrop}&quot;) String audience,
+            JwksKeyStore jwksKeyStore,
+<span class="fc" id="L47">            ObjectMapper objectMapper) {</span>
+<span class="pc bpc" id="L48" title="1 of 4 branches missed.">        if (!&quot;HS256&quot;.equalsIgnoreCase(algorithm) &amp;&amp; !&quot;RS256&quot;.equalsIgnoreCase(algorithm)) {</span>
+<span class="nc" id="L49">            throw new IllegalArgumentException(&quot;JWT_ALGORITHM must be HS256 or RS256&quot;);</span>
+        }
+<span class="fc" id="L51">        this.rs256 = &quot;RS256&quot;.equalsIgnoreCase(algorithm);</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        this.signingKey = this.rs256 ? null</span>
+<span class="fc" id="L53">                : Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));</span>
+<span class="fc" id="L54">        this.issuer = issuer;</span>
+<span class="fc" id="L55">        this.audience = audience;</span>
+<span class="fc" id="L56">        this.jwksKeyStore = jwksKeyStore;</span>
+<span class="fc" id="L57">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L58">    }</span>
+
+    public StompPrincipal verify(String authorizationHeader) {
+<span class="fc bfc" id="L61" title="All 4 branches covered.">        if (authorizationHeader == null || authorizationHeader.isBlank()) {</span>
+<span class="fc" id="L62">            return null;</span>
+        }
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        String token = authorizationHeader.startsWith(BEARER_PREFIX)</span>
+<span class="fc" id="L65">                ? authorizationHeader.substring(BEARER_PREFIX.length())</span>
+<span class="fc" id="L66">                : authorizationHeader;</span>
+        try {
+<span class="fc" id="L68">            Claims claims = parse(token);</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">            if (claims == null) {</span>
+<span class="fc" id="L70">                return null;</span>
+            }
+<span class="fc" id="L72">            UserRole role = UserRole.fromClaim(claimAsString(claims, &quot;role&quot;));</span>
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">            return new StompPrincipal(claims.getSubject(), role == null ? null : role.name());</span>
+<span class="fc" id="L74">        } catch (RuntimeException exception) {</span>
+<span class="fc" id="L75">            return null;</span>
+        }
+    }
+
+    private Claims parse(String token) {
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        if (!rs256) {</span>
+<span class="fc" id="L81">            return baseParser().verifyWith(signingKey).build()</span>
+<span class="fc" id="L82">                    .parseSignedClaims(token).getPayload();</span>
+        }
+<span class="fc" id="L84">        JwsHeader header = JwsHeader.decode(token, objectMapper);</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (!&quot;RS256&quot;.equals(header.algorithm())</span>
+<span class="pc bpc" id="L86" title="2 of 4 branches missed.">                || header.keyId() == null || header.keyId().isBlank()) {</span>
+<span class="fc" id="L87">            return null;</span>
+        }
+<span class="fc" id="L89">        RSAPublicKey key = jwksKeyStore.cached(header.keyId());</span>
+<span class="fc bfc" id="L90" title="All 2 branches covered.">        if (key == null) {</span>
+<span class="fc" id="L91">            jwksKeyStore.refreshAsync();</span>
+<span class="fc" id="L92">            return null;</span>
+        }
+<span class="fc" id="L94">        return baseParser().verifyWith(key).build()</span>
+<span class="fc" id="L95">                .parseSignedClaims(token).getPayload();</span>
+    }
+
+    private JwtParserBuilder baseParser() {
+<span class="fc" id="L99">        return Jwts.parser()</span>
+<span class="fc" id="L100">                .requireIssuer(issuer)</span>
+<span class="fc" id="L101">                .requireAudience(audience);</span>
+    }
+
+    private String claimAsString(Claims claims, String name) {
+<span class="fc" id="L105">        Object value = claims.get(name);</span>
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">        return value == null ? null : value.toString();</span>
+    }
+
+    public boolean maySubscribe(StompPrincipal principal, String destination) {
+<span class="pc bpc" id="L110" title="2 of 4 branches missed.">        if (destination == null || destination.isBlank()) {</span>
+<span class="nc" id="L111">            return false;</span>
+        }
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        if (destination.startsWith(TRACK_TOPIC_PREFIX)) {</span>
+<span class="fc" id="L114">            return true;</span>
+        }
+<span class="fc bfc" id="L116" title="All 2 branches covered.">        if (destination.startsWith(CUSTOMER_TOPIC_PREFIX)) {</span>
+<span class="pc bpc" id="L117" title="1 of 4 branches missed.">            if (principal == null || principal.subject() == null) {</span>
+<span class="fc" id="L118">                return false;</span>
+            }
+<span class="fc" id="L120">            String customerId = destination.substring(CUSTOMER_TOPIC_PREFIX.length());</span>
+<span class="fc bfc" id="L121" title="All 2 branches covered.">            return UserRole.SYSTEM_ADMIN.name().equals(principal.role())</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">                    || principal.subject().equalsIgnoreCase(customerId);</span>
+        }
+<span class="fc" id="L124">        return false;</span>
+    }
+
+<span class="fc" id="L127">    public record StompPrincipal(String subject, String role) {</span>
+        public boolean isAdmin() {
+<span class="nc bnc" id="L129" title="All 4 branches missed.">            return role != null &amp;&amp; UserRole.SYSTEM_ADMIN.name().equals(role.toUpperCase(Locale.ROOT));</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
