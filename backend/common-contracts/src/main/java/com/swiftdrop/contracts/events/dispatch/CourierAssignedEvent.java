@@ -55,4 +55,21 @@ public record CourierAssignedEvent(
         if (assignedAt == null) assignedAt = Instant.now();
         // trackingNumber and merchantId are intentionally nullable
     }
+
+    /**
+     * Backward-compatible constructor for existing callers who do not provide
+     * {@code trackingNumber} and {@code merchantId}.
+     */
+    public CourierAssignedEvent(
+            UUID eventId,
+            UUID correlationId,
+            UUID orderId,
+            UUID courierId,
+            String courierName,
+            int estimatedPickupMinutes,
+            Instant assignedAt,
+            Instant timestamp
+    ) {
+        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp, null, null);
+    }
 }
