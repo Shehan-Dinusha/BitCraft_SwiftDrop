@@ -240,6 +240,15 @@
         "x-queue-type": "quorum",
         "x-message-ttl": 604800000
       }
+    },
+    {
+      "name": "swiftdrop.iam.merchant.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
     }
   ],
   "bindings": [
@@ -393,6 +402,14 @@
       "destination": "dlq.analytics.events.queue",
       "destination_type": "queue",
       "routing_key": "dlq.analytics.events",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "swiftdrop.iam.merchant.events",
+      "destination_type": "queue",
+      "routing_key": "merchant.approved",
       "arguments": {}
     }
   ],

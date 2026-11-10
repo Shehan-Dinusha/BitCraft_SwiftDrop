@@ -19,4 +19,7 @@ public final class EventRoutingKeys {
 
     public static final String DISPATCH_COURIER_ASSIGNED = "dispatch.courier.assigned";
     public static final String DISPATCH_FAILED = "dispatch.failed";
+
+    /** Published by merchant-b2b-service when a merchant account is approved by an admin. */
+    public static final String MERCHANT_APPROVED = "merchant.approved";
 }
