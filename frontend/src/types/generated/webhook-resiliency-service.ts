@@ -348,7 +348,7 @@ export interface paths {
         };
         /**
          * List Dead-Letter Queue webhook records
-         * @description A MERCHANT sees only its own records (a different merchantId is refused with 403). SYSTEM_ADMIN and DISPATCHER may filter by merchantId or omit it to see every merchant; DISPATCHER responses omit the payload.
+         * @description A MERCHANT sees only its own records (a different merchantId is refused with 403). SYSTEM_ADMIN and DISPATCHER may filter by merchantId or omit it to see every merchant; DISPATCHER responses carry operational metadata only (no payload, endpointId or raw failureReason).
          */
         get: {
             parameters: {
@@ -393,7 +393,7 @@ export interface paths {
         };
         /**
          * Get detailed DLQ record by ID
-         * @description Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses omit the payload.
+         * @description Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses carry operational metadata only (no payload, endpointId or raw failureReason).
          */
         get: {
             parameters: {
@@ -580,19 +580,36 @@ export interface components {
         DeadLetterWebhookResponse: {
             /** Format: uuid */
             dlqId?: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Target endpoint. Omitted (null) for DISPATCHER callers.
+             */
             endpointId?: string;
             /** Format: uuid */
             merchantId?: string;
             eventType?: string;
-            /** @description Event payload. Omitted (null) for DISPATCHER callers, who see operational metadata only. */
+            /** @description Event payload. Omitted (null) for DISPATCHER callers. */
             payload?: string;
+            /** @description Raw failure detail recorded by the dispatcher; may contain the callback URL or host. Omitted (null) for DISPATCHER callers. */
             failureReason?: string;
+            /**
+             * @description Failure classification derived from the recorded failure.
+             * @enum {string}
+             */
+            errorClass?: "TIMEOUT" | "CONNECTION_FAILURE" | "HTTP_CLIENT_ERROR" | "HTTP_RATE_LIMITED" | "HTTP_SERVER_ERROR" | "INVALID_RESPONSE" | "BLOCKED_DESTINATION" | "UNKNOWN";
+            /**
+             * @description Sanitised failure summary; never contains URLs, hosts or raw error text.
+             * @example Endpoint returned a server error (HTTP 503)
+             */
+            failureSummary?: string;
             totalAttempts?: number;
             replayed?: boolean;
             /** Format: date-time */
             replayedAt?: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Dead-lettering timestamp (the time of the final failed attempt).
+             */
             createdAt?: string;
         };
         ReplayDlqResponse: {

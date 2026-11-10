@@ -114,6 +114,13 @@ public class DlqReplayService {
         }
 
         WebhookEndpoint endpoint = endpointOpt.get();
+        // Authorisation was checked against the record's merchant. Legacy tables have no foreign key between a
+        // record and its endpoint, so never send one merchant's payload to an endpoint owned by someone else.
+        // Reported exactly like a missing endpoint so the other endpoint's existence is not revealed.
+        if (!endpoint.getMerchantId().equals(record.getMerchantId())) {
+            log.warn("Refusing DLQ replay {}: record merchant does not own target endpoint {}", dlqId, record.getEndpointId());
+            return new ReplayDlqResponse(dlqId, "FAILED", 404, "Target endpoint no longer exists", Instant.now());
+        }
         if (!endpoint.isActive()) {
             log.warn("Cannot replay DLQ record {}: Target endpoint {} is deactivated", dlqId, record.getEndpointId());
             return new ReplayDlqResponse(dlqId, "FAILED", 400, "Target webhook endpoint is currently deactivated", Instant.now());
@@ -146,16 +153,23 @@ public class DlqReplayService {
         return new DlqRecordNotFoundException("Dead-letter webhook record not found with ID: " + dlqId);
     }
 
-    /** Dispatchers see operational metadata only: the event payload (customer data) is withheld. */
+    /**
+     * Dispatchers receive operational metadata only. Withheld from them: the event payload (customer data), the
+     * endpoint reference, and the raw failure text, which contains the merchant's callback URL or host. Everyone
+     * gets the classification and sanitised summary, which never contain raw text.
+     */
     private DeadLetterWebhookResponse mapToResponse(DeadLetterWebhookRecord record, CallerContext caller) {
-        boolean includePayload = caller.role() != UserRole.DISPATCHER;
+        boolean fullDetail = caller.role() != UserRole.DISPATCHER;
+        DlqFailureClassifier.Classification failure = DlqFailureClassifier.classify(record.getFailureReason());
         return new DeadLetterWebhookResponse(
                 record.getDlqId(),
-                record.getEndpointId(),
+                fullDetail ? record.getEndpointId() : null,
                 record.getMerchantId(),
                 record.getEventType(),
-                includePayload ? record.getPayload() : null,
-                record.getFailureReason(),
+                fullDetail ? record.getPayload() : null,
+                fullDetail ? record.getFailureReason() : null,
+                failure.errorClass(),
+                failure.summary(),
                 record.getTotalAttempts(),
                 record.isReplayed(),
                 record.getReplayedAt(),

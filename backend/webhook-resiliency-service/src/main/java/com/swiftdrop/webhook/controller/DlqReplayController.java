@@ -33,7 +33,8 @@ public class DlqReplayController {
     @GetMapping
     @Operation(summary = "List Dead-Letter Queue webhook records",
             description = "A MERCHANT sees only its own records (a different merchantId is refused with 403). "
-                    + "SYSTEM_ADMIN and DISPATCHER may filter by merchantId or omit it; DISPATCHER responses omit the payload.")
+                    + "SYSTEM_ADMIN and DISPATCHER may filter by merchantId or omit it; DISPATCHER responses carry operational metadata only "
+                    + "(no payload, endpointId or raw failureReason).")
     public ApiResponse<List<DeadLetterWebhookResponse>> listDlqRecords(
             @RequestParam(required = false) @Parameter(description = "Merchant filter; SYSTEM_ADMIN and DISPATCHER only")
             UUID merchantId,
@@ -45,7 +46,8 @@ public class DlqReplayController {
 
     @GetMapping("/{dlqId}")
     @Operation(summary = "Get detailed DLQ record by ID",
-            description = "Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses omit the payload.")
+            description = "Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses carry "
+                    + "operational metadata only (no payload, endpointId or raw failureReason).")
     public ApiResponse<DeadLetterWebhookResponse> getDlqRecord(
             @PathVariable @Parameter(description = "DLQ record UUID") UUID dlqId, CallerContext caller) {
         DeadLetterWebhookResponse record = dlqReplayService.getDlqRecord(dlqId, caller);

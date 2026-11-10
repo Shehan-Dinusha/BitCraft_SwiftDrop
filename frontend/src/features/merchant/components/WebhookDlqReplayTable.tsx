@@ -103,9 +103,9 @@ export function WebhookDlqReplayTable() {
       render: (row) => (
         <span
           className="block max-w-[240px] truncate text-xs text-rose-600"
-          title={row.failureReason || 'Dispatch failure'}
+          title={row.failureReason || row.failureSummary || 'Dispatch failure'}
         >
-          {row.failureReason || 'Failed delivery attempts'}
+          {row.failureSummary || 'Failed delivery attempts'}
         </span>
       )
     },
@@ -255,7 +255,7 @@ export function WebhookDlqReplayTable() {
               </div>
               <div>
                 <span className="text-secondary">Endpoint ID:</span>
-                <p className="font-mono font-medium text-primary">{selectedRecord.endpointId}</p>
+                <p className="font-mono font-medium text-primary">{selectedRecord.endpointId ?? 'Not available'}</p>
               </div>
               <div>
                 <span className="text-secondary">Event Type:</span>
@@ -270,21 +270,32 @@ export function WebhookDlqReplayTable() {
             <div>
               <span className="font-semibold text-rose-600">Terminal Failure Reason:</span>
               <p className="mt-1 rounded bg-rose-50 p-2 font-mono text-rose-800">
-                {selectedRecord.failureReason || 'Failed after maximum backoff retries'}
+                {selectedRecord.failureSummary || 'Delivery failed'}
+                {selectedRecord.errorClass ? ` [${selectedRecord.errorClass}]` : ''}
               </p>
+              {/* Raw detail and payload are only returned to the owning merchant and system administrators. */}
+              {selectedRecord.failureReason && (
+                <p className="mt-1 break-all rounded bg-surface-subtle p-2 font-mono text-[11px] text-secondary">
+                  {selectedRecord.failureReason}
+                </p>
+              )}
             </div>
 
             <div>
               <span className="font-semibold text-secondary">JSON Payload Content:</span>
-              <pre className="mt-1 max-h-60 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-[11px] text-emerald-400">
-                {(() => {
-                  try {
-                    return JSON.stringify(JSON.parse(selectedRecord.payload || '{}'), null, 2);
-                  } catch {
-                    return selectedRecord.payload || '{}';
-                  }
-                })()}
-              </pre>
+              {selectedRecord.payload ? (
+                <pre className="mt-1 max-h-60 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-[11px] text-emerald-400">
+                  {(() => {
+                    try {
+                      return JSON.stringify(JSON.parse(selectedRecord.payload), null, 2);
+                    } catch {
+                      return selectedRecord.payload;
+                    }
+                  })()}
+                </pre>
+              ) : (
+                <p className="mt-1 text-secondary">Payload is not available for your role.</p>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

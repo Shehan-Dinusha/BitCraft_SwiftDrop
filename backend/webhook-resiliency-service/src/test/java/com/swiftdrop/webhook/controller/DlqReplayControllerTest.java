@@ -3,6 +3,7 @@ package com.swiftdrop.webhook.controller;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.ForbiddenException;
+import com.swiftdrop.webhook.domain.entity.AttemptErrorClass;
 import com.swiftdrop.webhook.dto.DeadLetterWebhookResponse;
 import com.swiftdrop.webhook.dto.ReplayDlqResponse;
 import com.swiftdrop.webhook.exception.DlqRecordNotFoundException;
@@ -48,7 +49,8 @@ class DlqReplayControllerTest {
 
     private DeadLetterWebhookResponse record() {
         return new DeadLetterWebhookResponse(dlqId, endpointId, merchantId, "parcel.status.changed",
-                "{\"status\":\"DELIVERED\"}", "Connection timeout", 3, false, null, Instant.now());
+                "{\"status\":\"DELIVERED\"}", "Connection timeout", AttemptErrorClass.TIMEOUT,
+                "Endpoint did not respond before the timeout", 3, false, null, Instant.now());
     }
 
     @Test

@@ -13,7 +13,7 @@ info:
     Roles:
     - MERCHANT: manages and replays only its own merchant's endpoints and dead-letter records.
     - SYSTEM_ADMIN: all operations for every merchant.
-    - DISPATCHER: read-only dead-letter listing and detail across merchants, with the payload omitted; no endpoint access, no replay.
+    - DISPATCHER: read-only dead-letter listing and detail across merchants with operational metadata only (no payload, endpointId or raw failureReason); no endpoint access, no replay.
     - Other roles: 403.
 
     Another merchant's endpoint or dead-letter record returns 404, indistinguishable from an unknown ID.
@@ -219,7 +219,8 @@ paths:
       summary: List Dead-Letter Queue webhook records
       description: >-
         A MERCHANT sees only its own records (a different merchantId is refused with 403). SYSTEM_ADMIN and
-        DISPATCHER may filter by merchantId or omit it to see every merchant; DISPATCHER responses omit the payload.
+        DISPATCHER may filter by merchantId or omit it to see every merchant; DISPATCHER responses carry
+        operational metadata only (no payload, endpointId or raw failureReason).
       parameters:
         - name: merchantId
           in: query
@@ -250,7 +251,8 @@ paths:
       tags: [DlqReplay]
       summary: Get detailed DLQ record by ID
       description: >-
-        Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses omit the payload.
+        Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses carry
+        operational metadata only (no payload, endpointId or raw failureReason).
       parameters:
         - name: dlqId
           in: path
@@ -468,6 +470,7 @@ components:
         endpointId:
           type: string
           format: uuid
+          description: Target endpoint. Omitted (null) for DISPATCHER callers.
         merchantId:
           type: string
           format: uuid
@@ -475,9 +478,20 @@ components:
           type: string
         payload:
           type: string
-          description: Event payload. Omitted (null) for DISPATCHER callers, who see operational metadata only.
+          description: Event payload. Omitted (null) for DISPATCHER callers.
         failureReason:
           type: string
+          description: >-
+            Raw failure detail recorded by the dispatcher; may contain the callback URL or host. Omitted (null) for
+            DISPATCHER callers.
+        errorClass:
+          type: string
+          description: Failure classification derived from the recorded failure.
+          enum: [TIMEOUT, CONNECTION_FAILURE, HTTP_CLIENT_ERROR, HTTP_RATE_LIMITED, HTTP_SERVER_ERROR, INVALID_RESPONSE, BLOCKED_DESTINATION, UNKNOWN]
+        failureSummary:
+          type: string
+          description: Sanitised failure summary; never contains URLs, hosts or raw error text.
+          example: Endpoint returned a server error (HTTP 503)
         totalAttempts:
           type: integer
         replayed:
@@ -488,6 +502,7 @@ components:
         createdAt:
           type: string
           format: date-time
+          description: Dead-lettering timestamp (the time of the final failed attempt).
     ReplayDlqResponse:
       type: object
       properties:
