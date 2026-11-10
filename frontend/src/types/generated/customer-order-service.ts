@@ -652,7 +652,7 @@ export interface components {
             /** @example true */
             prohibitedItemsDeclared: boolean;
         };
-        /** @description Public-safe tracking view. No street address, name, phone, email, customer or merchant id, or fee. */
+        /** @description Public-safe tracking view. Masked contact only; no raw name, phone, street address, email, customer or merchant id, or fee. */
         InternalTrackingView: {
             /** @example SD-7K4M-9QX2 */
             trackingNumber?: string;
@@ -665,6 +665,26 @@ export interface components {
             /** @example Kandy */
             deliveryCity?: string;
             deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            /**
+             * @description Masked sender name (initials only)
+             * @example N. P.
+             */
+            senderNameMasked?: string;
+            /**
+             * @description Masked sender phone
+             * @example 07X***4567
+             */
+            senderPhoneMasked?: string;
+            /**
+             * @description Masked receiver name (initials only)
+             * @example K. S.
+             */
+            receiverNameMasked?: string;
+            /**
+             * @description Masked receiver phone
+             * @example 07X***1234
+             */
+            receiverPhoneMasked?: string;
         };
         InternalTrackingHistoryEntry: {
             status?: components["schemas"]["PublicOrderStatus"];

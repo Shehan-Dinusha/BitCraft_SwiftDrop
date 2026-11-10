@@ -8,6 +8,7 @@ import com.swiftdrop.gateway.trackinghub.client.OrderTrackingClient;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
 import com.swiftdrop.gateway.trackinghub.service.TrackingBroadcastHubService;
 import com.swiftdrop.gateway.trackinghub.service.TrackingDataSanitizerProxy;
+import com.swiftdrop.gateway.trackinghub.service.TrackingViewEnrichmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -37,7 +38,9 @@ class PublicTrackingControllerTest {
         broadcastHub = mock(TrackingBroadcastHubService.class);
         orderClient = mock(OrderTrackingClient.class);
         sanitizer = new TrackingDataSanitizerProxy();
-        controller = new PublicTrackingController(broadcastHub, orderClient, sanitizer);
+        TrackingViewEnrichmentService enrichmentService =
+                new TrackingViewEnrichmentService(broadcastHub, orderClient, sanitizer);
+        controller = new PublicTrackingController(enrichmentService);
     }
 
     @Test
@@ -47,6 +50,12 @@ class PublicTrackingControllerTest {
                 PublicOrderStatus.PICKED_UP,
                 SriLankanDistrict.COLOMBO,
                 SriLankanDistrict.KANDY,
+                "Colombo 03",
+                "Kandy",
+                "N. P.",
+                "07X***4567",
+                "K. S.",
+                "07X***1234",
                 List.of()
         );
         when(broadcastHub.current("SD-HUB-001")).thenReturn(hubView);
@@ -59,24 +68,57 @@ class PublicTrackingControllerTest {
     }
 
     @Test
+    void cacheHitWithoutContactDetailsEnrichesFromOrderService() {
+        PublicTrackingViewDto hubView = new PublicTrackingViewDto(
+                "SD-HUB-002",
+                PublicOrderStatus.IN_TRANSIT,
+                SriLankanDistrict.COLOMBO,
+                SriLankanDistrict.KANDY,
+                List.of()
+        );
+        when(broadcastHub.current("SD-HUB-002")).thenReturn(hubView);
+        when(orderClient.getTracking("SD-HUB-002")).thenReturn(Mono.just(Optional.of(internal("SD-HUB-002"))));
+
+        StepVerifier.create(controller.getTracking("SD-HUB-002"))
+                .expectNextMatches(v -> v.trackingNumber().equals("SD-HUB-002")
+                        && "Colombo 03".equals(v.originCity())
+                        && "N. P.".equals(v.senderNameMasked())
+                        && "07X***1234".equals(v.receiverPhoneMasked()))
+                .verifyComplete();
+
+        Mockito.verify(broadcastHub).updateCache(eq("SD-HUB-002"), Mockito.any(PublicTrackingViewDto.class));
+    }
+
+    @Test
+    void cacheHitWithoutContactDetailsKeepsCachedViewWhenLookupFails() {
+        PublicTrackingViewDto hubView = new PublicTrackingViewDto(
+                "SD-HUB-003",
+                PublicOrderStatus.IN_TRANSIT,
+                SriLankanDistrict.COLOMBO,
+                SriLankanDistrict.KANDY,
+                List.of()
+        );
+        when(broadcastHub.current("SD-HUB-003")).thenReturn(hubView);
+        when(orderClient.getTracking("SD-HUB-003")).thenReturn(Mono.just(Optional.empty()));
+
+        StepVerifier.create(controller.getTracking("SD-HUB-003"))
+                .expectNext(hubView)
+                .verifyComplete();
+
+        Mockito.verify(broadcastHub, Mockito.never())
+                .updateCache(eq("SD-HUB-003"), Mockito.any(PublicTrackingViewDto.class));
+    }
+
+    @Test
     void cacheMissWithOrderServiceSuccessReturnsSanitizedView() {
         when(broadcastHub.current("SD-MISS-001")).thenReturn(null);
-
-        InternalTrackingView internal = new InternalTrackingView(
-                "SD-MISS-001",
-                PublicOrderStatus.IN_TRANSIT,
-                List.of(new HistoryEntry(PublicOrderStatus.CREATED, Instant.parse("2026-10-26T06:00:00Z"))),
-                "Colombo",
-                SriLankanDistrict.COLOMBO,
-                "Kandy",
-                SriLankanDistrict.KANDY
-        );
-
-        when(orderClient.getTracking("SD-MISS-001")).thenReturn(Mono.just(Optional.of(internal)));
+        when(orderClient.getTracking("SD-MISS-001")).thenReturn(Mono.just(Optional.of(internal("SD-MISS-001"))));
 
         StepVerifier.create(controller.getTracking("SD-MISS-001"))
                 .expectNextMatches(v -> v.trackingNumber().equals("SD-MISS-001")
-                        && v.currentPublicStatus() == PublicOrderStatus.IN_TRANSIT)
+                        && v.currentPublicStatus() == PublicOrderStatus.IN_TRANSIT
+                        && "Colombo 03".equals(v.originCity())
+                        && "N. P.".equals(v.senderNameMasked()))
                 .verifyComplete();
 
         Mockito.verify(broadcastHub).updateCache(eq("SD-MISS-001"), Mockito.any(PublicTrackingViewDto.class));
@@ -113,5 +155,21 @@ class PublicTrackingControllerTest {
                 .expectErrorMatches(err -> err instanceof ResponseStatusException
                         && ((ResponseStatusException) err).getStatusCode() == HttpStatus.NOT_FOUND)
                 .verify();
+    }
+
+    private InternalTrackingView internal(String trackingNumber) {
+        return new InternalTrackingView(
+                trackingNumber,
+                PublicOrderStatus.IN_TRANSIT,
+                List.of(new HistoryEntry(PublicOrderStatus.CREATED, Instant.parse("2026-10-26T06:00:00Z"))),
+                "Colombo 03",
+                SriLankanDistrict.COLOMBO,
+                "Kandy",
+                SriLankanDistrict.KANDY,
+                "N. P.",
+                "07X***4567",
+                "K. S.",
+                "07X***1234"
+        );
     }
 }

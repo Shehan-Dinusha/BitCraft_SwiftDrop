@@ -1,9 +1,7 @@
 package com.swiftdrop.gateway.trackinghub.controller;
 
-import com.swiftdrop.gateway.trackinghub.client.OrderTrackingClient;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
-import com.swiftdrop.gateway.trackinghub.service.TrackingBroadcastHubService;
-import com.swiftdrop.gateway.trackinghub.service.TrackingDataSanitizerProxy;
+import com.swiftdrop.gateway.trackinghub.service.TrackingViewEnrichmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -21,23 +19,18 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class PublicTrackingController {
 
-    private final TrackingBroadcastHubService broadcastHub;
-    private final OrderTrackingClient orderClient;
-    private final TrackingDataSanitizerProxy sanitizer;
+    private final TrackingViewEnrichmentService enrichmentService;
 
     @GetMapping("/{trackingNumber}")
     @Operation(summary = "Get the latest sanitized parcel tracking view")
     public Mono<PublicTrackingViewDto> getTracking(@PathVariable String trackingNumber) {
-        PublicTrackingViewDto view = broadcastHub.current(trackingNumber);
-        if (view != null) {
-            return Mono.just(view);
-        }
-        // Cache miss: fall back to order service
-        return orderClient.getTracking(trackingNumber)
-                .flatMap(opt -> opt.map(internal ->
-                        Mono.just(sanitizer.fromInternalView(internal))
-                                .doOnNext(v -> broadcastHub.updateCache(trackingNumber, v))
-                ).orElse(Mono.error(new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Tracking data is not available"))));
+        return enrichmentService.enrich(trackingNumber)
+                .flatMap(optional -> {
+                    if (optional.isEmpty()) {
+                        return Mono.error(new ResponseStatusException(
+                                HttpStatus.NOT_FOUND, "Tracking data is not available"));
+                    }
+                    return Mono.just(optional.get());
+                });
     }
 }
