@@ -8,8 +8,12 @@ export type DeadLetterWebhookResponse = components['schemas']['DeadLetterWebhook
 export type ReplayDlqResponse = components['schemas']['ReplayDlqResponse'];
 
 export const webhookApi = {
-  listEndpoints: async (merchantId?: string) => {
-    const params = merchantId ? { merchantId } : {};
+  /**
+   * The backend scopes results to the caller's merchant (from the verified JWT). `merchantId` is an optional
+   * filter for SYSTEM_ADMIN only; merchant screens must not send it.
+   */
+  listEndpoints: async (adminMerchantFilter?: string) => {
+    const params = adminMerchantFilter ? { merchantId: adminMerchantFilter } : {};
     const { data } = await apiClient.get<{ success: boolean; data: WebhookEndpointResponse[] }>(
       '/v1/webhooks/subscriptions',
       { params }
@@ -62,10 +66,11 @@ export const webhookApi = {
     return data.data;
   },
 
-  listDlq: async (merchantId?: string, unreplayedOnly: boolean = false) => {
+  /** Scoped to the caller's merchant by the backend; `adminMerchantFilter` is for SYSTEM_ADMIN/DISPATCHER only. */
+  listDlq: async (unreplayedOnly: boolean = false, adminMerchantFilter?: string) => {
     const params: Record<string, string | boolean> = { unreplayedOnly };
-    if (merchantId) {
-      params.merchantId = merchantId;
+    if (adminMerchantFilter) {
+      params.merchantId = adminMerchantFilter;
     }
     const { data } = await apiClient.get<{ success: boolean; data: DeadLetterWebhookResponse[] }>(
       '/v1/webhooks/dlq',
@@ -88,8 +93,9 @@ export const webhookApi = {
     return data.data;
   },
 
-  replayAllDlq: async (merchantId?: string) => {
-    const params = merchantId ? { merchantId } : {};
+  /** Replays the caller's own records; `adminMerchantFilter` is for SYSTEM_ADMIN only. */
+  replayAllDlq: async (adminMerchantFilter?: string) => {
+    const params = adminMerchantFilter ? { merchantId: adminMerchantFilter } : {};
     const { data } = await apiClient.post<{ success: boolean; data: ReplayDlqResponse[] }>(
       '/v1/webhooks/dlq/replay-all',
       null,

@@ -46,7 +46,8 @@ class InternalOrderControllerTest {
                 PublicOrderStatus.PICKED_UP,
                 List.of(new InternalTrackingView.HistoryEntry(PublicOrderStatus.CREATED, Instant.parse("2026-10-30T08:00:00Z")),
                         new InternalTrackingView.HistoryEntry(PublicOrderStatus.PICKED_UP, Instant.parse("2026-10-30T10:00:00Z"))),
-                "Colombo 03", SriLankanDistrict.COLOMBO, "Kandy", SriLankanDistrict.KANDY));
+                "Colombo 03", SriLankanDistrict.COLOMBO, "Kandy", SriLankanDistrict.KANDY,
+                "N. P.", "07X***4567", "K. S.", "07X***1234"));
 
         mockMvc.perform(get("/internal/v1/orders/tracking/{trackingNumber}", "SD-7K4M-9QX2"))
                 .andExpect(status().isOk())
@@ -56,7 +57,11 @@ class InternalOrderControllerTest {
                 .andExpect(jsonPath("$.data.history[0].status").value("CREATED"))
                 .andExpect(jsonPath("$.data.history[1].status").value("PICKED_UP"))
                 .andExpect(jsonPath("$.data.pickupDistrict").value("COLOMBO"))
-                .andExpect(jsonPath("$.data.deliveryCity").value("Kandy"));
+                .andExpect(jsonPath("$.data.deliveryCity").value("Kandy"))
+                .andExpect(jsonPath("$.data.senderNameMasked").value("N. P."))
+                .andExpect(jsonPath("$.data.senderPhoneMasked").value("07X***4567"))
+                .andExpect(jsonPath("$.data.receiverNameMasked").value("K. S."))
+                .andExpect(jsonPath("$.data.receiverPhoneMasked").value("07X***1234"));
     }
 
     @Test

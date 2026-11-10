@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get the latest PII-free tracking view */
+        /** Get the latest sanitized tracking view */
         get: operations["getPublicTrackingView"];
         put?: never;
         post?: never;
@@ -58,6 +58,36 @@ export interface components {
             currentPublicStatus: components["schemas"]["PublicOrderStatus"];
             originDistrict?: components["schemas"]["SriLankanDistrict"];
             destinationDistrict?: components["schemas"]["SriLankanDistrict"];
+            /**
+             * @description City where the parcel was handed over.
+             * @example Colombo 03
+             */
+            originCity?: string;
+            /**
+             * @description Destination city.
+             * @example Kandy
+             */
+            destinationCity?: string;
+            /**
+             * @description Sender name reduced to initials only.
+             * @example N. P.
+             */
+            senderNameMasked?: string;
+            /**
+             * @description Sender phone with the middle digits hidden.
+             * @example 07X***4567
+             */
+            senderPhoneMasked?: string;
+            /**
+             * @description Receiver name reduced to initials only.
+             * @example K. S.
+             */
+            receiverNameMasked?: string;
+            /**
+             * @description Receiver phone with the middle digits hidden.
+             * @example 07X***1234
+             */
+            receiverPhoneMasked?: string;
             statusTimeline: components["schemas"]["PublicTrackingTimelineEntry"][];
         };
     };

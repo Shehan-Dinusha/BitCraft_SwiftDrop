@@ -111,9 +111,35 @@ class InternalTrackingServiceTest {
         assertThat(json)
                 .contains(TRACKING, "IN_TRANSIT", "Colombo 03", "COLOMBO", "Kandy", "KANDY")
                 .doesNotContain("Hidden Lane", "Flat 9B", "Private Road", "00300", "20000")
-                .doesNotContain("Secret Sender", "Secret Receiver", "0771112223", "0714445556", "secret.receiver")
+                .contains("\"senderNameMasked\":\"S. S.\"", "\"senderPhoneMasked\":\"07X***2223\"",
+                        "\"receiverNameMasked\":\"S. R.\"", "\"receiverPhoneMasked\":\"07X***5556\"")
+                .doesNotContain("Secret", "Sender", "Receiver", "0771112223", "0714445556", "771112", "714445", "secret.receiver")
                 .doesNotContain("11111111-1111", "22222222-2222", "1185", "LKR", "PRICING-2026", "Hidden contents")
-                .doesNotContain("customerId", "merchantId", "estimatedFee", "recipient", "phone", "email", "internal");
+                .doesNotContain("customerId", "merchantId", "estimatedFee", "recipient", "email", "internal", "pickupContact");
+    }
+
+    @Test
+    @DisplayName("The view carries masked sender and receiver contact built from the order")
+    void viewCarriesMaskedContact() {
+        when(customerOrderRepository.findByTrackingNumber(TRACKING)).thenReturn(Optional.of(order));
+        when(historyRepository.findByOrderIdOrderByOccurredAtAscIdAsc(orderId)).thenReturn(List.of());
+
+        InternalTrackingView view = internalTrackingService.getTrackingView(TRACKING);
+
+        assertThat(view.senderNameMasked()).isEqualTo("S. S.");
+        assertThat(view.senderPhoneMasked()).isEqualTo("07X***2223");
+        assertThat(view.receiverNameMasked()).isEqualTo("S. R.");
+        assertThat(view.receiverPhoneMasked()).isEqualTo("07X***5556");
+    }
+
+    @Test
+    @DisplayName("An international-format phone is masked like the local one")
+    void internationalPhoneIsMaskedLikeLocal() {
+        order.setPickupContactPhone("+94771112223");
+        when(customerOrderRepository.findByTrackingNumber(TRACKING)).thenReturn(Optional.of(order));
+        when(historyRepository.findByOrderIdOrderByOccurredAtAscIdAsc(orderId)).thenReturn(List.of());
+
+        assertThat(internalTrackingService.getTrackingView(TRACKING).senderPhoneMasked()).isEqualTo("07X***2223");
     }
 
     @Test

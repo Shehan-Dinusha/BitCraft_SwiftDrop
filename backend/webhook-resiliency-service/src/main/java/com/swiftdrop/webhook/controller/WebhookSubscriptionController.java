@@ -1,6 +1,7 @@
 package com.swiftdrop.webhook.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.webhook.dto.CreateWebhookEndpointRequest;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
@@ -34,43 +35,33 @@ public class WebhookSubscriptionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Register a new webhook subscription endpoint")
+    @Operation(summary = "Register a new webhook subscription endpoint",
+            description = "A MERCHANT registers under the merchant identity of its token; merchantId may be omitted and "
+                    + "any other value is refused (403). A SYSTEM_ADMIN must supply merchantId. Other roles: 403.")
     public ApiResponse<WebhookEndpointResponse> createEndpoint(
-            @Valid @RequestBody CreateWebhookEndpointRequest request) {
-        log.info("Received request to register webhook endpoint for merchant: {}", request.merchantId());
-        WebhookEndpointResponse response = subscriptionService.createEndpoint(request);
+            @Valid @RequestBody CreateWebhookEndpointRequest request, CallerContext caller) {
+        WebhookEndpointResponse response = subscriptionService.createEndpoint(request, caller);
         return ApiResponse.success(response, "Webhook endpoint created successfully");
     }
 
     @GetMapping("/{endpointId}")
-    @Operation(summary = "Get webhook endpoint details by ID")
+    @Operation(summary = "Get webhook endpoint details by ID",
+            description = "Another merchant's endpoint returns 404, exactly like an unknown ID.")
     public ApiResponse<WebhookEndpointResponse> getEndpoint(
-            @PathVariable @Parameter(description = "Endpoint UUID") UUID endpointId) {
-        WebhookEndpointResponse response = subscriptionService.getEndpoint(endpointId);
+            @PathVariable @Parameter(description = "Endpoint UUID") UUID endpointId, CallerContext caller) {
+        WebhookEndpointResponse response = subscriptionService.getEndpoint(endpointId, caller);
         return ApiResponse.success(response, "Webhook endpoint retrieved");
     }
 
     @GetMapping
-    @Operation(summary = "List webhook endpoints for a merchant or all if admin")
+    @Operation(summary = "List webhook endpoints",
+            description = "A MERCHANT receives only its own endpoints (a different merchantId is refused with 403). "
+                    + "A SYSTEM_ADMIN may filter by merchantId or omit it to list every endpoint.")
     public ApiResponse<List<WebhookEndpointResponse>> listEndpoints(
-            @RequestParam(required = false) UUID merchantId,
-            @RequestHeader(value = "X-Merchant-Id", required = false) String headerMerchantId) {
-
-        UUID targetMerchant = merchantId;
-        if (targetMerchant == null && headerMerchantId != null && !headerMerchantId.isBlank()) {
-            try {
-                targetMerchant = UUID.fromString(headerMerchantId);
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-
-        List<WebhookEndpointResponse> response;
-        if (targetMerchant != null) {
-            response = subscriptionService.listEndpointsByMerchant(targetMerchant);
-        } else {
-            response = subscriptionService.listAllEndpoints();
-        }
-
+            @RequestParam(required = false) @Parameter(description = "Merchant filter; administrators only")
+            UUID merchantId,
+            CallerContext caller) {
+        List<WebhookEndpointResponse> response = subscriptionService.listEndpoints(merchantId, caller);
         return ApiResponse.success(response, "Webhook endpoints retrieved");
     }
 
@@ -78,30 +69,32 @@ public class WebhookSubscriptionController {
     @Operation(summary = "Toggle active status for a webhook endpoint")
     public ApiResponse<WebhookEndpointResponse> toggleActive(
             @PathVariable UUID endpointId,
-            @RequestParam boolean active) {
-        WebhookEndpointResponse response = subscriptionService.toggleEndpointActive(endpointId, active);
+            @RequestParam boolean active,
+            CallerContext caller) {
+        WebhookEndpointResponse response = subscriptionService.toggleEndpointActive(endpointId, active, caller);
         return ApiResponse.success(response, "Endpoint status updated to " + (active ? "ACTIVE" : "INACTIVE"));
     }
 
     @DeleteMapping("/{endpointId}")
     @Operation(summary = "Delete a webhook endpoint subscription")
-    public ApiResponse<Void> deleteEndpoint(@PathVariable UUID endpointId) {
-        subscriptionService.deleteEndpoint(endpointId);
+    public ApiResponse<Void> deleteEndpoint(@PathVariable UUID endpointId, CallerContext caller) {
+        subscriptionService.deleteEndpoint(endpointId, caller);
         return ApiResponse.success(null, "Webhook endpoint deleted successfully");
     }
 
     @PostMapping("/{endpointId}/test")
     @Operation(summary = "Dispatch a test ping to the webhook endpoint")
-    public ApiResponse<WebhookDeliveryAttemptResponse> testPing(@PathVariable UUID endpointId) {
+    public ApiResponse<WebhookDeliveryAttemptResponse> testPing(@PathVariable UUID endpointId, CallerContext caller) {
         log.info("Triggering test ping for endpoint: {}", endpointId);
-        WebhookDeliveryAttemptResponse response = subscriptionService.testPing(endpointId);
+        WebhookDeliveryAttemptResponse response = subscriptionService.testPing(endpointId, caller);
         return ApiResponse.success(response, "Test ping dispatched");
     }
 
     @GetMapping("/{endpointId}/attempts")
     @Operation(summary = "List delivery attempts and history for an endpoint")
-    public ApiResponse<List<WebhookDeliveryAttemptResponse>> getAttempts(@PathVariable UUID endpointId) {
-        List<WebhookDeliveryAttemptResponse> response = subscriptionService.getDeliveryAttempts(endpointId);
+    public ApiResponse<List<WebhookDeliveryAttemptResponse>> getAttempts(@PathVariable UUID endpointId,
+                                                                         CallerContext caller) {
+        List<WebhookDeliveryAttemptResponse> response = subscriptionService.getDeliveryAttempts(endpointId, caller);
         return ApiResponse.success(response, "Delivery attempts retrieved");
     }
 }

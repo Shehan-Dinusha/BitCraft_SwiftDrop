@@ -13,6 +13,8 @@ import {
   type BulkIngestBatchResponse,
   type BulkBatchItemResponse
 } from '@/services/api/merchantApi';
+import { fetchCurrentUser } from '@/services/api/authApi';
+import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import {
   Store,
   Layers,
@@ -27,7 +29,9 @@ import {
 
 export function MerchantPortalDashboard() {
   const user = useAuthStore((s) => s.user);
-  const merchantId = user?.id || '22222222-2222-2222-2222-222222222222';
+  // The merchant identity is a separate value from the user id. It comes from the server-side profile
+  // (resolved from the verified token); there is no fallback. undefined = still loading, null = not linked.
+  const [merchantId, setMerchantId] = useState<string | null | undefined>(undefined);
 
   const [profile, setProfile] = useState<MerchantAccountResponse | null>(null);
   const [batches, setBatches] = useState<BulkIngestBatchResponse[]>([]);
@@ -38,7 +42,27 @@ export function MerchantPortalDashboard() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchCurrentUser()
+      .then((me) => {
+        if (!cancelled) setMerchantId(me.merchantId ?? null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setMerchantId(null);
+        setErrorMsg(apiErrorMessage(err, 'Failed to load your merchant profile'));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const fetchMerchantData = useCallback(async () => {
+    if (!merchantId) {
+      setLoading(merchantId === undefined);
+      return;
+    }
     try {
       setLoading(true);
       setErrorMsg(null);
@@ -49,7 +73,7 @@ export function MerchantPortalDashboard() {
       setProfile(acc);
       setBatches(batchList || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch merchant data';
+      const msg = apiErrorMessage(err, 'Failed to fetch merchant data');
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -178,8 +202,17 @@ export function MerchantPortalDashboard() {
 
       {/* Two Column Ingestion & Key Management Strip */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <BulkCsvDropzone merchantId={merchantId} onBatchIngested={fetchMerchantData} />
-        <ApiKeyManagerCard merchantId={merchantId} />
+        {merchantId ? (
+          <>
+            <BulkCsvDropzone merchantId={merchantId} onBatchIngested={fetchMerchantData} />
+            <ApiKeyManagerCard merchantId={merchantId} />
+          </>
+        ) : merchantId === null ? (
+          <SurfaceCard className="p-4 text-xs text-secondary lg:col-span-2">
+            Your account is not linked to a merchant, so bulk ingestion and API keys are unavailable.
+            Contact SwiftDrop support to link your login to your merchant account.
+          </SurfaceCard>
+        ) : null}
       </div>
 
       {/* Ingestion Batches Table */}

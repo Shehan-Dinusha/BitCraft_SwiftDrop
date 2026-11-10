@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
 import com.swiftdrop.gateway.trackinghub.service.TrackingBroadcastHubService;
+import com.swiftdrop.gateway.trackinghub.service.TrackingViewEnrichmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,18 +31,23 @@ public class LiveTrackingStreamController implements WebSocketHandler {
 
     private final TrackingBroadcastHubService broadcastHub;
     private final ObjectMapper objectMapper;
+    private final TrackingViewEnrichmentService enrichmentService;
     private final Duration heartbeatInterval;
 
     @Autowired
-    public LiveTrackingStreamController(TrackingBroadcastHubService broadcastHub, ObjectMapper objectMapper) {
-        this(broadcastHub, objectMapper, DEFAULT_HEARTBEAT_INTERVAL);
+    public LiveTrackingStreamController(TrackingBroadcastHubService broadcastHub,
+                                        ObjectMapper objectMapper,
+                                        TrackingViewEnrichmentService enrichmentService) {
+        this(broadcastHub, objectMapper, enrichmentService, DEFAULT_HEARTBEAT_INTERVAL);
     }
 
     LiveTrackingStreamController(TrackingBroadcastHubService broadcastHub,
                                  ObjectMapper objectMapper,
+                                 TrackingViewEnrichmentService enrichmentService,
                                  Duration heartbeatInterval) {
         this.broadcastHub = broadcastHub;
         this.objectMapper = objectMapper;
+        this.enrichmentService = enrichmentService;
         this.heartbeatInterval = heartbeatInterval;
     }
 
@@ -49,14 +55,17 @@ public class LiveTrackingStreamController implements WebSocketHandler {
     @ResponseBody
     @Operation(summary = "Subscribe to sanitized parcel updates over Server-Sent Events")
     public Flux<ServerSentEvent<PublicTrackingViewDto>> stream(@PathVariable String trackingNumber) {
-        Flux<ServerSentEvent<PublicTrackingViewDto>> views = broadcastHub.stream(trackingNumber)
-                .map(view -> ServerSentEvent.<PublicTrackingViewDto>builder().data(view).build());
-        Flux<ServerSentEvent<PublicTrackingViewDto>> heartbeats = Flux.interval(heartbeatInterval)
-                .map(sequence -> ServerSentEvent.<PublicTrackingViewDto>builder()
-                        .comment("heartbeat")
-                        .build());
-        return Flux.merge(views, heartbeats)
-                .takeUntil(event -> isTerminal(event.data()));
+        return enrichmentService.enrich(trackingNumber)
+                .thenMany(Flux.defer(() -> {
+                    Flux<ServerSentEvent<PublicTrackingViewDto>> views = broadcastHub.stream(trackingNumber)
+                            .map(view -> ServerSentEvent.<PublicTrackingViewDto>builder().data(view).build());
+                    Flux<ServerSentEvent<PublicTrackingViewDto>> heartbeats = Flux.interval(heartbeatInterval)
+                            .map(sequence -> ServerSentEvent.<PublicTrackingViewDto>builder()
+                                    .comment("heartbeat")
+                                    .build());
+                    return Flux.merge(views, heartbeats)
+                            .takeUntil(event -> isTerminal(event.data()));
+                }));
     }
 
     @Override
@@ -64,17 +73,20 @@ public class LiveTrackingStreamController implements WebSocketHandler {
     public Mono<Void> handle(@NonNull WebSocketSession session) {
         String trackingNumber = resolveTrackingNumber(session);
 
-        Flux<StreamItem> updates = broadcastHub.stream(trackingNumber)
-                .map(view -> new StreamItem(view, false));
-        Flux<StreamItem> heartbeats = Flux.interval(heartbeatInterval)
-                .map(sequence -> new StreamItem(null, true));
+        return enrichmentService.enrich(trackingNumber)
+                .then(Mono.defer(() -> {
+                    Flux<StreamItem> updates = broadcastHub.stream(trackingNumber)
+                            .map(view -> new StreamItem(view, false));
+                    Flux<StreamItem> heartbeats = Flux.interval(heartbeatInterval)
+                            .map(sequence -> new StreamItem(null, true));
 
-        Flux<WebSocketMessage> messages = Flux.merge(updates, heartbeats)
-                .takeUntil(item -> isTerminal(item.view()))
-                .map(item -> item.heartbeat()
-                        ? session.pingMessage(factory -> factory.wrap(new byte[0]))
-                        : session.textMessage(toJson(item.view())));
-        return session.send(messages);
+                    Flux<WebSocketMessage> messages = Flux.merge(updates, heartbeats)
+                            .takeUntil(item -> isTerminal(item.view()))
+                            .map(item -> item.heartbeat()
+                                    ? session.pingMessage(factory -> factory.wrap(new byte[0]))
+                                    : session.textMessage(toJson(item.view())));
+                    return session.send(messages);
+                }));
     }
 
     private String resolveTrackingNumber(WebSocketSession session) {

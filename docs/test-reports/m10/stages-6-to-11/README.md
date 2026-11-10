@@ -6,6 +6,20 @@ Linux engine. Stage numbers follow the Member 10 guide. See the
 
 ## Results
 
+### Verification after merging dev
+
+Latest fetched `dev` (`bd0ded7`) was merged into the assistant branch before PR creation.
+Conflicts were resolved by retaining the customer-only assistant contracts and consolidated
+guides, while keeping dev's configured tracking client and contact-enrichment changes.
+The analytics OpenAPI declaration was regenerated after resolving its specification.
+
+Fresh merged-source checks passed: 103 analytics unit/controller tests, 26 PostgreSQL/RabbitMQ
+integration tests, gateway verification, frontend API generation, lint and production build.
+Shared contracts and affected services used temporary POM copies with only build output
+changed to `target-pr-verify`, avoiding stale IDE-written record classes and running-JAR
+locks. These temporary POMs were removed after verification. No paid provider was called;
+live Azure acceptance remains pending university account access.
+
 ### Customer-only follow-up
 
 The project owner clarified that only customers should see/use conversational chat.

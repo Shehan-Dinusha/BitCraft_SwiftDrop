@@ -41,7 +41,7 @@ public class InternalOrderController {
 
     @GetMapping("/tracking/{trackingNumber}")
     @Operation(summary = "Public-safe tracking view by tracking number",
-            description = "For the gateway tracking hub. Returns status, status history and city/district only. "
+            description = "For the gateway tracking hub. Returns status, status history, city/district and masked sender and receiver contact only. "
                     + "Internal, no user context: must never be exposed through the API gateway.")
     public ApiResponse<InternalTrackingView> getTracking(
             @PathVariable("trackingNumber")

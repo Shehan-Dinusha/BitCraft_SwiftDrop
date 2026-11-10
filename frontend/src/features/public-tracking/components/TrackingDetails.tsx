@@ -13,6 +13,7 @@ import {
   type StatusTimelineEntry,
   type TimelineStepState
 } from '@/design-system';
+import { ShieldCheck } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import {
   isTerminalPublicStatus,
@@ -82,6 +83,12 @@ export function TrackingDetails({ view, connection, className }: TrackingDetails
   const progressStatus = toProgressStatus(view.currentPublicStatus);
   const terminalAlert = TERMINAL_ALERTS[view.currentPublicStatus];
   const timeline = buildTimeline(view);
+  const hasMaskedContact = Boolean(
+    view.senderNameMasked ||
+      view.senderPhoneMasked ||
+      view.receiverNameMasked ||
+      view.receiverPhoneMasked
+  );
 
   return (
     <div className={cn('flex flex-col gap-5', className)}>
@@ -102,10 +109,29 @@ export function TrackingDetails({ view, connection, className }: TrackingDetails
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 rounded-lg border border-border-subtle bg-canvas p-3 sm:gap-4 sm:p-4">
-            <DistrictSummary label="From" district={view.originDistrict} />
-            <DistrictSummary label="To" district={view.destinationDistrict} />
+          <div className="grid grid-cols-1 gap-3 rounded-lg border border-border-subtle bg-canvas p-3 sm:grid-cols-2 sm:gap-4 sm:p-4">
+            <PartySummary
+              label="Sender"
+              city={view.originCity}
+              district={view.originDistrict}
+              nameMasked={view.senderNameMasked}
+              phoneMasked={view.senderPhoneMasked}
+            />
+            <PartySummary
+              label="Receiver"
+              city={view.destinationCity}
+              district={view.destinationDistrict}
+              nameMasked={view.receiverNameMasked}
+              phoneMasked={view.receiverPhoneMasked}
+            />
           </div>
+
+          {hasMaskedContact ? (
+            <p className="flex items-start gap-1.5 text-caption text-muted">
+              <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              <span>Contact details are partially hidden to protect privacy.</span>
+            </p>
+          ) : null}
 
           {progressStatus ? <StatusProgress current={progressStatus} className="py-1" /> : null}
 
@@ -122,17 +148,34 @@ export function TrackingDetails({ view, connection, className }: TrackingDetails
   );
 }
 
-function DistrictSummary({
+function PartySummary({
   label,
-  district
+  city,
+  district,
+  nameMasked,
+  phoneMasked
 }: {
   label: string;
+  city?: string;
   district: SriLankanDistrict | undefined;
+  nameMasked?: string;
+  phoneMasked?: string;
 }) {
+  const location = city?.trim() ? city.trim() : formatDistrict(district);
+  const hasContact = Boolean(nameMasked || phoneMasked);
+
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
+    <div className="flex min-w-0 flex-col gap-1">
       <span className="text-overline text-secondary">{label}</span>
-      <span className="truncate text-body-strong text-primary">{formatDistrict(district)}</span>
+      <span className="truncate text-body-strong text-primary">{location}</span>
+      {hasContact ? (
+        <div className="flex min-w-0 flex-col gap-0.5 text-caption text-muted">
+          {nameMasked ? <span className="truncate">{nameMasked}</span> : null}
+          {phoneMasked ? (
+            <span className="font-mono tabular-nums">{phoneMasked}</span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -18,6 +18,17 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.time.Duration;
 import java.util.UUID;
 
+/**
+ * Legacy synchronous dispatcher: up to three blocking attempts on the caller's thread, then a legacy
+ * dead-letter row.
+ *
+ * @deprecated Event ingestion no longer calls this class; it creates persistent {@code webhook_deliveries}
+ * jobs instead. It remains only for the two existing API operations that have not been migrated yet, the
+ * endpoint test ping ({@link WebhookSubscriptionService#testPing}) and legacy dead-letter replay
+ * ({@link DlqReplayService#replayDlqRecord}). Remove it once the delivery worker and the replay redesign
+ * take over those operations. Do not add new callers.
+ */
+@Deprecated
 @Slf4j
 @Service
 @RequiredArgsConstructor

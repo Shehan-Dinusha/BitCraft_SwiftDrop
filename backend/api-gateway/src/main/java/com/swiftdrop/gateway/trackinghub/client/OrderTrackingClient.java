@@ -24,7 +24,7 @@ public class OrderTrackingClient {
 
     public Mono<Optional<InternalTrackingView>> getTracking(String trackingNumber) {
         return webClient.get()
-                .uri(routes.order().replaceAll("/+$", "") + "/internal/v1/orders/tracking/{trackingNumber}", trackingNumber)
+                .uri(trackingUrl(trackingNumber))
                 .retrieve()
                 .onStatus(s -> s == HttpStatus.NOT_FOUND, resp -> Mono.error(new NotFoundException()))
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<InternalTrackingView>>() {})
@@ -36,6 +36,14 @@ public class OrderTrackingClient {
                     log.warn("Order tracking lookup failed for {}: {}", trackingNumber, e.getMessage());
                     return Mono.just(Optional.<InternalTrackingView>empty());
                 });
+    }
+
+    private String trackingUrl(String trackingNumber) {
+        String base = routes.order();
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return base + "/internal/v1/orders/tracking/" + trackingNumber;
     }
 
     private static class NotFoundException extends RuntimeException {

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '@/store/useAuthStore';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
 import { Modal } from '@/design-system/primitives/Modal';
@@ -11,6 +10,7 @@ import {
   type CreateWebhookEndpointRequest,
   type WebhookDeliveryAttemptResponse
 } from '@/services/api/webhookApi';
+import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import {
   Webhook,
   Plus,
@@ -29,9 +29,6 @@ import {
 } from 'lucide-react';
 
 export function WebhookResiliencyConsolePage() {
-  const user = useAuthStore((s) => s.user);
-  const merchantId = user?.id || '22222222-2222-2222-2222-222222222222';
-
   const [endpoints, setEndpoints] = useState<WebhookEndpointResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [banner, setBanner] = useState<{ tone: 'success' | 'danger'; message: string } | null>(null);
@@ -60,15 +57,16 @@ export function WebhookResiliencyConsolePage() {
   const fetchEndpoints = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await webhookApi.listEndpoints(merchantId);
+      // The backend scopes the list to the merchant in the caller's verified token.
+      const data = await webhookApi.listEndpoints();
       setEndpoints(data || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch webhook endpoints';
+      const msg = apiErrorMessage(err, 'Failed to fetch webhook endpoints');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setLoading(false);
     }
-  }, [merchantId]);
+  }, []);
 
   useEffect(() => {
     fetchEndpoints();
@@ -80,8 +78,8 @@ export function WebhookResiliencyConsolePage() {
 
     try {
       setCreating(true);
+      // No merchantId: the backend registers the endpoint under the caller's own merchant identity.
       const request: CreateWebhookEndpointRequest = {
-        merchantId,
         targetUrl: targetUrl.trim(),
         subscribedEvents: subscribedEvents.trim() || 'parcel.status.changed',
         description: description.trim() || undefined
@@ -94,7 +92,7 @@ export function WebhookResiliencyConsolePage() {
       setTargetUrl('');
       setDescription('');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to register webhook endpoint';
+      const msg = apiErrorMessage(err, 'Failed to register webhook endpoint');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setCreating(false);
@@ -113,7 +111,7 @@ export function WebhookResiliencyConsolePage() {
         message: `Endpoint ${updated.active ? 'activated' : 'paused'} successfully.`
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to update endpoint status';
+      const msg = apiErrorMessage(err, 'Failed to update endpoint status');
       setBanner({ tone: 'danger', message: msg });
     }
   };
@@ -125,7 +123,7 @@ export function WebhookResiliencyConsolePage() {
       setEndpoints((prev) => prev.filter((ep) => ep.endpointId !== endpointId));
       setBanner({ tone: 'success', message: 'Webhook endpoint deleted.' });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete endpoint';
+      const msg = apiErrorMessage(err, 'Failed to delete endpoint');
       setBanner({ tone: 'danger', message: msg });
     }
   };
@@ -145,7 +143,7 @@ export function WebhookResiliencyConsolePage() {
         message: `Test ping response: HTTP ${res.httpStatusCode || 500} (${res.success ? 'Success' : 'Failed'})`
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to execute test ping';
+      const msg = apiErrorMessage(err, 'Failed to execute test ping');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setPingingId(null);
@@ -161,7 +159,8 @@ export function WebhookResiliencyConsolePage() {
       const data = await webhookApi.listAttempts(endpoint.endpointId);
       setAttempts(data || []);
     } catch (err: unknown) {
-      console.error('Failed to load attempts history', err);
+      setIsAttemptsModalOpen(false);
+      setBanner({ tone: 'danger', message: apiErrorMessage(err, 'Failed to load delivery attempts') });
     } finally {
       setAttemptsLoading(false);
     }
@@ -426,7 +425,7 @@ export function WebhookResiliencyConsolePage() {
           </div>
         </div>
 
-        <WebhookDlqReplayTable merchantId={merchantId} />
+        <WebhookDlqReplayTable />
       </section>
 
       {/* Registration Modal */}
