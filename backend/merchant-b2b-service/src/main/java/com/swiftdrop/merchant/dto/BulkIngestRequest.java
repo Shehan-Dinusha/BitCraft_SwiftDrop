@@ -12,6 +12,7 @@ public record BulkIngestRequest(
         String fileName,
 
         @NotEmpty(message = "Order list cannot be empty")
+        @jakarta.validation.constraints.Size(max = 500)
         @Valid
         @Schema(description = "List of delivery orders to ingest")
         List<BulkOrderIngestItem> orders

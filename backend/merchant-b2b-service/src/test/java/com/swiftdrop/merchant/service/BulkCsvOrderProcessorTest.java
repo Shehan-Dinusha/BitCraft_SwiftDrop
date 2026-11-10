@@ -15,6 +15,23 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BulkCsvOrderProcessorTest {
 
+    @Test
+    void retainsInvalidRowsForReportingAndParsesForwardingMetadata() {
+        String csv = """
+                recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,prohibited_items_declared
+                Test Recipient,0771234567,COLOMBO,10 Galle Road,1,STANDARD,CSV-001,Colombo,00300,Gampaha,11000,true
+                Test Recipient,0771234567,INVALID,10 Galle Road,bad,STANDARD,CSV-002,Colombo,00300,Gampaha,11000,true
+                malformed
+                """;
+        var rows = new BulkCsvOrderProcessor().parseCsv(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)));
+        assertEquals(3, rows.size());
+        assertEquals("CSV-001", rows.get(0).externalRef());
+        assertEquals(Boolean.TRUE, rows.get(0).prohibitedItemsDeclared());
+        assertNull(rows.get(1).deliveryDistrict());
+        assertNull(rows.get(1).packageWeightKg());
+        assertNull(rows.get(2).recipientName());
+    }
+
     private BulkCsvOrderProcessor csvProcessor;
 
     @BeforeEach

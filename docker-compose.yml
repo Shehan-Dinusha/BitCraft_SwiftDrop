@@ -300,6 +300,7 @@ services:
     ports:
       - "8086:8086"
     environment:
+      ORDER_SERVICE_URL: http://customer-order-service:8082
       DB_URL: jdbc:postgresql://merchant-postgres:5432/swiftdrop_merchant
       DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}

@@ -1,7 +1,6 @@
 package com.swiftdrop.merchant.service;
 
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.contracts.events.order.OrderCreatedEvent;
 import com.swiftdrop.merchant.domain.entity.BulkBatchItem;
 import com.swiftdrop.merchant.domain.entity.BulkIngestBatch;
 import com.swiftdrop.merchant.domain.entity.MerchantAccount;
@@ -11,7 +10,6 @@ import com.swiftdrop.merchant.domain.repository.MerchantAccountRepository;
 import com.swiftdrop.merchant.dto.BulkIngestBatchResponse;
 import com.swiftdrop.merchant.dto.BulkIngestRequest;
 import com.swiftdrop.merchant.dto.BulkOrderIngestItem;
-import com.swiftdrop.merchant.messaging.publisher.MerchantEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +39,7 @@ class BulkOrderIngestionServiceTest {
     private MerchantAccountRepository merchantAccountRepository;
 
     @Mock
-    private MerchantEventPublisher eventPublisher;
+    private B2bOrderSubmissionService submissions;
 
     private BulkOrderIngestionService ingestionService;
 
@@ -53,22 +51,25 @@ class BulkOrderIngestionServiceTest {
                 batchRepository,
                 batchItemRepository,
                 merchantAccountRepository,
-                eventPublisher
+                submissions
         );
     }
 
     @Test
-    @DisplayName("processBulkIngest should save batch, create items, and publish OrderCreatedEvents")
+    @DisplayName("processBulkIngest stores order-service identities without directly publishing events")
     void testProcessBulkIngestSuccess() {
         MerchantAccount merchant = MerchantAccount.builder()
                 .merchantId(merchantId)
                 .operatingDistrict(SriLankanDistrict.COLOMBO)
                 .businessName("Test Store")
+                .status(com.swiftdrop.merchant.domain.entity.MerchantStatus.APPROVED)
                 .build();
 
         when(merchantAccountRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(merchant));
         when(batchRepository.save(any(BulkIngestBatch.class))).thenAnswer(i -> i.getArgument(0));
         when(batchItemRepository.save(any(BulkBatchItem.class))).thenAnswer(i -> i.getArgument(0));
+        when(submissions.submit(eq(merchantId), any(), any())).thenReturn(
+                new com.swiftdrop.merchant.dto.B2bOrderResult("ref", UUID.randomUUID(), "SD-ABCD-EFGH", true, null));
 
         BulkOrderIngestItem item1 = new BulkOrderIngestItem(
                 "Kamal Fernando",
@@ -97,7 +98,7 @@ class BulkOrderIngestionServiceTest {
         assertEquals(2, response.successCount());
         assertEquals(0, response.failedCount());
 
-        verify(eventPublisher, times(2)).publishOrderCreated(any(OrderCreatedEvent.class));
+        verify(submissions, times(2)).submit(eq(merchantId), any(), any());
         verify(batchItemRepository, times(2)).save(any(BulkBatchItem.class));
     }
 
@@ -120,5 +121,24 @@ class BulkOrderIngestionServiceTest {
 
         assertEquals(batchId, res.batchId());
         assertEquals(5, res.totalRecords());
+    }
+
+    @Test
+    void incompleteRowIsReportedAsFailedWithoutInventingTrackingNumbers() {
+        when(merchantAccountRepository.findByMerchantId(merchantId)).thenReturn(Optional.of(
+                MerchantAccount.builder().merchantId(merchantId).operatingDistrict(SriLankanDistrict.COLOMBO)
+                        .status(com.swiftdrop.merchant.domain.entity.MerchantStatus.APPROVED).build()));
+        when(batchRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(submissions.submit(eq(merchantId), any(), any())).thenThrow(new IllegalArgumentException("Pickup city is required"));
+        var result = ingestionService.processBulkIngest(merchantId, new BulkIngestRequest("invalid.csv", List.of(
+                new BulkOrderIngestItem("Test Recipient", "0771234567", SriLankanDistrict.COLOMBO,
+                        "10 Galle Road", BigDecimal.ONE, "STANDARD"))));
+        assertEquals(0, result.successCount());
+        assertEquals(1, result.failedCount());
+        var captured = org.mockito.ArgumentCaptor.forClass(BulkBatchItem.class);
+        verify(batchItemRepository).save(captured.capture());
+        assertEquals("FAILED", captured.getValue().getItemStatus());
+        assertNull(captured.getValue().getTrackingNumber());
+        assertNull(captured.getValue().getOrderId());
     }
 }

@@ -11,4 +11,8 @@ import java.util.UUID;
 public interface MerchantAccountRepository extends JpaRepository<MerchantAccount, Long> {
     Optional<MerchantAccount> findByMerchantId(UUID merchantId);
     Optional<MerchantAccount> findByContactEmail(String contactEmail);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select m from MerchantAccount m where m.merchantId = :merchantId")
+    Optional<MerchantAccount> findForUpdate(@org.springframework.data.repository.query.Param("merchantId") UUID merchantId);
 }

@@ -1,5 +1,7 @@
 server:
   port: 8086
+swiftdrop:
+  order-service-url: ${ORDER_SERVICE_URL:http://localhost:8082}
 spring:
   application:
     name: merchant-b2b-service
