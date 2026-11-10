@@ -5,12 +5,14 @@ import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import com.swiftdrop.order.domain.entity.OrderStatusHistory;
 import com.swiftdrop.order.domain.repository.OrderStatusHistoryRepository;
+import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /** Single place that writes order status history rows, so create, cancel and event sync stay consistent. */
@@ -19,6 +21,14 @@ import java.util.UUID;
 public class OrderStatusHistoryService {
 
     private final OrderStatusHistoryRepository historyRepository;
+
+    /** The statuses the order has been through, oldest first. */
+    @Transactional(readOnly = true)
+    public List<OrderStatusHistoryEntry> listForOrder(UUID orderId) {
+        return historyRepository.findByOrderIdOrderByOccurredAtAscIdAsc(orderId).stream()
+                .map(row -> new OrderStatusHistoryEntry(row.getStatus(), row.getOccurredAt()))
+                .toList();
+    }
 
     /** Records the order's current status at its last update time, as part of the caller's transaction. */
     @Transactional(propagation = Propagation.MANDATORY)

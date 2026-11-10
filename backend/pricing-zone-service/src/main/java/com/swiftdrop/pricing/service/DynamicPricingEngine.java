@@ -7,12 +7,16 @@ import com.swiftdrop.pricing.domain.repository.DistrictZoneMappingRepository;
 import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
+import com.swiftdrop.pricing.exception.UnsupportedPricingSpeedException;
+import com.swiftdrop.pricing.service.strategy.PricingStrategy;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class DynamicPricingEngine {
 
     private final DistrictZoneMappingRepository districtZoneMappingRepository;
     private final PricingZoneRepository pricingZoneRepository;
+    private final List<PricingStrategy> pricingStrategies;
 
     public PricingQuoteResponse calculateQuote(PricingQuoteRequest request) {
         log.info("Calculating delivery quote from {} to {}, weight={}kg, speed={}",
@@ -79,16 +84,14 @@ public class DynamicPricingEngine {
 
         BigDecimal standardSubtotal = baseFee.add(weightFee);
 
-        // 4. Service speed multiplier
+        // 4. Service speed pricing strategy
         OrderSpeed speed = request.speed() != null ? request.speed() : OrderSpeed.STANDARD;
-        BigDecimal speedMultiplier = BigDecimal.ONE;
-        if (speed == OrderSpeed.EXPRESS) {
-            speedMultiplier = pickupZone != null ? pickupZone.getExpressMultiplier() : new BigDecimal("1.50");
-        } else if (speed == OrderSpeed.SAME_DAY) {
-            speedMultiplier = pickupZone != null ? pickupZone.getSameDayMultiplier() : new BigDecimal("2.00");
-        }
+        PricingStrategy strategy = pricingStrategies.stream()
+                .filter(candidate -> candidate.supports(speed))
+                .findFirst()
+                .orElseThrow(() -> new UnsupportedPricingSpeedException(speed));
 
-        BigDecimal totalFee = standardSubtotal.multiply(speedMultiplier).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalFee = strategy.apply(standardSubtotal, pickupZone).setScale(2, RoundingMode.HALF_UP);
         BigDecimal speedSurcharge = totalFee.subtract(standardSubtotal).setScale(2, RoundingMode.HALF_UP);
 
         return PricingQuoteResponse.builder()

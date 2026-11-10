@@ -3,6 +3,17 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { PersonaRole } from '@/types/contracts';
 import type { AuthTokenResponse, AuthUserProfile, UserRole } from '@/services/api/authApi';
 
+/**
+ * Maps a backend UserRole to the frontend PersonaRole (persona).
+ *
+ * Mapping:
+ *   CUSTOMER    → CUSTOMER
+ *   COURIER     → COURIER
+ *   MERCHANT    → MERCHANT
+ *   DISPATCHER  → ADMIN_OPS   (operational console; district-scoped)
+ *   SYSTEM_ADMIN→ ADMIN_OPS   (platform-wide; AppShell uses user.role to show the right sub-nav)
+ *   <unknown>   → CUSTOMER    (safe default; RoleGuard blocks access to protected routes)
+ */
 export function personaForRole(role?: UserRole | AuthUserProfile['role']): PersonaRole {
   switch (role) {
     case 'COURIER':
@@ -11,6 +22,8 @@ export function personaForRole(role?: UserRole | AuthUserProfile['role']): Perso
       return 'MERCHANT';
     case 'DISPATCHER':
     case 'SYSTEM_ADMIN':
+      // Both map to ADMIN_OPS persona.  Use `user.role` (the raw backend value) in ADMIN_OPS
+      // screens to distinguish dispatcher vs. system-admin capabilities.
       return 'ADMIN_OPS';
     default:
       return 'CUSTOMER';

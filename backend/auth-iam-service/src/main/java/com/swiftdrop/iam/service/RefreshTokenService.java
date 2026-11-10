@@ -33,7 +33,8 @@ public class RefreshTokenService {
         return createInternal(user, userAgent, ipAddress);
     }
 
-    @Transactional
+    // These rejections must commit replay/expiry revocations, including in the caller transaction.
+    @Transactional(noRollbackFor = {InvalidRefreshTokenException.class, AccountNotActiveException.class})
     public RotatedRefreshToken rotate(String rawToken, String userAgent, String ipAddress) {
         if (rawToken == null || rawToken.isBlank()) {
             throw new InvalidRefreshTokenException("Refresh token is required");

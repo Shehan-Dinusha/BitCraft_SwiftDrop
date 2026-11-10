@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep a focused field clear of the sticky top bar and the mobile tab bar (WCAG 2.4.11). */
+html {
+  scroll-padding-top: 64px;
+  scroll-padding-bottom: 76px;
+}
+
 :root,
 .light {
   color-scheme: light;

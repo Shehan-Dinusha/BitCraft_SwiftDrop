@@ -38,8 +38,8 @@ So the zones run **top to bottom in that order**. The heavier 2 pt rule under th
    - The street address shrinks from 10 to 6.5 pt. It wraps beside the QR code, then continues full width underneath. The city line follows the address.
    - Tested with a 36-character name and a 145-character address: nothing is cut off.
 7. **Privacy on an object anyone can read:**
-   - Printed: the recipient's name, phone and address; the sender's name and return address.
-   - **Not printed:** the sender's phone, any email, the fee, the declared value, item contents (a theft risk), and internal IDs.
+   - Printed: the recipient's name, phone, optional backup phone and address; a one-line delivery instruction (cut with "..." if long; the full text is on the booking receipt); the sender's name and return address.
+   - **Not printed:** the sender's phone and backup phone, any email, the fee, the declared value, item contents (a theft risk), and internal IDs.
 
 ## Zones (top to bottom)
 

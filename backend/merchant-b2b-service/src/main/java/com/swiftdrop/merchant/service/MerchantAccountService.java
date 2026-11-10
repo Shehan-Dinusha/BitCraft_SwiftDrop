@@ -2,6 +2,7 @@ package com.swiftdrop.merchant.service;
 
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.merchant.domain.entity.MerchantAccount;
+import com.swiftdrop.merchant.domain.entity.MerchantStatus;
 import com.swiftdrop.merchant.domain.repository.MerchantAccountRepository;
 import com.swiftdrop.merchant.dto.CreateMerchantRequest;
 import com.swiftdrop.merchant.dto.MerchantAccountResponse;
@@ -32,7 +33,7 @@ public class MerchantAccountService {
                 .contactPhone(request.contactPhone())
                 .pickupAddress(request.pickupAddress())
                 .operatingDistrict(request.operatingDistrict())
-                .status("ACTIVE")
+                .status(MerchantStatus.PENDING_APPROVAL)
                 .build();
 
         MerchantAccount saved = merchantAccountRepository.save(account);
@@ -52,7 +53,7 @@ public class MerchantAccountService {
                             .contactPhone("+94 11 234 5678")
                             .pickupAddress("No. 128 Galle Road, Colombo 03")
                             .operatingDistrict(SriLankanDistrict.COLOMBO)
-                            .status("ACTIVE")
+                            .status(MerchantStatus.PENDING_APPROVAL)
                             .build();
                     MerchantAccount saved = merchantAccountRepository.save(account);
                     return mapToResponse(saved);
@@ -81,7 +82,7 @@ public class MerchantAccountService {
                 account.getContactPhone(),
                 account.getPickupAddress(),
                 account.getOperatingDistrict(),
-                account.getStatus(),
+                account.getStatus().name(),
                 account.getCreatedAt()
         );
     }

@@ -13,6 +13,16 @@ public class JwtConfig {
     private long accessTokenExpirationMs = 3_600_000L;
     private long refreshTokenExpirationDays = 30L;
     private String blacklistPrefix = "jwt:blacklist:";
+    private String algorithm = "HS256";
+    private String privateKey = "";
+    private String publicKey = "";
+
+    public String getAlgorithm() { return algorithm; }
+    public void setAlgorithm(String algorithm) { this.algorithm = algorithm; }
+    public String getPrivateKey() { return privateKey; }
+    public void setPrivateKey(String privateKey) { this.privateKey = privateKey; }
+    public String getPublicKey() { return publicKey; }
+    public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
 
     public String getSecret() {
         return secret;

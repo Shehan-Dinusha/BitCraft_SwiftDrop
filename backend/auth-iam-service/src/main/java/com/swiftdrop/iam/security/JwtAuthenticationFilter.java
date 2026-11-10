@@ -38,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 Claims claims = tokenIssuanceService.parse(token);
                 if (isExpectedToken(claims)
-                        && !tokenIssuanceService.isBlacklisted(token, claims.getSubject(), claims.getId())) {
+                        && !tokenIssuanceService.isBlacklisted(token, claims)) {
                     String role = claims.get("role", String.class);
                     List<SimpleGrantedAuthority> authorities = role == null || role.isBlank()
                             ? List.of()
