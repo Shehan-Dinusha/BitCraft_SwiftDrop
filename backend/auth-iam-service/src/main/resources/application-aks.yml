@@ -33,6 +33,9 @@ spring:
 
 swiftdrop:
   jwt:
+    algorithm: ${JWT_ALGORITHM:HS256}
+    private-key: ${JWT_PRIVATE_KEY:}
+    public-key: ${JWT_PUBLIC_KEY:}
     secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
     issuer: ${JWT_ISSUER:swiftdrop-iam}
     audience: ${JWT_AUDIENCE:swiftdrop}
