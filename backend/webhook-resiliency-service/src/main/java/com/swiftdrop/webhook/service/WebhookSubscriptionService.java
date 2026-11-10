@@ -8,6 +8,7 @@ import com.swiftdrop.webhook.dto.CreateWebhookEndpointRequest;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
 import com.swiftdrop.webhook.exception.WebhookEndpointNotFoundException;
+import com.swiftdrop.webhook.service.subscription.EventSubscriptionPatterns;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,12 +42,14 @@ public class WebhookSubscriptionService {
         secureRandom.nextBytes(secretBytes);
         String generatedSecret = "whsec_" + HexFormat.of().formatHex(secretBytes);
 
+        String subscribedEvents = EventSubscriptionPatterns.parseForRegistration(request.subscribedEvents()).canonical();
+
         WebhookEndpoint endpoint = WebhookEndpoint.builder()
                 .endpointId(UUID.randomUUID())
                 .merchantId(request.merchantId())
                 .targetUrl(request.targetUrl())
                 .secretKey(generatedSecret)
-                .subscribedEvents(request.subscribedEvents() != null ? request.subscribedEvents() : "parcel.status.changed")
+                .subscribedEvents(subscribedEvents)
                 .active(true)
                 .description(request.description())
                 .build();
@@ -89,12 +92,19 @@ public class WebhookSubscriptionService {
         return mapToResponse(saved);
     }
 
+    /**
+     * Hard-deletes an endpoint. Endpoints referenced by delivery jobs cannot be deleted (foreign key without
+     * cascade, so their history survives); the resulting {@code DataIntegrityViolationException} is mapped
+     * to 409 and the caller should deactivate the endpoint instead.
+     */
     @Transactional
     public void deleteEndpoint(UUID endpointId) {
         log.info("Deleting webhook endpoint: {}", endpointId);
         WebhookEndpoint endpoint = endpointRepository.findByEndpointId(endpointId)
                 .orElseThrow(() -> new WebhookEndpointNotFoundException("Webhook endpoint not found with ID: " + endpointId));
         endpointRepository.delete(endpoint);
+        // Surface the foreign-key violation here, inside the service, rather than at commit.
+        endpointRepository.flush();
     }
 
     /**

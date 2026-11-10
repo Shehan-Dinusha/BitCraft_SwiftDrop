@@ -7,6 +7,7 @@ import com.swiftdrop.webhook.domain.repository.WebhookEndpointRepository;
 import com.swiftdrop.webhook.dto.CreateWebhookEndpointRequest;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
+import com.swiftdrop.webhook.exception.InvalidEventSubscriptionException;
 import com.swiftdrop.webhook.exception.WebhookEndpointNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -87,6 +88,28 @@ class WebhookSubscriptionServiceTest {
         assertThat(response.subscribedEvents()).isEqualTo("parcel.status.changed,order.created");
         assertThat(response.active()).isTrue();
         verify(endpointRepository).save(any(WebhookEndpoint.class));
+    }
+
+    @Test
+    @DisplayName("createEndpoint stores subscriptions in canonical form")
+    void testCreateEndpointCanonicalisesSubscriptions() {
+        when(endpointRepository.save(any(WebhookEndpoint.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WebhookEndpointResponse response = subscriptionService.createEndpoint(new CreateWebhookEndpointRequest(
+                merchantId, "https://merchant.example.com/webhooks", " order.created , parcel.*,order.created", null));
+
+        assertThat(response.subscribedEvents()).isEqualTo("order.created,parcel.*");
+    }
+
+    @Test
+    @DisplayName("createEndpoint rejects malformed subscriptions without persisting")
+    void testCreateEndpointRejectsInvalidSubscriptions() {
+        CreateWebhookEndpointRequest request = new CreateWebhookEndpointRequest(
+                merchantId, "https://merchant.example.com/webhooks", "parcel.status.changed,,parcel", null);
+
+        assertThatThrownBy(() -> subscriptionService.createEndpoint(request))
+                .isInstanceOf(InvalidEventSubscriptionException.class);
+        verify(endpointRepository, never()).save(any());
     }
 
     @Test

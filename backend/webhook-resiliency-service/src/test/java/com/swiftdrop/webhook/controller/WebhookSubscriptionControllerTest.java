@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.webhook.dto.CreateWebhookEndpointRequest;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
+import com.swiftdrop.webhook.exception.InvalidEventSubscriptionException;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.swiftdrop.webhook.service.WebhookSubscriptionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,7 +19,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -151,6 +156,42 @@ class WebhookSubscriptionControllerTest {
         mockMvc.perform(delete("/api/v1/webhooks/subscriptions/{endpointId}", endpointId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @DisplayName("DELETE of an endpoint with delivery history returns 409 without leaking database details")
+    void testDeleteEndpointWithDeliveryHistoryConflicts() throws Exception {
+        doThrow(new DataIntegrityViolationException("violates foreign key constraint fk_webhook_deliveries_endpoint_merchant"))
+                .when(subscriptionService).deleteEndpoint(endpointId);
+
+        mockMvc.perform(delete("/api/v1/webhooks/subscriptions/{endpointId}", endpointId))
+                .andExpect(status().isConflict())
+                .andExpect(content().string(not(containsString("fk_webhook_deliveries"))));
+    }
+
+    @Test
+    @DisplayName("POST with invalid subscription patterns returns 400")
+    void testCreateEndpointWithInvalidSubscriptions() throws Exception {
+        CreateWebhookEndpointRequest request = new CreateWebhookEndpointRequest(
+                merchantId, "https://merchant.example.com/api/v1/webhooks", "parcel.#", null);
+        when(subscriptionService.createEndpoint(any()))
+                .thenThrow(new InvalidEventSubscriptionException("Unsupported event subscription(s): parcel.#"));
+
+        mockMvc.perform(post("/api/v1/webhooks/subscriptions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Unexpected errors return a generic message, not the exception text")
+    void testUnexpectedErrorDoesNotLeakMessage() throws Exception {
+        when(subscriptionService.getEndpoint(endpointId))
+                .thenThrow(new IllegalStateException("connection to db-host-internal:5432 refused"));
+
+        mockMvc.perform(get("/api/v1/webhooks/subscriptions/{endpointId}", endpointId))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string(not(containsString("db-host-internal"))));
     }
 
     @Test

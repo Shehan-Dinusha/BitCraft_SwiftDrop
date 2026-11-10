@@ -19,7 +19,10 @@ public record CreateWebhookEndpointRequest(
         String targetUrl,
 
         @NotBlank(message = "Subscribed events required")
-        @Schema(description = "Comma-delimited event patterns (e.g. parcel.status.changed, order.created)", example = "parcel.status.changed,order.created")
+        @Schema(description = "Comma-delimited event subscriptions. Each token is an event type (order.created, "
+                + "parcel.status.changed), a prefix wildcard of whole segments such as parcel.*, or * for all events. "
+                + "Empty, malformed or unknown tokens are rejected with 400.",
+                example = "parcel.status.changed,order.created")
         String subscribedEvents,
 
         @Schema(description = "Endpoint descriptive label", example = "Production ERP Notification Listener")
