@@ -29,6 +29,7 @@ public class MerchantOrderIngestController {
 
     private final BulkOrderIngestionService ingestionService;
     private final BulkCsvOrderProcessor csvProcessor;
+    private final com.swiftdrop.merchant.service.MerchantApprovalGuard approvalGuard;
 
     @GetMapping("/api/v1/merchant-order-ingest/health")
     @Operation(summary = "Check order ingestion controller health")
@@ -53,6 +54,7 @@ public class MerchantOrderIngestController {
     public ApiResponse<BulkIngestBatchResponse> ingestCsvOrders(
             @PathVariable UUID merchantId,
             @RequestParam("file") MultipartFile file) {
+        approvalGuard.requireApproved(merchantId);
         log.info("Received CSV order ingestion upload for merchant: {}, file: {}", merchantId, file.getOriginalFilename());
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Uploaded CSV file cannot be empty");
@@ -63,6 +65,8 @@ public class MerchantOrderIngestController {
             BulkIngestRequest request = new BulkIngestRequest(file.getOriginalFilename(), items);
             BulkIngestBatchResponse batch = ingestionService.processBulkIngest(merchantId, request);
             return ApiResponse.success(batch, "CSV orders processed successfully");
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to process CSV file upload for merchant: {}", merchantId, e);
             throw new IllegalArgumentException("Failed to process CSV upload: " + e.getMessage(), e);

@@ -13,6 +13,20 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleStatus(
+            org.springframework.web.server.ResponseStatusException ex, HttpServletRequest request) {
+        return ResponseEntity.status(ex.getStatusCode()).body(ApiErrorResponse.of(
+                ex.getStatusCode().value(), "Request rejected", ex.getReason(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler({org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.http.converter.HttpMessageNotReadableException.class})
+    public ResponseEntity<ApiErrorResponse> handleMalformedRequest(Exception ex, HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(
+                400, "Bad Request", "Malformed request or invalid parameter", request.getRequestURI()));
+    }
+
     @ExceptionHandler(MerchantNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleMerchantNotFound(MerchantNotFoundException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
