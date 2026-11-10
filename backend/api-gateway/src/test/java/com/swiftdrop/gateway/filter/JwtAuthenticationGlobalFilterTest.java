@@ -2,6 +2,7 @@ package com.swiftdrop.gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
+import com.swiftdrop.gateway.security.JwksKeyStore;
 import io.jsonwebtoken.Jwts;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import io.jsonwebtoken.security.Keys;
@@ -34,6 +35,8 @@ class JwtAuthenticationGlobalFilterTest {
 
     private static final String SECRET = "gateway-test-secret-key-must-be-at-least-256-bits-long!!";
     private static final String BLACKLIST_PREFIX = "jwt:blacklist:";
+    private static final String ISSUER = "swiftdrop-iam";
+    private static final String AUDIENCE = "swiftdrop";
     private static final SecretKey SIGNING_KEY = Keys.hmacShaKeyFor(
             SECRET.getBytes(StandardCharsets.UTF_8));
 
@@ -45,7 +48,9 @@ class JwtAuthenticationGlobalFilterTest {
         when(redisTemplate.hasKey(anyString())).thenReturn(Mono.just(false));
         ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         filter = new JwtAuthenticationGlobalFilter(
-                SECRET, BLACKLIST_PREFIX, redisTemplate, new GatewayErrorWriter(objectMapper));
+                "HS256", SECRET, BLACKLIST_PREFIX, ISSUER, AUDIENCE,
+                redisTemplate, new GatewayErrorWriter(objectMapper),
+                mock(JwksKeyStore.class), objectMapper);
     }
 
     @Test
@@ -122,10 +127,48 @@ class JwtAuthenticationGlobalFilterTest {
         assertNull(chain.exchange.get());
     }
 
+    @Test
+    void wrongIssuerReturnsUnauthorized() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/orders/123")
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token(UUID.randomUUID(), "CUSTOMER", Duration.ofHours(1),
+                                        "evil-issuer", AUDIENCE))
+                        .build());
+        RecordingChain chain = new RecordingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+        assertNull(chain.exchange.get());
+    }
+
+    @Test
+    void wrongAudienceReturnsUnauthorized() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/orders/123")
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + token(UUID.randomUUID(), "CUSTOMER", Duration.ofHours(1),
+                                        ISSUER, "other-audience"))
+                        .build());
+        RecordingChain chain = new RecordingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+        assertNull(chain.exchange.get());
+    }
+
     private String token(UUID userId, String role, Duration lifetime) {
+        return token(userId, role, lifetime, ISSUER, AUDIENCE);
+    }
+
+    private String token(UUID userId, String role, Duration lifetime, String issuer, String audience) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(userId.toString())
+                .issuer(issuer)
+                .audience().add(audience).and()
                 .claim("role", role)
                 .id(UUID.randomUUID().toString())
                 .issuedAt(Date.from(now))

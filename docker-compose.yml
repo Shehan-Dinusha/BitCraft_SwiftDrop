@@ -138,6 +138,12 @@ services:
       PUBLIC_TRACKING_RATE_WINDOW_SECONDS: ${PUBLIC_TRACKING_RATE_WINDOW_SECONDS:-60}
       JWT_BLACKLIST_PREFIX: ${JWT_BLACKLIST_PREFIX:-jwt:blacklist:}
       JWT_SECRET: ${JWT_SECRET:-swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ISSUER: ${JWT_ISSUER:-swiftdrop-iam}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-swiftdrop}
+      JWT_JWKS_URL: ${JWT_JWKS_URL:-http://auth-iam-service:8081/api/v1/auth/.well-known/jwks.json}
+      JWT_JWKS_CACHE_TTL_SECONDS: ${JWT_JWKS_CACHE_TTL_SECONDS:-300}
+      JWT_JWKS_REFETCH_COOLDOWN_SECONDS: ${JWT_JWKS_REFETCH_COOLDOWN_SECONDS:-5}
     depends_on:
       rabbitmq:
         condition: service_healthy
