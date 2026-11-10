@@ -24,9 +24,7 @@ public class OrderTrackingClient {
 
     public Mono<Optional<InternalTrackingView>> getTracking(String trackingNumber) {
         return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/internal/v1/orders/tracking/{trackingNumber}")
-                        .build(trackingNumber))
+                .uri(routes.order().replaceAll("/+$", "") + "/internal/v1/orders/tracking/{trackingNumber}", trackingNumber)
                 .retrieve()
                 .onStatus(s -> s == HttpStatus.NOT_FOUND, resp -> Mono.error(new NotFoundException()))
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<InternalTrackingView>>() {})

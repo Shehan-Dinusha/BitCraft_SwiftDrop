@@ -86,7 +86,7 @@ Four created orders: A/B delivered by C1, C failed under C2, D reassigned C1 -> 
 
 Container tests cover that dataset, different-order concurrency, delayed attribution, completion, cancellation/return policy, midnight/nanosecond boundaries, visible conflicts, empty reads, weighted range rates, V2 and V3 upgrades, and startup replay. Part 2 duplicate/rollback/retry/DLQ tests now exercise the new projection tables rather than the abandoned legacy counters.
 
-See [the self-verification and commit guide](part-3-self-verification.md) for commands you run yourself. Raw reports/logs remain local under ignored build directories or `.log` files; keep curated test/coverage evidence for final submission as required by the member guide.
+See [the self-verification and commit guide](verification.md) for commands you run yourself. Raw reports/logs remain local under ignored build directories or `.log` files; keep curated test/coverage evidence for final submission as required by the member guide.
 
 ## Verification recorded on 2026-11-08
 

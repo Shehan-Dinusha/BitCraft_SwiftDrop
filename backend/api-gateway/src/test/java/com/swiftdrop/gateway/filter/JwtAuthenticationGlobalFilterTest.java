@@ -61,6 +61,17 @@ class JwtAuthenticationGlobalFilterTest {
     }
 
     @Test
+    void chatRequiresJwtEvenWithForgedIdentityHeaders() {
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/ai/chat")
+                .header(JwtHeaderConstants.X_USER_ID, UUID.randomUUID().toString())
+                .header(JwtHeaderConstants.X_USER_ROLE, "SYSTEM_ADMIN").build());
+        var chain = new RecordingChain();
+        filter.filter(exchange, chain).block();
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+        assertNull(chain.exchange.get());
+    }
+
+    @Test
     void validTokenReplacesForgedIdentityHeaders() {
         UUID customerId = UUID.randomUUID();
         MockServerWebExchange exchange = MockServerWebExchange.from(

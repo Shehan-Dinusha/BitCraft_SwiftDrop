@@ -127,7 +127,7 @@ Final verification on 2026-11-08 completed with BUILD SUCCESS:
 
 Integration tests used only disposable containers and automatically closed their application contexts. The optional manual demo in the guide is for you to perform; it was not run against your everyday database. No commit, push, external message, or team approval was performed.
 
-Run `mvn -f backend/pom.xml -pl analytics-ai-service -am verify`, then inspect `backend/analytics-ai-service/target/failsafe-reports`. The companion [self-verification guide](part-2-self-verification.md) explains how to run this yourself and what each result means.
+Run `mvn -f backend/pom.xml -pl analytics-ai-service -am verify`, then inspect `backend/analytics-ai-service/target/failsafe-reports`. The companion [self-verification guide](verification.md) explains how to run this yourself and what each result means.
 
 Raw build output and detailed test reports stay under ignored `target/`, following the preference to keep raw evidence local. Only the implementation and explanatory Markdown need to be committed.
 

@@ -7,7 +7,7 @@ Shared ownership is explicitly assigned in `docs/member-guides/README.md`: M9 ow
 | ID / owner | Verified starting interface | Requested agreement / concrete action | Needed by | Status / confirmation |
 |---|---|---|---|---|
 | H01 / M1 | Gateway routes analytics and legacy aliases; no `/api/v1/ai/**` | Add authenticated route `/api/v1/ai/**` to analytics; keep existing aliases/OpenAPI route; confirm auth and rate-limit behavior | Part 6 | Pending; no owner confirmation recorded |
-| H02 / M1 + M2 | Gateway strips external identity headers and reinjects verified `X-User-Id`, `X-User-Role`, merchant/district; constants exist; no `CallerContext` helper | Confirm trusted downstream boundary, role parsing/helper or explicit header fallback, direct-access protection, and forwarding of bearer/correlation headers | Part 4 | Part 4 implements explicit shared-header checks for canonical dispatcher/admin and protects operational aliases. Missing identity is rejected; direct service ports still require internal access protection. Real-account gateway demonstration and owner confirmation pending. |
+| H02 / M1 + M2 | Gateway strips external identity headers and reinjects verified `X-User-Id`, `X-User-Role`, merchant/district; constants exist; no `CallerContext` helper | Confirm trusted downstream boundary, role parsing/helper or explicit header fallback, direct-access protection, and forwarding of bearer/correlation headers | Part 4 | Part 4 implements explicit shared-header checks for canonical dispatcher/admin and protects operational aliases. Missing identity is rejected; direct service ports still require internal access protection. Real-account gateway demonstration passed on 2026-11-10; owner confirmation pending. |
 | H03 / M1 | Public tracking DTO has tracking number, current public status, districts, timeline; 404 on missing data; no response envelope | Confirm canonical path, tracking-number validation formats, unknown vs upstream-unavailable errors, and public safe-field guarantees | Part 5 | Source verified; owner confirmation pending |
 | H04 / M4 | Estimate accepts required pickup/delivery district and weight; optional dimensions/speed; response includes estimatedFee/currency; estimate is missing from static pricing OpenAPI | Publish estimate operation/schemas in the pricing spec; confirm examples, city-to-district mapping, missing-origin clarification, STANDARD default, omitted dimensions, and assistant's proposed 50 kg maximum | Part 5 | Source verified; spec synchronization and policy confirmation pending |
 | H05 / M5 | `CourierAssignedEvent` has orderId, courierId, assignedAt, timestamp; no tracking number/merchant ID in current record | Review Part 3's effective-time reassignment/workload and outcome attribution; identify cancellation/unassignment events before adding support | Part 3 | Implemented from current assignment contract; owner confirmation pending; no unassignment event invented |
@@ -30,6 +30,21 @@ Confirmed date:
 PR/commit or recorded review link:
 M10 affected part and follow-up tests:
 ```
+
+## AI implementation handoff (2026-11-10)
+
+Stages 6–11 include a small gateway change for M1 review: route `/api/v1/ai/**` to the
+existing analytics destination while retaining JWT authentication. The public tracking
+cache-miss client now uses the configured order-service URL, since its WebClient has no
+base URL. The OpenAPI aggregation URL remains `/api/v1/analytics/v3/api-docs`.
+Compose and `.env.example` add only analytics AI settings. No message was sent to teammates;
+these are local changes for owner review. Pricing/tracking logic and shared security
+contracts remain owned by their existing services.
+
+Provider default is `mock`. Azure/OpenAI-compatible integration is implemented; a live
+Azure smoke test still needs a permitted deployment and credentials. Conversation state and
+limits are per process; use a single analytics instance for the demo. A multi-replica
+deployment needs shared state/limits before claiming cross-pod continuity.
 
 ## Work that can proceed independently
 

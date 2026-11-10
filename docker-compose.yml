@@ -378,6 +378,11 @@ services:
     ports:
       - "8089:8089"
     environment:
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_ENDPOINT: ${AI_ENDPOINT:-}
+      GATEWAY_URL: http://api-gateway:8080
       DB_URL: jdbc:postgresql://analytics-postgres:5432/swiftdrop_analytics
       DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}

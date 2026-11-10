@@ -26,6 +26,12 @@ This roadmap divides the Member 10 responsibility into **10 required parts and o
 
 ## 1. Starting point
 
+**Customer audience clarification:** The live conversational chatbot is restricted to authenticated
+CUSTOMER accounts and `/customer` pages. It reuses the courier catalog's shared assistant style.
+Operations pages retain reports, prediction and audits without conversational chat. Tracking
+verifies order ownership through the protected order API before returning public-safe facts.
+Both primary and legacy chat endpoints deny non-customer roles. See the updated Member 10 guide.
+
 The earlier review covered the analytics implementation, shared events, pricing and tracking contracts, frontend integration points, and member ownership guides. It identified an existing foundation with behavior to correct before building on it.
 
 | Area | Implementation observed in previous review | Work needed |
@@ -87,7 +93,7 @@ Merge each part into `dev` before creating the next dependent branch. This avoid
 
 **Branch:** `feature/m10-baseline-contracts`
 
-**Recorded execution:** Part 1 documentation and baseline evidence were completed on 2026-11-08 on the existing `Buddhika/feat/baseline-contracts` branch. See the [document index](README.md), [evidence report](../../test-reports/m10/part-1/README.md), and [self-verification/viva guide](part-1-self-verification.md). Cross-member policy confirmations remain pending in the handoff register; runtime defects are recorded for later implementation parts.
+**Recorded execution:** Part 1 documentation and baseline evidence were completed on 2026-11-08 on the existing `Buddhika/feat/baseline-contracts` branch. See the [document index](README.md), [evidence report](../../test-reports/m10/part-1/README.md), and [self-verification/viva guide](verification.md). Cross-member policy confirmations remain pending in the handoff register; runtime defects are recorded for later implementation parts.
 
 ### Implementation steps
 
@@ -140,7 +146,7 @@ docs(m10): define report semantics and integration contracts
 
 **Branch:** `feature/m10-event-reliability`
 
-**Implementation branch:** `Buddhika/feat/event-reliability`. See the [implementation explanation](part-2-event-reliability.md) and [self-verification/viva guide](part-2-self-verification.md). Shared broker changes require M9 review; producer guarantees remain recorded as handoffs rather than assumed approvals.
+**Implementation branch:** `Buddhika/feat/event-reliability`. See the [implementation explanation](part-2-event-reliability.md) and [self-verification/viva guide](verification.md). Shared broker changes require M9 review; producer guarantees remain recorded as handoffs rather than assumed approvals.
 
 ### Implementation steps
 
@@ -190,7 +196,7 @@ fix(analytics): align queue declarations and failure handling
 
 **Branch:** `feature/m10-analytics-projections`
 
-**Implemented locally:** `Buddhika/feat/analytics-projections`; see the [implementation explanation](part-3-analytics-projections.md) and [self-verification/commit guide](part-3-self-verification.md). V4 materializes distinct-order daily/courier statistics and catches up Part 2's inbox. New reporting HTTP routes and RBAC remain Part 4. M5/M6 policy and compatibility reviews are not claimed as approved.
+**Implemented locally:** `Buddhika/feat/analytics-projections`; see the [implementation explanation](part-3-analytics-projections.md) and [self-verification/commit guide](verification.md). V4 materializes distinct-order daily/courier statistics and catches up Part 2's inbox. New reporting HTTP routes and RBAC remain Part 4. M5/M6 policy and compatibility reviews are not claimed as approved.
 
 ### Implementation steps
 
@@ -239,7 +245,7 @@ fix(analytics): derive metrics from real event data
 
 **Branch:** `feature/m10-reporting-api`
 
-**Implemented locally:** `Buddhika/feat/reporting-api`; see the [implementation/viva explanation](part-4-reporting-api.md), [self-verification/commit guide](part-4-self-verification.md), and [check evidence](../../test-reports/m10/part-4/README.md). Three reporting routes, inclusive 90-day validation, operational role checks including existing aliases, and synchronized OpenAPI/types are implemented. Automated controller and real SQL/HTTP checks pass. Real-account gateway checks and M1/M2 trust-boundary confirmation remain pending; no merge or owner approval is claimed.
+**Implemented locally:** `Buddhika/feat/reporting-api`; see the [implementation/viva explanation](part-4-reporting-api.md), [self-verification/commit guide](verification.md), and [check evidence](../../test-reports/m10/part-4/README.md). Three reporting routes, inclusive 90-day validation, operational role checks including existing aliases, and synchronized OpenAPI/types are implemented. Automated controller and real SQL/HTTP checks pass. Real-account gateway checks passed on 2026-11-10 (30 checks); M1/M2 trust-boundary confirmation remains pending; no merge or owner approval is claimed.
 
 ### Planned endpoints
 
