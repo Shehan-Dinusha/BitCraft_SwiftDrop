@@ -5,7 +5,9 @@
       "name": "swiftdrop",
       "password_hash": "TzYJtKISGx7ill7icbYaPYyjDmjqpU9lKHPEX01gkWK30ZsP",
       "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": ["administrator"]
+      "tags": [
+        "administrator"
+      ]
     }
   ],
   "vhosts": [
@@ -267,6 +269,15 @@
       "arguments": {
         "x-queue-type": "quorum"
       }
+    },
+    {
+      "name": "swiftdrop.iam.merchant.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
     }
   ],
   "bindings": [
@@ -500,6 +511,14 @@
       "destination": "dlq.analytics.events.queue",
       "destination_type": "queue",
       "routing_key": "dlq.analytics.events",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "swiftdrop.iam.merchant.events",
+      "destination_type": "queue",
+      "routing_key": "merchant.approved",
       "arguments": {}
     }
   ],

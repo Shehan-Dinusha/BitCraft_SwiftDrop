@@ -55,7 +55,9 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/error"
+                                "/error",
+                                // Internal s2s endpoints - network-blocked at API gateway; not JWT-protected.
+                                "/internal/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
                         .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/change-password").authenticated()
