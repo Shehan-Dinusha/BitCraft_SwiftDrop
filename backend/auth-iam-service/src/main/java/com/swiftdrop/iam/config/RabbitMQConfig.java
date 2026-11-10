@@ -31,4 +31,23 @@ public class RabbitMQConfig {
     public Binding authBinding(Queue authQueue, TopicExchange swiftdropExchange) {
         return BindingBuilder.bind(authQueue).to(swiftdropExchange).with(AUTH_ROUTING_PATTERN);
     }
+
+    // ── Merchant approval events ──────────────────────────────────────────────
+
+    public static final String MERCHANT_EVENTS_QUEUE = "swiftdrop.iam.merchant.events";
+    public static final String MERCHANT_APPROVED_ROUTING_KEY = "merchant.approved";
+
+    @Bean
+    public Queue merchantEventsQueue() {
+        return QueueBuilder.durable(MERCHANT_EVENTS_QUEUE)
+                .withArgument("x-queue-type", "quorum")
+                .build();
+    }
+
+    @Bean
+    public Binding merchantEventsBinding(Queue merchantEventsQueue, TopicExchange swiftdropExchange) {
+        return BindingBuilder.bind(merchantEventsQueue)
+                .to(swiftdropExchange)
+                .with(MERCHANT_APPROVED_ROUTING_KEY);
+    }
 }

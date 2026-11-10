@@ -15,10 +15,10 @@ public record CourierPerformanceResponse(
         @Schema(description = "Courier name", example = "Nimal Silva")
         String courierName,
 
-        @Schema(description = "Operating district", example = "COLOMBO")
+        @Schema(description = "Latest observed parcel district; null if unknown, not registered operating district", types = {"string", "null"})
         SriLankanDistrict currentDistrict,
 
-        @Schema(description = "Total parcels assigned to this courier", example = "150")
+        @Schema(description = "Distinct orders ever observed assigned to this courier", example = "3")
         int totalAssigned,
 
         @Schema(description = "Total delivered parcels", example = "146")
@@ -27,18 +27,18 @@ public record CourierPerformanceResponse(
         @Schema(description = "Failed parcel count", example = "2")
         int failedCount,
 
-        @Schema(description = "Average transit duration in minutes", example = "38.50")
+        @Schema(description = "Measured transit interval unavailable; null", types = {"number", "null"}, deprecated = true)
         BigDecimal avgTransitMinutes,
 
-        @Schema(description = "On-time delivery percentage (0-100)", example = "97.33")
+        @Schema(description = "SLA measurement unavailable; null", types = {"number", "null"}, deprecated = true)
         BigDecimal onTimePercentage,
 
-        @Schema(description = "Courier customer rating (0.0-5.0)", example = "4.92")
+        @Schema(description = "Rating events unavailable; null", types = {"number", "null"}, deprecated = true)
         BigDecimal customerRating,
 
-        @Schema(description = "Current shift availability status", example = "AVAILABLE")
+        @Schema(description = "Projected workload state: BUSY or NO_ACTIVE_ORDERS; not shift availability", example = "BUSY")
         String status,
 
-        @Schema(description = "Timestamp of last event")
+        @Schema(description = "Latest observed assignment business time")
         Instant lastEventAt
 ) {}

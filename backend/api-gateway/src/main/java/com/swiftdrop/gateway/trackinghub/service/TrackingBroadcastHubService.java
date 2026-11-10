@@ -2,7 +2,6 @@ package com.swiftdrop.gateway.trackinghub.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.swiftdrop.contracts.events.delivery.DeliveryStateChangedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelFeeRevisedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
@@ -63,21 +62,6 @@ public class TrackingBroadcastHubService {
         emitView(view, customerId);
     }
 
-    public void onLegacyStateChanged(DeliveryStateChangedEvent event) {
-        if (event == null || event.deliveryId() == null) {
-            return;
-        }
-        if (isDuplicate(event.eventId())) {
-            return;
-        }
-
-        String trackingNumber = event.deliveryId().toString();
-        PublicTrackingViewDto current = latestViews.get(trackingNumber);
-        PublicTrackingViewDto view = sanitizer.appendLegacy(current, event);
-        latestViews.put(trackingNumber, view);
-        emitView(view, customerIds.get(trackingNumber));
-    }
-
     public void onFeeRevised(ParcelFeeRevisedEvent event) {
         if (event == null) {
             return;
@@ -99,6 +83,12 @@ public class TrackingBroadcastHubService {
 
     public PublicTrackingViewDto current(String trackingNumber) {
         return trackingNumber == null ? null : latestViews.get(trackingNumber);
+    }
+
+    public void updateCache(String trackingNumber, PublicTrackingViewDto view) {
+        if (trackingNumber != null && view != null) {
+            latestViews.put(trackingNumber, view);
+        }
     }
 
     public Flux<PublicTrackingViewDto> stream(String trackingNumber) {

@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantApiKeyGlobalFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.filter</a> &gt; <span class="el_source">MerchantApiKeyGlobalFilter.java</span></div><h1>MerchantApiKeyGlobalFilter.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.filter;
+
+import com.swiftdrop.contracts.dto.MerchantApiKeyValidationRequest;
+import com.swiftdrop.contracts.dto.MerchantApiKeyValidationResult;
+import com.swiftdrop.contracts.security.JwtHeaderConstants;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Authenticates merchant machine-to-machine requests using an API key.
+ *
+ * &lt;p&gt;The raw key is never forwarded downstream. It is validated by the merchant
+ * service once, the resulting merchant ID is cached in Redis for a short TTL,
+ * and the request is rewritten with trusted {@code X-Merchant-Id} and
+ * {@code X-User-Role} headers.&lt;/p&gt;
+ */
+<span class="fc" id="L36">@Slf4j</span>
+@Component
+public class MerchantApiKeyGlobalFilter implements GlobalFilter, Ordered {
+
+<span class="fc" id="L40">    private static final List&lt;String&gt; API_KEY_PATHS = List.of(</span>
+            &quot;/api/v1/merchant/&quot;,
+            &quot;/api/v1/merchant-order-ingest/&quot;
+    );
+
+    private final WebClient webClient;
+    private final ReactiveStringRedisTemplate redisTemplate;
+    private final GatewayErrorWriter errorWriter;
+    private final String validationUrl;
+    private final long cacheTtlSeconds;
+
+    public MerchantApiKeyGlobalFilter(
+            WebClient.Builder webClientBuilder,
+            ReactiveStringRedisTemplate redisTemplate,
+            GatewayErrorWriter errorWriter,
+            @Value(&quot;${swiftdrop.merchant.api-key-validation-url}&quot;) String validationUrl,
+<span class="fc" id="L56">            @Value(&quot;${swiftdrop.merchant.api-key-cache-ttl-seconds:60}&quot;) long cacheTtlSeconds) {</span>
+<span class="fc" id="L57">        this.webClient = webClientBuilder.build();</span>
+<span class="fc" id="L58">        this.redisTemplate = redisTemplate;</span>
+<span class="fc" id="L59">        this.errorWriter = errorWriter;</span>
+<span class="fc" id="L60">        this.validationUrl = validationUrl;</span>
+<span class="fc" id="L61">        this.cacheTtlSeconds = cacheTtlSeconds;</span>
+<span class="fc" id="L62">    }</span>
+
+    @Override
+    public Mono&lt;Void&gt; filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+<span class="fc" id="L66">        String path = exchange.getRequest().getURI().getPath();</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (!isProtectedPath(path)) {</span>
+<span class="fc" id="L68">            return chain.filter(exchange);</span>
+        }
+
+<span class="fc" id="L71">        String apiKey = firstNonBlank(</span>
+<span class="fc" id="L72">                exchange.getRequest().getHeaders().getFirst(JwtHeaderConstants.X_API_KEY),</span>
+<span class="fc" id="L73">                exchange.getRequest().getHeaders().getFirst(JwtHeaderConstants.X_MERCHANT_API_KEY)</span>
+        );
+
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        if (apiKey == null) {</span>
+<span class="fc" id="L77">            log.warn(&quot;Missing merchant API key for path: {}&quot;, path);</span>
+<span class="fc" id="L78">            return errorWriter.write(exchange, HttpStatus.UNAUTHORIZED,</span>
+                    &quot;Missing merchant API key&quot;);
+        }
+
+<span class="nc" id="L82">        String cacheKey = &quot;merchant:api-key:&quot; + sha256(apiKey);</span>
+
+<span class="nc" id="L84">        return redisTemplate.opsForValue()</span>
+<span class="nc" id="L85">                .get(cacheKey)</span>
+<span class="nc" id="L86">                .onErrorResume(exception -&gt; {</span>
+<span class="nc" id="L87">                    log.warn(&quot;Redis API-key cache unavailable: {}&quot;, exception.getMessage());</span>
+<span class="nc" id="L88">                    return Mono.empty();</span>
+                })
+<span class="nc bnc" id="L90" title="All 2 branches missed.">                .filter(cachedMerchantId -&gt; !cachedMerchantId.isBlank())</span>
+<span class="nc" id="L91">                .flatMap(cachedMerchantId -&gt; continueWithMerchant(exchange, chain, cachedMerchantId))</span>
+<span class="nc" id="L92">                .switchIfEmpty(Mono.defer(() -&gt; validateWithMerchantService(exchange, chain, apiKey, cacheKey)));</span>
+    }
+
+    private Mono&lt;Void&gt; validateWithMerchantService(ServerWebExchange exchange,
+                                                   GatewayFilterChain chain,
+                                                   String apiKey,
+                                                   String cacheKey) {
+<span class="nc" id="L99">        String correlationId = exchange.getRequest().getHeaders()</span>
+<span class="nc" id="L100">                .getFirst(JwtHeaderConstants.X_CORRELATION_ID);</span>
+
+<span class="nc" id="L102">        return webClient.post()</span>
+<span class="nc" id="L103">                .uri(validationUrl)</span>
+<span class="nc" id="L104">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="nc" id="L105">                .headers(headers -&gt; {</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">                    if (correlationId != null) {</span>
+<span class="nc" id="L107">                        headers.set(JwtHeaderConstants.X_CORRELATION_ID, correlationId);</span>
+                    }
+<span class="nc" id="L109">                })</span>
+<span class="nc" id="L110">                .bodyValue(new MerchantApiKeyValidationRequest(apiKey))</span>
+<span class="nc" id="L111">                .retrieve()</span>
+<span class="nc" id="L112">                .bodyToMono(MerchantApiKeyValidationResult.class)</span>
+<span class="nc" id="L113">                .timeout(Duration.ofSeconds(2))</span>
+<span class="nc" id="L114">                .flatMap(result -&gt; {</span>
+<span class="nc bnc" id="L115" title="All 4 branches missed.">                    if (!result.valid() || result.merchantId() == null) {</span>
+<span class="nc" id="L116">                        log.warn(&quot;Merchant API key rejected: {}&quot;, result.reason());</span>
+<span class="nc" id="L117">                        return errorWriter.write(exchange, HttpStatus.UNAUTHORIZED,</span>
+                                &quot;Invalid merchant API key&quot;);
+                    }
+<span class="nc" id="L120">                    return cacheMerchant(cacheKey, result.merchantId())</span>
+<span class="nc" id="L121">                            .then(continueWithMerchant(exchange, chain, result.merchantId().toString()));</span>
+                })
+<span class="nc" id="L123">                .onErrorResume(exception -&gt; {</span>
+<span class="nc" id="L124">                    log.error(&quot;Merchant API key validation failed: {}&quot;, exception.getMessage());</span>
+<span class="nc" id="L125">                    return errorWriter.write(exchange, HttpStatus.SERVICE_UNAVAILABLE,</span>
+                            &quot;Merchant authentication is temporarily unavailable&quot;);
+                });
+    }
+
+    private Mono&lt;Void&gt; cacheMerchant(String cacheKey, UUID merchantId) {
+<span class="nc" id="L131">        return redisTemplate.opsForValue()</span>
+<span class="nc" id="L132">                .set(cacheKey, merchantId.toString(), Duration.ofSeconds(cacheTtlSeconds))</span>
+<span class="nc" id="L133">                .onErrorResume(exception -&gt; {</span>
+<span class="nc" id="L134">                    log.warn(&quot;Unable to cache merchant API key result: {}&quot;, exception.getMessage());</span>
+<span class="nc" id="L135">                    return Mono.empty();</span>
+                })
+<span class="nc" id="L137">                .then();</span>
+    }
+
+    private Mono&lt;Void&gt; continueWithMerchant(ServerWebExchange exchange,
+                                            GatewayFilterChain chain,
+                                            String merchantId) {
+<span class="nc" id="L143">        ServerHttpRequest request = exchange.getRequest().mutate()</span>
+<span class="nc" id="L144">                .headers(headers -&gt; {</span>
+<span class="nc" id="L145">                    headers.remove(JwtHeaderConstants.X_API_KEY);</span>
+<span class="nc" id="L146">                    headers.remove(JwtHeaderConstants.X_MERCHANT_API_KEY);</span>
+<span class="nc" id="L147">                    headers.remove(JwtHeaderConstants.X_USER_ID);</span>
+<span class="nc" id="L148">                    headers.remove(JwtHeaderConstants.X_USER_ROLE);</span>
+<span class="nc" id="L149">                    headers.remove(JwtHeaderConstants.X_MERCHANT_ID);</span>
+<span class="nc" id="L150">                    headers.remove(JwtHeaderConstants.X_DISTRICT_ID);</span>
+<span class="nc" id="L151">                    headers.remove(&quot;Authorization&quot;);</span>
+<span class="nc" id="L152">                })</span>
+<span class="nc" id="L153">                .header(JwtHeaderConstants.X_MERCHANT_ID, merchantId)</span>
+<span class="nc" id="L154">                .header(JwtHeaderConstants.X_USER_ID, merchantId)</span>
+<span class="nc" id="L155">                .header(JwtHeaderConstants.X_USER_ROLE, &quot;MERCHANT&quot;)</span>
+<span class="nc" id="L156">                .build();</span>
+
+<span class="nc" id="L158">        return chain.filter(exchange.mutate().request(request).build());</span>
+    }
+
+    @Override
+    public int getOrder() {
+<span class="fc" id="L163">        return -150;</span>
+    }
+
+    private boolean isProtectedPath(String path) {
+<span class="fc" id="L167">        return API_KEY_PATHS.stream().anyMatch(path::startsWith);</span>
+    }
+
+    private String firstNonBlank(String first, String second) {
+<span class="pc bpc" id="L171" title="3 of 4 branches missed.">        if (first != null &amp;&amp; !first.isBlank()) {</span>
+<span class="nc" id="L172">            return first;</span>
+        }
+<span class="pc bpc" id="L174" title="3 of 4 branches missed.">        return second != null &amp;&amp; !second.isBlank() ? second : null;</span>
+    }
+
+    private String sha256(String value) {
+        try {
+<span class="nc" id="L179">            MessageDigest digest = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+<span class="nc" id="L180">            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));</span>
+<span class="nc" id="L181">        } catch (NoSuchAlgorithmException exception) {</span>
+<span class="nc" id="L182">            throw new IllegalStateException(&quot;SHA-256 is not available&quot;, exception);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -156,3 +156,31 @@ spec:
         - type: Pods
           value: 2
           periodSeconds: 60
+---
+# Only the API gateway may call this service. The service trusts the identity headers
+# (X-User-Id, X-User-Role, X-Merchant-Id) that the gateway injects after verifying the JWT,
+# so no other pod may reach it directly. Egress is not restricted.
+# Requires a cluster with NetworkPolicy enforcement (Azure NPM, Calico or Cilium); without it
+# this object is accepted but has no effect.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: webhook-resiliency-service-ingress
+  namespace: swiftdrop-apps
+  labels:
+    app.kubernetes.io/name: webhook-resiliency-service
+    app.kubernetes.io/part-of: swiftdrop
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: webhook-resiliency-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:            # no namespaceSelector: same namespace (swiftdrop-apps) only
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8080

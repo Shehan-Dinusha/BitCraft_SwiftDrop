@@ -107,7 +107,7 @@ class DeliveryExecutionServiceTest {
         DeliverySession session = new DeliverySession();
         session.setDeliveryId(deliveryId);
         session.setOrderId(orderId);
-        session.setCurrentState(DeliveryState.IN_TRANSIT);
+        session.setCurrentState(DeliveryState.OUT_FOR_DELIVERY);
 
         when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
         when(proofOfDeliveryGuard.isSatisfied(deliveryId)).thenReturn(false);
@@ -132,7 +132,7 @@ class DeliveryExecutionServiceTest {
         DeliverySession session = new DeliverySession();
         session.setDeliveryId(deliveryId);
         session.setOrderId(orderId);
-        session.setCurrentState(DeliveryState.IN_TRANSIT);
+        session.setCurrentState(DeliveryState.OUT_FOR_DELIVERY);
         session.setPickupDistrict(SriLankanDistrict.COLOMBO);
         session.setDeliveryDistrict(SriLankanDistrict.COLOMBO);
         session.setTrackingNumber("SD-COL-12345");
@@ -157,7 +157,7 @@ class DeliveryExecutionServiceTest {
         assertThat(result.getDeliveredAt()).isNotNull();
 
         verify(publishStateTransitionAction).execute(eq(deliveryId), eq(orderId), eq("SD-COL-12345"),
-                any(), eq(DeliveryState.IN_TRANSIT), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
+                any(), eq(DeliveryState.OUT_FOR_DELIVERY), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
     }
 
     @Test

@@ -1,69 +1,116 @@
-import type { PublicOrderStatus } from '@/types/contracts';
+import type { components } from '@/types/generated/api-gateway';
 
-export type { PublicOrderStatus };
+type Schemas = components['schemas'];
 
-export type SriLankanDistrict =
-  | 'COLOMBO'
-  | 'GAMPAHA'
-  | 'KALUTARA'
-  | 'KANDY'
-  | 'MATALE'
-  | 'NUWARA_ELIYA'
-  | 'GALLE'
-  | 'MATARA'
-  | 'HAMBANTOTA'
-  | 'JAFFNA'
-  | 'KILINOCHCHI'
-  | 'MANNAR'
-  | 'VAVUNIYA'
-  | 'MULLAITIVU'
-  | 'BATTICALOA'
-  | 'AMPARA'
-  | 'TRINCOMALEE'
-  | 'KURUNEGALA'
-  | 'PUTTALAM'
-  | 'ANURADHAPURA'
-  | 'POLONNARUWA'
-  | 'BADULLA'
-  | 'MONARAGALA'
-  | 'RATNAPURA'
-  | 'KEGALLE';
+export type PublicOrderStatus = Schemas['PublicOrderStatus'];
+export type SriLankanDistrict = Schemas['SriLankanDistrict'];
+export type PublicTrackingTimelineEntry = Schemas['PublicTrackingTimelineEntry'];
+export type PublicTrackingView = Schemas['PublicTrackingView'];
 
-export type PublicTrackingTimelineEntry = {
-  status: PublicOrderStatus;
-  district: SriLankanDistrict | null;
-  timestamp: string;
-};
+const TRACKING_BASE_PATH = '/api/v1/public/track';
+const TERMINAL_STATUSES: PublicOrderStatus[] = [
+  'DELIVERED',
+  'FAILED',
+  'CANCELLED',
+  'RETURNED_TO_SENDER'
+];
 
-export type PublicTrackingView = {
-  trackingNumber: string;
-  currentPublicStatus: PublicOrderStatus;
-  originDistrict: SriLankanDistrict | null;
-  destinationDistrict: SriLankanDistrict | null;
-  statusTimeline: PublicTrackingTimelineEntry[];
-};
+export class TrackingApiError extends Error {
+  readonly status?: number;
+  readonly retryAfterSeconds?: number;
 
-const gatewayOrigin = 'http://localhost:8080';
-
-export async function getTrackingView(trackingNumber: string): Promise<PublicTrackingView> {
-  const response = await fetch(
-    `${gatewayOrigin}/api/v1/public/track/${encodeURIComponent(trackingNumber)}`
-  );
-  if (!response.ok) {
-    throw new Error(`Tracking request failed with status ${response.status}`);
+  constructor(
+    message: string,
+    options: { status?: number; retryAfterSeconds?: number; cause?: unknown } = {}
+  ) {
+    super(message, { cause: options.cause });
+    this.name = 'TrackingApiError';
+    this.status = options.status;
+    this.retryAfterSeconds = options.retryAfterSeconds;
   }
-  return response.json() as Promise<PublicTrackingView>;
+}
+
+export function isTerminalPublicStatus(status: PublicOrderStatus): boolean {
+  return TERMINAL_STATUSES.includes(status);
+}
+
+export function getTrackingStreamUrl(trackingNumber: string): string {
+  return `${TRACKING_BASE_PATH}/${encodeURIComponent(trackingNumber)}/stream`;
+}
+
+export async function getTrackingView(
+  trackingNumber: string,
+  options: { signal?: AbortSignal } = {}
+): Promise<PublicTrackingView> {
+  let response: Response;
+  try {
+    response = await fetch(`${TRACKING_BASE_PATH}/${encodeURIComponent(trackingNumber)}`, {
+      headers: { Accept: 'application/json' },
+      signal: options.signal
+    });
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
+    throw new TrackingApiError('Unable to reach the tracking service.', { cause });
+  }
+
+  if (!response.ok) {
+    throw await toTrackingError(response);
+  }
+
+  return (await response.json()) as PublicTrackingView;
+}
+
+export interface TrackingStreamHandlers {
+  onOpen?: () => void;
+  onError?: (event: Event) => void;
 }
 
 export function subscribeToTrackingStream(
   trackingNumber: string,
   onUpdate: (view: PublicTrackingView) => void,
-  onError?: (event: Event) => void
+  handlers: TrackingStreamHandlers = {}
 ): EventSource {
-  const source = new EventSource(
-    `${gatewayOrigin}/api/v1/public/track/${encodeURIComponent(trackingNumber)}/stream`
-  );
-  source.onmessage = (event) => onUpdate(JSON.parse(event.data) as PublicTrackingView);
-  source.onerror = (event) => onError?.(event);
+  const source = new EventSource(getTrackingStreamUrl(trackingNumber));
+  source.onopen = () => handlers.onOpen?.();
+  source.onmessage = (event) => {
+    try {
+      onUpdate(parseTrackingView(event.data));
+    } catch {
+      /* Ignore malformed frames; the next valid update will replace this one. */
+    }
+  };
+  source.onerror = (event) => handlers.onError?.(event);
   return source;
+}
+
+export function parseTrackingView(payload: string): PublicTrackingView {
+  return JSON.parse(payload) as PublicTrackingView;
+}
+
+async function toTrackingError(response: Response): Promise<TrackingApiError> {
+  const retryAfterSeconds = parseRetryAfter(response.headers.get('Retry-After'));
+  const message =
+    response.status === 404
+      ? 'Tracking number not found.'
+      : response.status === 429
+        ? 'Too many tracking requests. Please wait and try again.'
+        : `Tracking request failed with status ${response.status}.`;
+
+  return new TrackingApiError(message, {
+    status: response.status,
+    retryAfterSeconds
+  });
+}
+
+function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined;
+
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, Math.ceil(seconds));
+  }
+
+  const retryAt = Date.parse(value);
+  if (Number.isNaN(retryAt)) return undefined;
+  return Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
 }

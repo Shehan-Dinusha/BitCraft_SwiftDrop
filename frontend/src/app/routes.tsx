@@ -1,27 +1,32 @@
-import { Navigate, RouteObject, useLocation } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { Navigate, RouteObject } from 'react-router-dom';
 import { AppShell } from '@/app/AppShell';
+import { RoleGuard } from '@/app/RoleGuard';
 import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { SignUpPage } from '@/features/auth/pages/SignUpPage';
+import { OAuthCallbackPage } from '@/features/auth/pages/OAuthCallbackPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
+import { OrderHistoryPage } from '@/features/customer/pages/OrderHistoryPage';
+import { OrderDetailPage } from '@/features/customer/pages/OrderDetailPage';
 import { CourierShiftDashboard } from '@/features/courier/pages/CourierShiftDashboard';
 import { ActiveDeliveryExecutionPage } from '@/features/courier/pages/ActiveDeliveryExecutionPage';
 import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPortalDashboard';
+import { MerchantRegistrationPage } from '@/features/merchant/pages/MerchantRegistrationPage';
 import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
-import { useAuthStore } from '@/store/useAuthStore';
-import type { PersonaRole } from '@/types/contracts';
-
-function RoleGuard({ roles, children }: { roles: PersonaRole[]; children: ReactNode }) {
-  const { token, role } = useAuthStore();
-  const location = useLocation();
-  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  return roles.includes(role) ? <>{children}</> : <Navigate to="/login" replace />;
-}
+import { ZoneManagementPage } from '@/features/admin-ops/pages/ZoneManagementPage';
+import { DispatchBoardPage } from '@/features/admin-ops/pages/DispatchBoardPage';
+import { MerchantApprovalsPage } from '@/features/admin-ops/pages/MerchantApprovalsPage';
+import { NotificationConsolePage } from '@/features/admin-ops/pages/NotificationConsolePage';
+import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
+import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
+import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <SignUpPage /> },
+  { path: '/auth/callback', element: <OAuthCallbackPage /> },
   {
     element: <AppShell />,
     children: [
@@ -38,6 +43,38 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['CUSTOMER']}>
             <LiveTrackingPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/tracking/:trackingNumber',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <LiveTrackingPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/book',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <CustomerBookingPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/orders',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <OrderHistoryPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/orders/:orderId',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <OrderDetailPage />
           </RoleGuard>
         )
       },
@@ -66,6 +103,14 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/courier/delivery/:id',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <ActiveDeliveryExecutionPage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/merchant',
         element: (
           <RoleGuard roles={['MERCHANT']}>
@@ -78,6 +123,14 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['MERCHANT', 'ADMIN_OPS']}>
             <WebhookResiliencyConsolePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/register',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <MerchantRegistrationPage />
           </RoleGuard>
         )
       },
@@ -96,8 +149,64 @@ export const routes: RouteObject[] = [
             <WebhookResiliencyConsolePage />
           </RoleGuard>
         )
+      },
+      {
+        path: '/ops/zones',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <ZoneManagementPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/dispatch',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <DispatchBoardPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/merchants',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <MerchantApprovalsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/notifications',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <NotificationConsolePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/analytics',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <AnalyticsDashboardPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/users',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <UserManagementPage />
+          </RoleGuard>
+        )
       }
     ]
+  },
+  {
+    path: '/track',
+    element: <PublicTrackingPage />
+  },
+  {
+    path: '/track/:trackingNumber',
+    element: <PublicTrackingPage />
   },
   // The design catalog is public: no login, no role, no app shell.
   ...catalogRoutes,

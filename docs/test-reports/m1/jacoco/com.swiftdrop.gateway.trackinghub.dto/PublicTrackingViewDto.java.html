@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PublicTrackingViewDto.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.trackinghub.dto</a> &gt; <span class="el_source">PublicTrackingViewDto.java</span></div><h1>PublicTrackingViewDto.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.trackinghub.dto;
+
+import com.swiftdrop.contracts.enums.PublicOrderStatus;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.List;
+
+/**
+ * Public parcel tracking view for anonymous clients.
+ * Only the tracking number, public status, city/district, the public timeline,
+ * and already-masked contact details are exposed. Raw names, phone numbers,
+ * street addresses, courier, merchant, customer, and pricing data are never
+ * included.
+ */
+@Schema(name = &quot;PublicTrackingView&quot;,
+        description = &quot;Public parcel tracking view: status, city/district, timeline, and masked contact only.&quot;)
+<span class="fc" id="L18">public record PublicTrackingViewDto(</span>
+        @Schema(description = &quot;Public parcel tracking number.&quot;, example = &quot;SD-2026-000123&quot;)
+        String trackingNumber,
+        @Schema(description = &quot;Current public parcel status.&quot;, example = &quot;IN_TRANSIT&quot;)
+        PublicOrderStatus currentPublicStatus,
+        @Schema(description = &quot;District where the parcel entered the network.&quot;, example = &quot;COLOMBO&quot;)
+        SriLankanDistrict originDistrict,
+        @Schema(description = &quot;Destination district.&quot;, example = &quot;KANDY&quot;)
+        SriLankanDistrict destinationDistrict,
+        @Schema(description = &quot;City where the parcel was handed over.&quot;, example = &quot;Colombo 03&quot;)
+        String originCity,
+        @Schema(description = &quot;Destination city.&quot;, example = &quot;Kandy&quot;)
+        String destinationCity,
+        @Schema(description = &quot;Sender name reduced to initials only.&quot;, example = &quot;N. P.&quot;)
+        String senderNameMasked,
+        @Schema(description = &quot;Sender phone with the middle digits hidden.&quot;, example = &quot;07X***4567&quot;)
+        String senderPhoneMasked,
+        @Schema(description = &quot;Receiver name reduced to initials only.&quot;, example = &quot;K. S.&quot;)
+        String receiverNameMasked,
+        @Schema(description = &quot;Receiver phone with the middle digits hidden.&quot;, example = &quot;07X***1234&quot;)
+        String receiverPhoneMasked,
+        @Schema(description = &quot;Chronological public status timeline.&quot;)
+        List&lt;PublicTrackingTimelineEntry&gt; statusTimeline
+) {
+
+    /** Without city or contact details (they are null), for callers built before they existed. */
+    public PublicTrackingViewDto(
+            String trackingNumber,
+            PublicOrderStatus currentPublicStatus,
+            SriLankanDistrict originDistrict,
+            SriLankanDistrict destinationDistrict,
+            List&lt;PublicTrackingTimelineEntry&gt; statusTimeline) {
+<span class="fc" id="L50">        this(trackingNumber, currentPublicStatus, originDistrict, destinationDistrict,</span>
+                null, null, null, null, null, null, statusTimeline);
+<span class="fc" id="L52">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

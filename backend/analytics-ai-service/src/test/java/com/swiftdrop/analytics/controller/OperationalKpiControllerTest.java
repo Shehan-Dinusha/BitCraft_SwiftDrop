@@ -6,6 +6,9 @@ import com.swiftdrop.analytics.service.SlaMetricsAggregationService;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -23,12 +26,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.nullValue;
 
 @WebMvcTest(OperationalKpiController.class)
 class OperationalKpiControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired private WebApplicationContext context;
+
+    @BeforeEach
+    void verifiedGatewayIdentity() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(context).defaultRequest(get("/")
+                .header("X-User-Id", "00000000-0000-0000-0000-000000000001")
+                .header("X-User-Role", "SYSTEM_ADMIN")).build();
+    }
 
     @MockitoBean
     private SlaMetricsAggregationService metricsService;
@@ -124,5 +137,17 @@ class OperationalKpiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.totalParcels").value(100));
+    }
+
+    @Test
+    void unavailableSlaMeasurementsAreExplicitJsonNull() throws Exception {
+        when(metricsService.getSystemKpiSummary()).thenReturn(new OperationalKpiSummaryResponse(
+                0,null,null,0,null,null,0,List.of()));
+        mockMvc.perform(get("/api/v1/analytics/kpis"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deliveredOnTime").value(nullValue()))
+                .andExpect(jsonPath("$.data.breachedSla").value(nullValue()))
+                .andExpect(jsonPath("$.data.systemOnTimeRate").value(nullValue()))
+                .andExpect(jsonPath("$.data.avgTransitMinutes").value(nullValue()));
     }
 }

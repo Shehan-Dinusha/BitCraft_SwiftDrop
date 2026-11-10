@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RabbitMQConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.config</a> &gt; <span class="el_source">RabbitMQConfig.java</span></div><h1>RabbitMQConfig.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.config;
+
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+<span class="fc" id="L15">public class RabbitMQConfig {</span>
+    public static final String EVENTS_EXCHANGE = &quot;swiftdrop.events.exchange&quot;;
+    public static final String TRACKING_QUEUE = &quot;swiftdrop.gateway.tracking.queue&quot;;
+    public static final String FEE_QUEUE = &quot;swiftdrop.gateway.fee.queue&quot;;
+
+    @Bean
+    public TopicExchange eventsExchange() {
+<span class="fc" id="L22">        return new TopicExchange(EVENTS_EXCHANGE, true, false);</span>
+    }
+
+    @Bean
+    public Queue trackingQueue() {
+<span class="fc" id="L27">        return QueueBuilder.durable(TRACKING_QUEUE).quorum().build();</span>
+    }
+
+    @Bean
+    public Queue feeQueue() {
+<span class="fc" id="L32">        return QueueBuilder.durable(FEE_QUEUE).quorum().build();</span>
+    }
+
+    @Bean
+    public Binding trackingBinding(Queue trackingQueue, TopicExchange eventsExchange) {
+<span class="fc" id="L37">        return BindingBuilder.bind(trackingQueue).to(eventsExchange).with(&quot;parcel.status.changed.#&quot;);</span>
+    }
+
+    @Bean
+    public Binding feeBinding(Queue feeQueue, TopicExchange eventsExchange) {
+<span class="fc" id="L42">        return BindingBuilder.bind(feeQueue).to(eventsExchange).with(&quot;parcel.fee.revised&quot;);</span>
+    }
+
+    @Bean
+    public Jackson2JsonMessageConverter jackson2JsonMessageConverter() {
+<span class="fc" id="L47">        return new Jackson2JsonMessageConverter();</span>
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            Jackson2JsonMessageConverter messageConverter) {
+<span class="fc" id="L54">        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();</span>
+<span class="fc" id="L55">        factory.setConnectionFactory(connectionFactory);</span>
+<span class="fc" id="L56">        factory.setMessageConverter(messageConverter);</span>
+<span class="fc" id="L57">        return factory;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

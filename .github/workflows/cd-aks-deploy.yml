@@ -49,9 +49,12 @@ jobs:
           fi
 
           SERVICES=()
-          for dir in services/*/; do
+          for dir in backend/*/; do
             svc=$(basename "$dir")
-            if git diff --name-only HEAD~1 HEAD | grep -q "^services/${svc}/"; then
+            if [ "$svc" = "common-contracts" ]; then
+              continue
+            fi
+            if git diff --name-only HEAD~1 HEAD | grep -q "^backend/${svc}/"; then
               SERVICES+=("\"${svc}\"")
             fi
           done
@@ -94,7 +97,7 @@ jobs:
           cache: maven
 
       - name: Build Maven module
-        run: mvn -B -pl services/${{ matrix.service }} -am package -DskipTests --no-transfer-progress
+        run: mvn -B -f backend/pom.xml -pl ${{ matrix.service }} -am package -DskipTests --no-transfer-progress
 
       - name: Build & Push Docker image
         run: |
@@ -103,8 +106,8 @@ jobs:
           docker build \
             -t "${IMAGE}" \
             -t "${IMAGE_LATEST}" \
-            -f services/${{ matrix.service }}/Dockerfile \
-            services/${{ matrix.service }}
+            -f backend/${{ matrix.service }}/Dockerfile \
+            backend/${{ matrix.service }}
           docker push "${IMAGE}"
           docker push "${IMAGE_LATEST}"
 

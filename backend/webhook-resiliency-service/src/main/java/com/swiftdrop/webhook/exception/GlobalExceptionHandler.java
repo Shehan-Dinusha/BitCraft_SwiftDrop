@@ -1,7 +1,11 @@
 package com.swiftdrop.webhook.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.security.ForbiddenException;
+import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -10,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -40,9 +45,39 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.getMessage(), request.getRequestURI()));
     }
 
+    /** Missing or malformed gateway identity headers. */
+    @ExceptionHandler(UnauthenticatedCallerException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnauthenticated(UnauthenticatedCallerException ex, HttpServletRequest request) {
+        log.warn("Rejected request without verified caller identity path={} reason={}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), "Unauthorized",
+                        "Authentication is required", request.getRequestURI()));
+    }
+
+    /** The caller's role, or its missing merchant identity, does not permit the operation. */
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(ForbiddenException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiErrorResponse.of(HttpStatus.FORBIDDEN.value(), "Forbidden",
+                        "You are not permitted to perform this operation", request.getRequestURI()));
+    }
+
+    /** Raised, for example, when deleting an endpoint that delivery jobs still reference. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("Request conflicts with stored data path={} cause={}", request.getRequestURI(), ex.getClass().getSimpleName());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(HttpStatus.CONFLICT.value(), "Conflict",
+                        "The request conflicts with existing records. An endpoint with delivery history cannot be deleted; deactivate it instead.",
+                        request.getRequestURI()));
+    }
+
+    /** Internal exception messages can contain SQL, hostnames or payload fragments, so they are logged, not returned. */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(RuntimeException ex, HttpServletRequest request) {
+        log.error("Unhandled error path={}", request.getRequestURI(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error", ex.getMessage(), request.getRequestURI()));
+                .body(ApiErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error",
+                        "An unexpected error occurred", request.getRequestURI()));
     }
 }

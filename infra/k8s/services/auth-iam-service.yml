@@ -96,6 +96,20 @@ spec:
                 secretKeyRef:
                   name: swiftdrop-jwt-credentials
                   key: secret
+            - name: JWT_ALGORITHM
+              value: HS256
+            - name: JWT_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-jwt-credentials
+                  key: private-key
+                  optional: true
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-jwt-credentials
+                  key: public-key
+                  optional: true
             - name: JWT_ISSUER
               value: swiftdrop-iam
             - name: JWT_AUDIENCE
@@ -130,6 +144,20 @@ spec:
                   name: swiftdrop-bootstrap-admin
                   key: district
                   optional: true
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-google-oauth
+                  key: client-id
+                  optional: true
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-google-oauth
+                  key: client-secret
+                  optional: true
+            - name: GOOGLE_REDIRECT_URI
+              value: "" 
           resources:
             requests:
               cpu: 250m

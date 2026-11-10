@@ -1,6 +1,8 @@
-import { Bell, ChevronDown, ChevronRight, Package, Search, Sparkles } from 'lucide-react';
+import { Bell, ChevronDown, ChevronRight, Package, Pencil, Search, Sparkles, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/utils/cn';
+import { useMediaQuery } from '@/design-system/components/Shell/useMediaQuery';
 import { Button } from '@/design-system/primitives/Button';
 import {
   LiveIndicator,
@@ -25,8 +27,12 @@ export interface TopBarProps {
   onNotificationsClick?: () => void;
   /** Shows the red dot on the bell. */
   hasUnread?: boolean;
+  /** Replaces the built-in notification bell, e.g. Member 9's notification component. */
+  notificationSlot?: ReactNode;
   /** Extra controls before the standard actions. */
   children?: ReactNode;
+  /** Content before the breadcrumb, e.g. the brand mark where there is no sidebar. */
+  leading?: ReactNode;
   className?: string;
 }
 
@@ -43,7 +49,9 @@ export function TopBar({
   onAssistantClick,
   onNotificationsClick,
   hasUnread = false,
+  notificationSlot,
   children,
+  leading,
   className
 }: TopBarProps) {
   const placeholder = searchPlaceholder ?? roleShellSpec[role].searchPlaceholder;
@@ -58,6 +66,7 @@ export function TopBar({
         className
       )}
     >
+      {leading}
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
         <span className="hidden text-label text-muted sm:inline">{section}</span>
         <ChevronRight aria-hidden="true" className="hidden size-3.5 text-muted sm:block" />
@@ -114,20 +123,22 @@ export function TopBar({
         >
           <Sparkles aria-hidden="true" className="size-[18px]" />
         </button>
-        <button
-          type="button"
-          onClick={onNotificationsClick}
-          aria-label={hasUnread ? 'Notifications, unread' : 'Notifications'}
-          className={iconButton}
-        >
-          <Bell aria-hidden="true" className="size-[18px]" />
-          {hasUnread ? (
-            <span
-              aria-hidden="true"
-              className="absolute right-2 top-2 size-2 rounded-full border-2 border-card bg-status-danger"
-            />
-          ) : null}
-        </button>
+        {notificationSlot ?? (
+          <button
+            type="button"
+            onClick={onNotificationsClick}
+            aria-label={hasUnread ? 'Notifications, unread' : 'Notifications'}
+            className={iconButton}
+          >
+            <Bell aria-hidden="true" className="size-[18px]" />
+            {hasUnread ? (
+              <span
+                aria-hidden="true"
+                className="absolute right-2 top-2 size-2 rounded-full border-2 border-card bg-status-danger"
+              />
+            ) : null}
+          </button>
+        )}
       </div>
     </header>
   );
@@ -137,14 +148,84 @@ export interface PublicHeaderProps {
   /** Quick-track submit. */
   onTrack?: (trackingNumber: string) => void;
   onSignIn?: () => void;
+  /** Active tracking number; shows the tracking chip with edit and clear. */
+  trackingNumber?: string;
+  /** Clears the active tracking number and returns to the empty state. */
+  onClearInput?: () => void;
+  /**
+   * Renders the header quick-track control while no number is active.
+   * Set to false when the page already provides its own search form (e.g. /track).
+   */
+  showEmptySearch?: boolean;
   className?: string;
 }
 
 /** Figma TopBar (Role = Public): a utility strip plus the main marketing bar with quick track. */
-export function PublicHeader({ onTrack, onSignIn, className }: PublicHeaderProps) {
+export function PublicHeader({
+  onTrack,
+  onSignIn,
+  trackingNumber,
+  onClearInput,
+  showEmptySearch = true,
+  className
+}: PublicHeaderProps) {
+  const isMobile = useMediaQuery('(max-width: 639px)');
+  const hasTracking = Boolean(trackingNumber?.trim());
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(trackingNumber ?? '');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keep the editor in sync with the active tracking number.
+  useEffect(() => {
+    setInputValue(trackingNumber ?? '');
+  }, [trackingNumber]);
+
+  // Collapse the editor after navigation.
+  useEffect(() => {
+    setIsEditing(false);
+  }, [trackingNumber]);
+
+  // Collapse the editor when leaving mobile.
+  useEffect(() => {
+    if (!isMobile) setIsEditing(false);
+  }, [isMobile]);
+
+  // Focus the editor when it opens on mobile.
+  useEffect(() => {
+    if (isMobile && isEditing) {
+      inputRef.current?.focus();
+    }
+  }, [isEditing, isMobile]);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const value = inputValue.trim();
+    if (!value) return;
+    onTrack?.(value);
+    setIsEditing(false);
+  };
+
+  const handleClear = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setInputValue('');
+    setIsEditing(false);
+    onClearInput?.();
+  };
+
+  const cancelEditing = () => {
+    setInputValue(trackingNumber ?? '');
+    setIsEditing(false);
+  };
+
+  const showChip = hasTracking && !(!isMobile && isEditing);
+  const showInlineForm = !isMobile && (isEditing || (showEmptySearch && !hasTracking));
+  const showMobileSearchButton = isMobile && showEmptySearch && !hasTracking && !isEditing;
+  const showMobileEditor = isMobile && isEditing;
+
   return (
     <header className={cn('border-b border-border-subtle bg-card', className)}>
-      <div className="flex items-center gap-5 bg-canvas px-10 py-1.5 text-caption text-secondary">
+      <div className="flex items-center gap-5 bg-canvas px-4 py-1.5 text-caption text-secondary">
         <span className="truncate">Island-wide delivery · 25 districts · cash on pickup</span>
         <span className="ml-auto hidden gap-5 md:flex">
           <a href="#help">Help centre</a>
@@ -153,46 +234,152 @@ export function PublicHeader({ onTrack, onSignIn, className }: PublicHeaderProps
           <span>English / Sinhala / Tamil</span>
         </span>
       </div>
-      <div className="flex items-center gap-7 px-10 py-3.5">
-        <span className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
-          >
-            <Package className="size-[18px]" />
+      <div className="flex items-center justify-between gap-4 px-4 py-3.5 w-full max-w-screen-2xl mx-auto">
+        <div className="flex items-center gap-4 shrink-0">
+          <span className="flex items-center gap-2.5 shrink-0">
+            <span
+              aria-hidden="true"
+              className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
+            >
+              <Package className="size-[18px]" />
+            </span>
+            <span className="text-h3 text-primary">SwiftDrop</span>
           </span>
-          <span className="text-h3 text-primary">SwiftDrop</span>
-        </span>
-        <nav aria-label="Primary" className="hidden gap-7 text-label text-primary md:flex">
-          <a href="#ship">Ship</a>
-          <a href="#track">Track</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#business">Business</a>
-        </nav>
-        <form
-          className="ml-auto hidden h-10 w-[352px] overflow-hidden rounded-lg border border-border-subtle lg:flex"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            onTrack?.(String(data.get('tracking') ?? '').trim());
-          }}
-        >
-          <input
-            name="tracking"
-            aria-label="Enter tracking number"
-            placeholder="Enter tracking number"
-            className="min-w-0 flex-1 bg-transparent px-3 text-body text-primary outline-none placeholder:text-muted"
-          />
-          <button
-            type="submit"
-            className="w-[72px] bg-brand-primary text-label text-brand-on hover:bg-brand-hover"
+          <nav aria-label="Primary" className="hidden gap-7 text-label text-primary md:flex shrink-0">
+            <a href="#ship">Ship</a>
+            <a href="#track">Track</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#business">Business</a>
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Active tracking chip with edit and clear */}
+          {showChip && (
+            <div className="flex h-9 min-w-0 max-w-[55vw] items-center gap-1 rounded-lg border border-border-subtle bg-canvas pl-3 pr-1 sm:max-w-none">
+              <span
+                className="min-w-0 truncate font-mono text-body tabular-nums text-primary"
+                title={trackingNumber}
+              >
+                {trackingNumber}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                aria-label="Edit tracking number"
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+              >
+                <Pencil aria-hidden="true" className="size-3.5" />
+              </button>
+              {onClearInput && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  aria-label="Clear tracking number"
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                >
+                  <X aria-hidden="true" className="size-4" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Desktop inline search / edit form */}
+          {showInlineForm && (
+            <form className="flex items-center gap-2" onSubmit={handleSubmit}>
+              <label htmlFor="public-tracking-input" className="sr-only">
+                Enter tracking number
+              </label>
+              <input
+                ref={inputRef}
+                id="public-tracking-input"
+                name="tracking"
+                aria-label="Enter tracking number"
+                placeholder="Enter tracking number"
+                value={inputValue}
+                onChange={(event) => setInputValue(event.target.value)}
+                className="h-9 w-56 min-w-0 rounded-lg border border-border-subtle bg-canvas px-3 font-mono text-body tabular-nums text-primary outline-none placeholder:font-sans placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus [&::-webkit-search-cancel-button]:hidden"
+                autoFocus={isEditing}
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <Button type="submit" variant="primary" density="comfortable" className="shrink-0">
+                Track
+              </Button>
+              {isEditing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  density="comfortable"
+                  className="shrink-0"
+                  onClick={cancelEditing}
+                >
+                  Cancel
+                </Button>
+              )}
+            </form>
+          )}
+
+          {/* Mobile: search button while no number is active */}
+          {showMobileSearchButton && (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              aria-label="Search tracking number"
+              aria-expanded={isEditing}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-canvas px-3 py-1.5 text-body text-primary hover:bg-elevated transition-colors shrink-0"
+            >
+              <Search aria-hidden="true" className="size-4" />
+              <span className="hidden sm:inline">Track parcel</span>
+            </button>
+          )}
+
+          {/* Mobile bottom-sheet editor */}
+          {showMobileEditor && (
+            <form
+              className="fixed inset-x-0 bottom-0 z-50 flex items-center gap-2 p-4 bg-card border-t border-border-subtle shadow-lg animate-slide-up"
+              onSubmit={handleSubmit}
+            >
+              <label htmlFor="mobile-tracking-input" className="sr-only">
+                Enter tracking number
+              </label>
+              <input
+                ref={inputRef}
+                id="mobile-tracking-input"
+                name="tracking"
+                aria-label="Enter tracking number"
+                placeholder="Enter tracking number"
+                value={inputValue}
+                onChange={(event) => setInputValue(event.target.value)}
+                className="h-10 min-w-0 flex-1 rounded-lg border border-border-subtle bg-canvas px-3 font-mono text-body tabular-nums text-primary outline-none placeholder:font-sans placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus [&::-webkit-search-cancel-button]:hidden"
+                autoFocus
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <Button type="submit" variant="primary" density="comfortable" className="shrink-0">
+                Track
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                density="comfortable"
+                className="shrink-0"
+                onClick={cancelEditing}
+              >
+                Cancel
+              </Button>
+            </form>
+          )}
+
+          <Button
+            variant="ghost"
+            density="compact"
+            onClick={onSignIn}
+            className={cn('shrink-0', hasTracking && 'hidden sm:inline-flex')}
           >
-            Track
-          </button>
-        </form>
-        <Button variant="ghost" density="compact" onClick={onSignIn} className="ml-auto lg:ml-0">
-          Sign in
-        </Button>
+            Sign in
+          </Button>
+        </div>
       </div>
     </header>
   );

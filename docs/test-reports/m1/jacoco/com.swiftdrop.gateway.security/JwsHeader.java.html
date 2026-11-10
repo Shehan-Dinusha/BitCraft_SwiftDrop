@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwsHeader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.security</a> &gt; <span class="el_source">JwsHeader.java</span></div><h1>JwsHeader.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.security;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.util.Base64;
+
+/**
+ * Minimal, unverified JWS header used only to discover the signing algorithm
+ * and key id before signature verification. Never trust these values for
+ * authorization decisions until the token has been verified.
+ */
+<span class="fc" id="L14">public record JwsHeader(String algorithm, String keyId) {</span>
+
+    public static JwsHeader decode(String token, ObjectMapper objectMapper) {
+<span class="pc bpc" id="L17" title="2 of 4 branches missed.">        if (token == null || token.isBlank()) {</span>
+<span class="nc" id="L18">            throw new IllegalArgumentException(&quot;Token is empty&quot;);</span>
+        }
+<span class="fc" id="L20">        int firstDot = token.indexOf('.');</span>
+<span class="pc bpc" id="L21" title="1 of 2 branches missed.">        if (firstDot &lt;= 0) {</span>
+<span class="nc" id="L22">            throw new IllegalArgumentException(&quot;Token is not a compact JWS&quot;);</span>
+        }
+        try {
+<span class="fc" id="L25">            byte[] headerBytes = Base64.getUrlDecoder().decode(token.substring(0, firstDot));</span>
+<span class="fc" id="L26">            JsonNode header = objectMapper.readTree(headerBytes);</span>
+<span class="fc" id="L27">            return new JwsHeader(textOrNull(header, &quot;alg&quot;), textOrNull(header, &quot;kid&quot;));</span>
+<span class="nc" id="L28">        } catch (IllegalArgumentException | IOException exception) {</span>
+<span class="nc" id="L29">            throw new IllegalArgumentException(&quot;Malformed JWS header&quot;, exception);</span>
+        }
+    }
+
+    private static String textOrNull(JsonNode node, String field) {
+<span class="fc" id="L34">        JsonNode value = node.get(field);</span>
+<span class="pc bpc" id="L35" title="2 of 4 branches missed.">        return value == null || value.isNull() ? null : value.asText();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

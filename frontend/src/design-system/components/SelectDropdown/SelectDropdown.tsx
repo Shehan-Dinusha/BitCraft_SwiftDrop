@@ -71,6 +71,9 @@ export function SelectDropdown({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  // Opens upward when the list would run past the bottom of the window, so it never pushes the
+  // page (and the sticky sidebar) out of shape.
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -91,6 +94,12 @@ export function SelectDropdown({
     isMenuOpen && filtered[activeIndex] ? `${listId}-option-${activeIndex}` : undefined;
 
   const openMenu = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const needed = searchable ? 400 : 330;
+      const below = window.innerHeight - rect.bottom;
+      setPlacement(below < needed && rect.top > below ? 'top' : 'bottom');
+    }
     setOpen(true);
     setQuery('');
     const index = options.findIndex((option) => option.value === value);
@@ -104,7 +113,8 @@ export function SelectDropdown({
   };
 
   useEffect(() => {
-    if (isMenuOpen && searchable) searchRef.current?.focus();
+    // preventScroll: focusing the filter field must not scroll the page out from under the list.
+    if (isMenuOpen && searchable) searchRef.current?.focus({ preventScroll: true });
   }, [isMenuOpen, searchable]);
 
   useEffect(() => {
@@ -241,6 +251,7 @@ export function SelectDropdown({
 
       <DropdownMenu
         open={isMenuOpen}
+        placement={placement}
         onClose={() => closeMenu(true)}
         id={listId}
         label={label ?? placeholder}

@@ -1,7 +1,7 @@
-import { Package, Zap } from 'lucide-react';
+import { Package, Timer, Zap } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
-export type Speed = 'standard' | 'express';
+export type Speed = 'standard' | 'express' | 'same-day';
 
 export interface SpeedTagProps {
   speed: Speed;
@@ -14,10 +14,11 @@ const speeds: Record<Speed, { label: string; className: string; Icon: typeof Zap
     className: 'border border-border-subtle bg-elevated text-secondary',
     Icon: Package
   },
-  express: { label: 'EXPRESS', className: 'bg-brand-primary text-brand-on', Icon: Zap }
+  express: { label: 'EXPRESS', className: 'bg-brand-primary text-brand-on', Icon: Zap },
+  'same-day': { label: 'SAME DAY', className: 'bg-brand-pressed text-brand-on', Icon: Timer }
 };
 
-/** Figma SpeedTag: Standard (neutral) or Express (brand fill). Always keeps the text label. */
+/** SpeedTag: Standard (neutral), Express (brand fill) or Same day (darker brand fill). Always keeps the text label. */
 export function SpeedTag({ speed, className }: SpeedTagProps) {
   const { label, className: tone, Icon } = speeds[speed];
   return (

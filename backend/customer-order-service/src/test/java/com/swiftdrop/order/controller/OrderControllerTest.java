@@ -10,6 +10,7 @@ import com.swiftdrop.order.dto.CreateOrderRequest;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
+import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.service.CustomerOrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -128,17 +129,111 @@ class OrderControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/orders/{orderId} passes caller id and role to the service")
+    void testGetOrderPassesCallerIdentity() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
+        CustomerOrderResponse response = CustomerOrderResponse.builder()
+                .orderId(orderId)
+                .trackingNumber("SD-7K4M-9QX2")
+                .build();
+
+        when(customerOrderService.getOrderById(orderId, callerId, "CUSTOMER")).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}", orderId)
+                        .header("X-User-Id", callerId.toString())
+                        .header("X-User-Role", "CUSTOMER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.trackingNumber").value("SD-7K4M-9QX2"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders/{orderId} returns 404 when the caller does not own the order")
+    void testGetOrderOfAnotherCustomerReturns404() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
+
+        when(customerOrderService.getOrderById(orderId, callerId, "CUSTOMER"))
+                .thenThrow(new OrderNotFoundException("Order not found"));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}", orderId)
+                        .header("X-User-Id", callerId.toString())
+                        .header("X-User-Role", "CUSTOMER"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders without identity headers passes null caller to the service")
+    void testGetOrderWithoutHeadersPassesNullCaller() throws Exception {
+        UUID orderId = UUID.randomUUID();
+
+        when(customerOrderService.getOrderById(orderId, null, null))
+                .thenThrow(new OrderNotFoundException("Order not found"));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}", orderId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders/{orderId}/status-history returns status and time only")
+    void statusHistoryReturnsStatusAndTime() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
+        when(customerOrderService.getStatusHistory(orderId, callerId, "CUSTOMER")).thenReturn(java.util.List.of(
+                new com.swiftdrop.order.dto.OrderStatusHistoryEntry(
+                        com.swiftdrop.contracts.enums.PublicOrderStatus.CREATED, java.time.Instant.parse("2026-11-05T08:30:00Z"))));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}/status-history", orderId)
+                        .header("X-User-Id", callerId.toString()).header("X-User-Role", "CUSTOMER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("CREATED"))
+                .andExpect(jsonPath("$.data[0].occurredAt").exists())
+                .andExpect(jsonPath("$.data[0].eventId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].internalSubStatus").doesNotExist());
+    }
+
+    @Test
     @DisplayName("GET /api/v1/orders/{orderId}/shipping-label returns application/pdf (FR-C4, FR-C5)")
     void testDownloadShippingLabel() throws Exception {
         UUID orderId = UUID.randomUUID();
-        byte[] dummyPdf = "%PDF-1.4 test".getBytes();
-
-        when(customerOrderService.getShippingLabelPdf(orderId)).thenReturn(dummyPdf);
+        when(customerOrderService.getShippingLabelPdf(eq(orderId), any(), any()))
+                .thenReturn(new CustomerOrderService.PdfDownload("SD-7K4M-9QX2", "%PDF-1.4 test".getBytes()));
 
         mockMvc.perform(get("/api/v1/orders/{orderId}/shipping-label", orderId))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", MediaType.APPLICATION_PDF_VALUE))
-                .andExpect(header().string("Content-Disposition", "inline; filename=\"shipping-label-" + orderId + ".pdf\""));
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"receipt-SD-7K4M-9QX2.pdf\""))
+                .andExpect(header().string("Cache-Control", "no-store"));
+    }
+
+    @Test
+    @DisplayName("Label and receipt downloads give a non-owner a 404 and no PDF")
+    void pdfDownloadsReturn404ForNonOwner() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        when(customerOrderService.getShippingLabelPdf(eq(orderId), any(), any()))
+                .thenThrow(new OrderNotFoundException("Order not found"));
+        when(customerOrderService.getDeliveryReceiptPdf(eq(orderId), any(), any()))
+                .thenThrow(new OrderNotFoundException("Order not found"));
+
+        for (String path : new String[]{"shipping-label", "delivery-receipt"}) {
+            mockMvc.perform(get("/api/v1/orders/{orderId}/" + path, orderId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(header().doesNotExist("Content-Disposition"));
+        }
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders/{orderId}/delivery-receipt downloads delivery-receipt-<tracking>.pdf and is not cached")
+    void testDownloadDeliveryReceiptHeaders() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        when(customerOrderService.getDeliveryReceiptPdf(eq(orderId), any(), any()))
+                .thenReturn(new CustomerOrderService.PdfDownload("SD-7K4M-9QX2", "%PDF-1.4 test".getBytes()));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}/delivery-receipt", orderId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", MediaType.APPLICATION_PDF_VALUE))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"delivery-receipt-SD-7K4M-9QX2.pdf\""))
+                .andExpect(header().string("Cache-Control", "no-store"));
     }
 
     @Test
@@ -151,7 +246,7 @@ class OrderControllerTest {
                 .cancellationReason("Customer changed mind")
                 .build();
 
-        when(customerOrderService.cancelOrder(eq(orderId), any(), any(), any())).thenReturn(cancelledResponse);
+        when(customerOrderService.cancelOrder(eq(orderId), any(), any(), any(), any())).thenReturn(cancelledResponse);
 
         CancelOrderRequest req = CancelOrderRequest.builder().reason("Customer changed mind").build();
 
@@ -173,7 +268,7 @@ class OrderControllerTest {
                 .feeRevisionStatus(FeeRevisionStatus.REJECTED)
                 .build();
 
-        when(customerOrderService.rejectFeeRevision(eq(orderId), any(), any())).thenReturn(rejectedResponse);
+        when(customerOrderService.rejectFeeRevision(eq(orderId), any(), any(), any())).thenReturn(rejectedResponse);
 
         mockMvc.perform(post("/api/v1/orders/{orderId}/fee-revision/reject", orderId))
                 .andExpect(status().isOk())
