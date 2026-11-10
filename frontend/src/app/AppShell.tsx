@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BottomNav,
@@ -82,6 +82,7 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
       label: 'Platform',
       items: [
         { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
+        { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
         { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
       ]
     }
