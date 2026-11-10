@@ -124,6 +124,9 @@ public class DeliveryExecutionService {
                     "Invalid delivery FSM transition from " + fromState + " to " + toState);
         }
 
+        // Delegate state-specific guard and precondition validation to the handler
+        stateMachine.getHandler(fromState).validate(request, session);
+
         // Enforce Proof of Delivery Guard before transitioning to DELIVERED
         if (toState == DeliveryState.DELIVERED) {
             if (!proofOfDeliveryGuard.isSatisfied(deliveryId)) {

@@ -33,10 +33,12 @@ import java.util.List;
  * verified identity headers ({@code X-User-Id}, {@code X-User-Role},
  * {@code X-Merchant-Id}, {@code X-District-Id}) into downstream service requests.
  *
- * <p>Public endpoints (auth, public tracking, merchant API-key ingestion, health)
- * are whitelisted and skip JWT validation. Blacklisted token IDs, token hashes,
- * and user IDs are checked against Redis; Redis failures fail open for local
- * development availability and are logged for operators.</p>
+ * <p>Only auth, public tracking, documentation, and health endpoints are
+ * whitelisted. Merchant API-key paths are handled exclusively by
+ * {@link MerchantApiKeyGlobalFilter} and therefore bypass JWT validation.
+ * Blacklisted token IDs, token hashes, and user IDs are checked against Redis;
+ * Redis failures fail open for local development availability and are logged
+ * for operators.</p>
  */
 @Slf4j
 @Component
@@ -50,8 +52,6 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
             "/api/v1/public/tracking",
             "/api/v1/tracking",
             "/ws/tracking",
-            "/api/v1/merchant/",
-            "/api/v1/merchant-order-ingest/",
             "/actuator/health",
             "/actuator/health/readiness",
             "/actuator/health/liveness",
@@ -106,10 +106,11 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
+        if (isApiKeyPath(path)) {
+            return chain.filter(exchange);
+        }
+
         if (isPublicPath(path)) {
-            if (isApiKeyPath(path)) {
-                return chain.filter(exchange);
-            }
             ServerHttpRequest sanitized = exchange.getRequest().mutate()
                     .headers(this::stripIdentityHeaders)
                     .build();

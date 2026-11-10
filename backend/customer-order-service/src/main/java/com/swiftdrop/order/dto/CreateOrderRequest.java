@@ -70,6 +70,10 @@ public class CreateOrderRequest {
     @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
     private String pickupContactPhone;
 
+    @Schema(description = "Optional second phone number for the sender", example = "+94715550101")
+    @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
+    private String pickupContactAlternatePhone;
+
     // Delivery / Recipient Details
     @NotBlank(message = "Delivery address line 1 is mandatory")
     @Schema(description = "Delivery address line 1", example = "No. 18, Peradeniya Road")
@@ -108,6 +112,10 @@ public class CreateOrderRequest {
     @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
     private String recipientPhone;
 
+    @Schema(description = "Optional second phone number for the recipient", example = "+94112345678")
+    @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
+    private String recipientAlternatePhone;
+
     @NotBlank(message = "Recipient email is mandatory")
     @Email(message = "Recipient email must be a valid email address")
     @Schema(description = "Recipient email address for tracking notifications", example = "anura.f@gmail.com")
@@ -144,6 +152,11 @@ public class CreateOrderRequest {
     @Size(max = 512, message = "Must be at most 512 characters")
     @Pattern(regexp = ValidationPatterns.FREE_TEXT, message = ValidationPatterns.FREE_TEXT_MESSAGE)
     private String itemDescription;
+
+    @Schema(description = "Optional notes for the courier, such as a gate code or a landmark", example = "Call when you reach the gate")
+    @Size(max = 500, message = "Must be at most 500 characters")
+    @Pattern(regexp = ValidationPatterns.FREE_TEXT, message = ValidationPatterns.FREE_TEXT_MESSAGE)
+    private String customerNotes;
 
     @DecimalMin(value = "0.0", message = "Declared value must be non-negative")
     @Schema(description = "Declared merchandise value in LKR", example = "5000.00")

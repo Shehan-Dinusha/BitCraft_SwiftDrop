@@ -1,0 +1,11 @@
+ALTER TABLE merchant_accounts
+    ALTER COLUMN status SET DEFAULT 'PENDING_APPROVAL',
+    ADD COLUMN IF NOT EXISTS owner_user_id UUID,
+    ADD COLUMN IF NOT EXISTS business_reg_no VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS approved_by UUID,
+    ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE,
+    ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(500);
+
+UPDATE merchant_accounts
+SET status = 'PENDING_APPROVAL'
+WHERE status = 'ACTIVE';

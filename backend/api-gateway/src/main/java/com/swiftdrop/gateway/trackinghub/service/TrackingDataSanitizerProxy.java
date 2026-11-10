@@ -1,8 +1,8 @@
 package com.swiftdrop.gateway.trackinghub.service;
 
+import com.swiftdrop.contracts.dto.tracking.InternalTrackingView;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.contracts.events.delivery.DeliveryStateChangedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingTimelineEntry;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Maps internal delivery events to a strictly PII-free public tracking view.
@@ -59,47 +58,6 @@ public class TrackingDataSanitizerProxy {
         );
     }
 
-    public PublicTrackingViewDto fromLegacy(DeliveryStateChangedEvent event) {
-        PublicOrderStatus status = PublicOrderStatus.fromDeliveryState(event.newState());
-        if (status == null) {
-            status = PublicOrderStatus.CREATED;
-        }
-        String trackingNumber = publicId(event.deliveryId());
-        PublicTrackingTimelineEntry entry = new PublicTrackingTimelineEntry(
-                status,
-                null,
-                timestamp(event.timestamp())
-        );
-        return new PublicTrackingViewDto(
-                trackingNumber,
-                status,
-                null,
-                null,
-                List.of(entry)
-        );
-    }
-
-    public PublicTrackingViewDto appendLegacy(PublicTrackingViewDto current, DeliveryStateChangedEvent event) {
-        if (current == null) {
-            return fromLegacy(event);
-        }
-
-        PublicOrderStatus status = PublicOrderStatus.fromDeliveryState(event.newState());
-        if (status == null) {
-            return current;
-        }
-
-        List<PublicTrackingTimelineEntry> timeline = new ArrayList<>(current.statusTimeline());
-        timeline.add(new PublicTrackingTimelineEntry(status, null, timestamp(event.timestamp())));
-        return new PublicTrackingViewDto(
-                current.trackingNumber(),
-                status,
-                current.originDistrict(),
-                current.destinationDistrict(),
-                List.copyOf(timeline)
-        );
-    }
-
     private PublicOrderStatus resolveStatus(ParcelStatusChangedEvent event) {
         if (event.newPublicStatus() != null) {
             return event.newPublicStatus();
@@ -110,15 +68,26 @@ public class TrackingDataSanitizerProxy {
         return PublicOrderStatus.CREATED;
     }
 
-    private String publicId(UUID deliveryId) {
-        return deliveryId == null ? "unknown" : deliveryId.toString();
-    }
-
     private SriLankanDistrict firstNonNull(SriLankanDistrict first, SriLankanDistrict second) {
         return first != null ? first : second;
     }
 
     private Instant timestamp(Instant timestamp) {
         return timestamp == null ? Instant.now() : timestamp;
+    }
+
+    public PublicTrackingViewDto fromInternalView(InternalTrackingView view) {
+        List<PublicTrackingTimelineEntry> timeline = view.history().stream()
+                .map(h -> new PublicTrackingTimelineEntry(
+                        h.status(),
+                        view.pickupDistrict(),
+                        h.occurredAt()))
+                .toList();
+        return new PublicTrackingViewDto(
+                view.trackingNumber(),
+                view.status(),
+                view.pickupDistrict(),
+                view.deliveryDistrict(),
+                timeline);
     }
 }

@@ -11,6 +11,8 @@ import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.CallerIdentityRequiredException;
+import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
+import com.swiftdrop.order.exception.InvalidOrderStateException;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
 import com.swiftdrop.order.service.pricing.PricingClient;
@@ -18,6 +20,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -57,6 +61,9 @@ class OrderOwnershipTest {
     @Mock
     private OrderEventPublisher orderEventPublisher;
 
+    @Mock
+    private OrderStatusHistoryService orderStatusHistoryService;
+
     @InjectMocks
     private CustomerOrderService customerOrderService;
 
@@ -90,6 +97,10 @@ class OrderOwnershipTest {
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
+    }
+
+    private void orderExistsForUpdate() {
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(orderOfA));
     }
 
     private void orderExists() {
@@ -206,9 +217,27 @@ class OrderOwnershipTest {
     // ---- writes and downloads (Stage 3) ----
 
     @Test
+    @DisplayName("The tracking-number lookup follows the same ownership rule as the id lookup")
+    void trackingLookupFollowsOwnershipRule() {
+        when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.of(orderOfA));
+        when(customerOrderRepository.findByTrackingNumber("SD-0000-0000")).thenReturn(Optional.empty());
+
+        assertThat(customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerA, "CUSTOMER").getOrderId())
+                .isEqualTo(orderId);
+        assertThat(customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerB, "DISPATCHER").getOrderId())
+                .isEqualTo(orderId);
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", null, null))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-0000-0000", customerA, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+    }
+
+    @Test
     @DisplayName("Customer B cannot cancel customer A's order, and nothing is saved or published")
     void nonOwnerCannotCancel() {
-        orderExists();
+        orderExistsForUpdate();
 
         assertThatThrownBy(() -> customerOrderService.cancelOrder(orderId, null, customerB, "CUSTOMER", UUID.randomUUID()))
                 .isInstanceOf(OrderNotFoundException.class);
@@ -221,7 +250,7 @@ class OrderOwnershipTest {
     @Test
     @DisplayName("Owner can cancel their own order")
     void ownerCanCancel() {
-        orderExists();
+        orderExistsForUpdate();
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerA, "CUSTOMER", UUID.randomUUID());
@@ -233,7 +262,58 @@ class OrderOwnershipTest {
     @Test
     @DisplayName("Dispatcher can cancel any order")
     void dispatcherCanCancel() {
+        orderExistsForUpdate();
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerB, "DISPATCHER", UUID.randomUUID());
+
+        assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("Customer B cannot read the status history of customer A's order")
+    void nonOwnerCannotReadStatusHistory() {
         orderExists();
+
+        assertThatThrownBy(() -> customerOrderService.getStatusHistory(orderId, customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        verifyNoInteractions(orderStatusHistoryService);
+    }
+
+    @Test
+    @DisplayName("The owner and a dispatcher can read the status history")
+    void ownerAndDispatcherCanReadStatusHistory() {
+        orderExists();
+        List<OrderStatusHistoryEntry> history = List.of(
+                new OrderStatusHistoryEntry(PublicOrderStatus.CREATED, java.time.Instant.parse("2026-11-05T08:30:00Z")));
+        when(orderStatusHistoryService.listForOrder(orderId)).thenReturn(history);
+
+        assertThat(customerOrderService.getStatusHistory(orderId, customerA, "CUSTOMER")).isEqualTo(history);
+        assertThat(customerOrderService.getStatusHistory(orderId, customerB, "DISPATCHER")).isEqualTo(history);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PublicOrderStatus.class, names = {"PICKUP_ASSIGNED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY"})
+    @DisplayName("A customer cannot cancel a parcel once it has left CREATED, and nothing is saved or published")
+    void customerCannotCancelAfterCreated(PublicOrderStatus status) {
+        orderOfA.setStatus(status);
+        orderExistsForUpdate();
+
+        assertThatThrownBy(() -> customerOrderService.cancelOrder(orderId, null, customerA, "CUSTOMER", UUID.randomUUID()))
+                .isInstanceOf(InvalidOrderStateException.class)
+                .hasMessage("Only a booked parcel with no courier assigned yet can be cancelled.");
+
+        assertThat(orderOfA.getStatus()).isEqualTo(status);
+        verify(customerOrderRepository, never()).save(any());
+        verifyNoInteractions(orderEventPublisher);
+    }
+
+    @Test
+    @DisplayName("A dispatcher can still cancel a parcel that is already moving")
+    void dispatcherCanCancelAfterCreated() {
+        orderOfA.setStatus(PublicOrderStatus.IN_TRANSIT);
+        orderExistsForUpdate();
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerB, "DISPATCHER", UUID.randomUUID());
@@ -285,7 +365,7 @@ class OrderOwnershipTest {
     void nonOwnerCannotActOnFeeRevision() {
         orderOfA.setFeeRevisionStatus(FeeRevisionStatus.PENDING);
         orderOfA.setRevisedFee(new BigDecimal("900.00"));
-        orderExists();
+        orderExistsForUpdate();
 
         assertThatThrownBy(() -> customerOrderService.acceptFeeRevision(orderId, customerB, "CUSTOMER", UUID.randomUUID()))
                 .isInstanceOf(OrderNotFoundException.class);
@@ -302,7 +382,7 @@ class OrderOwnershipTest {
     void ownerCanAcceptFeeRevision() {
         orderOfA.setFeeRevisionStatus(FeeRevisionStatus.PENDING);
         orderOfA.setRevisedFee(new BigDecimal("900.00"));
-        orderExists();
+        orderExistsForUpdate();
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CustomerOrderResponse response = customerOrderService.acceptFeeRevision(orderId, customerA, "CUSTOMER", UUID.randomUUID());
@@ -334,9 +414,9 @@ class OrderOwnershipTest {
         when(orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(orderOfA)).thenReturn(label);
         when(orderPdfGeneratorService.generateDeliveryReceiptPdf(orderOfA)).thenReturn(receipt);
 
-        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerA, "CUSTOMER")).isEqualTo(label);
-        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerB, "DISPATCHER")).isEqualTo(label);
-        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerA, "CUSTOMER")).isEqualTo(receipt);
-        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerB, "SYSTEM_ADMIN")).isEqualTo(receipt);
+        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerA, "CUSTOMER").content()).isEqualTo(label);
+        assertThat(customerOrderService.getShippingLabelPdf(orderId, customerB, "DISPATCHER").content()).isEqualTo(label);
+        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerA, "CUSTOMER").content()).isEqualTo(receipt);
+        assertThat(customerOrderService.getDeliveryReceiptPdf(orderId, customerB, "SYSTEM_ADMIN").content()).isEqualTo(receipt);
     }
 }

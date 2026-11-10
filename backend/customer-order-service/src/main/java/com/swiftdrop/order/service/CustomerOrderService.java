@@ -7,12 +7,15 @@ import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
+import com.swiftdrop.order.domain.entity.OrderSource;
 import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CancelOrderRequest;
 import com.swiftdrop.order.dto.CreateOrderRequest;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
+import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
+import com.swiftdrop.order.dto.InternalCreateOrderRequest;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.CallerIdentityRequiredException;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
@@ -28,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -40,6 +44,7 @@ public class CustomerOrderService {
     private final PricingClient pricingClient;
     private final OrderPdfGeneratorService orderPdfGeneratorService;
     private final OrderEventPublisher orderEventPublisher;
+    private final OrderStatusHistoryService orderStatusHistoryService;
 
     public FeeEstimateResponse calculateEstimate(FeeEstimateRequest request) {
         return pricingClient.estimate(request);
@@ -51,7 +56,22 @@ public class CustomerOrderService {
         if (effectiveCustomerId == null) {
             throw new CallerIdentityRequiredException("Customer identification is required");
         }
+        return persistNewOrder(request, effectiveCustomerId, OrderSource.CUSTOMER, null, correlationId);
+    }
 
+    /**
+     * Creates an order for a merchant (called by the internal endpoint). It follows the same path as a customer
+     * order, so pricing, tracking number, history and the {@code order.created} event are identical.
+     * The merchant id is stored as the customer id, the convention the merchant service already uses.
+     */
+    @Transactional
+    public CustomerOrderResponse createMerchantOrder(InternalCreateOrderRequest request, UUID correlationId) {
+        return persistNewOrder(request.toCreateOrderRequest(), request.merchantId(), OrderSource.MERCHANT,
+                request.externalRef(), correlationId);
+    }
+
+    private CustomerOrderResponse persistNewOrder(CreateOrderRequest request, UUID customerId, OrderSource source,
+                                                  String externalRef, UUID correlationId) {
         // 1. Calculate price and chargeable weight
         FeeEstimateRequest estimateReq = FeeEstimateRequest.builder()
                 .pickupDistrict(request.getPickupDistrict())
@@ -71,8 +91,10 @@ public class CustomerOrderService {
         CustomerOrder order = CustomerOrder.builder()
                 .orderId(UUID.randomUUID())
                 .trackingNumber(trackingNumber)
-                .customerId(effectiveCustomerId)
+                .customerId(customerId)
                 .merchantId(request.getMerchantId())
+                .source(source)
+                .externalRef(externalRef)
                 .orderSpeed(estimate.getSpeed())
                 .status(PublicOrderStatus.CREATED)
                 .internalQueueStatus(InternalQueueStatus.CREATED)
@@ -83,6 +105,7 @@ public class CustomerOrderService {
                 .pickupPostalCode(request.getPickupPostalCode())
                 .pickupContactName(request.getPickupContactName())
                 .pickupContactPhone(request.getPickupContactPhone())
+                .pickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()))
                 .deliveryAddressLine1(request.getDeliveryAddressLine1())
                 .deliveryAddressLine2(request.getDeliveryAddressLine2())
                 .deliveryCity(request.getDeliveryCity())
@@ -90,6 +113,7 @@ public class CustomerOrderService {
                 .deliveryPostalCode(request.getDeliveryPostalCode())
                 .recipientName(request.getRecipientName())
                 .recipientPhone(request.getRecipientPhone())
+                .recipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()))
                 .recipientEmail(request.getRecipientEmail())
                 .lengthCm(request.getLengthCm())
                 .widthCm(request.getWidthCm())
@@ -97,6 +121,7 @@ public class CustomerOrderService {
                 .actualWeightKg(request.getActualWeightKg())
                 .chargeableWeightKg(estimate.getChargeableWeightKg())
                 .itemDescription(request.getItemDescription())
+                .customerNotes(blankToNull(request.getCustomerNotes()))
                 .declaredValue(request.getDeclaredValue() != null ? request.getDeclaredValue() : BigDecimal.ZERO)
                 .codAmount(request.getCodAmount() != null ? request.getCodAmount() : BigDecimal.ZERO)
                 .prohibitedItemsDeclared(request.getProhibitedItemsDeclared())
@@ -113,6 +138,7 @@ public class CustomerOrderService {
         log.info("Created customer order orderId={}, trackingNumber={}", saved.getOrderId(), saved.getTrackingNumber());
 
         // 4. Publish order.created and parcel.status.changed events
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCreated(saved, correlationId);
 
         return CustomerOrderResponse.fromEntity(saved);
@@ -124,10 +150,18 @@ public class CustomerOrderService {
         return CustomerOrderResponse.fromEntity(order);
     }
 
+    /** The statuses an order has been through, oldest first. Owner only (404 for anyone else), like the other reads. */
     @Transactional(readOnly = true)
-    public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber) {
+    public List<OrderStatusHistoryEntry> getStatusHistory(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        return orderStatusHistoryService.listForOrder(order.getOrderId());
+    }
+
+    @Transactional(readOnly = true)
+    public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByTrackingNumber(trackingNumber)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+        assertCallerCanAccess(order, callerId, callerRole);
         return CustomerOrderResponse.fromEntity(order);
     }
 
@@ -159,6 +193,14 @@ public class CustomerOrderService {
         return order;
     }
 
+    /** Same as {@link #findAccessibleOrder} but takes a row lock so it serialises with status sync. */
+    private CustomerOrder findAccessibleOrderForUpdate(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = customerOrderRepository.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+        assertCallerCanAccess(order, callerId, callerRole);
+        return order;
+    }
+
     private void assertCallerCanAccess(CustomerOrder order, UUID callerId, String callerRole) {
         if (isPrivilegedRole(callerRole)) {
             return;
@@ -166,6 +208,10 @@ public class CustomerOrderService {
         if (callerId == null || !callerId.equals(order.getCustomerId())) {
             throw new OrderNotFoundException("Order not found");
         }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private boolean isPrivilegedRole(String callerRole) {
@@ -188,6 +234,7 @@ public class CustomerOrderService {
         if (request.getPickupPostalCode() != null) order.setPickupPostalCode(request.getPickupPostalCode());
         if (request.getPickupContactName() != null) order.setPickupContactName(request.getPickupContactName());
         if (request.getPickupContactPhone() != null) order.setPickupContactPhone(request.getPickupContactPhone());
+        if (request.getPickupContactAlternatePhone() != null) order.setPickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()));
 
         if (request.getDeliveryAddressLine1() != null) order.setDeliveryAddressLine1(request.getDeliveryAddressLine1());
         if (request.getDeliveryAddressLine2() != null) order.setDeliveryAddressLine2(request.getDeliveryAddressLine2());
@@ -196,9 +243,11 @@ public class CustomerOrderService {
         if (request.getDeliveryPostalCode() != null) order.setDeliveryPostalCode(request.getDeliveryPostalCode());
         if (request.getRecipientName() != null) order.setRecipientName(request.getRecipientName());
         if (request.getRecipientPhone() != null) order.setRecipientPhone(request.getRecipientPhone());
+        if (request.getRecipientAlternatePhone() != null) order.setRecipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()));
         if (request.getRecipientEmail() != null) order.setRecipientEmail(request.getRecipientEmail());
 
         if (request.getItemDescription() != null) order.setItemDescription(request.getItemDescription());
+        if (request.getCustomerNotes() != null) order.setCustomerNotes(blankToNull(request.getCustomerNotes()));
         if (request.getDeclaredValue() != null) order.setDeclaredValue(request.getDeclaredValue());
         if (request.getCodAmount() != null) order.setCodAmount(request.getCodAmount());
 
@@ -244,10 +293,15 @@ public class CustomerOrderService {
 
     @Transactional
     public CustomerOrderResponse cancelOrder(UUID orderId, CancelOrderRequest request, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getStatus().isTerminal()) {
             throw new InvalidOrderStateException("Order " + orderId + " is already in terminal state " + order.getStatus());
+        }
+        // A customer can cancel only a booked parcel that no courier has been assigned to. Dispatchers
+        // and admins keep the wider right, because they have to stop parcels that are already moving.
+        if (!isPrivilegedRole(callerRole) && order.getStatus() != PublicOrderStatus.CREATED) {
+            throw new InvalidOrderStateException("Only a booked parcel with no courier assigned yet can be cancelled.");
         }
 
         order.setStatus(PublicOrderStatus.CANCELLED);
@@ -257,13 +311,14 @@ public class CustomerOrderService {
         order.setUpdatedAt(Instant.now());
 
         CustomerOrder saved = customerOrderRepository.save(order);
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCancelled(saved, order.getCancellationReason(), "CUSTOMER", correlationId);
         return CustomerOrderResponse.fromEntity(saved);
     }
 
     @Transactional
     public CustomerOrderResponse acceptFeeRevision(UUID orderId, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getFeeRevisionStatus() != FeeRevisionStatus.PENDING || order.getRevisedFee() == null) {
             throw new InvalidOrderStateException("Order " + orderId + " does not have a pending fee revision.");
@@ -280,7 +335,7 @@ public class CustomerOrderService {
 
     @Transactional
     public CustomerOrderResponse rejectFeeRevision(UUID orderId, UUID callerId, String callerRole, UUID correlationId) {
-        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        CustomerOrder order = findAccessibleOrderForUpdate(orderId, callerId, callerRole);
 
         if (order.getFeeRevisionStatus() != FeeRevisionStatus.PENDING) {
             throw new InvalidOrderStateException("Order " + orderId + " does not have a pending fee revision.");
@@ -296,20 +351,30 @@ public class CustomerOrderService {
         order.setUpdatedAt(Instant.now());
 
         CustomerOrder saved = customerOrderRepository.save(order);
+        orderStatusHistoryService.recordCurrentStatus(saved, null);
         orderEventPublisher.publishOrderCancelled(saved, order.getCancellationReason(), "CUSTOMER", correlationId);
         log.info("Customer rejected fee revision for order {}: cancelled at LKR 0.00", orderId);
         return CustomerOrderResponse.fromEntity(saved);
     }
 
     @Transactional(readOnly = true)
-    public byte[] getShippingLabelPdf(UUID orderId, UUID callerId, String callerRole) {
+    public PdfDownload getShippingLabelPdf(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
-        return orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(order);
+        return new PdfDownload(order.getTrackingNumber(), orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(order));
     }
 
     @Transactional(readOnly = true)
-    public byte[] getDeliveryReceiptPdf(UUID orderId, UUID callerId, String callerRole) {
+    public PdfDownload getDeliveryReceiptPdf(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
-        return orderPdfGeneratorService.generateDeliveryReceiptPdf(order);
+        return new PdfDownload(order.getTrackingNumber(), orderPdfGeneratorService.generateDeliveryReceiptPdf(order));
+    }
+
+    /** A generated PDF together with the tracking number used to name the download. */
+    public record PdfDownload(String trackingNumber, byte[] content) {
+
+        /** Download name such as {@code receipt-SD-7K4M-9QX2.pdf}; only letters, digits and hyphens survive from the tracking number. */
+        public String fileName(String prefix) {
+            return prefix + "-" + trackingNumber.replaceAll("[^A-Za-z0-9-]", "") + ".pdf";
+        }
     }
 }

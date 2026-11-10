@@ -471,6 +471,30 @@
       "arguments": {}
     },
     {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "analytics.events.queue",
+      "destination_type": "queue",
+      "routing_key": "parcel.status.changed.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "analytics.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dispatch.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "analytics.events.queue",
+      "destination_type": "queue",
+      "routing_key": "order.created",
+      "arguments": {}
+    },
+    {
       "source": "swiftdrop.dlx.exchange",
       "vhost": "/",
       "destination": "dlq.analytics.events.queue",

@@ -175,17 +175,65 @@ class OrderControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/orders/{orderId}/status-history returns status and time only")
+    void statusHistoryReturnsStatusAndTime() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
+        when(customerOrderService.getStatusHistory(orderId, callerId, "CUSTOMER")).thenReturn(java.util.List.of(
+                new com.swiftdrop.order.dto.OrderStatusHistoryEntry(
+                        com.swiftdrop.contracts.enums.PublicOrderStatus.CREATED, java.time.Instant.parse("2026-11-05T08:30:00Z"))));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}/status-history", orderId)
+                        .header("X-User-Id", callerId.toString()).header("X-User-Role", "CUSTOMER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("CREATED"))
+                .andExpect(jsonPath("$.data[0].occurredAt").exists())
+                .andExpect(jsonPath("$.data[0].eventId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].internalSubStatus").doesNotExist());
+    }
+
+    @Test
     @DisplayName("GET /api/v1/orders/{orderId}/shipping-label returns application/pdf (FR-C4, FR-C5)")
     void testDownloadShippingLabel() throws Exception {
         UUID orderId = UUID.randomUUID();
-        byte[] dummyPdf = "%PDF-1.4 test".getBytes();
-
-        when(customerOrderService.getShippingLabelPdf(eq(orderId), any(), any())).thenReturn(dummyPdf);
+        when(customerOrderService.getShippingLabelPdf(eq(orderId), any(), any()))
+                .thenReturn(new CustomerOrderService.PdfDownload("SD-7K4M-9QX2", "%PDF-1.4 test".getBytes()));
 
         mockMvc.perform(get("/api/v1/orders/{orderId}/shipping-label", orderId))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", MediaType.APPLICATION_PDF_VALUE))
-                .andExpect(header().string("Content-Disposition", "inline; filename=\"shipping-label-" + orderId + ".pdf\""));
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"receipt-SD-7K4M-9QX2.pdf\""))
+                .andExpect(header().string("Cache-Control", "no-store"));
+    }
+
+    @Test
+    @DisplayName("Label and receipt downloads give a non-owner a 404 and no PDF")
+    void pdfDownloadsReturn404ForNonOwner() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        when(customerOrderService.getShippingLabelPdf(eq(orderId), any(), any()))
+                .thenThrow(new OrderNotFoundException("Order not found"));
+        when(customerOrderService.getDeliveryReceiptPdf(eq(orderId), any(), any()))
+                .thenThrow(new OrderNotFoundException("Order not found"));
+
+        for (String path : new String[]{"shipping-label", "delivery-receipt"}) {
+            mockMvc.perform(get("/api/v1/orders/{orderId}/" + path, orderId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(header().doesNotExist("Content-Disposition"));
+        }
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders/{orderId}/delivery-receipt downloads delivery-receipt-<tracking>.pdf and is not cached")
+    void testDownloadDeliveryReceiptHeaders() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        when(customerOrderService.getDeliveryReceiptPdf(eq(orderId), any(), any()))
+                .thenReturn(new CustomerOrderService.PdfDownload("SD-7K4M-9QX2", "%PDF-1.4 test".getBytes()));
+
+        mockMvc.perform(get("/api/v1/orders/{orderId}/delivery-receipt", orderId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", MediaType.APPLICATION_PDF_VALUE))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"delivery-receipt-SD-7K4M-9QX2.pdf\""))
+                .andExpect(header().string("Cache-Control", "no-store"));
     }
 
     @Test
