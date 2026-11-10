@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TrackingBroadcastHubService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.trackinghub.service</a> &gt; <span class="el_source">TrackingBroadcastHubService.java</span></div><h1>TrackingBroadcastHubService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.trackinghub.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.contracts.events.delivery.ParcelFeeRevisedEvent;
+import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
+import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * In-memory read model and fan-out hub for public tracking views and private
+ * STOMP topics. The view itself is always produced by
+ * {@link TrackingDataSanitizerProxy}; this service never accepts unsanitized
+ * event payloads directly.
+ */
+@Service
+public class TrackingBroadcastHubService {
+
+    private static final int MAX_PROCESSED_EVENTS = 100_000;
+
+<span class="fc" id="L28">    private final Map&lt;String, Sinks.Many&lt;PublicTrackingViewDto&gt;&gt; trackChannels = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L29">    private final Map&lt;String, Sinks.Many&lt;String&gt;&gt; topicChannels = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L30">    private final Map&lt;String, PublicTrackingViewDto&gt; latestViews = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L31">    private final Map&lt;String, UUID&gt; customerIds = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L32">    private final Set&lt;UUID&gt; processedEvents = ConcurrentHashMap.newKeySet();</span>
+
+    private final TrackingDataSanitizerProxy sanitizer;
+    private final ObjectMapper objectMapper;
+
+<span class="fc" id="L37">    public TrackingBroadcastHubService(TrackingDataSanitizerProxy sanitizer, ObjectMapper objectMapper) {</span>
+<span class="fc" id="L38">        this.sanitizer = sanitizer;</span>
+<span class="fc" id="L39">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L40">    }</span>
+
+    public void onStatusChanged(ParcelStatusChangedEvent event) {
+<span class="fc bfc" id="L43" title="All 6 branches covered.">        if (event == null || event.trackingNumber() == null || event.trackingNumber().isBlank()) {</span>
+<span class="fc" id="L44">            return;</span>
+        }
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        if (isDuplicate(event.eventId())) {</span>
+<span class="fc" id="L47">            return;</span>
+        }
+
+<span class="fc" id="L50">        String trackingNumber = event.trackingNumber();</span>
+<span class="fc" id="L51">        PublicTrackingViewDto current = latestViews.get(trackingNumber);</span>
+<span class="fc" id="L52">        PublicTrackingViewDto view = sanitizer.append(current, event);</span>
+<span class="fc" id="L53">        latestViews.put(trackingNumber, view);</span>
+
+<span class="fc" id="L55">        UUID customerId = event.customerId();</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">        if (customerId != null) {</span>
+<span class="fc" id="L57">            customerIds.put(trackingNumber, customerId);</span>
+        } else {
+<span class="nc" id="L59">            customerId = customerIds.get(trackingNumber);</span>
+        }
+
+<span class="fc" id="L62">        emitView(view, customerId);</span>
+<span class="fc" id="L63">    }</span>
+
+    public void onFeeRevised(ParcelFeeRevisedEvent event) {
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (event == null) {</span>
+<span class="nc" id="L67">            return;</span>
+        }
+<span class="nc bnc" id="L69" title="All 2 branches missed.">        if (isDuplicate(event.eventId())) {</span>
+<span class="nc" id="L70">            return;</span>
+        }
+
+<span class="nc" id="L73">        UUID customerId = event.customerId();</span>
+<span class="nc bnc" id="L74" title="All 4 branches missed.">        if (customerId == null &amp;&amp; event.trackingNumber() != null) {</span>
+<span class="nc" id="L75">            customerId = customerIds.get(event.trackingNumber());</span>
+        }
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        if (customerId == null) {</span>
+<span class="nc" id="L78">            return;</span>
+        }
+
+<span class="nc" id="L81">        emitJson(&quot;/topic/customer/&quot; + customerId, event);</span>
+<span class="nc" id="L82">    }</span>
+
+    public PublicTrackingViewDto current(String trackingNumber) {
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        return trackingNumber == null ? null : latestViews.get(trackingNumber);</span>
+    }
+
+    public void updateCache(String trackingNumber, PublicTrackingViewDto view) {
+<span class="pc bpc" id="L89" title="2 of 4 branches missed.">        if (trackingNumber != null &amp;&amp; view != null) {</span>
+<span class="fc" id="L90">            latestViews.put(trackingNumber, view);</span>
+        }
+<span class="fc" id="L92">    }</span>
+
+    public Flux&lt;PublicTrackingViewDto&gt; stream(String trackingNumber) {
+<span class="fc" id="L95">        PublicTrackingViewDto current = latestViews.get(trackingNumber);</span>
+<span class="fc" id="L96">        Flux&lt;PublicTrackingViewDto&gt; updates = trackChannel(trackingNumber).asFlux();</span>
+<span class="fc bfc" id="L97" title="All 2 branches covered.">        return current == null ? updates : Flux.concat(Flux.just(current), updates);</span>
+    }
+
+    public Flux&lt;String&gt; streamTopic(String topic) {
+<span class="nc" id="L101">        return topicChannel(topic).asFlux();</span>
+    }
+
+    private void emitView(PublicTrackingViewDto view, UUID customerId) {
+<span class="fc" id="L105">        trackChannel(view.trackingNumber()).tryEmitNext(view);</span>
+
+<span class="fc" id="L107">        String json = toJson(view);</span>
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">        if (json == null) {</span>
+<span class="nc" id="L109">            return;</span>
+        }
+<span class="fc" id="L111">        topicChannel(&quot;/topic/track/&quot; + view.trackingNumber()).tryEmitNext(json);</span>
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">        if (customerId != null) {</span>
+<span class="fc" id="L113">            topicChannel(&quot;/topic/customer/&quot; + customerId).tryEmitNext(json);</span>
+        }
+<span class="fc" id="L115">    }</span>
+
+    private void emitJson(String topic, Object payload) {
+<span class="nc" id="L118">        String json = toJson(payload);</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (json != null) {</span>
+<span class="nc" id="L120">            topicChannel(topic).tryEmitNext(json);</span>
+        }
+<span class="nc" id="L122">    }</span>
+
+    private Sinks.Many&lt;PublicTrackingViewDto&gt; trackChannel(String trackingNumber) {
+<span class="fc" id="L125">        return trackChannels.computeIfAbsent(trackingNumber,</span>
+<span class="fc" id="L126">                ignored -&gt; Sinks.many().multicast().directBestEffort());</span>
+    }
+
+    private Sinks.Many&lt;String&gt; topicChannel(String topic) {
+<span class="fc" id="L130">        return topicChannels.computeIfAbsent(topic,</span>
+<span class="fc" id="L131">                ignored -&gt; Sinks.many().multicast().directBestEffort());</span>
+    }
+
+    private boolean isDuplicate(UUID eventId) {
+<span class="pc bpc" id="L135" title="1 of 2 branches missed.">        if (eventId == null) {</span>
+<span class="nc" id="L136">            return false;</span>
+        }
+<span class="pc bpc" id="L138" title="1 of 2 branches missed.">        if (processedEvents.size() &gt; MAX_PROCESSED_EVENTS) {</span>
+<span class="nc" id="L139">            processedEvents.clear();</span>
+        }
+<span class="fc bfc" id="L141" title="All 2 branches covered.">        return !processedEvents.add(eventId);</span>
+    }
+
+    private String toJson(Object payload) {
+        try {
+<span class="fc" id="L146">            return objectMapper.writeValueAsString(payload);</span>
+<span class="nc" id="L147">        } catch (JsonProcessingException exception) {</span>
+<span class="nc" id="L148">            return null;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

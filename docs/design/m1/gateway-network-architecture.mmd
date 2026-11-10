@@ -1,0 +1,105 @@
+%% SwiftDrop Member 1 - Gateway network architecture
+%% Source of truth: backend/api-gateway (GatewayRoutesConfig, filters, tracking hub)
+flowchart LR
+  classDef public fill:#d7f5dd,stroke:#1f7a3d,color:#0b3d1d,stroke-width:2px
+  classDef protected fill:#ffe6cc,stroke:#b35c00,color:#5c2e00,stroke-width:2px
+  classDef internal fill:#f8d7da,stroke:#a71d2a,color:#5c0b12,stroke-width:2px
+  classDef infra fill:#e7e9ff,stroke:#3949ab,color:#1a237e
+  classDef svc fill:#eef3f8,stroke:#37474f,color:#263238
+  classDef db fill:#f3e5f5,stroke:#6a1b9a,color:#3e0a5c
+
+  subgraph Clients["Clients"]
+    B["Browser SPA<br/>React + Vite :5173"]
+    M["Mobile / shared link<br/>/track/SD-XXXX-XXXX"]
+  end
+
+  subgraph Edge["Edge"]
+    I["Ingress (AKS)<br/>or localhost:8080"]
+  end
+
+  subgraph GW["api-gateway :8080 (stateless, no database)"]
+    direction TB
+    W1["WebFilters (ordered)<br/>CORS · SecurityHeaders · CorrelationId<br/>InternalRouteBlock · PublicTrackingRateLimit"]
+    J["JwtAuthenticationGlobalFilter<br/>HS256 or RS256 via JWKS<br/>iss + aud enforced<br/>strips client X-User-* / X-Merchant-*"]
+    MK["MerchantApiKeyGlobalFilter<br/>/api/v1/merchant/**<br/>/api/v1/merchant-order-ingest/**"]
+    R["GatewayRoutesConfig<br/>path prefix to downstream URI<br/>rewrites /v3/api-docs aggregation URLs"]
+    HUB["Real-Time Tracking Hub<br/>PublicTrackingController<br/>SSE · raw WebSocket · STOMP<br/>TrackingDataSanitizerProxy<br/>TrackingBroadcastHubService"]
+  end
+
+  subgraph Infra["Shared infrastructure"]
+    REDIS[("Redis<br/>rate:public-track:*<br/>jwt:blacklist:*")]
+    MQ{{"RabbitMQ exchange<br/>swiftdrop.events.exchange"}}
+    Q["Queue swiftdrop.gateway.tracking.queue<br/>binding parcel.status.changed.#"]
+  end
+
+  subgraph Services["Downstream services (database per service)"]
+    IAM["auth-iam-service :8081"]
+    ORD["customer-order-service :8082"]
+    PRI["pricing-zone-service :8083"]
+    DIS["dispatch-assignment-service :8084"]
+    DEL["delivery-execution-service :8085"]
+    MER["merchant-b2b-service :8086"]
+    WHK["webhook-resiliency-service :8087"]
+    NOT["notification-service :8088"]
+    ANA["analytics-ai-service :8089"]
+  end
+
+  IAMDB[("swiftdrop_iam")]
+  ORDDB[("swiftdrop_order")]
+  PRIDB[("swiftdrop_pricing")]
+  DISDB[("swiftdrop_dispatch")]
+  DELDB[("swiftdrop_delivery")]
+  MERDB[("swiftdrop_merchant")]
+  WHKDB[("swiftdrop_webhook")]
+  NOTDB[("swiftdrop_notify")]
+  ANADB[("swiftdrop_analytics")]
+
+  PUB["Public paths<br/>/api/v1/auth/login · register · refresh · oauth2/*<br/>/api/v1/auth/.well-known/jwks.json<br/>/api/v1/public/track/** · /api/v1/tracking/** · /ws/tracking"]
+  PROT["Protected paths<br/>all other /api/v1/**<br/>Bearer JWT, identity headers injected"]
+  INT["Internal paths<br/>/internal/**<br/>blocked at the edge, service-to-service only"]
+
+  B --> I
+  M --> I
+  I --> W1
+  W1 --> J
+  J -->|"public allow-list"| HUB
+  J -->|"Bearer JWT"| R
+  MK --> R
+  R --> IAM
+  R --> ORD
+  R --> PRI
+  R --> DIS
+  R --> DEL
+  R --> MER
+  R --> WHK
+  R --> NOT
+  R --> ANA
+
+  W1 <--> REDIS
+  J <--> REDIS
+  J -. "GET JWKS by kid (throttled refresh)" .-> IAM
+  MK -. "POST /internal/v1/api-keys/validate" .-> MER
+  HUB -. "GET /internal/v1/orders/tracking/{id}" .-> ORD
+
+  DEL -->|"parcel.status.changed.*"| MQ
+  MQ --> Q
+  Q -->|"@RabbitListener"| HUB
+  HUB -->|"sanitised update"| B
+  HUB -->|"sanitised update"| M
+
+  IAM --> IAMDB
+  ORD --> ORDDB
+  PRI --> PRIDB
+  DIS --> DISDB
+  DEL --> DELDB
+  MER --> MERDB
+  WHK --> WHKDB
+  NOT --> NOTDB
+  ANA --> ANADB
+
+  class PUB public
+  class PROT protected
+  class INT internal
+  class REDIS,MQ,Q infra
+  class IAM,ORD,PRI,DIS,DEL,MER,WHK,NOT,ANA svc
+  class IAMDB,ORDDB,PRIDB,DISDB,DELDB,MERDB,WHKDB,NOTDB,ANADB db

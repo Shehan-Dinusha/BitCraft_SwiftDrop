@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.swiftdrop.gateway.filter.JwtAuthenticationGlobalFilterTest
+-------------------------------------------------------------------------------
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.909 s -- in com.swiftdrop.gateway.filter.JwtAuthenticationGlobalFilterTest

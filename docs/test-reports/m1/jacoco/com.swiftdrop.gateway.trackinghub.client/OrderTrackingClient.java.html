@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OrderTrackingClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.trackinghub.client</a> &gt; <span class="el_source">OrderTrackingClient.java</span></div><h1>OrderTrackingClient.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.trackinghub.client;
+
+import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.contracts.dto.tracking.InternalTrackingView;
+import com.swiftdrop.gateway.config.GatewayRouteProperties;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+import java.util.Optional;
+
+<span class="fc" id="L17">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class OrderTrackingClient {
+
+    private final WebClient webClient;
+    private final GatewayRouteProperties routes;
+
+    public Mono&lt;Optional&lt;InternalTrackingView&gt;&gt; getTracking(String trackingNumber) {
+<span class="fc" id="L26">        return webClient.get()</span>
+<span class="fc" id="L27">                .uri(trackingUrl(trackingNumber))</span>
+<span class="fc" id="L28">                .retrieve()</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">                .onStatus(s -&gt; s == HttpStatus.NOT_FOUND, resp -&gt; Mono.error(new NotFoundException()))</span>
+<span class="fc" id="L30">                .bodyToMono(new ParameterizedTypeReference&lt;ApiResponse&lt;InternalTrackingView&gt;&gt;() {})</span>
+<span class="fc" id="L31">                .map(ApiResponse::data)</span>
+<span class="fc" id="L32">                .map(Optional::ofNullable)</span>
+<span class="fc" id="L33">                .timeout(Duration.ofSeconds(2))</span>
+<span class="fc" id="L34">                .onErrorResume(NotFoundException.class, e -&gt; Mono.just(Optional.&lt;InternalTrackingView&gt;empty()))</span>
+<span class="fc" id="L35">                .onErrorResume(e -&gt; {</span>
+<span class="fc" id="L36">                    log.warn(&quot;Order tracking lookup failed for {}: {}&quot;, trackingNumber, e.getMessage());</span>
+<span class="fc" id="L37">                    return Mono.just(Optional.&lt;InternalTrackingView&gt;empty());</span>
+                });
+    }
+
+    private String trackingUrl(String trackingNumber) {
+<span class="fc" id="L42">        String base = routes.order();</span>
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">        if (base.endsWith(&quot;/&quot;)) {</span>
+<span class="fc" id="L44">            base = base.substring(0, base.length() - 1);</span>
+        }
+<span class="fc" id="L46">        return base + &quot;/internal/v1/orders/tracking/&quot; + trackingNumber;</span>
+    }
+
+    private static class NotFoundException extends RuntimeException {
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

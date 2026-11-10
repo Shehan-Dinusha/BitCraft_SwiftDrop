@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PublicTrackingRateLimitFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.filter</a> &gt; <span class="el_source">PublicTrackingRateLimitFilter.java</span></div><h1>PublicTrackingRateLimitFilter.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.filter;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Mono;
+
+import java.net.InetSocketAddress;
+import java.time.Duration;
+import java.time.Instant;
+
+/**
+ * Redis-backed fixed-window rate limiter for unauthenticated public tracking
+ * endpoints. It is a {@link WebFilter} because the tracking hub serves these
+ * paths from controllers inside the gateway rather than through a gateway
+ * route, so a {@code GlobalFilter} would not run. The limiter fails open when
+ * Redis is unavailable so a cache outage cannot take down parcel tracking.
+ */
+<span class="fc" id="L27">@Slf4j</span>
+@Component
+public class PublicTrackingRateLimitFilter implements WebFilter, Ordered {
+
+    private final ReactiveStringRedisTemplate redisTemplate;
+    private final GatewayErrorWriter errorWriter;
+    private final long limit;
+    private final long windowSeconds;
+
+    public PublicTrackingRateLimitFilter(
+            ReactiveStringRedisTemplate redisTemplate,
+            GatewayErrorWriter errorWriter,
+            @Value(&quot;${swiftdrop.rate-limit.public-tracking.limit:60}&quot;) long limit,
+<span class="fc" id="L40">            @Value(&quot;${swiftdrop.rate-limit.public-tracking.window-seconds:60}&quot;) long windowSeconds) {</span>
+<span class="fc" id="L41">        this.redisTemplate = redisTemplate;</span>
+<span class="fc" id="L42">        this.errorWriter = errorWriter;</span>
+<span class="fc" id="L43">        this.limit = limit;</span>
+<span class="fc" id="L44">        this.windowSeconds = windowSeconds;</span>
+<span class="fc" id="L45">    }</span>
+
+    @Override
+    public Mono&lt;Void&gt; filter(ServerWebExchange exchange, WebFilterChain chain) {
+<span class="fc" id="L49">        ServerHttpRequest request = exchange.getRequest();</span>
+<span class="pc bpc" id="L50" title="2 of 4 branches missed.">        if (request.getMethod() != HttpMethod.GET || !isPublicTrackingPath(request.getURI().getPath())) {</span>
+<span class="nc" id="L51">            return chain.filter(exchange);</span>
+        }
+
+<span class="fc" id="L54">        long epochSecond = Instant.now().getEpochSecond();</span>
+<span class="fc" id="L55">        long window = epochSecond / windowSeconds;</span>
+<span class="fc" id="L56">        String key = &quot;rate:public-track:&quot; + clientIp(request) + &quot;:&quot; + window;</span>
+
+<span class="fc" id="L58">        return redisTemplate.opsForValue()</span>
+<span class="fc" id="L59">                .increment(key)</span>
+<span class="fc" id="L60">                .flatMap(count -&gt; {</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">                    Mono&lt;Boolean&gt; expiry = count == 1</span>
+<span class="fc" id="L62">                            ? redisTemplate.expire(key, Duration.ofSeconds(windowSeconds))</span>
+<span class="fc" id="L63">                            : Mono.just(true);</span>
+<span class="fc" id="L64">                    return expiry.then(applyLimit(exchange, chain, count, epochSecond));</span>
+                })
+<span class="fc" id="L66">                .onErrorResume(exception -&gt; {</span>
+<span class="nc" id="L67">                    log.warn(&quot;Public tracking rate limiter unavailable: {}&quot;, exception.getMessage());</span>
+<span class="nc" id="L68">                    return chain.filter(exchange);</span>
+                });
+    }
+
+    private Mono&lt;Void&gt; applyLimit(ServerWebExchange exchange,
+                                  WebFilterChain chain,
+                                  long count,
+                                  long epochSecond) {
+<span class="fc" id="L76">        var responseHeaders = exchange.getResponse().getHeaders();</span>
+<span class="fc" id="L77">        responseHeaders.set(&quot;X-RateLimit-Limit&quot;, Long.toString(limit));</span>
+<span class="fc" id="L78">        responseHeaders.set(&quot;X-RateLimit-Remaining&quot;, Long.toString(Math.max(0, limit - count)));</span>
+
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        if (count &lt;= limit) {</span>
+<span class="fc" id="L81">            return chain.filter(exchange);</span>
+        }
+
+<span class="fc" id="L84">        long retryAfter = windowSeconds - (epochSecond % windowSeconds);</span>
+<span class="fc" id="L85">        responseHeaders.set(&quot;Retry-After&quot;, Long.toString(retryAfter));</span>
+<span class="fc" id="L86">        return errorWriter.write(exchange, HttpStatus.TOO_MANY_REQUESTS,</span>
+                &quot;Too many tracking requests. Please retry later.&quot;);
+    }
+
+    @Override
+    public int getOrder() {
+<span class="fc" id="L92">        return -180;</span>
+    }
+
+    private boolean isPublicTrackingPath(String path) {
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">        return path.equals(&quot;/api/v1/tracking&quot;)</span>
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">                || path.startsWith(&quot;/api/v1/tracking/&quot;)</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">                || path.startsWith(&quot;/api/v1/public/track&quot;)</span>
+<span class="pc bnc" id="L99" title="All 2 branches missed.">                || path.startsWith(&quot;/api/v1/public/tracking&quot;);</span>
+    }
+
+    private String clientIp(ServerHttpRequest request) {
+<span class="fc" id="L103">        String forwardedFor = request.getHeaders().getFirst(&quot;X-Forwarded-For&quot;);</span>
+<span class="pc bpc" id="L104" title="2 of 4 branches missed.">        if (forwardedFor != null &amp;&amp; !forwardedFor.isBlank()) {</span>
+<span class="fc" id="L105">            return forwardedFor.split(&quot;,&quot;)[0].trim();</span>
+        }
+<span class="nc" id="L107">        InetSocketAddress remoteAddress = request.getRemoteAddress();</span>
+<span class="nc bnc" id="L108" title="All 4 branches missed.">        if (remoteAddress != null &amp;&amp; remoteAddress.getAddress() != null) {</span>
+<span class="nc" id="L109">            return remoteAddress.getAddress().getHostAddress();</span>
+        }
+<span class="nc" id="L111">        return &quot;unknown&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

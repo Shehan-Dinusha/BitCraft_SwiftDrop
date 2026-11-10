@@ -1,0 +1,70 @@
+%% SwiftDrop Member 1 - WebSocket / SSE handshake and live update workflow
+%% Source of truth: LiveTrackingStreamController, TrackingWebSocketHandler,
+%% StompTrackingWebSocketHandler, useTrackingStream.ts, ParcelStatusEventConsumer
+sequenceDiagram
+    autonumber
+    actor C as Client (browser / mobile)
+    participant GW as api-gateway :8080
+    participant REDIS as Redis
+    participant ORD as customer-order-service
+    participant MQ as RabbitMQ
+    participant DEL as delivery-execution-service
+    participant IAM as auth-iam-service
+
+    Note over C,GW: Phase 1 - first paint (public snapshot, polling fallback too)
+    C->>GW: GET /api/v1/tracking/{id}
+    GW->>REDIS: INCR rate:public-track:{ip}:{window}
+    alt over the limit
+        GW-->>C: 429 Too Many Requests
+    else within the limit
+        GW->>ORD: GET /internal/v1/orders/tracking/{id}
+        ORD-->>GW: status history, city and district
+        GW->>GW: sanitise PII, build PublicTrackingViewDto
+        GW-->>C: 200 sanitised snapshot
+    end
+
+    Note over C,GW: Phase 2 - live stream (SSE first)
+    C->>GW: GET /api/v1/tracking/{id}/stream (text/event-stream)
+    GW->>ORD: enrich initial snapshot
+    GW-->>C: event: initial snapshot
+    loop every 15 s
+        GW-->>C: comment: heartbeat
+    end
+
+    Note over C,DEL: Phase 3 - status event fan-out
+    DEL->>MQ: publish ParcelStatusChangedEvent<br/>routing key parcel.status.changed.{status}
+    MQ->>GW: queue swiftdrop.gateway.tracking.queue
+    GW->>GW: TrackingDataSanitizerProxy + enrichment
+    GW-->>C: event: sanitised PublicTrackingViewDto
+    alt terminal status DELIVERED or FAILED
+        GW-->>C: final event then close the stream
+        C->>C: stop reconnect and polling
+    end
+
+    Note over C,IAM: Phase 4 - WebSocket and STOMP fallback
+    C->>GW: WS /ws/tracking?trackingId={id}<br/>subprotocol stomp or raw JSON
+    alt subprotocol contains stomp
+        C->>GW: STOMP CONNECT (Authorization: Bearer ...)
+        opt private customer topic
+            GW->>IAM: GET JWKS when kid is unknown (throttled)
+            IAM-->>GW: JWKS document
+            GW->>GW: TrackingTokenVerifier checks iss, aud, HS256 or RS256
+        end
+        C->>GW: SUBSCRIBE /topic/track/{id} or /topic/customer/{customerId}
+        GW-->>C: CONNECTED then MESSAGE frames
+    else raw JSON stream
+        GW-->>C: text frames with sanitised view and ping heartbeats
+    end
+
+    Note over C,GW: Phase 5 - reconnect and graceful degradation
+    C->>GW: transport fails
+    C->>C: exponential backoff 1 s, 2 s, 5 s, 10 s
+    alt one SSE failure
+        C->>GW: retry SSE after backoff
+    else two SSE failures
+        C->>GW: switch to WebSocket
+    end
+    alt two WebSocket failures
+        C->>GW: fall back to GET snapshot every 10 s
+    end
+    C->>C: 404 or 429 is fatal, stop retrying
