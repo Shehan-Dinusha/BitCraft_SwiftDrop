@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.nullValue;
 
 @WebMvcTest(OperationalKpiController.class)
 class OperationalKpiControllerTest {
@@ -124,5 +125,17 @@ class OperationalKpiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.totalParcels").value(100));
+    }
+
+    @Test
+    void unavailableSlaMeasurementsAreExplicitJsonNull() throws Exception {
+        when(metricsService.getSystemKpiSummary()).thenReturn(new OperationalKpiSummaryResponse(
+                0,null,null,0,null,null,0,List.of()));
+        mockMvc.perform(get("/api/v1/analytics/kpis"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deliveredOnTime").value(nullValue()))
+                .andExpect(jsonPath("$.data.breachedSla").value(nullValue()))
+                .andExpect(jsonPath("$.data.systemOnTimeRate").value(nullValue()))
+                .andExpect(jsonPath("$.data.avgTransitMinutes").value(nullValue()));
     }
 }

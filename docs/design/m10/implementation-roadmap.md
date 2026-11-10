@@ -190,6 +190,8 @@ fix(analytics): align queue declarations and failure handling
 
 **Branch:** `feature/m10-analytics-projections`
 
+**Implemented locally:** `Buddhika/feat/analytics-projections`; see the [implementation explanation](part-3-analytics-projections.md) and [self-verification/commit guide](part-3-self-verification.md). V4 materializes distinct-order daily/courier statistics and catches up Part 2's inbox. New reporting HTTP routes and RBAC remain Part 4. M5/M6 policy and compatibility reviews are not claimed as approved.
+
 ### Implementation steps
 
 1. Add daily delivery statistics.

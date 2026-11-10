@@ -53,8 +53,8 @@ public class OperationalKpiController {
     }
 
     @PostMapping("/snapshots/aggregate")
-    @Operation(summary = "Trigger on-demand SLA snapshot recalculation")
+    @Operation(summary = "Read current persisted analytics projections")
     public ApiResponse<OperationalKpiSummaryResponse> aggregateSnapshots() {
-        return ApiResponse.success(metricsService.getSystemKpiSummary(), "SLA snapshots aggregated successfully");
+        return ApiResponse.success(metricsService.getSystemKpiSummary(), "Current analytics projections retrieved");
     }
 }

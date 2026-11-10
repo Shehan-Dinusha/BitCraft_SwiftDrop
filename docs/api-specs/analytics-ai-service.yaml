@@ -72,10 +72,10 @@ paths:
   /api/v1/analytics/snapshots/aggregate:
     post:
       tags: [OperationalKpi]
-      summary: Trigger on-demand SLA snapshot recalculation
+      summary: Read current persisted analytics projections
       responses:
         "200":
-          description: Recalculated operational KPIs
+          description: Current event-projected operational KPIs
           content:
             application/json:
               schema:
@@ -173,23 +173,23 @@ components:
       type: object
       properties:
         district: { type: string }
-        totalParcels: { type: integer }
-        deliveredOnTime: { type: integer }
-        breachedSla: { type: integer }
+        totalParcels: { type: integer, description: 'Distinct orders created today in Asia/Colombo' }
+        deliveredOnTime: { type: [integer, 'null'], deprecated: true, description: 'Unavailable without an SLA deadline contract' }
+        breachedSla: { type: [integer, 'null'], deprecated: true, description: 'Unavailable without an SLA deadline contract' }
         failedDeliveries: { type: integer }
-        onTimeRate: { type: number }
-        avgTransitMinutes: { type: number }
+        onTimeRate: { type: [number, 'null'], deprecated: true }
+        avgTransitMinutes: { type: [number, 'null'], deprecated: true, description: 'Measured transit interval unavailable' }
 
     OperationalKpiSummaryResponse:
       type: object
       properties:
-        totalParcels: { type: integer }
-        deliveredOnTime: { type: integer }
-        breachedSla: { type: integer }
+        totalParcels: { type: integer, description: 'Distinct orders created today in Asia/Colombo' }
+        deliveredOnTime: { type: [integer, 'null'], deprecated: true, description: 'Unavailable without an SLA deadline contract' }
+        breachedSla: { type: [integer, 'null'], deprecated: true, description: 'Unavailable without an SLA deadline contract' }
         failedDeliveries: { type: integer }
-        systemOnTimeRate: { type: number }
-        avgTransitMinutes: { type: number }
-        activeCouriers: { type: integer }
+        systemOnTimeRate: { type: [number, 'null'], deprecated: true, description: 'Unavailable without measured SLA deadlines' }
+        avgTransitMinutes: { type: [number, 'null'], deprecated: true, description: 'Measured transit interval unavailable' }
+        activeCouriers: { type: integer, description: 'Known couriers with current nonterminal work' }
         districtBreakdowns:
           type: array
           items:
@@ -208,13 +208,13 @@ components:
       properties:
         courierId: { type: string, format: uuid }
         courierName: { type: string }
-        currentDistrict: { type: string }
+        currentDistrict: { type: [string, 'null'], description: 'Latest observed parcel district; not registered operating district' }
         totalAssigned: { type: integer }
         deliveredCount: { type: integer }
         failedCount: { type: integer }
-        avgTransitMinutes: { type: number }
-        onTimePercentage: { type: number }
-        customerRating: { type: number }
+        avgTransitMinutes: { type: [number, 'null'], deprecated: true, description: 'Measured transit interval unavailable' }
+        onTimePercentage: { type: [number, 'null'], deprecated: true }
+        customerRating: { type: [number, 'null'], deprecated: true, description: 'Rating events unavailable' }
         status: { type: string }
         lastEventAt: { type: string, format: date-time }
 

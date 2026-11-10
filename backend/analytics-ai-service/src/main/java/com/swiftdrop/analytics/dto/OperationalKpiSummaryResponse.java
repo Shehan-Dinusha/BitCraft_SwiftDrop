@@ -7,25 +7,25 @@ import java.util.List;
 
 @Schema(description = "System-wide operational KPI overview")
 public record OperationalKpiSummaryResponse(
-        @Schema(description = "Total parcels processed", example = "1250")
+        @Schema(description = "Distinct orders created today in Asia/Colombo", example = "4")
         int totalParcels,
 
-        @Schema(description = "Total parcels delivered on time", example = "1198")
-        int deliveredOnTime,
+        @Schema(description = "Unavailable until an SLA deadline contract exists; null", types = {"integer", "null"}, deprecated = true)
+        Integer deliveredOnTime,
 
-        @Schema(description = "Total parcels that breached SLA", example = "32")
-        int breachedSla,
+        @Schema(description = "Unavailable until an SLA deadline contract exists; null", types = {"integer", "null"}, deprecated = true)
+        Integer breachedSla,
 
-        @Schema(description = "Total delivery failures", example = "20")
+        @Schema(description = "Distinct final FAILED outcomes today in Asia/Colombo; cancellations excluded", example = "1")
         int failedDeliveries,
 
-        @Schema(description = "System-wide on-time rate percentage", example = "95.84")
+        @Schema(description = "Unavailable without measured SLA deadlines; null", types = {"number", "null"}, deprecated = true)
         BigDecimal systemOnTimeRate,
 
-        @Schema(description = "Average delivery transit time across island in minutes", example = "48.20")
+        @Schema(description = "Unavailable without an agreed measured transit interval; null", types = {"number", "null"}, deprecated = true)
         BigDecimal avgTransitMinutes,
 
-        @Schema(description = "Count of active couriers", example = "35")
+        @Schema(description = "Known couriers with at least one current nonterminal order", example = "1")
         int activeCouriers,
 
         @Schema(description = "District-by-district KPI breakdown")

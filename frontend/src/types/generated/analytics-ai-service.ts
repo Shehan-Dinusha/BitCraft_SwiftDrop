@@ -168,7 +168,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Trigger on-demand SLA snapshot recalculation */
+        /** Read current persisted analytics projections */
         post: {
             parameters: {
                 query?: never;
@@ -178,7 +178,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Recalculated operational KPIs */
+                /** @description Current event-projected operational KPIs */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -400,20 +400,52 @@ export interface components {
         };
         DistrictKpiResponse: {
             district?: string;
+            /** @description Distinct orders created today in Asia/Colombo */
             totalParcels?: number;
-            deliveredOnTime?: number;
-            breachedSla?: number;
+            /**
+             * @deprecated
+             * @description Unavailable without an SLA deadline contract
+             */
+            deliveredOnTime?: number | null;
+            /**
+             * @deprecated
+             * @description Unavailable without an SLA deadline contract
+             */
+            breachedSla?: number | null;
             failedDeliveries?: number;
-            onTimeRate?: number;
-            avgTransitMinutes?: number;
+            /** @deprecated */
+            onTimeRate?: number | null;
+            /**
+             * @deprecated
+             * @description Measured transit interval unavailable
+             */
+            avgTransitMinutes?: number | null;
         };
         OperationalKpiSummaryResponse: {
+            /** @description Distinct orders created today in Asia/Colombo */
             totalParcels?: number;
-            deliveredOnTime?: number;
-            breachedSla?: number;
+            /**
+             * @deprecated
+             * @description Unavailable without an SLA deadline contract
+             */
+            deliveredOnTime?: number | null;
+            /**
+             * @deprecated
+             * @description Unavailable without an SLA deadline contract
+             */
+            breachedSla?: number | null;
             failedDeliveries?: number;
-            systemOnTimeRate?: number;
-            avgTransitMinutes?: number;
+            /**
+             * @deprecated
+             * @description Unavailable without measured SLA deadlines
+             */
+            systemOnTimeRate?: number | null;
+            /**
+             * @deprecated
+             * @description Measured transit interval unavailable
+             */
+            avgTransitMinutes?: number | null;
+            /** @description Known couriers with current nonterminal work */
             activeCouriers?: number;
             districtBreakdowns?: components["schemas"]["DistrictKpiResponse"][];
         };
@@ -428,13 +460,23 @@ export interface components {
             /** Format: uuid */
             courierId?: string;
             courierName?: string;
-            currentDistrict?: string;
+            /** @description Latest observed parcel district; not registered operating district */
+            currentDistrict?: string | null;
             totalAssigned?: number;
             deliveredCount?: number;
             failedCount?: number;
-            avgTransitMinutes?: number;
-            onTimePercentage?: number;
-            customerRating?: number;
+            /**
+             * @deprecated
+             * @description Measured transit interval unavailable
+             */
+            avgTransitMinutes?: number | null;
+            /** @deprecated */
+            onTimePercentage?: number | null;
+            /**
+             * @deprecated
+             * @description Rating events unavailable
+             */
+            customerRating?: number | null;
             status?: string;
             /** Format: date-time */
             lastEventAt?: string;

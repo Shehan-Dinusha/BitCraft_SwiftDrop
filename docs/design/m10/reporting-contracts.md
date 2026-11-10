@@ -6,6 +6,8 @@ This is the M10 implementation proposal established in Part 1. `Asia/Colombo`, d
 
 The published current contract remains `docs/api-specs/analytics-ai-service.yaml`. Future endpoints below are design examples, not captured production responses. Add them to OpenAPI and regenerate frontend types in Part 4/6 when their handlers are implemented.
 
+Part 3 implements the underlying read models and corrects existing KPI/courier compatibility responses. SLA counts/rates, transit averages, and ratings are nullable/deprecated where no measurement contract exists. `totalParcels` on the old KPI endpoint means distinct orders created today in Colombo. The dedicated daily/rate/workload paths below remain future Part 4 endpoints.
+
 ## Time and range rules
 
 - Store source timestamps as UTC `Instant` values; derive reporting dates using `ZoneId.of("Asia/Colombo")` explicitly, never server-default `LocalDate.now()`.
@@ -49,6 +51,8 @@ Current code evidence: `PublicOrderStatus.isTerminal()` includes `FAILED`, `DELI
 9. Older events may fill historical facts but must not overwrite a newer current state. Equal-time conflicting states and incompatible terminal outcomes require reconciliation/error evidence, not an arbitrary UUID sort or extra count. Event ordering/version guarantees remain a handoff question.
 10. Under the current terminal-FSM proposal, each order has at most one delivered-or-failed outcome. Repeated outcomes are ignored as business duplicates. Explicit corrections/reopening require an agreed correction policy and projection reconciliation.
 11. Workload rows include known couriers with zero active orders, sorted by courier ID for deterministic output. Unknown/unseen couriers cannot be inferred from assignment events; do not call the row count the number of all registered or online couriers.
+
+Part 3 clarification: contradictory equal-time facts or incompatible terminal histories set `conflict_reason` on the order projection. Genuine creations remain counted, but conflicted outcome/workload contributions are removed until a verified correction policy exists. This is explicit exclusion, not an arbitrary first-arrival decision. Historical canonical events remain in the inbox. Courier daily `active` is current workload bucketed by assignment date, not an end-of-day historical snapshot.
 
 ## Proposed reporting API
 
