@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -38,6 +40,36 @@ public class MerchantApiKeyService {
     public ApiKeyResponse generateApiKey(UUID merchantId, CreateApiKeyRequest request) {
         log.info("Generating new API key for merchant: {}, name: {}", merchantId, request.keyName());
 
+        Instant expiresAt = null;
+        if (request.expiresInDays() != null && request.expiresInDays() > 0) {
+            expiresAt = Instant.now().plus(request.expiresInDays(), ChronoUnit.DAYS);
+        }
+        return issueApiKey(merchantId, request.keyName(), expiresAt);
+    }
+
+    /** Serializes rotations of the same key; both writes commit or roll back together. */
+    @Transactional
+    public ApiKeyResponse regenerateApiKey(UUID merchantId, UUID keyId) {
+        MerchantApiKey oldKey = apiKeyRepository.findForUpdate(keyId)
+                .filter(key -> key.getMerchantId().equals(merchantId))
+                .orElseThrow(() -> new ApiKeyNotFoundException("API key not found: " + keyId));
+        Instant now = Instant.now();
+        if (!oldKey.isActive() || oldKey.getRevokedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A revoked API key cannot be regenerated");
+        }
+        if (oldKey.getExpiresAt() != null && !oldKey.getExpiresAt().isAfter(now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "An expired API key cannot be regenerated");
+        }
+
+        ApiKeyResponse replacement = issueApiKey(merchantId, oldKey.getKeyName(), oldKey.getExpiresAt());
+        oldKey.setActive(false);
+        oldKey.setRevokedAt(now);
+        apiKeyRepository.save(oldKey);
+        return replacement;
+    }
+
+    private ApiKeyResponse issueApiKey(UUID merchantId, String keyName, Instant expiresAt) {
+
         // Generate 32 cryptographically secure random bytes
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
@@ -47,14 +79,9 @@ public class MerchantApiKeyService {
         String keyPrefix = "sk_live_" + token.substring(0, Math.min(6, token.length())) + "...";
         String keyHash = sha256(rawApiKey);
 
-        Instant expiresAt = null;
-        if (request.expiresInDays() != null && request.expiresInDays() > 0) {
-            expiresAt = Instant.now().plus(request.expiresInDays(), ChronoUnit.DAYS);
-        }
-
         MerchantApiKey apiKey = MerchantApiKey.builder()
                 .merchantId(merchantId)
-                .keyName(request.keyName())
+                .keyName(keyName)
                 .keyPrefix(keyPrefix)
                 .keyHash(keyHash)
                 .active(true)
@@ -116,8 +143,13 @@ public class MerchantApiKeyService {
                     if (!key.isActive()) {
                         return MerchantApiKeyValidationResult.invalid("API key has been revoked");
                     }
-                    if (key.getExpiresAt() != null && key.getExpiresAt().isBefore(Instant.now())) {
+                    if (key.getExpiresAt() != null && !key.getExpiresAt().isAfter(Instant.now())) {
                         return MerchantApiKeyValidationResult.invalid("API key has expired");
+                    }
+                    if (key.getKeyHash() == null || !MessageDigest.isEqual(
+                            keyHash.getBytes(StandardCharsets.US_ASCII),
+                            key.getKeyHash().getBytes(StandardCharsets.US_ASCII))) {
+                        return MerchantApiKeyValidationResult.invalid("API key not recognized");
                     }
                     // Update last used timestamp
                     key.setLastUsedAt(Instant.now());
