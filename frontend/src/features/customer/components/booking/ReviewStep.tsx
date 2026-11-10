@@ -11,7 +11,7 @@ import {
   SurfaceCard
 } from '@/design-system';
 import type { FeeEstimateResponse } from '@/services/api/orderApi';
-import { SPEED_LABEL, toSpeed } from '../orders/orderDisplay';
+import { PAYMENT_NOTE, SPEED_LABEL, toSpeed } from '../orders/orderDisplay';
 import { addressLine1, addressLine2, placeLabel, type BookingForm } from './bookingForm';
 import type { BookingErrors, BookingStepId } from './validation';
 import type { FeeEstimateStatus } from './useFeeEstimate';
@@ -210,7 +210,7 @@ function FeePanel({
       subtotal={base + weight}
       surcharge={surcharge > 0 ? { label: speedLabel, amount: surcharge } : undefined}
       total={estimate.estimatedFee ?? base + weight + surcharge}
-      footnote="The courier checks weight and size at pickup. If they differ, we ask you before the fee changes."
+      footnote={`${PAYMENT_NOTE} The courier checks weight and size at pickup. If they differ, we ask you before the fee changes.`}
     />
   );
 }

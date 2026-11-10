@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { MoneyAmount, SurfaceCard } from '@/design-system';
 import type { CustomerOrderResponse } from '@/services/api/orderApi';
-import { hasPendingFeeRevision, payableFee } from './orderDisplay';
+import { PAYMENT_NOTE, hasPendingFeeRevision, payableFee } from './orderDisplay';
 
 /** The delivery fee, and how it changed if the courier re-measured the parcel. */
 export function OrderFeeSection({ order }: { order: CustomerOrderResponse }) {
@@ -45,6 +45,7 @@ export function OrderFeeSection({ order }: { order: CustomerOrderResponse }) {
           </>
         )}
       </dl>
+      <p className="mt-3 text-caption text-secondary">{PAYMENT_NOTE}</p>
       {billedByWeight ? (
         <p className="mt-3 text-caption text-secondary">
           Charged as {order.chargeableWeightKg} kg because the parcel&apos;s size counts for more
