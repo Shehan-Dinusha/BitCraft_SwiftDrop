@@ -107,14 +107,14 @@ class WebhookSchemaMigrationIT {
         assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
                 String.class)).containsExactly("1", "2", "3");
 
-        List<DeadLetterWebhookResponse> dlq = context.getBean(DlqReplayService.class).listDlqRecords(LEGACY_MERCHANT, false);
+        List<DeadLetterWebhookResponse> dlq = context.getBean(DlqReplayService.class).listDlqRecords(LEGACY_MERCHANT, false, merchantCaller(LEGACY_MERCHANT));
         assertThat(dlq).singleElement().satisfies(record -> {
             assertThat(record.dlqId()).isEqualTo(LEGACY_DLQ);
             assertThat(record.payload()).isEqualTo("{\"legacy\":true}");
         });
 
         List<WebhookDeliveryAttemptResponse> attempts =
-                context.getBean(WebhookSubscriptionService.class).getDeliveryAttempts(LEGACY_ENDPOINT);
+                context.getBean(WebhookSubscriptionService.class).getDeliveryAttempts(LEGACY_ENDPOINT, merchantCaller(LEGACY_MERCHANT));
         assertThat(attempts).singleElement().satisfies(attempt -> {
             assertThat(attempt.attemptId()).isEqualTo(LEGACY_ATTEMPT);
             assertThat(attempt.attemptNumber()).isEqualTo(3);
@@ -322,15 +322,20 @@ class WebhookSchemaMigrationIT {
         tx.executeWithoutResult(s -> ingestion.insertDeliveryIfAbsent(UUID.randomUUID(), eventId, used.getEndpointId(), merchant));
 
         var subscriptions = context.getBean(WebhookSubscriptionService.class);
-        assertThatThrownBy(() -> subscriptions.deleteEndpoint(used.getEndpointId()))
+        assertThatThrownBy(() -> subscriptions.deleteEndpoint(used.getEndpointId(), merchantCaller(merchant)))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        subscriptions.deleteEndpoint(unused.getEndpointId());
+        subscriptions.deleteEndpoint(unused.getEndpointId(), merchantCaller(merchant));
         var endpoints = context.getBean(WebhookEndpointRepository.class);
         assertThat(endpoints.findByEndpointId(used.getEndpointId())).isPresent();
         assertThat(endpoints.findByEndpointId(unused.getEndpointId())).isEmpty();
     }
 
     // --- helpers ---------------------------------------------------------------------------------------------------
+
+    private static com.swiftdrop.contracts.security.CallerContext merchantCaller(UUID merchantId) {
+        return new com.swiftdrop.contracts.security.CallerContext(UUID.randomUUID(),
+                com.swiftdrop.contracts.enums.UserRole.MERCHANT, merchantId, null);
+    }
 
     private boolean insertEvent(UUID eventId, UUID orderId, String payload) {
         return Boolean.TRUE.equals(tx.execute(s -> ingestion.insertInboundEventIfAbsent(eventId,

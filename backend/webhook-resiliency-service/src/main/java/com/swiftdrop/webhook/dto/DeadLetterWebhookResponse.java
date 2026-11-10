@@ -19,7 +19,7 @@ public record DeadLetterWebhookResponse(
         @Schema(description = "Triggering domain event type")
         String eventType,
 
-        @Schema(description = "Payload content")
+        @Schema(description = "Payload content. Omitted (null) for DISPATCHER callers, who see operational metadata only.")
         String payload,
 
         @Schema(description = "Root cause failure reason")

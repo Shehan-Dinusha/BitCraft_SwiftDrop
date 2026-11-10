@@ -1,6 +1,8 @@
 package com.swiftdrop.webhook.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.security.ForbiddenException;
+import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -41,6 +43,23 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.getMessage(), request.getRequestURI()));
+    }
+
+    /** Missing or malformed gateway identity headers. */
+    @ExceptionHandler(UnauthenticatedCallerException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnauthenticated(UnauthenticatedCallerException ex, HttpServletRequest request) {
+        log.warn("Rejected request without verified caller identity path={} reason={}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), "Unauthorized",
+                        "Authentication is required", request.getRequestURI()));
+    }
+
+    /** The caller's role, or its missing merchant identity, does not permit the operation. */
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(ForbiddenException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiErrorResponse.of(HttpStatus.FORBIDDEN.value(), "Forbidden",
+                        "You are not permitted to perform this operation", request.getRequestURI()));
     }
 
     /** Raised, for example, when deleting an endpoint that delivery jobs still reference. */

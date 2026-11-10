@@ -4,17 +4,15 @@ import { Button } from '@/design-system/primitives/Button';
 import { Modal } from '@/design-system/primitives/Modal';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
 import { webhookApi, type DeadLetterWebhookResponse } from '@/services/api/webhookApi';
+import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { RefreshCw, Play, Eye, AlertOctagon, CheckCircle2, History } from 'lucide-react';
 
 interface GridDlqRow extends DeadLetterWebhookResponse {
   id: string;
 }
 
-interface WebhookDlqReplayTableProps {
-  merchantId?: string;
-}
-
-export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps) {
+/** Records are scoped by the backend to the caller (own merchant, or all merchants for operations roles). */
+export function WebhookDlqReplayTable() {
   const [records, setRecords] = useState<DeadLetterWebhookResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreplayedOnly, setUnreplayedOnly] = useState(false);
@@ -27,15 +25,15 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
   const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await webhookApi.listDlq(merchantId, unreplayedOnly);
+      const data = await webhookApi.listDlq(unreplayedOnly);
       setRecords(data || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch DLQ records';
+      const msg = apiErrorMessage(err, 'Failed to fetch DLQ records');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setLoading(false);
     }
-  }, [merchantId, unreplayedOnly]);
+  }, [unreplayedOnly]);
 
   useEffect(() => {
     fetchRecords();
@@ -53,7 +51,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       }
       await fetchRecords();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to replay webhook';
+      const msg = apiErrorMessage(err, 'Failed to replay webhook');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setReplayLoadingId(null);
@@ -64,7 +62,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
     try {
       setBatchLoading(true);
       setBanner(null);
-      const results = await webhookApi.replayAllDlq(merchantId);
+      const results = await webhookApi.replayAllDlq();
       const successCount = results.filter((r) => r.status === 'SUCCESS').length;
       setBanner({
         tone: 'success',
@@ -72,7 +70,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       });
       await fetchRecords();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Batch replay failed';
+      const msg = apiErrorMessage(err, 'Batch replay failed');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setBatchLoading(false);

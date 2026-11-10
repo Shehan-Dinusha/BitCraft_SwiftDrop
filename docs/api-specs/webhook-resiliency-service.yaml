@@ -1,26 +1,48 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Webhook Resiliency API
-  description: Webhook subscriptions, exponential delivery retries, HMAC-SHA256 signatures, and DLQ replay APIs.
+  description: |
+    Webhook subscriptions, exponential delivery retries, HMAC-SHA256 signatures, and DLQ replay APIs.
+
+    Authentication and authorization: every operation except the health checks requires a Bearer JWT, verified by
+    the API gateway. The gateway removes any client-supplied X-User-Id, X-User-Role, X-Merchant-Id and
+    X-District-Id headers and re-injects them from the verified token; the service derives the caller from those
+    headers only (never from request parameters). The merchant identity is the token's merchantId claim, which is
+    distinct from the user id. The service must be reachable only through the gateway.
+
+    Roles:
+    - MERCHANT: manages and replays only its own merchant's endpoints and dead-letter records.
+    - SYSTEM_ADMIN: all operations for every merchant.
+    - DISPATCHER: read-only dead-letter listing and detail across merchants, with the payload omitted; no endpoint access, no replay.
+    - Other roles: 403.
+
+    Another merchant's endpoint or dead-letter record returns 404, indistinguishable from an unknown ID.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
+security:
+  - bearerAuth: []
 paths:
   /api/v1/webhooks/subscriptions/health:
     get:
       tags: [WebhookSubscription]
       summary: Health check for webhook subscription controller
+      security: []
       responses:
         "200":
           description: OK
   /api/v1/webhooks/subscriptions:
     get:
       tags: [WebhookSubscription]
-      summary: List webhook endpoints for a merchant or all
+      summary: List webhook endpoints
+      description: >-
+        A MERCHANT receives only its own endpoints; a merchantId other than its own is refused with 403.
+        A SYSTEM_ADMIN may filter by merchantId or omit it to list every endpoint.
       parameters:
         - name: merchantId
           in: query
           required: false
+          description: Merchant filter for SYSTEM_ADMIN. Merchant clients should omit it.
           schema:
             type: string
             format: uuid
@@ -31,9 +53,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListWebhookEndpointResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
     post:
       tags: [WebhookSubscription]
       summary: Register a new webhook subscription endpoint
+      description: >-
+        A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is
+        refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403.
       requestBody:
         required: true
         content:
@@ -47,10 +76,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseWebhookEndpointResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/v1/webhooks/subscriptions/{endpointId}:
     get:
       tags: [WebhookSubscription]
       summary: Get webhook endpoint details by ID
+      description: Another merchant's endpoint returns 404, exactly like an unknown ID.
       parameters:
         - name: endpointId
           in: path
@@ -65,6 +101,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseWebhookEndpointResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
     delete:
       tags: [WebhookSubscription]
       summary: Delete a webhook endpoint subscription
@@ -78,6 +120,14 @@ paths:
       responses:
         "200":
           description: Endpoint deleted successfully
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/v1/webhooks/subscriptions/{endpointId}/status:
     patch:
       tags: [WebhookSubscription]
@@ -101,6 +151,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseWebhookEndpointResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/webhooks/subscriptions/{endpointId}/test:
     post:
       tags: [WebhookSubscription]
@@ -119,6 +175,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseWebhookDeliveryAttemptResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/webhooks/subscriptions/{endpointId}/attempts:
     get:
       tags: [WebhookSubscription]
@@ -137,10 +199,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListWebhookDeliveryAttemptResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/webhooks/dlq/health:
     get:
       tags: [DlqReplay]
       summary: Health check for DLQ replay controller
+      security: []
       responses:
         "200":
           description: OK
@@ -148,10 +217,14 @@ paths:
     get:
       tags: [DlqReplay]
       summary: List Dead-Letter Queue webhook records
+      description: >-
+        A MERCHANT sees only its own records (a different merchantId is refused with 403). SYSTEM_ADMIN and
+        DISPATCHER may filter by merchantId or omit it to see every merchant; DISPATCHER responses omit the payload.
       parameters:
         - name: merchantId
           in: query
           required: false
+          description: Merchant filter for SYSTEM_ADMIN and DISPATCHER. Merchant clients should omit it.
           schema:
             type: string
             format: uuid
@@ -168,10 +241,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDeadLetterWebhookResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/v1/webhooks/dlq/{dlqId}:
     get:
       tags: [DlqReplay]
       summary: Get detailed DLQ record by ID
+      description: >-
+        Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses omit the payload.
       parameters:
         - name: dlqId
           in: path
@@ -186,10 +265,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseDeadLetterWebhookResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/webhooks/dlq/{dlqId}/replay:
     post:
       tags: [DlqReplay]
       summary: Manually replay a dead-lettered webhook record
+      description: MERCHANT (own records) and SYSTEM_ADMIN only.
       parameters:
         - name: dlqId
           in: path
@@ -204,14 +290,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseReplayDlqResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/webhooks/dlq/replay-all:
     post:
       tags: [DlqReplay]
       summary: Batch replay all unreplayed DLQ records
+      description: >-
+        A MERCHANT replays its own unreplayed records. A SYSTEM_ADMIN may target one merchant or, without
+        merchantId, every merchant. Other roles: 403.
       parameters:
         - name: merchantId
           in: query
           required: false
+          description: Merchant filter for SYSTEM_ADMIN. Merchant clients should omit it.
           schema:
             type: string
             format: uuid
@@ -222,24 +318,94 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListReplayDlqResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Invalid request, e.g. malformed subscriptions or an administrator omitting merchantId.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Unauthorized:
+      description: Missing or invalid authentication (no verified caller identity).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Forbidden:
+      description: >-
+        The caller's role does not permit the operation, the caller has no merchant identity, or a merchant asked
+        for another merchant's data by merchantId.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    NotFound:
+      description: The resource does not exist or belongs to another merchant (the two cases are indistinguishable).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Conflict:
+      description: The endpoint has delivery history and cannot be deleted; deactivate it instead.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
   schemas:
+    ApiErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+        correlationId:
+          type: string
+        fieldErrors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
     CreateWebhookEndpointRequest:
       type: object
       required:
-        - merchantId
         - targetUrl
         - subscribedEvents
       properties:
         merchantId:
           type: string
           format: uuid
+          description: >-
+            Owning merchant. Omit as a merchant (the merchantId of the caller's token is used; any other value is
+            refused). Required for SYSTEM_ADMIN.
         targetUrl:
           type: string
           format: uri
         subscribedEvents:
           type: string
+          description: >-
+            Comma-delimited event subscriptions. Each token is an event type (order.created, parcel.status.changed),
+            a prefix wildcard of whole segments such as parcel.*, or * for all events. Empty, malformed or unknown
+            tokens are rejected with 400.
           example: "parcel.status.changed,order.created"
         description:
           type: string
@@ -309,6 +475,7 @@ components:
           type: string
         payload:
           type: string
+          description: Event payload. Omitted (null) for DISPATCHER callers, who see operational metadata only.
         failureReason:
           type: string
         totalAttempts:

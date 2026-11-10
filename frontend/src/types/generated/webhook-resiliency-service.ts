@@ -45,10 +45,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List webhook endpoints for a merchant or all */
+        /**
+         * List webhook endpoints
+         * @description A MERCHANT receives only its own endpoints; a merchantId other than its own is refused with 403. A SYSTEM_ADMIN may filter by merchantId or omit it to list every endpoint.
+         */
         get: {
             parameters: {
                 query?: {
+                    /** @description Merchant filter for SYSTEM_ADMIN. Merchant clients should omit it. */
                     merchantId?: string;
                 };
                 header?: never;
@@ -66,10 +70,15 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseListWebhookEndpointResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
             };
         };
         put?: never;
-        /** Register a new webhook subscription endpoint */
+        /**
+         * Register a new webhook subscription endpoint
+         * @description A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -92,6 +101,9 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWebhookEndpointResponse"];
                     };
                 };
+                400: components["responses"]["BadRequest"];
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
             };
         };
         delete?: never;
@@ -107,7 +119,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get webhook endpoint details by ID */
+        /**
+         * Get webhook endpoint details by ID
+         * @description Another merchant's endpoint returns 404, exactly like an unknown ID.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -128,6 +143,9 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWebhookEndpointResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
             };
         };
         put?: never;
@@ -151,6 +169,10 @@ export interface paths {
                     };
                     content?: never;
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
             };
         };
         options?: never;
@@ -194,6 +216,9 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWebhookEndpointResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
             };
         };
         trace?: never;
@@ -228,6 +253,9 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWebhookDeliveryAttemptResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
             };
         };
         delete?: never;
@@ -264,6 +292,9 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseListWebhookDeliveryAttemptResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
             };
         };
         put?: never;
@@ -315,10 +346,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Dead-Letter Queue webhook records */
+        /**
+         * List Dead-Letter Queue webhook records
+         * @description A MERCHANT sees only its own records (a different merchantId is refused with 403). SYSTEM_ADMIN and DISPATCHER may filter by merchantId or omit it to see every merchant; DISPATCHER responses omit the payload.
+         */
         get: {
             parameters: {
                 query?: {
+                    /** @description Merchant filter for SYSTEM_ADMIN and DISPATCHER. Merchant clients should omit it. */
                     merchantId?: string;
                     unreplayedOnly?: boolean;
                 };
@@ -337,6 +372,8 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseListDeadLetterWebhookResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
             };
         };
         put?: never;
@@ -354,7 +391,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get detailed DLQ record by ID */
+        /**
+         * Get detailed DLQ record by ID
+         * @description Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses omit the payload.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -375,6 +415,9 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseDeadLetterWebhookResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
             };
         };
         put?: never;
@@ -394,7 +437,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Manually replay a dead-lettered webhook record */
+        /**
+         * Manually replay a dead-lettered webhook record
+         * @description MERCHANT (own records) and SYSTEM_ADMIN only.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -415,6 +461,9 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseReplayDlqResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
             };
         };
         delete?: never;
@@ -432,10 +481,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Batch replay all unreplayed DLQ records */
+        /**
+         * Batch replay all unreplayed DLQ records
+         * @description A MERCHANT replays its own unreplayed records. A SYSTEM_ADMIN may target one merchant or, without merchantId, every merchant. Other roles: 403.
+         */
         post: {
             parameters: {
                 query?: {
+                    /** @description Merchant filter for SYSTEM_ADMIN. Merchant clients should omit it. */
                     merchantId?: string;
                 };
                 header?: never;
@@ -453,6 +506,8 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseListReplayDlqResponse"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
             };
         };
         delete?: never;
@@ -465,12 +520,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ApiErrorResponse: {
+            /** Format: date-time */
+            timestamp?: string;
+            status?: number;
+            error?: string;
+            message?: string;
+            path?: string;
+            correlationId?: string;
+            fieldErrors?: {
+                [key: string]: string[];
+            };
+        };
         CreateWebhookEndpointRequest: {
-            /** Format: uuid */
-            merchantId: string;
+            /**
+             * Format: uuid
+             * @description Owning merchant. Omit as a merchant (the merchantId of the caller's token is used; any other value is refused). Required for SYSTEM_ADMIN.
+             */
+            merchantId?: string;
             /** Format: uri */
             targetUrl: string;
-            /** @example parcel.status.changed,order.created */
+            /**
+             * @description Comma-delimited event subscriptions. Each token is an event type (order.created, parcel.status.changed), a prefix wildcard of whole segments such as parcel.*, or * for all events. Empty, malformed or unknown tokens are rejected with 400.
+             * @example parcel.status.changed,order.created
+             */
             subscribedEvents: string;
             /** @example Main Production ERP Webhook */
             description?: string;
@@ -512,6 +585,7 @@ export interface components {
             /** Format: uuid */
             merchantId?: string;
             eventType?: string;
+            /** @description Event payload. Omitted (null) for DISPATCHER callers, who see operational metadata only. */
             payload?: string;
             failureReason?: string;
             totalAttempts?: number;
@@ -571,7 +645,53 @@ export interface components {
             data?: components["schemas"]["ReplayDlqResponse"][];
         };
     };
-    responses: never;
+    responses: {
+        /** @description Invalid request, e.g. malformed subscriptions or an administrator omitting merchantId. */
+        BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description Missing or invalid authentication (no verified caller identity). */
+        Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description The caller's role does not permit the operation, the caller has no merchant identity, or a merchant asked for another merchant's data by merchantId. */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description The resource does not exist or belongs to another merchant (the two cases are indistinguishable). */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description The endpoint has delivery history and cannot be deleted; deactivate it instead. */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+    };
     parameters: never;
     requestBodies: never;
     headers: never;
