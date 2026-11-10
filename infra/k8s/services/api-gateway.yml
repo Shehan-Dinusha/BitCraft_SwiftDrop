@@ -107,6 +107,18 @@ spec:
               value: "60"
             - name: JWT_BLACKLIST_PREFIX
               value: "jwt:blacklist:"
+            - name: JWT_ALGORITHM
+              value: "HS256"
+            - name: JWT_ISSUER
+              value: "swiftdrop-iam"
+            - name: JWT_AUDIENCE
+              value: "swiftdrop"
+            - name: JWT_JWKS_URL
+              value: http://auth-iam-service.swiftdrop-apps.svc.cluster.local:8080/api/v1/auth/.well-known/jwks.json
+            - name: JWT_JWKS_CACHE_TTL_SECONDS
+              value: "300"
+            - name: JWT_JWKS_REFETCH_COOLDOWN_SECONDS
+              value: "5"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:

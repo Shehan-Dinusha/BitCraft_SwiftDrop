@@ -74,7 +74,13 @@ swiftdrop:
     notification: ${NOTIFICATION_SERVICE_URL:http://localhost:8088}
     analytics: ${ANALYTICS_SERVICE_URL:http://localhost:8089}
   jwt:
+    algorithm: ${JWT_ALGORITHM:HS256}
     secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+    issuer: ${JWT_ISSUER:swiftdrop-iam}
+    audience: ${JWT_AUDIENCE:swiftdrop}
+    jwks-url: ${JWT_JWKS_URL:http://localhost:8081/api/v1/auth/.well-known/jwks.json}
+    jwks-cache-ttl-seconds: ${JWT_JWKS_CACHE_TTL_SECONDS:300}
+    jwks-refetch-cooldown-seconds: ${JWT_JWKS_REFETCH_COOLDOWN_SECONDS:5}
     blacklist-prefix: ${JWT_BLACKLIST_PREFIX:jwt:blacklist:}
   rate-limit:
     public-tracking:
