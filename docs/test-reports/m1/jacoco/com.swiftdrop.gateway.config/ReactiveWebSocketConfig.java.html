@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReactiveWebSocketConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.config</a> &gt; <span class="el_source">ReactiveWebSocketConfig.java</span></div><h1>ReactiveWebSocketConfig.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.config;
+
+import com.swiftdrop.gateway.trackinghub.websocket.TrackingWebSocketHandler;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.web.reactive.HandlerMapping;
+import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
+import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
+
+import java.util.Map;
+
+@Configuration
+<span class="fc" id="L14">public class ReactiveWebSocketConfig {</span>
+
+    @Bean
+    @Primary
+    public HandlerMapping trackingWebSocketMapping(TrackingWebSocketHandler handler) {
+<span class="fc" id="L19">        SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();</span>
+<span class="fc" id="L20">        mapping.setOrder(-1);</span>
+<span class="fc" id="L21">        mapping.setUrlMap(Map.of(&quot;/ws/tracking&quot;, handler));</span>
+<span class="fc" id="L22">        return mapping;</span>
+    }
+
+    @Bean
+    public WebSocketHandlerAdapter webSocketHandlerAdapter() {
+<span class="fc" id="L27">        return new WebSocketHandlerAdapter();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

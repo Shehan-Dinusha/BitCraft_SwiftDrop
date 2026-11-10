@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TrackingViewEnrichmentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.gateway.trackinghub.service</a> &gt; <span class="el_source">TrackingViewEnrichmentService.java</span></div><h1>TrackingViewEnrichmentService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.gateway.trackinghub.service;
+
+import com.swiftdrop.gateway.trackinghub.client.OrderTrackingClient;
+import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+
+import java.util.Optional;
+
+/**
+ * Makes sure public tracking views include the city and masked sender/receiver
+ * details owned by the order service. The gateway cache is populated by delivery
+ * events, which never carry contact data, so both the REST request path and the
+ * SSE/WebSocket subscription path enrich the cache before serving a view.
+ */
+@Service
+@RequiredArgsConstructor
+public class TrackingViewEnrichmentService {
+
+    private final TrackingBroadcastHubService broadcastHub;
+    private final OrderTrackingClient orderClient;
+    private final TrackingDataSanitizerProxy sanitizer;
+
+    /**
+     * Returns the cached view enriched with masked contact details when needed.
+     * A failed or missing order-service lookup never turns an existing cached
+     * view into a miss.
+     */
+    public Mono&lt;Optional&lt;PublicTrackingViewDto&gt;&gt; enrich(String trackingNumber) {
+<span class="fc" id="L31">        PublicTrackingViewDto current = broadcastHub.current(trackingNumber);</span>
+<span class="fc bfc" id="L32" title="All 4 branches covered.">        if (current != null &amp;&amp; !sanitizer.needsContactDetails(current)) {</span>
+<span class="fc" id="L33">            return Mono.just(Optional.of(current));</span>
+        }
+<span class="fc" id="L35">        return orderClient.getTracking(trackingNumber)</span>
+<span class="fc" id="L36">                .map(optional -&gt; optional.map(internal -&gt; {</span>
+<span class="fc" id="L37">                    PublicTrackingViewDto enriched = sanitizer.mergeContactDetails(current, internal);</span>
+<span class="fc" id="L38">                    broadcastHub.updateCache(trackingNumber, enriched);</span>
+<span class="fc" id="L39">                    return enriched;</span>
+                }))
+<span class="fc" id="L41">                .defaultIfEmpty(Optional.empty())</span>
+<span class="fc" id="L42">                .map(enriched -&gt; enriched.or(() -&gt; Optional.ofNullable(current)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
