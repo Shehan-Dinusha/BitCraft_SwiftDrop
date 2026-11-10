@@ -57,6 +57,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Binding bindNotificationEventsOrderCreated(Queue notificationEventsQueue, TopicExchange eventsExchange) {
+        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with("order.created");
+    }
+
+    @Bean
     public Binding bindDlqNotificationEvents(Queue dlqNotificationEventsQueue, TopicExchange dlxExchange) {
         return BindingBuilder.bind(dlqNotificationEventsQueue).to(dlxExchange).with(DLQ_ROUTING_KEY);
     }
