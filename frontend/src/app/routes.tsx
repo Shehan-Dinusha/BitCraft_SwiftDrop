@@ -3,6 +3,8 @@ import { AppShell } from '@/app/AppShell';
 import { RoleGuard } from '@/app/RoleGuard';
 import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { SignUpPage } from '@/features/auth/pages/SignUpPage';
+import { OAuthCallbackPage } from '@/features/auth/pages/OAuthCallbackPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
 import { OrderHistoryPage } from '@/features/customer/pages/OrderHistoryPage';
@@ -23,6 +25,8 @@ import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrack
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <SignUpPage /> },
+  { path: '/auth/callback', element: <OAuthCallbackPage /> },
   {
     element: <AppShell />,
     children: [
