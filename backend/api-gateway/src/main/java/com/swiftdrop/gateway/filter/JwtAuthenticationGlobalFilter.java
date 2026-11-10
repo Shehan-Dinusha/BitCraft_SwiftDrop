@@ -2,7 +2,6 @@ package com.swiftdrop.gateway.filter;
 
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
-import com.swiftdrop.contracts.security.JwtSessionRevocation;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -34,10 +33,12 @@ import java.util.List;
  * verified identity headers ({@code X-User-Id}, {@code X-User-Role},
  * {@code X-Merchant-Id}, {@code X-District-Id}) into downstream service requests.
  *
- * <p>Public endpoints (auth, public tracking, merchant API-key ingestion, health)
- * are whitelisted and skip JWT validation. Blacklisted token IDs, token hashes,
- * and per-user issuance cutoffs are checked against Redis; Redis failures fail open for local
- * development availability and are logged for operators.</p>
+ * <p>Only auth, public tracking, documentation, and health endpoints are
+ * whitelisted. Merchant API-key paths are handled exclusively by
+ * {@link MerchantApiKeyGlobalFilter} and therefore bypass JWT validation.
+ * Blacklisted token IDs, token hashes, and user IDs are checked against Redis;
+ * Redis failures fail open for local development availability and are logged
+ * for operators.</p>
  */
 @Slf4j
 @Component
@@ -53,8 +54,6 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
             "/api/v1/public/tracking",
             "/api/v1/tracking",
             "/ws/tracking",
-            "/api/v1/merchant/",
-            "/api/v1/merchant-order-ingest/",
             "/actuator/health",
             "/actuator/health/readiness",
             "/actuator/health/liveness",
@@ -109,10 +108,11 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
+        if (isApiKeyPath(path)) {
+            return chain.filter(exchange);
+        }
+
         if (isPublicPath(path)) {
-            if (isApiKeyPath(path)) {
-                return chain.filter(exchange);
-            }
             ServerHttpRequest sanitized = exchange.getRequest().mutate()
                     .headers(this::stripIdentityHeaders)
                     .build();
@@ -148,7 +148,9 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
                 claimAsString(claims, "districtId"),
                 claimAsString(claims, "district")
         );
-        return isBlacklisted(token, claims)
+        String jwtId = claims.getId();
+
+        return isBlacklisted(token, userId, jwtId)
                 .flatMap(blacklisted -> {
                     if (blacklisted) {
                         log.warn("Rejected blacklisted token for path: {}", path);
@@ -185,24 +187,19 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         return -100;
     }
 
-    private Mono<Boolean> isBlacklisted(String token, Claims claims) {
-        String userId = claims.getSubject();
-        String jwtId = claims.getId();
+    private Mono<Boolean> isBlacklisted(String token, String userId, String jwtId) {
         String tokenHash = sha256(token);
-        List<String> keys = new ArrayList<>(2);
+        List<String> keys = new ArrayList<>(3);
         keys.add(blacklistPrefix + "token:" + tokenHash);
+        if (userId != null && !userId.isBlank()) {
+            keys.add(blacklistPrefix + "user:" + userId);
+        }
         if (jwtId != null && !jwtId.isBlank()) {
             keys.add(blacklistPrefix + "jti:" + jwtId);
         }
 
-        Mono<Boolean> userRevoked = userId == null || userId.isBlank() ? Mono.just(false)
-                : redisTemplate.opsForValue().get(blacklistPrefix + "user:" + userId)
-                .map(cutoff -> JwtSessionRevocation.isRevoked(cutoff,
-                        claims.get(JwtSessionRevocation.ISSUED_AT_CLAIM, String.class),
-                        claims.getIssuedAt() == null ? null : claims.getIssuedAt().toInstant()))
-                .defaultIfEmpty(false);
-
-        return Flux.concat(Flux.fromIterable(keys).flatMap(redisTemplate::hasKey), userRevoked)
+        return Flux.fromIterable(keys)
+                .flatMap(redisTemplate::hasKey)
                 .any(Boolean::booleanValue)
                 .onErrorResume(exception -> {
                     log.warn("Redis blacklist check failed; allowing token: {}", exception.getMessage());
