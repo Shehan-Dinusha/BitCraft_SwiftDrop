@@ -1,6 +1,6 @@
-import { Navigate, RouteObject, useLocation } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { Navigate, RouteObject } from 'react-router-dom';
 import { AppShell } from '@/app/AppShell';
+import { RoleGuard } from '@/app/RoleGuard';
 import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
@@ -20,15 +20,6 @@ import { NotificationConsolePage } from '@/features/admin-ops/pages/Notification
 import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
 import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
 import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
-import { useAuthStore } from '@/store/useAuthStore';
-import type { PersonaRole } from '@/types/contracts';
-
-function RoleGuard({ roles, children }: { roles: PersonaRole[]; children: ReactNode }) {
-  const { token, role } = useAuthStore();
-  const location = useLocation();
-  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  return roles.includes(role) ? <>{children}</> : <Navigate to="/login" replace />;
-}
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
