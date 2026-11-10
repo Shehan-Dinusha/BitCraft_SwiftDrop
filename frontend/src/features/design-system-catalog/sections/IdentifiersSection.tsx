@@ -51,6 +51,7 @@ export function IdentifiersSection() {
           <DemoRow>
             <SpeedTag speed="standard" />
             <SpeedTag speed="express" />
+            <SpeedTag speed="same-day" />
           </DemoRow>
           <DemoRow>
             {roles.map((role) => (

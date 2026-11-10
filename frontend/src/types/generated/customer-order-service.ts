@@ -141,8 +141,31 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Request order cancellation (FR-C3) */
+        /**
+         * Request order cancellation (FR-C3)
+         * @description A customer can cancel only an order that is still CREATED (no courier assigned yet). Dispatchers and admins can cancel any order that is not already in a final status.
+         */
         post: operations["cancelOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}/status-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the statuses an order has been through
+         * @description Status and time only, oldest first. Only the order's owner (or a dispatcher or admin) can read it; anyone else gets 404.
+         */
+        get: operations["getStatusHistory"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -342,6 +365,11 @@ export interface components {
             /** @example +94771234567 */
             pickupContactPhone: string;
             /**
+             * @description Optional second phone number for the sender
+             * @example +94715550101
+             */
+            pickupContactAlternatePhone?: string;
+            /**
              * @description Letters, digits, spaces and . , / # ( ) & ' : - only
              * @example No. 18, Peradeniya Road
              */
@@ -360,6 +388,11 @@ export interface components {
             recipientName: string;
             /** @example +94719876543 */
             recipientPhone: string;
+            /**
+             * @description Optional second phone number for the recipient
+             * @example +94112345678
+             */
+            recipientAlternatePhone?: string;
             /**
              * Format: email
              * @example anura.f@gmail.com
@@ -389,6 +422,11 @@ export interface components {
             /** @example Handicrafts and tea canisters */
             itemDescription?: string;
             /**
+             * @description Optional notes for the courier, such as a gate code or a landmark
+             * @example Call when you reach the gate
+             */
+            customerNotes?: string;
+            /**
              * Format: double
              * @example 5000
              */
@@ -413,6 +451,11 @@ export interface components {
             pickupPostalCode?: string;
             pickupContactName?: string;
             pickupContactPhone?: string;
+            /**
+             * @description Optional second phone number for the sender
+             * @example +94715550101
+             */
+            pickupContactAlternatePhone?: string;
             /** @description Letters, digits, spaces and . , / # ( ) & ' : - only */
             deliveryAddressLine1?: string;
             /** @description Letters, digits, spaces and . , / # ( ) & ' : - only */
@@ -422,6 +465,11 @@ export interface components {
             deliveryPostalCode?: string;
             recipientName?: string;
             recipientPhone?: string;
+            /**
+             * @description Optional second phone number for the recipient
+             * @example +94112345678
+             */
+            recipientAlternatePhone?: string;
             /** Format: email */
             recipientEmail?: string;
             /** Format: double */
@@ -434,6 +482,11 @@ export interface components {
             actualWeightKg?: number;
             speed?: components["schemas"]["OrderSpeed"];
             itemDescription?: string;
+            /**
+             * @description Optional notes for the courier, such as a gate code or a landmark
+             * @example Call when you reach the gate
+             */
+            customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
             /** Format: double */
@@ -470,6 +523,8 @@ export interface components {
             pickupPostalCode?: string;
             pickupContactName?: string;
             pickupContactPhone?: string;
+            /** @description Optional second phone number for the sender */
+            pickupContactAlternatePhone?: string;
             deliveryAddressLine1?: string;
             deliveryAddressLine2?: string;
             deliveryCity?: string;
@@ -477,6 +532,8 @@ export interface components {
             deliveryPostalCode?: string;
             recipientName?: string;
             recipientPhone?: string;
+            /** @description Optional second phone number for the recipient */
+            recipientAlternatePhone?: string;
             recipientEmail?: string;
             /** Format: double */
             lengthCm?: number;
@@ -489,6 +546,8 @@ export interface components {
             /** Format: double */
             chargeableWeightKg?: number;
             itemDescription?: string;
+            /** @description Optional notes for the courier */
+            customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
             /** Format: double */
@@ -525,6 +584,24 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["FeeEstimateResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        /** @description A status the order reached and when. */
+        OrderStatusHistoryEntry: {
+            status?: components["schemas"]["PublicOrderStatus"];
+            /**
+             * Format: date-time
+             * @description When the order reached this status
+             * @example 2026-11-05T08:30:00Z
+             */
+            occurredAt?: string;
+        };
+        ApiResponseListOrderStatusHistoryEntry: {
+            /** @example true */
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["OrderStatusHistoryEntry"][];
             /** Format: date-time */
             timestamp?: string;
         };
@@ -1054,6 +1131,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseCustomerOrderResponse"];
+                };
+            };
+            /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The order is no longer CREATED (for a customer), or is already in a final status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getStatusHistory: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway */
+                "X-User-Role"?: string;
+            };
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Status history, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListOrderStatusHistoryEntry"];
                 };
             };
             /** @description Order not found, or not owned by the caller */

@@ -216,6 +216,35 @@ class CustomerOrderServiceTest {
     }
 
     @Test
+    @DisplayName("Create stores the optional second recipient phone and notes, and turns blanks into null")
+    void createStoresAlternatePhoneAndNotes() {
+        when(trackingNumberGenerator.generateUniqueTrackingNumber()).thenReturn("SD-7K4M-9QX2");
+        when(pricingClient.estimate(any(FeeEstimateRequest.class))).thenReturn(FeeEstimateResponse.builder()
+                .chargeableWeightKg(new BigDecimal("2.00"))
+                .estimatedFee(new BigDecimal("790.00"))
+                .pricingRuleVersionId("PRICING-2026-V7")
+                .currency("LKR")
+                .build());
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateOrderRequest withBoth = validCreateRequest();
+        withBoth.setRecipientAlternatePhone("+94112345678");
+        withBoth.setPickupContactAlternatePhone("+94715550101");
+        withBoth.setCustomerNotes("  Call when you reach the gate ");
+        CustomerOrderResponse stored = customerOrderService.createOrder(withBoth, customerId, UUID.randomUUID());
+        assertThat(stored.getRecipientAlternatePhone()).isEqualTo("+94112345678");
+        assertThat(stored.getPickupContactAlternatePhone()).isEqualTo("+94715550101");
+        assertThat(stored.getCustomerNotes()).isEqualTo("Call when you reach the gate");
+
+        CreateOrderRequest blank = validCreateRequest();
+        blank.setCustomerNotes("   ");
+        CustomerOrderResponse withoutNotes = customerOrderService.createOrder(blank, customerId, UUID.randomUUID());
+        assertThat(withoutNotes.getRecipientAlternatePhone()).isNull();
+        assertThat(withoutNotes.getPickupContactAlternatePhone()).isNull();
+        assertThat(withoutNotes.getCustomerNotes()).isNull();
+    }
+
+    @Test
     @DisplayName("When pricing is unavailable nothing is saved and no order.created event is published")
     void createSavesAndPublishesNothingWhenPricingIsDown() {
         when(pricingClient.estimate(any(FeeEstimateRequest.class))).thenThrow(new PricingUnavailableException());

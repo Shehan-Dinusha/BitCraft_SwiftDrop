@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.analytics.domain.repository.ProcessedTelemetryEventRepository;
 import com.swiftdrop.analytics.domain.repository.AnalyticsProjectionRepository;
 import com.swiftdrop.analytics.messaging.TelemetryEvent;
+import com.swiftdrop.analytics.messaging.TelemetryEvent;
+import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
+import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
+import com.swiftdrop.contracts.events.order.OrderCreatedEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

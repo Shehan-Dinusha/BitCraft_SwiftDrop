@@ -223,6 +223,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             'min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted disabled:cursor-not-allowed',
             recipe.label,
             monospacedVariants.includes(variant) && 'font-mono',
+            variant === 'search' && '[&::-webkit-search-cancel-button]:hidden',
             inputClassName
           )}
           {...props}

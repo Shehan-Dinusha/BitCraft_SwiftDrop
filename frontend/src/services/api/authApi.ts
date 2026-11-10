@@ -4,9 +4,25 @@ import type { components } from '@/types/generated/auth-iam-service';
 export type AuthTokenResponse = components['schemas']['TokenResponse'];
 export type AuthUserProfile = components['schemas']['UserProfileResponse'];
 export type UserRole = NonNullable<AuthUserProfile['role']>;
+export type UserStatus = NonNullable<components['schemas']['UserStatus']>;
+/** Alias used by admin pages to reference a user list entry. */
+export type UserProfileItem = components['schemas']['UserProfileResponse'];
 
 export async function loginUser(username: string, password: string): Promise<AuthTokenResponse> {
   const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/login', { username, password });
+  return data;
+}
+
+export async function registerUser(
+  username: string,
+  email: string,
+  password: string
+): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/register', {
+    username,
+    email,
+    password
+  });
   return data;
 }
 
@@ -21,5 +37,73 @@ export async function logoutUser(refreshToken?: string | null): Promise<void> {
 
 export async function fetchCurrentUser(): Promise<AuthUserProfile> {
   const { data } = await apiClient.get<{ data?: AuthUserProfile }>('/v1/users/me');
+  return data.data ?? {};
+}
+
+/**
+ * Swaps the one-time OAuth exchange code (from the Google callback redirect) for a full
+ * SwiftDrop token pair.  The code expires in 2 minutes and is single-use.
+ */
+export async function exchangeOAuthCode(code: string): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/oauth2/exchange', { code });
+  return data;
+}
+
+/**
+ * Returns the URL that starts the Google OAuth 2.0 login flow on the backend.
+ * The browser is navigated here directly (not via fetch/axios) so Google can
+ * perform a full redirect.
+ */
+export function googleAuthorizeUrl(): string {
+  return '/api/v1/auth/oauth2/google/authorize';
+}
+
+// ── Admin user management (SYSTEM_ADMIN only) ─────────────────────────────
+
+export type PagedUsers = {
+  content: UserProfileItem[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  hasNext: boolean;
+};
+
+/** List / search all platform users. Requires SYSTEM_ADMIN role. */
+export async function listUsers(params?: {
+  role?: UserRole;
+  status?: UserStatus;
+  search?: string;
+  page?: number;
+  size?: number;
+}): Promise<PagedUsers> {
+  const { data } = await apiClient.get<{ data?: components['schemas']['PagedUserProfileResponse'] }>(
+    '/v1/users',
+    { params }
+  );
+  const paged = data.data ?? {};
+  return {
+    content:       paged.content       ?? [],
+    totalElements: paged.totalElements ?? 0,
+    totalPages:    paged.totalPages    ?? 0,
+    page:          paged.page          ?? 0,
+    hasNext:       paged.hasNext       ?? false
+  };
+}
+
+/** Change a user's role. Requires SYSTEM_ADMIN role. */
+export async function updateUserRole(userId: string, role: UserRole): Promise<UserProfileItem> {
+  const { data } = await apiClient.patch<{ data?: UserProfileItem }>(
+    `/v1/users/${userId}/role`,
+    { role }
+  );
+  return data.data ?? {};
+}
+
+/** Change a user's account status. Requires SYSTEM_ADMIN role. */
+export async function updateUserStatus(userId: string, status: UserStatus): Promise<UserProfileItem> {
+  const { data } = await apiClient.patch<{ data?: UserProfileItem }>(
+    `/v1/users/${userId}/status`,
+    { status }
+  );
   return data.data ?? {};
 }

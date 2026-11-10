@@ -6,18 +6,17 @@ import {
   EmptyState,
   PageHeader,
   PublicHeader,
-  Skeleton,
-  SurfaceCard
+  Skeleton
 } from '@/design-system';
-import { TrackingDetails } from '../components/TrackingDetails';
 import { TrackingSearchForm } from '../components/TrackingSearchForm';
+import { TrackingDetails } from '../components/TrackingDetails';
 import { useTrackingStream } from '@/hooks/useTrackingStream';
 import { isTerminalPublicStatus, TrackingApiError } from '@/services/api/trackingHubApi';
 
 export function PublicTrackingPage() {
   const { trackingNumber } = useParams<{ trackingNumber: string }>();
   const navigate = useNavigate();
-  const { view, connection, error, isLoading, retry } = useTrackingStream(trackingNumber);
+  const { view, connection, error, retry } = useTrackingStream(trackingNumber);
 
   const openTracking = (value: string) => {
     const next = value.trim();
@@ -37,10 +36,18 @@ export function PublicTrackingPage() {
   const rateLimited = error instanceof TrackingApiError && error.status === 429;
   const fatalError = error !== null && view === null;
 
+  const hasTracking = Boolean(trackingNumber?.trim());
+
   return (
     <VelocityDensityProvider density="comfortable">
       <div className="min-h-screen bg-canvas text-primary">
-        <PublicHeader onTrack={openTracking} onSignIn={() => navigate('/login')} />
+        <PublicHeader
+          onTrack={openTracking}
+          onSignIn={() => navigate('/login')}
+          trackingNumber={trackingNumber}
+          onClearInput={clearTracking}
+          showEmptySearch={false}
+        />
 
         <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6">
           <PageHeader
@@ -49,16 +56,11 @@ export function PublicTrackingPage() {
             className="rounded-xl border border-border-subtle px-5 py-5 sm:px-8"
           />
 
-          <SurfaceCard>
-            <TrackingSearchForm
-              defaultValue={trackingNumber ?? ''}
-              loading={isLoading && Boolean(trackingNumber)}
-              onTrack={openTracking}
-              onClear={clearTracking}
-            />
-          </SurfaceCard>
+          {!hasTracking && (
+            <TrackingSearchForm defaultValue="" onTrack={openTracking} onClear={clearTracking} />
+          )}
 
-          {!trackingNumber ? (
+          {!hasTracking ? (
             <EmptyState
               type="no-results"
               title="Enter a tracking number"

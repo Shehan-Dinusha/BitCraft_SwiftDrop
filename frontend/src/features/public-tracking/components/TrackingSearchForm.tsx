@@ -45,11 +45,11 @@ export function TrackingSearchForm({
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="flex flex-col gap-3 sm:flex-row sm:items-end"
+      className="flex flex-col gap-2 sm:flex-row sm:items-center"
     >
       <Field
         label="Tracking number"
-        hint="Example: SD-2026-000123"
+        hint="Example: SD-XXXX-XXXXXX"
         error={error ?? undefined}
         className="min-w-0 flex-1"
       >
@@ -68,7 +68,13 @@ export function TrackingSearchForm({
           inputClassName="font-mono tabular-nums"
         />
       </Field>
-      <Button type="submit" loading={loading} loadingLabel="Tracking…" className="w-full sm:w-auto">
+      <Button
+        type="submit"
+        loading={loading}
+        loadingLabel="Tracking…"
+        density="comfortable"
+        className="w-full sm:w-auto shrink-0"
+      >
         {buttonLabel}
       </Button>
     </form>

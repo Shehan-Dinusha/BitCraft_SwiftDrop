@@ -12,6 +12,7 @@ import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CancelOrderRequest;
 import com.swiftdrop.order.dto.CreateOrderRequest;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
+import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.InternalCreateOrderRequest;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -103,6 +105,7 @@ public class CustomerOrderService {
                 .pickupPostalCode(request.getPickupPostalCode())
                 .pickupContactName(request.getPickupContactName())
                 .pickupContactPhone(request.getPickupContactPhone())
+                .pickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()))
                 .deliveryAddressLine1(request.getDeliveryAddressLine1())
                 .deliveryAddressLine2(request.getDeliveryAddressLine2())
                 .deliveryCity(request.getDeliveryCity())
@@ -110,6 +113,7 @@ public class CustomerOrderService {
                 .deliveryPostalCode(request.getDeliveryPostalCode())
                 .recipientName(request.getRecipientName())
                 .recipientPhone(request.getRecipientPhone())
+                .recipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()))
                 .recipientEmail(request.getRecipientEmail())
                 .lengthCm(request.getLengthCm())
                 .widthCm(request.getWidthCm())
@@ -117,6 +121,7 @@ public class CustomerOrderService {
                 .actualWeightKg(request.getActualWeightKg())
                 .chargeableWeightKg(estimate.getChargeableWeightKg())
                 .itemDescription(request.getItemDescription())
+                .customerNotes(blankToNull(request.getCustomerNotes()))
                 .declaredValue(request.getDeclaredValue() != null ? request.getDeclaredValue() : BigDecimal.ZERO)
                 .codAmount(request.getCodAmount() != null ? request.getCodAmount() : BigDecimal.ZERO)
                 .prohibitedItemsDeclared(request.getProhibitedItemsDeclared())
@@ -143,6 +148,13 @@ public class CustomerOrderService {
     public CustomerOrderResponse getOrderById(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
         return CustomerOrderResponse.fromEntity(order);
+    }
+
+    /** The statuses an order has been through, oldest first. Owner only (404 for anyone else), like the other reads. */
+    @Transactional(readOnly = true)
+    public List<OrderStatusHistoryEntry> getStatusHistory(UUID orderId, UUID callerId, String callerRole) {
+        CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
+        return orderStatusHistoryService.listForOrder(order.getOrderId());
     }
 
     @Transactional(readOnly = true)
@@ -198,6 +210,10 @@ public class CustomerOrderService {
         }
     }
 
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     private boolean isPrivilegedRole(String callerRole) {
         UserRole role = UserRole.fromClaim(callerRole);
         return role == UserRole.DISPATCHER || role == UserRole.SYSTEM_ADMIN;
@@ -218,6 +234,7 @@ public class CustomerOrderService {
         if (request.getPickupPostalCode() != null) order.setPickupPostalCode(request.getPickupPostalCode());
         if (request.getPickupContactName() != null) order.setPickupContactName(request.getPickupContactName());
         if (request.getPickupContactPhone() != null) order.setPickupContactPhone(request.getPickupContactPhone());
+        if (request.getPickupContactAlternatePhone() != null) order.setPickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()));
 
         if (request.getDeliveryAddressLine1() != null) order.setDeliveryAddressLine1(request.getDeliveryAddressLine1());
         if (request.getDeliveryAddressLine2() != null) order.setDeliveryAddressLine2(request.getDeliveryAddressLine2());
@@ -226,9 +243,11 @@ public class CustomerOrderService {
         if (request.getDeliveryPostalCode() != null) order.setDeliveryPostalCode(request.getDeliveryPostalCode());
         if (request.getRecipientName() != null) order.setRecipientName(request.getRecipientName());
         if (request.getRecipientPhone() != null) order.setRecipientPhone(request.getRecipientPhone());
+        if (request.getRecipientAlternatePhone() != null) order.setRecipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()));
         if (request.getRecipientEmail() != null) order.setRecipientEmail(request.getRecipientEmail());
 
         if (request.getItemDescription() != null) order.setItemDescription(request.getItemDescription());
+        if (request.getCustomerNotes() != null) order.setCustomerNotes(blankToNull(request.getCustomerNotes()));
         if (request.getDeclaredValue() != null) order.setDeclaredValue(request.getDeclaredValue());
         if (request.getCodAmount() != null) order.setCodAmount(request.getCodAmount());
 
@@ -278,6 +297,11 @@ public class CustomerOrderService {
 
         if (order.getStatus().isTerminal()) {
             throw new InvalidOrderStateException("Order " + orderId + " is already in terminal state " + order.getStatus());
+        }
+        // A customer can cancel only a booked parcel that no courier has been assigned to. Dispatchers
+        // and admins keep the wider right, because they have to stop parcels that are already moving.
+        if (!isPrivilegedRole(callerRole) && order.getStatus() != PublicOrderStatus.CREATED) {
+            throw new InvalidOrderStateException("Only a booked parcel with no courier assigned yet can be cancelled.");
         }
 
         order.setStatus(PublicOrderStatus.CANCELLED);

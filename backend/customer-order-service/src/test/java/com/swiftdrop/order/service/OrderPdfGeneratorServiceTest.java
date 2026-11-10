@@ -107,6 +107,32 @@ class OrderPdfGeneratorServiceTest {
     }
 
     @Test
+    @DisplayName("Label shows the recipient's backup phone and a one-line instruction, not the pickup backup phone")
+    void labelShowsBackupPhoneAndInstruction() throws Exception {
+        sampleOrder.setRecipientAlternatePhone("+94715556677");
+        sampleOrder.setPickupContactAlternatePhone("+94779998888");
+        sampleOrder.setCustomerNotes("Call on arrival, the gate is blue. " + "Leave with the neighbour if nobody answers. ".repeat(6));
+
+        String label = pageText(new PdfReader(pdfGeneratorService.generateShippingLabelAndReceiptPdf(sampleOrder)), 1);
+
+        assertThat(label).contains("Alt +94 71 555 6677", "Call on arrival, the gate is blue.", "...");
+        assertThat(label).doesNotContain("+94 77 999 8888", "+94779998888");
+    }
+
+    @Test
+    @DisplayName("Booking receipt shows the delivery instructions in full but no backup phones")
+    void receiptShowsInstructionsOnly() throws Exception {
+        sampleOrder.setRecipientAlternatePhone("+94715556677");
+        sampleOrder.setPickupContactAlternatePhone("+94779998888");
+        sampleOrder.setCustomerNotes("Call on arrival, the gate is blue.");
+
+        String receipt = pageText(new PdfReader(pdfGeneratorService.generateShippingLabelAndReceiptPdf(sampleOrder)), 2);
+
+        assertThat(receipt).contains("DELIVERY INSTRUCTIONS", "Call on arrival, the gate is blue.");
+        assertThat(receipt).doesNotContain("555 6677", "999 8888", "5556677", "9998888");
+    }
+
+    @Test
     @DisplayName("Booking receipt has the fee but no phones, emails, street addresses or internal ids")
     void bookingReceiptIsPrivate() throws Exception {
         String receipt = pageText(new PdfReader(pdfGeneratorService.generateShippingLabelAndReceiptPdf(sampleOrder)), 2);

@@ -131,6 +131,37 @@ class CreateOrderValidationTest {
     }
 
     @Test
+    @DisplayName("The optional second recipient phone and the notes may be left out or filled in")
+    void alternatePhoneAndNotesAreOptional() throws Exception {
+        create(r -> { }).andExpect(status().isOk());
+        create(r -> {
+            r.setRecipientAlternatePhone("+94112345678");
+            r.setPickupContactAlternatePhone("+94715550101");
+            r.setCustomerNotes("Call when you reach the gate");
+        }).andExpect(status().isOk());
+    }
+
+    @ParameterizedTest(name = "[{index}] a bad second recipient phone is rejected")
+    @ValueSource(strings = {"12345", "+9471abc4567", "0711234567890", " "})
+    void badAlternatePhoneIsRejected(String phone) throws Exception {
+        create(r -> r.setRecipientAlternatePhone(phone)).andExpect(status().isBadRequest());
+        create(r -> r.setPickupContactAlternatePhone(phone)).andExpect(status().isBadRequest());
+    }
+
+    @ParameterizedTest(name = "[{index}] unsafe notes are rejected")
+    @ValueSource(strings = {XSS, "Leave at <b>gate</b>"})
+    void unsafeNotesAreRejected(String notes) throws Exception {
+        create(r -> r.setCustomerNotes(notes)).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Notes longer than 500 characters are rejected")
+    void longNotesAreRejected() throws Exception {
+        create(r -> r.setCustomerNotes("a".repeat(501))).andExpect(status().isBadRequest());
+        create(r -> r.setCustomerNotes("a".repeat(500))).andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("Script tags in the item description are rejected")
     void scriptInDescriptionIsRejected() throws Exception {
         create(r -> r.setItemDescription(XSS)).andExpect(status().isBadRequest());
