@@ -144,6 +144,20 @@ spec:
                   name: swiftdrop-bootstrap-admin
                   key: district
                   optional: true
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-google-oauth
+                  key: client-id
+                  optional: true
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: swiftdrop-google-oauth
+                  key: client-secret
+                  optional: true
+            - name: GOOGLE_REDIRECT_URI
+              value: ""
           resources:
             requests:
               cpu: 250m
