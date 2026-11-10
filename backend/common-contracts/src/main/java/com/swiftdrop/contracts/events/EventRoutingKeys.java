@@ -19,4 +19,6 @@ public final class EventRoutingKeys {
 
     public static final String DISPATCH_COURIER_ASSIGNED = "dispatch.courier.assigned";
     public static final String DISPATCH_FAILED = "dispatch.failed";
+
+    public static final String MERCHANT_APPROVED = "merchant.approved";
 }
