@@ -31,7 +31,7 @@ than hidden; the STOMP session handler is the main untested block.
 
 ## Committed artifacts
 
-- `surefire-reports/*.txt` - 18 suite summaries from the passing gateway run.
+- `surefire-reports/*.txt` - 17 suite summaries from the passing gateway run.
 - `jacoco/index.html` - browsable JaCoCo report (open it locally).
 - `jacoco/jacoco.csv` - machine-readable per-class coverage used for the numbers
   above.
