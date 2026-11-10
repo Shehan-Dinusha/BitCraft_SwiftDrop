@@ -3,9 +3,7 @@ package com.swiftdrop.notification.messaging;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.messaging.consumer.NotificationEventConsumer;
-import com.swiftdrop.notification.messaging.trigger.EventEnvelope;
-import com.swiftdrop.notification.messaging.trigger.NotificationTrigger;
-import com.swiftdrop.notification.messaging.trigger.ParcelStatusTrigger;
+import com.swiftdrop.notification.messaging.trigger.*;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,18 +37,24 @@ class NotificationEventConsumerTest {
 
     @BeforeEach
     void setUp() {
-        consumer = new NotificationEventConsumer(objectMapper, dispatcher, List.of(new ParcelStatusTrigger()));
+        consumer = new NotificationEventConsumer(objectMapper, dispatcher, List.of(
+                new PickedUpTrigger(),
+                new OutForDeliveryTrigger(),
+                new DeliveredTrigger(),
+                new FailedTrigger()
+        ));
     }
 
     @Test
-    @DisplayName("Should consume parcel status changed event and dispatch SMS notification via trigger")
+    @DisplayName("Should consume parcel status changed event and dispatch SMS notification for PICKED_UP")
     void testConsumePickedUpEvent() {
         UUID customerId = UUID.randomUUID();
         String json = """
                 {
                     "customerId": "%s",
                     "trackingNumber": "SD-1111",
-                    "newPublicStatus": "PICKED_UP"
+                    "newPublicStatus": "PICKED_UP",
+                    "courierName": "Kamal Perera"
                 }
                 """.formatted(customerId);
 
@@ -68,6 +72,36 @@ class NotificationEventConsumerTest {
         assertThat(request.templateCode()).isEqualTo("PARCEL_PICKED_UP");
         assertThat(request.channel()).isEqualTo("SMS");
         assertThat(request.referenceId()).isEqualTo("SD-1111");
+        assertThat(request.templateParams()).containsEntry("courierName", "Kamal Perera");
+    }
+
+    @Test
+    @DisplayName("Should dispatch SMS notification for OUT_FOR_DELIVERY status")
+    void testConsumeOutForDeliveryEvent() {
+        UUID customerId = UUID.randomUUID();
+        String json = """
+                {
+                    "customerId": "%s",
+                    "trackingNumber": "SD-3333",
+                    "newPublicStatus": "OUT_FOR_DELIVERY",
+                    "courierName": "Sunil Shantha"
+                }
+                """.formatted(customerId);
+
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("parcel.status.changed.out_for_delivery");
+        Message message = new Message(json.getBytes(StandardCharsets.UTF_8), props);
+
+        consumer.onNotificationEvent(message);
+
+        ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
+        verify(dispatcher).dispatch(captor.capture());
+
+        DispatchNotificationRequest request = captor.getValue();
+        assertThat(request.recipientId()).isEqualTo(customerId);
+        assertThat(request.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
+        assertThat(request.channel()).isEqualTo("SMS");
+        assertThat(request.templateParams()).containsEntry("courierName", "Sunil Shantha");
     }
 
     @Test
@@ -78,7 +112,8 @@ class NotificationEventConsumerTest {
                 {
                     "customerId": "%s",
                     "trackingNumber": "SD-2222",
-                    "newPublicStatus": "DELIVERED"
+                    "newPublicStatus": "DELIVERED",
+                    "deliveredAt": "2026-11-10T08:30:00Z"
                 }
                 """.formatted(customerId);
 
@@ -92,8 +127,39 @@ class NotificationEventConsumerTest {
         verify(dispatcher).dispatch(captor.capture());
 
         DispatchNotificationRequest request = captor.getValue();
+        assertThat(request.recipientId()).isEqualTo(customerId);
         assertThat(request.templateCode()).isEqualTo("PARCEL_DELIVERED");
         assertThat(request.channel()).isEqualTo("EMAIL");
+        assertThat(request.templateParams()).containsEntry("deliveredAt", "2026-11-10T08:30:00Z");
+    }
+
+    @Test
+    @DisplayName("Should dispatch SMS notification for FAILED delivery status")
+    void testConsumeFailedEvent() {
+        UUID customerId = UUID.randomUUID();
+        String json = """
+                {
+                    "customerId": "%s",
+                    "trackingNumber": "SD-4444",
+                    "newPublicStatus": "FAILED",
+                    "failureReason": "Customer unavailable at delivery address"
+                }
+                """.formatted(customerId);
+
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("parcel.status.changed.failed");
+        Message message = new Message(json.getBytes(StandardCharsets.UTF_8), props);
+
+        consumer.onNotificationEvent(message);
+
+        ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
+        verify(dispatcher).dispatch(captor.capture());
+
+        DispatchNotificationRequest request = captor.getValue();
+        assertThat(request.recipientId()).isEqualTo(customerId);
+        assertThat(request.templateCode()).isEqualTo("PARCEL_FAILED");
+        assertThat(request.channel()).isEqualTo("SMS");
+        assertThat(request.templateParams()).containsEntry("failureReason", "Customer unavailable at delivery address");
     }
 
     @Test
@@ -125,43 +191,5 @@ class NotificationEventConsumerTest {
         consumer.onNotificationEvent(message);
 
         verify(dispatcher, never()).dispatch(any());
-    }
-
-    @Test
-    @DisplayName("Should invoke all matching triggers in observer pipeline")
-    void testMultipleMatchingTriggers() {
-        NotificationTrigger trigger1 = mock(NotificationTrigger.class);
-        NotificationTrigger trigger2 = mock(NotificationTrigger.class);
-
-        when(trigger1.matches(any(EventEnvelope.class))).thenReturn(true);
-        when(trigger2.matches(any(EventEnvelope.class))).thenReturn(true);
-
-        DispatchNotificationRequest req1 = new DispatchNotificationRequest(
-                UUID.randomUUID(), "SMS", "TEMPLATE_1", "+94771111111", null, "REF-1");
-        DispatchNotificationRequest req2 = new DispatchNotificationRequest(
-                UUID.randomUUID(), "EMAIL", "TEMPLATE_2", "test@test.com", null, "REF-2");
-
-        when(trigger1.build(any(EventEnvelope.class))).thenReturn(List.of(req1));
-        when(trigger2.build(any(EventEnvelope.class))).thenReturn(List.of(req2));
-
-        NotificationEventConsumer observerConsumer =
-                new NotificationEventConsumer(objectMapper, dispatcher, List.of(trigger1, trigger2));
-
-        String json = """
-                {
-                    "customerId": "%s",
-                    "trackingNumber": "SD-9999",
-                    "status": "CUSTOM"
-                }
-                """.formatted(UUID.randomUUID());
-
-        MessageProperties props = new MessageProperties();
-        props.setReceivedRoutingKey("custom.event");
-        Message message = new Message(json.getBytes(StandardCharsets.UTF_8), props);
-
-        observerConsumer.onNotificationEvent(message);
-
-        verify(dispatcher).dispatch(req1);
-        verify(dispatcher).dispatch(req2);
     }
 }
