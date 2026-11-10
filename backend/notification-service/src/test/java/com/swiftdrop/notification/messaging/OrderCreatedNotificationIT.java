@@ -1,6 +1,7 @@
 package com.swiftdrop.notification.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.notification.domain.repository.ProcessedEventRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.messaging.consumer.NotificationEventConsumer;
 import com.swiftdrop.notification.messaging.trigger.OrderCreatedTrigger;
@@ -32,12 +33,15 @@ class OrderCreatedNotificationIT {
     @Mock
     private MultiChannelNotificationDispatcher dispatcher;
 
+    @Mock
+    private ProcessedEventRepository processedEventRepository;
+
     private NotificationEventConsumer consumer;
 
     @BeforeEach
     void setUp() {
         OrderCreatedTrigger orderCreatedTrigger = new OrderCreatedTrigger();
-        consumer = new NotificationEventConsumer(objectMapper, dispatcher, List.of(orderCreatedTrigger));
+        consumer = new NotificationEventConsumer(objectMapper, dispatcher, List.of(orderCreatedTrigger), processedEventRepository);
     }
 
     @Test

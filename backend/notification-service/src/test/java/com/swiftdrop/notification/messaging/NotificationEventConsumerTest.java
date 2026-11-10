@@ -1,6 +1,7 @@
 package com.swiftdrop.notification.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.notification.domain.repository.ProcessedEventRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.messaging.consumer.NotificationEventConsumer;
 import com.swiftdrop.notification.messaging.trigger.*;
@@ -33,6 +34,9 @@ class NotificationEventConsumerTest {
     @Mock
     private MultiChannelNotificationDispatcher dispatcher;
 
+    @Mock
+    private ProcessedEventRepository processedEventRepository;
+
     private NotificationEventConsumer consumer;
 
     @BeforeEach
@@ -42,7 +46,7 @@ class NotificationEventConsumerTest {
                 new OutForDeliveryTrigger(),
                 new DeliveredTrigger(),
                 new FailedTrigger()
-        ));
+        ), processedEventRepository);
     }
 
     @Test
