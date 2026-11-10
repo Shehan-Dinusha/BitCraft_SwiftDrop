@@ -239,6 +239,8 @@ fix(analytics): derive metrics from real event data
 
 **Branch:** `feature/m10-reporting-api`
 
+**Implemented locally:** `Buddhika/feat/reporting-api`; see the [implementation/viva explanation](part-4-reporting-api.md), [self-verification/commit guide](part-4-self-verification.md), and [check evidence](../../test-reports/m10/part-4/README.md). Three reporting routes, inclusive 90-day validation, operational role checks including existing aliases, and synchronized OpenAPI/types are implemented. Automated controller and real SQL/HTTP checks pass. Real-account gateway checks and M1/M2 trust-boundary confirmation remain pending; no merge or owner approval is claimed.
+
 ### Planned endpoints
 
 ```http

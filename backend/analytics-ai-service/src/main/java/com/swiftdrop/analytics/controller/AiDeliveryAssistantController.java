@@ -2,6 +2,7 @@ package com.swiftdrop.analytics.controller;
 
 import com.swiftdrop.analytics.dto.*;
 import com.swiftdrop.analytics.service.AiDeliveryAssistantService;
+import com.swiftdrop.analytics.security.OperationalReportAccess;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +29,7 @@ public class AiDeliveryAssistantController {
     }
 
     @PostMapping("/predict-delay")
+    @OperationalReportAccess
     @Operation(summary = "Calculate predictive delay risk score and operational mitigation")
     public ApiResponse<DelayRiskPredictionResponse> predictDelayRisk(
             @Valid @RequestBody DelayRiskPredictionRequest request) {
@@ -35,6 +37,7 @@ public class AiDeliveryAssistantController {
     }
 
     @PostMapping("/reroute-suggestions")
+    @OperationalReportAccess
     @Operation(summary = "Generate dynamic transit reroute suggestions for delayed parcels")
     public ApiResponse<AnomalyRerouteResponse> suggestReroute(
             @Valid @RequestBody AnomalyRerouteRequest request) {
@@ -49,6 +52,7 @@ public class AiDeliveryAssistantController {
     }
 
     @GetMapping("/audits")
+    @OperationalReportAccess
     @Operation(summary = "Retrieve recent AI tool execution audit logs for compliance")
     public ApiResponse<List<AiAuditResponse>> getAudits() {
         return ApiResponse.success(assistantService.listRecentAudits(), "Recent AI audits retrieved");

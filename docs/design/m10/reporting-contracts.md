@@ -2,11 +2,11 @@
 
 ## Decision status
 
-This is the M10 implementation proposal established in Part 1. `Asia/Colombo`, date rules, and empty-result conventions are the chosen M10 design defaults. Cross-service outcome/retry/assignment rules require the confirmations in [handoff requests](handoff-requests.md). No teammate approval or implemented endpoint is implied. Update this document when a handoff changes a rule, before implementing that rule.
+This is the M10 contract established in Part 1 and implemented incrementally through Part 4. `Asia/Colombo`, date rules, and empty-result conventions are the chosen M10 defaults. Cross-service outcome/retry/assignment rules still require the confirmations in [handoff requests](handoff-requests.md). Implementation does not imply teammate approval. Update this document when a handoff changes a rule.
 
-The published current contract remains `docs/api-specs/analytics-ai-service.yaml`. Future endpoints below are design examples, not captured production responses. Add them to OpenAPI and regenerate frontend types in Part 4/6 when their handlers are implemented.
+The published current contract is `docs/api-specs/analytics-ai-service.yaml`. Part 4's reporting endpoints and frontend declarations are synchronized with it. JSON below illustrates the implemented report shapes; it is not captured production data. Future chat/tool behavior remains a proposal for later parts.
 
-Part 3 implements the underlying read models and corrects existing KPI/courier compatibility responses. SLA counts/rates, transit averages, and ratings are nullable/deprecated where no measurement contract exists. `totalParcels` on the old KPI endpoint means distinct orders created today in Colombo. The dedicated daily/rate/workload paths below remain future Part 4 endpoints.
+Part 3 implements the underlying read models and corrects existing KPI/courier compatibility responses. SLA counts/rates, transit averages, and ratings are nullable/deprecated where no measurement contract exists. `totalParcels` on the old KPI endpoint means distinct orders created today in Colombo. Part 4 exposes the dedicated daily/rate/workload paths below with operational role checks.
 
 ## Time and range rules
 
@@ -54,7 +54,9 @@ Current code evidence: `PublicOrderStatus.isTerminal()` includes `FAILED`, `DELI
 
 Part 3 clarification: contradictory equal-time facts or incompatible terminal histories set `conflict_reason` on the order projection. Genuine creations remain counted, but conflicted outcome/workload contributions are removed until a verified correction policy exists. This is explicit exclusion, not an arbitrary first-arrival decision. Historical canonical events remain in the inbox. Courier daily `active` is current workload bucketed by assignment date, not an end-of-day historical snapshot.
 
-## Proposed reporting API
+## Reporting API (implemented in Part 4)
+
+The response designs below are now implemented; see [Part 4](part-4-reporting-api.md) for actual validation and authorization behavior. Real-token gateway acceptance remains a manual check. Direct service access still depends on the agreed internal network boundary.
 
 All three endpoints require a verified `DISPATCHER` or `SYSTEM_ADMIN`. UI persona `ADMIN_OPS` is not an authorization role. Missing/invalid credentials through gateway produce 401; authenticated disallowed roles produce 403. Direct service access needs a trusted network boundary/header policy agreed with M1/M2. A request JSON field cannot establish identity.
 
@@ -109,7 +111,7 @@ GET /api/v1/analytics/success-rate?from=2026-11-08&to=2026-11-09
 }
 ```
 
-For an empty outcome range, counts are zero and both rates are null. Because shared `ApiResponse` omits null envelope fields but future nested DTO serialization is not defined yet, Part 4 must explicitly preserve the nested rate fields as JSON null and verify that contract in OpenAPI/generated types. The UI displays "No completed deliveries", not 100% success.
+For an empty outcome range, counts are zero and both rates are null. Part 4 explicitly preserves nested rate fields as JSON null even though shared `ApiResponse` omits null envelope fields; HTTP tests, OpenAPI and generated types cover this contract. The future UI should display "No completed deliveries", not 100% success.
 
 Range rates are computed from summed outcome counts, not the unweighted average of daily percentages. For example, 1/1 on day one and 1/9 on day two produce 2/10 = 20%, not 55.56%.
 
