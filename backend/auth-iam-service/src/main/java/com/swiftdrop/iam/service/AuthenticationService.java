@@ -67,7 +67,7 @@ public class AuthenticationService {
         return AuthMapper.toTokenResponse(user, accessToken, refreshToken.rawToken());
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = {InvalidRefreshTokenException.class, AccountNotActiveException.class})
     public TokenResponse refresh(String rawRefreshToken, String ipAddress, String userAgent) {
         RefreshTokenService.RotatedRefreshToken rotated =
                 refreshTokenService.rotate(rawRefreshToken, userAgent, ipAddress);
