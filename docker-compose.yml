@@ -320,7 +320,9 @@ services:
     container_name: swiftdrop-webhook-resiliency-service
     profiles: ["apps"]
     ports:
-      - "8087:8087"
+      # Loopback only: the service trusts gateway-injected identity headers, so it must not be
+      # reachable from other machines. The gateway uses the swiftdrop-net network, not this port.
+      - "127.0.0.1:8087:8087"
     environment:
       DB_URL: jdbc:postgresql://webhook-postgres:5432/swiftdrop_webhook
       DB_USERNAME: ${POSTGRES_USER:-swiftdrop}

@@ -6,6 +6,14 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Legacy dead-letter history written by the synchronous {@code OutboundWebhookDispatcher}.
+ *
+ * <p>Kept because the existing DLQ list/replay API and the operations console read it. It is not the
+ * source of truth for delivery jobs: a job that exhausts its attempts becomes
+ * {@link WebhookDeliveryStatus#DEAD} in {@code webhook_deliveries}. Serving dead jobs through the DLQ API
+ * (a read model over {@code webhook_deliveries}) belongs to the replay redesign.</p>
+ */
 @Entity
 @Table(name = "dead_letter_webhook_records")
 @Getter

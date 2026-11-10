@@ -6,6 +6,18 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * One HTTP attempt.
+ *
+ * <p>Two shapes coexist (enforced by {@code ck_webhook_delivery_attempts_model}):</p>
+ * <ul>
+ *   <li><b>Job attempt</b>: {@link #deliveryId} set, {@link #payload} null. The payload is read through
+ *       the delivery's inbound event instead of being copied into every attempt.</li>
+ *   <li><b>Legacy attempt</b>: {@link #deliveryId} null, own {@link #payload} copy. Written before V3 and,
+ *       until they are migrated to delivery jobs, by test pings and legacy dead-letter replays.
+ *       Legacy failures recorded HTTP 500 regardless of the real outcome.</li>
+ * </ul>
+ */
 @Entity
 @Table(name = "webhook_delivery_attempts")
 @Getter
@@ -22,6 +34,9 @@ public class WebhookDeliveryAttempt {
     @Column(name = "attempt_id", nullable = false, unique = true, updatable = false)
     private UUID attemptId;
 
+    @Column(name = "delivery_id", updatable = false)
+    private UUID deliveryId;
+
     @Column(name = "endpoint_id", nullable = false)
     private UUID endpointId;
 
@@ -31,8 +46,15 @@ public class WebhookDeliveryAttempt {
     @Column(name = "event_type", nullable = false, length = 100)
     private String eventType;
 
-    @Column(name = "payload", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "payload", columnDefinition = "TEXT")
     private String payload;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "error_class", length = 32)
+    private AttemptErrorClass errorClass;
+
+    @Column(name = "latency_ms")
+    private Integer latencyMs;
 
     @Column(name = "http_status_code")
     private Integer httpStatusCode;

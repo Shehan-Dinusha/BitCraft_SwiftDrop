@@ -20,6 +20,21 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:swiftdrop}
     password: ${RABBITMQ_PASSWORD:changeme_rabbit}
+    listener:
+      simple:
+        # Ingestion is a short database transaction per message; keep the unacknowledged window small so a
+        # crash redelivers little, and bound consumers per replica.
+        prefetch: 10
+        concurrency: 2
+        max-concurrency: 4
+webhook:
+  ingestion:
+    retry:
+      # Attempts per message (including the first) before it is dead-lettered.
+      max-attempts: 3
+      initial-interval: 1s
+      multiplier: 2.0
+      max-interval: 10s
 management:
   endpoints:
     web:

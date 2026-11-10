@@ -4,17 +4,15 @@ import { Button } from '@/design-system/primitives/Button';
 import { Modal } from '@/design-system/primitives/Modal';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
 import { webhookApi, type DeadLetterWebhookResponse } from '@/services/api/webhookApi';
+import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { RefreshCw, Play, Eye, AlertOctagon, CheckCircle2, History } from 'lucide-react';
 
 interface GridDlqRow extends DeadLetterWebhookResponse {
   id: string;
 }
 
-interface WebhookDlqReplayTableProps {
-  merchantId?: string;
-}
-
-export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps) {
+/** Records are scoped by the backend to the caller (own merchant, or all merchants for operations roles). */
+export function WebhookDlqReplayTable() {
   const [records, setRecords] = useState<DeadLetterWebhookResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreplayedOnly, setUnreplayedOnly] = useState(false);
@@ -27,15 +25,15 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
   const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await webhookApi.listDlq(merchantId, unreplayedOnly);
+      const data = await webhookApi.listDlq(unreplayedOnly);
       setRecords(data || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch DLQ records';
+      const msg = apiErrorMessage(err, 'Failed to fetch DLQ records');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setLoading(false);
     }
-  }, [merchantId, unreplayedOnly]);
+  }, [unreplayedOnly]);
 
   useEffect(() => {
     fetchRecords();
@@ -53,7 +51,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       }
       await fetchRecords();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to replay webhook';
+      const msg = apiErrorMessage(err, 'Failed to replay webhook');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setReplayLoadingId(null);
@@ -64,7 +62,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
     try {
       setBatchLoading(true);
       setBanner(null);
-      const results = await webhookApi.replayAllDlq(merchantId);
+      const results = await webhookApi.replayAllDlq();
       const successCount = results.filter((r) => r.status === 'SUCCESS').length;
       setBanner({
         tone: 'success',
@@ -72,7 +70,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       });
       await fetchRecords();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Batch replay failed';
+      const msg = apiErrorMessage(err, 'Batch replay failed');
       setBanner({ tone: 'danger', message: msg });
     } finally {
       setBatchLoading(false);
@@ -105,9 +103,9 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
       render: (row) => (
         <span
           className="block max-w-[240px] truncate text-xs text-rose-600"
-          title={row.failureReason || 'Dispatch failure'}
+          title={row.failureReason || row.failureSummary || 'Dispatch failure'}
         >
-          {row.failureReason || 'Failed delivery attempts'}
+          {row.failureSummary || 'Failed delivery attempts'}
         </span>
       )
     },
@@ -257,7 +255,7 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
               </div>
               <div>
                 <span className="text-secondary">Endpoint ID:</span>
-                <p className="font-mono font-medium text-primary">{selectedRecord.endpointId}</p>
+                <p className="font-mono font-medium text-primary">{selectedRecord.endpointId ?? 'Not available'}</p>
               </div>
               <div>
                 <span className="text-secondary">Event Type:</span>
@@ -272,21 +270,32 @@ export function WebhookDlqReplayTable({ merchantId }: WebhookDlqReplayTableProps
             <div>
               <span className="font-semibold text-rose-600">Terminal Failure Reason:</span>
               <p className="mt-1 rounded bg-rose-50 p-2 font-mono text-rose-800">
-                {selectedRecord.failureReason || 'Failed after maximum backoff retries'}
+                {selectedRecord.failureSummary || 'Delivery failed'}
+                {selectedRecord.errorClass ? ` [${selectedRecord.errorClass}]` : ''}
               </p>
+              {/* Raw detail and payload are only returned to the owning merchant and system administrators. */}
+              {selectedRecord.failureReason && (
+                <p className="mt-1 break-all rounded bg-surface-subtle p-2 font-mono text-[11px] text-secondary">
+                  {selectedRecord.failureReason}
+                </p>
+              )}
             </div>
 
             <div>
               <span className="font-semibold text-secondary">JSON Payload Content:</span>
-              <pre className="mt-1 max-h-60 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-[11px] text-emerald-400">
-                {(() => {
-                  try {
-                    return JSON.stringify(JSON.parse(selectedRecord.payload || '{}'), null, 2);
-                  } catch {
-                    return selectedRecord.payload || '{}';
-                  }
-                })()}
-              </pre>
+              {selectedRecord.payload ? (
+                <pre className="mt-1 max-h-60 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-[11px] text-emerald-400">
+                  {(() => {
+                    try {
+                      return JSON.stringify(JSON.parse(selectedRecord.payload), null, 2);
+                    } catch {
+                      return selectedRecord.payload;
+                    }
+                  })()}
+                </pre>
+              ) : (
+                <p className="mt-1 text-secondary">Payload is not available for your role.</p>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
