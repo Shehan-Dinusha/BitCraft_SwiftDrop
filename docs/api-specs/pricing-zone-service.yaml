@@ -38,6 +38,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponsePricingQuoteResponse"
 
+  /api/v1/pricing/estimate:
+    post:
+      tags: [Pricing]
+      summary: Calculate a delivery fee estimate
+      operationId: estimateDeliveryFee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EstimateRequest"
+      responses:
+        "200":
+          description: Delivery fee estimate response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseEstimateResponse"
+
   /api/v1/pricing/zones:
     get:
       tags: [Pricing]
@@ -172,6 +191,97 @@ components:
           type: string
           example: PRICING-2026-V1
 
+    EstimateRequest:
+      type: object
+      required:
+        - pickupDistrict
+        - deliveryDistrict
+        - actualWeightKg
+      properties:
+        pickupDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        actualWeightKg:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 2.5
+        lengthCm:
+          type: number
+          format: double
+          minimum: 0.1
+          example: 20.0
+        widthCm:
+          type: number
+          format: double
+          minimum: 0.1
+          example: 15.0
+        heightCm:
+          type: number
+          format: double
+          minimum: 0.1
+          example: 10.0
+        speed:
+          $ref: "#/components/schemas/OrderSpeed"
+
+    EstimateResponse:
+      type: object
+      properties:
+        pickupDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        pickupZone:
+          type: string
+          example: ZONE_WESTERN
+        deliveryZone:
+          type: string
+          example: ZONE_CENTRAL
+        intraDistrict:
+          type: boolean
+          example: false
+        actualWeightKg:
+          type: number
+          format: double
+          example: 2.5
+        volumetricWeightKg:
+          type: number
+          format: double
+          example: 0.6
+        chargeableWeightKg:
+          type: number
+          format: double
+          example: 2.5
+        speed:
+          $ref: "#/components/schemas/OrderSpeed"
+        baseFee:
+          type: number
+          format: double
+          example: 550.0
+        weightFee:
+          type: number
+          format: double
+          example: 240.0
+        speedSurcharge:
+          type: number
+          format: double
+          example: 395.0
+        estimatedFee:
+          type: number
+          format: double
+          example: 1185.0
+        currency:
+          type: string
+          example: LKR
+        pricingRuleVersionId:
+          type: string
+          example: PRICING-2026-V1
+        strategy:
+          type: string
+          description: Pricing strategy used (STANDARD, EXPRESS or SAME_DAY)
+          example: EXPRESS
+
     PricingZone:
       type: object
       properties:
@@ -235,6 +345,21 @@ components:
           example: Quotation calculated successfully
         data:
           $ref: "#/components/schemas/PricingQuoteResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseEstimateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Estimate calculated successfully
+        data:
+          $ref: "#/components/schemas/EstimateResponse"
         timestamp:
           type: string
           format: date-time
