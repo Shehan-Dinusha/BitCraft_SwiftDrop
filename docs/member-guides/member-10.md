@@ -10,11 +10,21 @@
 | Backend module | `backend/analytics-ai-service` |
 | Local app port | `8089` |
 | Database | `analytics-postgres` container, host port `5440`, database `swiftdrop_analytics` |
-| Frontend folders you own | new `frontend/src/features/admin-ops/pages/AnalyticsDashboardPage.tsx`, `features/admin-ops/components/AiDeliveryAssistantPanel.tsx`, `SlaBreachAlertTicker.tsx`, `src/design-system/components/AiAssistantDock/`, `src/hooks/useAiAssistant.ts`, `src/services/api/analyticsAiApi.ts` |
+| Frontend folders you own | new `frontend/src/features/admin-ops/pages/AnalyticsDashboardPage.tsx`, `features/admin-ops/components/AiDeliveryAssistantPanel.tsx` (operational predictor/audits only), `features/customer/components/CustomerAiAssistant.tsx`, `SlaBreachAlertTicker.tsx`, `src/design-system/components/AiAssistantDock/`, `src/hooks/useAiAssistant.ts`, `src/services/api/analyticsAiApi.ts` |
 | Documentation deliverable | AI tool-calling sequence diagram + complete Analytics ERD schema |
 | Branch prefix | `feature/m10-<short-topic>` (off `dev`, PR back into `dev`) |
 
 Read [README.md](README.md) in this folder once. It has the shared-file ownership map and the list of cross-member contracts.
+
+## Customer-only chatbot requirement (clarified by project owner)
+
+- The conversational AI chatbot is for authenticated **CUSTOMER** accounts only and appears only on `/customer` and `/customer/**` pages.
+- Customers use it to ask about their own orders and obtain delivery estimates. Before tracking, verify ownership through the protected order API using the caller's token; then pass only public-safe tracking fields to the model.
+- Unknown tracking numbers and another customer's tracking numbers must produce the same account-safe response. Never expose another customer's order details.
+- SYSTEM_ADMIN, DISPATCHER, MERCHANT and COURIER accounts must not see the chatbot. Both `/api/v1/ai/chat` and legacy `/agent-query` aliases must reject non-customer roles with 403.
+- The floating customer assistant preserves conversation context and clears it when accounts change. Use the customer's comfortable density and existing accessible UI primitives.
+- Admin/dispatcher analytics, delay-risk prediction and audit inspection remain operational tools. They do not include conversational chat, and customers cannot access operational reports or audit logs.
+- Mock mode and a real Azure/OpenAI-compatible provider use the same customer authorization, ownership checks, tool limits and auditing.
 
 ## 1. What already exists on `dev`
 
@@ -35,7 +45,7 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 - [ ] **Reports from the assignment:** deliveries per day, success vs failure rate, courier workload. Add date-range filters (`from`, `to`) to the KPI endpoints.
 - [ ] **Data sources:** you don't receive `order.created` today (needed for "created per day"). Ask Member 9 to bind it to `analytics.events.queue`.
 - [ ] **MCP (encouraged):** optionally expose the same two tools as an MCP server so the assistant can run them through MCP.
-- [ ] Admin Analytics Dashboard with charts; floating chatbot widget.
+- [ ] Admin Analytics Dashboard with charts; customer-only floating chatbot widget.
 
 ## 3. Boundaries
 
@@ -156,6 +166,8 @@ Rules:
 
 ### PR 1: Analytics correctness
 
+**Implementation status (2026-11-10):** Stages 1–5 are implemented and tested. The reporting gateway acceptance check now passes with real IAM-created dispatcher, system-admin and customer accounts. See the [Stages 1–5 completion guide](../design/m10/stages-1-to-5-summary.md) for the implementation mapping, evidence and commands. This does not mark later AI/frontend/documentation stages complete or imply a PR merge.
+
 
 #### Stage 1: Idempotent consumer
 
@@ -229,6 +241,8 @@ Rules:
 
 #### Stage 6: LLM client abstraction
 
+**Implementation (2026-11-10):** Stages 6–11 code, mock mode, Azure/OpenAI-compatible provider adapter, real API tools, chat orchestration and guardrails are implemented. Follow the [AI assistant connection guide](../design/m10/stages-6-to-11-ai-assistant.md) and [verification evidence](../test-reports/m10/stages-6-to-11/README.md). Live Azure smoke verification still requires an accessible deployment and credentials; later frontend/MCP stages are separate.
+
 **Objective:** Swap providers without code changes.
 
 **Steps:**
@@ -241,6 +255,8 @@ Rules:
 
 
 #### Stage 7: Real provider
+
+**Status:** Provider adapter implemented and protocol-tested. Live Azure verification is deferred until university account access, deployment permission/quota and credentials are available. Continue later stages in mock mode; do not mark the live smoke criterion passed.
 
 **Objective:** Actual LLM with tool calling.
 
@@ -259,7 +275,7 @@ Rules:
 
 **Steps:**
 
-1. `TrackingClient` (gateway public tracking) and `PricingClient` (Member 4 `/estimate`) via `GATEWAY_URL`, 3 s timeout, forwarding the caller's `Authorization`.
+1. `TrackingClient` (verify ownership through gateway `/api/v1/orders/tracking/{trackingNumber}`, then gateway public tracking) and `PricingClient` (Member 4 `/estimate`) via `GATEWAY_URL`, 3 s timeout, forwarding the caller's `Authorization`.
 
 **Commit:** `feat(ai): add tracking and pricing clients`
 
@@ -281,7 +297,7 @@ Rules:
 
 #### Stage 10: Agent loop and chat endpoint
 
-**Objective:** Natural-language questions answered from APIs.
+**Objective:** Customer natural-language questions answered from authorized APIs.
 
 **Steps:**
 
@@ -296,7 +312,7 @@ Rules:
 
 #### Stage 11: Guardrails and audit
 
-**Objective:** Prompt injection can't leak data.
+**Objective:** Prompt injection and cross-customer tracking cannot leak data.
 
 **Steps:**
 
@@ -355,15 +371,18 @@ Rules:
 
 #### Stage 15: Chat widget
 
-**Objective:** Floating AI assistant.
+**Objective:** Floating order assistant visible only to signed-in customers on customer pages.
 
 **Steps:**
 
-1. Implement `AiAssistantDock` (Member 1's slot): floating button, chat panel, 'used tool: …' hint.
+1. Use `AiAssistantSlot` only on `/customer` and `/customer/**` for authenticated CUSTOMER accounts. Hide it for other roles, signed-out users and development persona tokens.
+2. Reuse the shared `AssistantLauncher` and `AssistantPanel` shown in `/catalog#/catalog/courier` for the chatbot's visual style: pill launcher, message bubbles, quick prompts and typing indicator.
+3. Preserve conversation context; support close/reopen, new conversations, visible failures/retry, rate limits and account-change resets. Keep the launcher above mobile navigation.
+4. Keep chat out of operations pages. Enforce CUSTOMER role on the primary and legacy chat APIs, and check order ownership before retrieving public-safe tracking details.
 
 **Commit:** `feat(frontend): add floating AI assistant widget`
 
-**Done when:** Both sample questions work from the UI.
+**Done when:** A real customer can ask both sample questions from customer pages; other personas cannot see or call chat, and another customer's tracking number reveals no order data.
 
 
 ### PR 5: Documentation

@@ -12,7 +12,7 @@ public record AssistantQueryResponse(
         @Schema(description = "Identified user intent", example = "ETA_INQUIRY")
         String detectedIntent,
 
-        @Schema(description = "Model heuristic confidence score (0.0 to 1.0)", example = "0.94")
+        @Schema(description = "Deprecated compatibility field, always 0; no calibrated confidence is available", example = "0.0")
         double confidence,
 
         @Schema(description = "Quick operational action suggestions")

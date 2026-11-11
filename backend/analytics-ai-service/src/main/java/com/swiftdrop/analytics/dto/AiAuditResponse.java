@@ -16,10 +16,10 @@ public record AiAuditResponse(
         @Schema(description = "Caller persona or role", example = "ADMIN_OPS")
         String callerPersona,
 
-        @Schema(description = "Prompt or query submitted", example = "Calculate ETA for Colombo to Kandy")
+        @Schema(description = "Deprecated compatibility field; always null, raw prompts are never stored", nullable = true)
         String promptOrQuery,
 
-        @Schema(description = "Tool output or decision summary", example = "ETA 120 mins with +15m rain delay")
+        @Schema(description = "Safe outcome code only", example = "OK")
         String outputResult,
 
         @Schema(description = "Execution duration in milliseconds", example = "14")

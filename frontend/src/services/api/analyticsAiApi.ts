@@ -11,6 +11,8 @@ export type AnomalyRerouteResponse = components['schemas']['AnomalyRerouteRespon
 export type AssistantQueryRequest = components['schemas']['AssistantQueryRequest'];
 export type AssistantQueryResponse = components['schemas']['AssistantQueryResponse'];
 export type AiAudit = components['schemas']['AiAuditResponse'];
+export type AiChatRequest = components['schemas']['AiChatRequest'];
+export type AiChatResponse = components['schemas']['AiChatResponse'];
 
 interface ApiResponse<T> {
   success: boolean;
@@ -20,6 +22,10 @@ interface ApiResponse<T> {
 }
 
 export const analyticsAiApi = {
+  chat: async (payload: AiChatRequest): Promise<AiChatResponse> => {
+    const res = await apiClient.post<components['schemas']['ApiResponseAiChat']>('/v1/ai/chat', payload);
+    return res.data.data;
+  },
   getOperationalKpis: async (): Promise<OperationalKpiSummary> => {
     const res = await apiClient.get<ApiResponse<OperationalKpiSummary>>('/v1/analytics/kpis');
     return res.data.data;

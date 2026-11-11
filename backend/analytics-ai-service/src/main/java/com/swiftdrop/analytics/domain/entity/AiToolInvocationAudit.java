@@ -21,7 +21,7 @@ public class AiToolInvocationAudit {
     @Column(name = "caller_persona", nullable = false, length = 64)
     private String callerPersona;
 
-    @Column(name = "prompt_or_query", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "prompt_or_query", columnDefinition = "TEXT")
     private String promptOrQuery;
 
     @Column(name = "input_parameters", columnDefinition = "TEXT")
@@ -38,6 +38,20 @@ public class AiToolInvocationAudit {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
+
+    @Column(name = "actor_user_id")
+    private UUID actorUserId;
+    @Column(name = "correlation_id", length = 100)
+    private String correlationId;
+    @Column(name = "outcome", length = 32)
+    private String outcome;
+
+    public UUID getActorUserId() { return actorUserId; }
+    public void setActorUserId(UUID value) { actorUserId = value; }
+    public String getCorrelationId() { return correlationId; }
+    public void setCorrelationId(String value) { correlationId = value; }
+    public String getOutcome() { return outcome; }
+    public void setOutcome(String value) { outcome = value; }
 
     public AiToolInvocationAudit() {}
 

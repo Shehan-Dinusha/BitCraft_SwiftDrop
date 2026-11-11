@@ -43,7 +43,6 @@ class OrderTrackingClientTest {
         when(routes.order()).thenReturn(mockWebServer.url("/").toString());
 
         WebClient webClient = WebClient.builder()
-                .baseUrl(mockWebServer.url("/").toString())
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(512 * 1024))
                 .build();
 

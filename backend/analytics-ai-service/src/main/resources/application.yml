@@ -1,5 +1,11 @@
 server:
   port: 8089
+ai:
+  provider: ${AI_PROVIDER:mock}
+  api-key: ${AI_API_KEY:}
+  model: ${AI_MODEL:}
+  endpoint: ${AI_ENDPOINT:}
+  gateway-url: ${GATEWAY_URL:http://localhost:8080}
 spring:
   application:
     name: analytics-ai-service
