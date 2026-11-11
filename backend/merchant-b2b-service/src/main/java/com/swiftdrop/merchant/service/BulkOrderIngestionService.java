@@ -35,11 +35,13 @@ public class BulkOrderIngestionService {
     private final BulkBatchItemRepository batchItemRepository;
     private final MerchantAccountRepository merchantAccountRepository;
     private final MerchantEventPublisher eventPublisher;
+    private final MerchantApprovalGuard approvalGuard;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
     public BulkIngestBatchResponse processBulkIngest(UUID merchantId, BulkIngestRequest request) {
+        approvalGuard.requireApproved(merchantId);
         log.info("Processing bulk order ingest for merchant: {}, total orders: {}",
                 merchantId, request.orders().size());
 
