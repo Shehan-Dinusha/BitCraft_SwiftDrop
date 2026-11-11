@@ -1,6 +1,7 @@
 package com.swiftdrop.delivery.service;
 
 import com.swiftdrop.contracts.enums.DeliveryState;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.events.delivery.LocationUpdatedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
@@ -14,6 +15,7 @@ import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
 import com.swiftdrop.delivery.exception.DeliveryNotFoundException;
 import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 import com.swiftdrop.delivery.messaging.publisher.DeliveryEventPublisher;
+import com.swiftdrop.delivery.security.DeliveryAccessPolicy;
 import com.swiftdrop.delivery.statemachine.DeliveryStateMachine;
 import com.swiftdrop.delivery.statemachine.actions.AuditTransitionAction;
 import com.swiftdrop.delivery.statemachine.actions.PublishStateTransitionAction;
@@ -220,28 +222,69 @@ public class DeliveryExecutionService {
     }
 
     @Transactional(readOnly = true)
+    public void assertCanAccess(UUID deliveryId, CallerContext caller) {
+        if (caller != null) {
+            DeliverySession session = deliverySessionRepository.findByDeliveryId(deliveryId)
+                    .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found: " + deliveryId));
+            DeliveryAccessPolicy.assertCanAccess(session, caller);
+        }
+    }
+
+    @Transactional(readOnly = true)
     public DeliverySessionResponse getDeliveryById(UUID deliveryId) {
-        return deliverySessionRepository.findByDeliveryId(deliveryId)
-                .map(DeliverySessionResponse::fromEntity)
+        return getDeliveryById(deliveryId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public DeliverySessionResponse getDeliveryById(UUID deliveryId, CallerContext caller) {
+        DeliverySession session = deliverySessionRepository.findByDeliveryId(deliveryId)
                 .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found: " + deliveryId));
+        if (caller != null) {
+            DeliveryAccessPolicy.assertCanAccess(session, caller);
+        }
+        return DeliverySessionResponse.fromEntity(session);
     }
 
     @Transactional(readOnly = true)
     public DeliverySessionResponse getDeliveryByOrderId(UUID orderId) {
-        return deliverySessionRepository.findByOrderId(orderId)
-                .map(DeliverySessionResponse::fromEntity)
+        return getDeliveryByOrderId(orderId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public DeliverySessionResponse getDeliveryByOrderId(UUID orderId, CallerContext caller) {
+        DeliverySession session = deliverySessionRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found for order: " + orderId));
+        if (caller != null) {
+            DeliveryAccessPolicy.assertCanAccess(session, caller);
+        }
+        return DeliverySessionResponse.fromEntity(session);
     }
 
     @Transactional(readOnly = true)
     public DeliverySessionResponse getDeliveryByTrackingNumber(String trackingNumber) {
-        return deliverySessionRepository.findByTrackingNumber(trackingNumber)
-                .map(DeliverySessionResponse::fromEntity)
+        return getDeliveryByTrackingNumber(trackingNumber, null);
+    }
+
+    @Transactional(readOnly = true)
+    public DeliverySessionResponse getDeliveryByTrackingNumber(String trackingNumber, CallerContext caller) {
+        DeliverySession session = deliverySessionRepository.findByTrackingNumber(trackingNumber)
                 .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found for tracking: " + trackingNumber));
+        if (caller != null) {
+            DeliveryAccessPolicy.assertCanAccess(session, caller);
+        }
+        return DeliverySessionResponse.fromEntity(session);
     }
 
     @Transactional(readOnly = true)
     public List<DeliverySessionResponse> getDeliveriesByCourier(UUID courierId, DeliveryState state) {
+        return getDeliveriesByCourier(courierId, state, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliverySessionResponse> getDeliveriesByCourier(UUID courierId, DeliveryState state, CallerContext caller) {
+        if (caller != null) {
+            DeliveryAccessPolicy.assertCanAccess(courierId, caller);
+        }
         List<DeliverySession> list;
         if (state != null) {
             list = deliverySessionRepository.findByCourierIdAndCurrentState(courierId, state);
@@ -253,6 +296,16 @@ public class DeliveryExecutionService {
 
     @Transactional(readOnly = true)
     public List<TrackingBreadcrumbResponse> getBreadcrumbs(UUID deliveryId) {
+        return getBreadcrumbs(deliveryId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TrackingBreadcrumbResponse> getBreadcrumbs(UUID deliveryId, CallerContext caller) {
+        if (caller != null) {
+            DeliverySession session = deliverySessionRepository.findByDeliveryId(deliveryId)
+                    .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found: " + deliveryId));
+            DeliveryAccessPolicy.assertCanAccess(session, caller);
+        }
         return breadcrumbRepository.findTop50ByDeliveryIdOrderByRecordedAtDesc(deliveryId).stream()
                 .map(TrackingBreadcrumbResponse::fromEntity)
                 .toList();

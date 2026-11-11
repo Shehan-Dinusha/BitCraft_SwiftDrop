@@ -2,6 +2,8 @@ package com.swiftdrop.delivery.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.enums.DeliveryState;
+import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.delivery.dto.CourierLocationUpdatePayload;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
 import com.swiftdrop.delivery.dto.TrackingBreadcrumbResponse;
@@ -9,6 +11,7 @@ import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
 import com.swiftdrop.delivery.service.DeliveryExecutionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,28 +43,51 @@ public class DeliveryExecutionController {
 
     @GetMapping("/{deliveryId}")
     @Operation(summary = "Get delivery session by UUID")
-    public ApiResponse<DeliverySessionResponse> getDeliveryById(@PathVariable UUID deliveryId) {
-        return ApiResponse.success(deliveryService.getDeliveryById(deliveryId), "Delivery session retrieved");
+    public ApiResponse<DeliverySessionResponse> getDeliveryById(
+            @PathVariable UUID deliveryId,
+            HttpServletRequest request) {
+        CallerContext caller = resolveCaller(request);
+        DeliverySessionResponse response = caller != null
+                ? deliveryService.getDeliveryById(deliveryId, caller)
+                : deliveryService.getDeliveryById(deliveryId);
+        return ApiResponse.success(response, "Delivery session retrieved");
     }
 
     @GetMapping("/order/{orderId}")
     @Operation(summary = "Get delivery session by order UUID")
-    public ApiResponse<DeliverySessionResponse> getDeliveryByOrderId(@PathVariable UUID orderId) {
-        return ApiResponse.success(deliveryService.getDeliveryByOrderId(orderId), "Delivery session retrieved");
+    public ApiResponse<DeliverySessionResponse> getDeliveryByOrderId(
+            @PathVariable UUID orderId,
+            HttpServletRequest request) {
+        CallerContext caller = resolveCaller(request);
+        DeliverySessionResponse response = caller != null
+                ? deliveryService.getDeliveryByOrderId(orderId, caller)
+                : deliveryService.getDeliveryByOrderId(orderId);
+        return ApiResponse.success(response, "Delivery session retrieved");
     }
 
     @GetMapping("/tracking/{trackingNumber}")
     @Operation(summary = "Get delivery session by tracking number")
-    public ApiResponse<DeliverySessionResponse> getDeliveryByTrackingNumber(@PathVariable String trackingNumber) {
-        return ApiResponse.success(deliveryService.getDeliveryByTrackingNumber(trackingNumber), "Delivery session retrieved");
+    public ApiResponse<DeliverySessionResponse> getDeliveryByTrackingNumber(
+            @PathVariable String trackingNumber,
+            HttpServletRequest request) {
+        CallerContext caller = resolveCaller(request);
+        DeliverySessionResponse response = caller != null
+                ? deliveryService.getDeliveryByTrackingNumber(trackingNumber, caller)
+                : deliveryService.getDeliveryByTrackingNumber(trackingNumber);
+        return ApiResponse.success(response, "Delivery session retrieved");
     }
 
     @GetMapping("/courier/{courierId}")
     @Operation(summary = "List delivery sessions for a courier with optional state filter")
     public ApiResponse<List<DeliverySessionResponse>> getDeliveriesByCourier(
             @PathVariable UUID courierId,
-            @RequestParam(required = false) DeliveryState state) {
-        return ApiResponse.success(deliveryService.getDeliveriesByCourier(courierId, state), "Courier deliveries retrieved");
+            @RequestParam(required = false) DeliveryState state,
+            HttpServletRequest request) {
+        CallerContext caller = resolveCaller(request);
+        List<DeliverySessionResponse> response = caller != null
+                ? deliveryService.getDeliveriesByCourier(courierId, state, caller)
+                : deliveryService.getDeliveriesByCourier(courierId, state);
+        return ApiResponse.success(response, "Courier deliveries retrieved");
     }
 
     @PostMapping("/{deliveryId}/transition")
@@ -84,7 +110,16 @@ public class DeliveryExecutionController {
 
     @GetMapping("/{deliveryId}/breadcrumbs")
     @Operation(summary = "Get recent GPS telemetry breadcrumbs for delivery")
-    public ApiResponse<List<TrackingBreadcrumbResponse>> getBreadcrumbs(@PathVariable UUID deliveryId) {
-        return ApiResponse.success(deliveryService.getBreadcrumbs(deliveryId), "Breadcrumbs retrieved");
+    public ApiResponse<List<TrackingBreadcrumbResponse>> getBreadcrumbs(
+            @PathVariable UUID deliveryId,
+            HttpServletRequest request) {
+        return ApiResponse.success(deliveryService.getBreadcrumbs(deliveryId, resolveCaller(request)), "Breadcrumbs retrieved");
+    }
+
+    private CallerContext resolveCaller(HttpServletRequest request) {
+        if (request == null || request.getHeader(JwtHeaderConstants.X_USER_ID) == null) {
+            return null;
+        }
+        return CallerContext.from(request::getHeader);
     }
 }

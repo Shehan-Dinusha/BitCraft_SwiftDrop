@@ -2,6 +2,9 @@ package com.swiftdrop.delivery.service;
 
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.enums.UserRole;
+import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.domain.entity.TrackingBreadcrumb;
@@ -188,5 +191,40 @@ class DeliveryExecutionServiceTest {
         verify(eventPublisher).publishLocationUpdated(argThat(e ->
                 e.deliveryId().equals(deliveryId) && e.latitude() == 6.9271
         ));
+    }
+
+    @Test
+    @DisplayName("getDeliveryById with caller: Courier A reading Courier B throws ForbiddenException")
+    void testGetDeliveryByIdForbiddenForOtherCourier() {
+        UUID courierB = UUID.randomUUID();
+        DeliverySession session = new DeliverySession();
+        session.setDeliveryId(deliveryId);
+        session.setCourierId(courierB);
+
+        when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
+
+        UUID courierA = UUID.randomUUID();
+        CallerContext caller = new CallerContext(courierA, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> deliveryService.getDeliveryById(deliveryId, caller))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    @DisplayName("getDeliveryById with caller: Courier A reading own delivery succeeds")
+    void testGetDeliveryByIdAllowedForOwnerCourier() {
+        DeliverySession session = new DeliverySession();
+        session.setDeliveryId(deliveryId);
+        session.setCourierId(courierId);
+        session.setOrderId(orderId);
+        session.setTrackingNumber("SD-COL-12345");
+
+        when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
+
+        CallerContext caller = new CallerContext(courierId, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);
+
+        var response = deliveryService.getDeliveryById(deliveryId, caller);
+        assertThat(response).isNotNull();
+        assertThat(response.deliveryId()).isEqualTo(deliveryId);
     }
 }
