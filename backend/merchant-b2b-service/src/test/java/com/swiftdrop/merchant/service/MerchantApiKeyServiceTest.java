@@ -27,6 +27,8 @@ class MerchantApiKeyServiceTest {
 
     @Mock
     private MerchantApiKeyRepository apiKeyRepository;
+    @Mock
+    private MerchantApprovalGuard approvalGuard;
 
     private MerchantApiKeyService apiKeyService;
 
@@ -34,7 +36,7 @@ class MerchantApiKeyServiceTest {
 
     @BeforeEach
     void setUp() {
-        apiKeyService = new MerchantApiKeyService(apiKeyRepository);
+        apiKeyService = new MerchantApiKeyService(apiKeyRepository, approvalGuard);
     }
 
     @Test

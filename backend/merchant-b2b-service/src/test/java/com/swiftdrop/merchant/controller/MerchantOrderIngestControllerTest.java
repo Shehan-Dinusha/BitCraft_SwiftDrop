@@ -42,6 +42,8 @@ class MerchantOrderIngestControllerTest {
 
     @MockitoBean
     private BulkCsvOrderProcessor csvProcessor;
+    @MockitoBean
+    private com.swiftdrop.merchant.service.MerchantApprovalGuard approvalGuard;
 
     private final UUID merchantId = UUID.randomUUID();
 

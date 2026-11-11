@@ -42,6 +42,8 @@ class BulkOrderIngestionServiceTest {
 
     @Mock
     private MerchantEventPublisher eventPublisher;
+    @Mock
+    private MerchantApprovalGuard approvalGuard;
 
     private BulkOrderIngestionService ingestionService;
 
@@ -53,7 +55,8 @@ class BulkOrderIngestionServiceTest {
                 batchRepository,
                 batchItemRepository,
                 merchantAccountRepository,
-                eventPublisher
+                eventPublisher,
+                approvalGuard
         );
     }
 

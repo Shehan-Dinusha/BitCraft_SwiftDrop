@@ -339,7 +339,7 @@ class TelemetryConsumptionIT {
             statement.executeUpdate("INSERT INTO upgrade_test.operational_sla_snapshots(district, total_parcels) VALUES ('KANDY', 7)");
             var upgrade = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                     .schemas("upgrade_test").defaultSchema("upgrade_test").load();
-            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(2);
+            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(3);
             upgrade.validate();
             try (var result = statement.executeQuery("SELECT total_parcels FROM upgrade_test.operational_sla_snapshots")) {
                 assertThat(result.next()).isTrue();
@@ -349,6 +349,31 @@ class TelemetryConsumptionIT {
                 assertThat(result.next()).isTrue();
                 assertThat(result.getInt(1)).isZero();
             }
+        }
+    }
+
+    @Test
+    void v5UpgradeRemovesRawAuditContentAndAllowsMetadataOnlyRecords() throws Exception {
+        var baseline = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .schemas("audit_upgrade").defaultSchema("audit_upgrade").target("4").load();
+        baseline.migrate();
+        try (var connection = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+             var statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO audit_upgrade.ai_tool_invocation_audit "
+                    + "(audit_id,tool_name,caller_persona,prompt_or_query,input_parameters,output_result) "
+                    + "VALUES ('" + UUID.randomUUID() + "','LegacyTool','CUSTOMER','private prompt','private args','private answer')");
+            var upgrade = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .schemas("audit_upgrade").defaultSchema("audit_upgrade").load();
+            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(1);
+            upgrade.validate();
+            try (var row = statement.executeQuery("SELECT prompt_or_query,input_parameters,output_result,outcome FROM audit_upgrade.ai_tool_invocation_audit")) {
+                assertThat(row.next()).isTrue();
+                assertThat(row.getString(1)).isNull(); assertThat(row.getString(2)).isNull(); assertThat(row.getString(3)).isNull();
+                assertThat(row.getString(4)).isEqualTo("LEGACY_REDACTED");
+            }
+            statement.executeUpdate("INSERT INTO audit_upgrade.ai_tool_invocation_audit "
+                    + "(audit_id,tool_name,caller_persona,prompt_or_query,outcome) VALUES ('" + UUID.randomUUID()
+                    + "','track_parcel','CUSTOMER',NULL,'OK')");
         }
     }
 
@@ -639,7 +664,7 @@ class TelemetryConsumptionIT {
             insert.executeUpdate();
             var upgrade = Flyway.configure().dataSource(postgres.getJdbcUrl(),postgres.getUsername(),postgres.getPassword())
                     .schemas("upgrade_v3").defaultSchema("upgrade_v3").load();
-            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(2);
             upgrade.validate();
             try (var statement=connection.createStatement();
                  var result=statement.executeQuery("SELECT projection_applied,payload->>'orderId' FROM upgrade_v3.processed_telemetry_events")) {

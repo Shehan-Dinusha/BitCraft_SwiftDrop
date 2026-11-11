@@ -56,7 +56,7 @@ The final local run passed 61 analytics unit/controller/config tests and 25 real
 
 The new HTTP integration checks exercise the running servlet server and real SQL queries, inclusive Colombo boundaries, zero-filled dates, exact counts/rates/workload, authorization rejection, empty-rate serialization, and live bearer-security documentation. Existing 23 integration cases continue proving event reliability, projection calculations, weighted rates and upgrades.
 
-Real IAM-account tokens through port 8080 were **not exercised in this implementation run** because the local gateway/IAM stack was not running. Direct HTTP/header tests do not replace that evidence. Follow [your self-verification guide](part-4-self-verification.md), especially the real-token/header-spoof checks, before claiming complete end-to-end acceptance. M5/M6's projection semantics and M1/M2's trusted downstream boundary remain review dependencies.
+Follow-up verification on 2026-11-10 completed real IAM-account checks through port 8080: 30 acceptance checks passed with isolated services and disposable data. See the [Stages 1–5 completion guide](stages-1-to-5-summary.md) and the consolidated verification guide (the historical stage-5 helper is absent from this checkout). Admin/dispatcher access, customer rejection and forged-header rejection are now verified through the gateway. M5/M6's projection semantics and M1/M2's trusted downstream boundary remain review dependencies.
 
 ## Viva questions
 
@@ -77,4 +77,4 @@ Real IAM-account tokens through port 8080 were **not exercised in this implement
 
 ## Team update
 
-> Part 4 is implemented locally on `Buddhika/feat/reporting-api`: daily delivery reports, weighted success/failure rates and current courier workload, with inclusive Colombo dates and a 90-day limit. Reports and existing operational/legacy routes now enforce dispatcher/admin access using gateway identity. API schemas and generated frontend types are synchronized. All 61 analytics unit/controller/config tests, 25 database/broker integration tests and frontend checks pass. Real-account gateway verification and the M1/M2 trust-boundary review remain pending. No database migration or gateway route change was needed. Dashboard charts remain Part 8.
+> Member-guide Stages 1–5 are implemented: reliable events, daily/courier projections, reporting APIs, aggregation tests and operational authorization. All 61 analytics unit/controller/config tests, 25 database/broker integration tests and frontend checks pass. Thirty real-account gateway acceptance checks also passed. The M1/M2 deployment trust-boundary review remains separate. Dashboard charts and the AI assistant remain later work.

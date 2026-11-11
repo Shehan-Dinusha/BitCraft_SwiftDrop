@@ -149,8 +149,8 @@ public class AiDeliveryAssistantService {
                 a.getAuditId(),
                 a.getToolName(),
                 a.getCallerPersona(),
-                a.getPromptOrQuery(),
-                a.getOutputResult(),
+                null,
+                a.getOutcome(),
                 a.getExecutionTimeMs(),
                 a.isSuccess(),
                 a.getCreatedAt()

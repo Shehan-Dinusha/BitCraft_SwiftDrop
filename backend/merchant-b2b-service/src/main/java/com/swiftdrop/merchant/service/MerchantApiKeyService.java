@@ -30,6 +30,7 @@ import java.util.UUID;
 public class MerchantApiKeyService {
 
     private final MerchantApiKeyRepository apiKeyRepository;
+    private final MerchantApprovalGuard approvalGuard;
     private final SecureRandom secureRandom = new SecureRandom();
 
     /**
@@ -38,6 +39,7 @@ public class MerchantApiKeyService {
      */
     @Transactional
     public ApiKeyResponse generateApiKey(UUID merchantId, CreateApiKeyRequest request) {
+        approvalGuard.requireApproved(merchantId);
         log.info("Generating new API key for merchant: {}, name: {}", merchantId, request.keyName());
 
         Instant expiresAt = null;
@@ -152,6 +154,12 @@ public class MerchantApiKeyService {
                         return MerchantApiKeyValidationResult.invalid("API key not recognized");
                     }
                     // Update last used timestamp
+                    try {
+                        approvalGuard.requireApproved(key.getMerchantId());
+                    } catch (org.springframework.web.server.ResponseStatusException
+                             | com.swiftdrop.merchant.exception.MerchantNotFoundException ex) {
+                        return MerchantApiKeyValidationResult.invalid("Merchant approval required");
+                    }
                     key.setLastUsedAt(Instant.now());
                     apiKeyRepository.save(key);
 
