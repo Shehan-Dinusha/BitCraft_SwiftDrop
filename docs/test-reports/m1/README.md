@@ -48,14 +48,32 @@ it is the legacy handler and is not on the current public path.
 The XML surefire files and the `target/` build outputs are intentionally not
 committed; they are reproducible with the commands above.
 
+## Runtime smoke check (2026-11-12)
+
+Run on `dev` at `7c2d826` with RabbitMQ and Redis from `docker compose`, the
+gateway jar started with `--server.port=18080`. Port 8080 is inside a Windows
+excluded-port range on this machine, so the check used 18080; the HTTP
+behaviour is the same.
+
+| Check | Observed result |
+|---|---|
+| `GET /actuator/health` | `{"status":"UP",...}` |
+| Live `GET /v3/api-docs` | Lists `/api/v1/public/track/{trackingNumber}`, `/api/v1/tracking/{trackingNumber}`, and `/api/v1/tracking/{trackingNumber}/stream`. |
+| RabbitMQ consumer | `swiftdrop.gateway.tracking.queue` exists; publishing a `ParcelStatusChangedEvent` for `SD-SMOKE-0001` (IN_TRANSIT) to `swiftdrop.events.exchange` with routing key `parcel.status.changed` returned `{"routed":true}`. |
+| `GET /api/v1/public/track/SD-SMOKE-0001` | `SD-SMOKE-0001 IN_TRANSIT` |
+| `GET /api/v1/tracking/SD-SMOKE-0001` | `SD-SMOKE-0001 IN_TRANSIT` (same payload as the public path) |
+| `GET /api/v1/tracking/SD-SMOKE-0001/stream` | Emitted the cached view and a heartbeat within the 17 s probe window. |
+| Rate limit | 60 requests returned 404 (cache miss with no order service running), then 5 returned `429` with `Retry-After: 27`. |
+
 ## Not yet verified
 
 - **RS256 end-to-end with a live IAM instance**: not run. `dev` now defaults
   both the gateway and IAM to RS256 (`JWT_ALGORITHM=RS256` in `.env.example`
   and `docker-compose.yml`), but this run exercised unit and controller tests
   only, with no IAM instance running.
-- **Docker Compose / AKS runtime**: not exercised in this run. The evidence
-  covers unit and controller tests plus coverage, not a live cluster.
+- **Full Docker Compose stack / AKS runtime**: RabbitMQ, Redis, and the gateway
+  were exercised as described above, but the remaining services, the frontend
+  container, and AKS were not; no live cluster was used.
 - **Frontend live tracking demo**: not re-run here; this branch does not modify
   the frontend.
 
