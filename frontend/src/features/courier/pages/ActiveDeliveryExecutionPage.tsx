@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { deliveryApi } from '@/services/api/deliveryApi';
 import type {
@@ -25,13 +25,14 @@ import {
 } from 'lucide-react';
 
 export function ActiveDeliveryExecutionPage() {
+  const { id } = useParams<{ id?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const courierId = user?.id || '11111111-1111-1111-1111-111111111111';
 
   const orderIdParam = searchParams.get('orderId');
-  const deliveryIdParam = searchParams.get('deliveryId');
+  const deliveryIdParam = id || searchParams.get('deliveryId');
 
   const [session, setSession] = useState<DeliverySessionResponse | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<TrackingBreadcrumbResponse[]>([]);
