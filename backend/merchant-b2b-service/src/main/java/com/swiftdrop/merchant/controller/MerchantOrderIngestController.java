@@ -42,9 +42,10 @@ public class MerchantOrderIngestController {
     @Operation(summary = "Ingest a batch of delivery orders via JSON payload")
     public ApiResponse<BulkIngestBatchResponse> ingestBulkOrders(
             @PathVariable UUID merchantId,
+            @RequestHeader(value = com.swiftdrop.contracts.security.JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
             @Valid @RequestBody BulkIngestRequest request) {
         log.info("Received bulk order ingestion request for merchant: {}", merchantId);
-        BulkIngestBatchResponse batch = ingestionService.processBulkIngest(merchantId, request);
+        BulkIngestBatchResponse batch = ingestionService.processBulkIngest(merchantId, request, correlationId);
         return ApiResponse.success(batch, "Bulk order ingestion batch processed");
     }
 
@@ -53,6 +54,7 @@ public class MerchantOrderIngestController {
     @Operation(summary = "Upload and process bulk delivery orders from a CSV file")
     public ApiResponse<BulkIngestBatchResponse> ingestCsvOrders(
             @PathVariable UUID merchantId,
+            @RequestHeader(value = com.swiftdrop.contracts.security.JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
             @RequestParam("file") MultipartFile file) {
         approvalGuard.requireApproved(merchantId);
         log.info("Received CSV order ingestion upload for merchant: {}, file: {}", merchantId, file.getOriginalFilename());
@@ -63,7 +65,7 @@ public class MerchantOrderIngestController {
         try (InputStream is = file.getInputStream()) {
             List<BulkOrderIngestItem> items = csvProcessor.parseCsv(is);
             BulkIngestRequest request = new BulkIngestRequest(file.getOriginalFilename(), items);
-            BulkIngestBatchResponse batch = ingestionService.processBulkIngest(merchantId, request);
+            BulkIngestBatchResponse batch = ingestionService.processBulkIngest(merchantId, request, correlationId);
             return ApiResponse.success(batch, "CSV orders processed successfully");
         } catch (org.springframework.web.server.ResponseStatusException e) {
             throw e;
