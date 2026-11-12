@@ -399,6 +399,10 @@ export function ActiveDeliveryExecutionPage() {
                 setIsPoDVerified(true);
                 setSuccessMsg('Proof of Delivery recorded and verified!');
               }}
+              onTransitionToDelivered={async () => {
+                setIsPoDVerified(true);
+                await handleTransition('DELIVERED', undefined, 'Completed delivery with verified photo proof');
+              }}
             />
           )}
         </div>
