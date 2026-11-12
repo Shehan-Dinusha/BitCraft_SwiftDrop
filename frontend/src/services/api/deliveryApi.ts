@@ -40,6 +40,14 @@ export const deliveryApi = {
     return data.data;
   },
 
+  getMyDeliveries: async (date?: string) => {
+    const { data } = await apiClient.get<{ success: boolean; data: DeliverySessionResponse[] }>(
+      '/v1/deliveries/me',
+      { params: date ? { date } : undefined }
+    );
+    return data.data;
+  },
+
   transitionDelivery: async (deliveryId: string, request: TransitionDeliveryRequest) => {
     const { data } = await apiClient.post<{ success: boolean; data: DeliverySessionResponse }>(
       `/v1/deliveries/${deliveryId}/transition`,
