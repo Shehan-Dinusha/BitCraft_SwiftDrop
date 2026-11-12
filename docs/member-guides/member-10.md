@@ -398,6 +398,14 @@ packaged jar. Stage 7 live Azure verification and Stage 16 diagrams remain separ
 
 #### Stage 16: Diagrams
 
+**Implementation update (2026-11-12):** Sources and SVG/PNG/PDF exports for the
+customer AI tool-calling sequence and complete analytics ERD are implemented.
+The ERD covers 10 application tables plus Flyway history (97 columns), checked
+against V1–V5 and the running analytics schema, with logical associations clearly
+separated from SQL constraints. See the [Stage 16 deliverables](../design/m10/stage-16-diagrams.md)
+and [validation evidence](../test-reports/m10/stage-16/README.md).
+Deliverables are committed locally; push and sharing with the team's design-document owner remain pending.
+
 **Objective:** Your assigned deliverable.
 
 **Steps:**
