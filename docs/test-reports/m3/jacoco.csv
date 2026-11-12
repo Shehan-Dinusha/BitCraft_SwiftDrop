@@ -7,7 +7,7 @@ SwiftDrop :: CustomerOrder,com.swiftdrop.order.messaging.consumer,DeliveryStatus
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.dto,OrderStatusHistoryEntry,0,9,0,0,0,1,0,1,0,1
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.dto,InternalCreateOrderRequest,16,178,6,6,0,29,6,2,0,2
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.dto,CustomerOrderResponse,2,143,1,1,0,49,1,1,0,1
-SwiftDrop :: CustomerOrder,com.swiftdrop.order.dto,InternalTrackingView,0,24,0,0,0,1,0,1,0,1
+SwiftDrop :: CustomerOrder,com.swiftdrop.order.dto,InternalTrackingView,0,36,0,0,0,1,0,1,0,1
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.dto,InternalTrackingView.HistoryEntry,0,9,0,0,0,1,0,1,0,1
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.dto,ServiceStatusResponse,6,0,0,0,1,0,1,0,1,0
 SwiftDrop :: CustomerOrder,com.swiftdrop.order,CustomerOrderApplication,5,3,0,0,1,1,1,1,1,1
@@ -16,7 +16,8 @@ SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,OrderStatusSyncService,1,
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,OrderPdfGeneratorService,191,3283,72,136,36,575,68,113,0,72
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,OrderStatusSyncService.Outcome,0,51,0,0,0,9,0,1,0,1
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,InternalOrderService.CreateResult,0,9,0,0,0,1,0,1,0,1
-SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,InternalTrackingService,0,48,0,0,0,13,0,3,0,3
+SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,TrackingContactMasker,0,67,1,11,0,13,1,8,0,3
+SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,InternalTrackingService,0,60,0,0,0,17,0,3,0,3
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,InternalOrderService,0,67,0,4,0,15,0,5,0,3
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,OrderPdfGeneratorService.Footer,0,90,0,0,0,20,0,2,0,2
 SwiftDrop :: CustomerOrder,com.swiftdrop.order.service,OrderLifecycleService,2,3,0,0,1,1,1,1,1,1
