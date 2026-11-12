@@ -82,7 +82,7 @@ class MerchantOrderIngestControllerTest {
                 Instant.now()
         );
 
-        when(ingestionService.processBulkIngest(eq(merchantId), any(BulkIngestRequest.class))).thenReturn(res);
+        when(ingestionService.processBulkIngest(eq(merchantId), any(BulkIngestRequest.class), any())).thenReturn(res);
 
         mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/ingest/bulk")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -128,7 +128,7 @@ class MerchantOrderIngestControllerTest {
                 Instant.now()
         );
 
-        when(ingestionService.processBulkIngest(eq(merchantId), any(BulkIngestRequest.class))).thenReturn(res);
+        when(ingestionService.processBulkIngest(eq(merchantId), any(BulkIngestRequest.class), any())).thenReturn(res);
 
         mockMvc.perform(multipart("/api/v1/merchants/" + merchantId + "/ingest/csv")
                         .file(file))

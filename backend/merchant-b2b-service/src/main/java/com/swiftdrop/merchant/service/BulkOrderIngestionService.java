@@ -2,7 +2,6 @@ package com.swiftdrop.merchant.service;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.contracts.events.order.OrderCreatedEvent;
 import com.swiftdrop.merchant.domain.entity.BulkBatchItem;
 import com.swiftdrop.merchant.domain.entity.BulkIngestBatch;
 import com.swiftdrop.merchant.domain.entity.MerchantAccount;
@@ -11,17 +10,13 @@ import com.swiftdrop.merchant.domain.repository.BulkIngestBatchRepository;
 import com.swiftdrop.merchant.domain.repository.MerchantAccountRepository;
 import com.swiftdrop.merchant.dto.*;
 import com.swiftdrop.merchant.exception.BatchNotFoundException;
-import com.swiftdrop.merchant.messaging.publisher.MerchantEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.security.SecureRandom;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -34,21 +29,29 @@ public class BulkOrderIngestionService {
     private final BulkIngestBatchRepository batchRepository;
     private final BulkBatchItemRepository batchItemRepository;
     private final MerchantAccountRepository merchantAccountRepository;
-    private final MerchantEventPublisher eventPublisher;
+    private final B2bOrderSubmissionService submissions;
     private final MerchantApprovalGuard approvalGuard;
 
-    private final SecureRandom secureRandom = new SecureRandom();
-
-    @Transactional
     public BulkIngestBatchResponse processBulkIngest(UUID merchantId, BulkIngestRequest request) {
+        return processBulkIngest(merchantId, request, UUID.randomUUID());
+    }
+
+    public BulkIngestBatchResponse processBulkIngest(UUID merchantId, BulkIngestRequest request, UUID correlationId) {
         approvalGuard.requireApproved(merchantId);
+        if (request.orders() == null || request.orders().isEmpty() || request.orders().size() > 500) {
+            throw new IllegalArgumentException("A batch must contain 1 to 500 orders");
+        }
+        UUID correlation = correlationId != null ? correlationId : UUID.randomUUID();
         log.info("Processing bulk order ingest for merchant: {}, total orders: {}",
                 merchantId, request.orders().size());
 
         // Lookup or resolve merchant's operating district
-        SriLankanDistrict pickupDistrict = merchantAccountRepository.findByMerchantId(merchantId)
-                .map(MerchantAccount::getOperatingDistrict)
-                .orElse(SriLankanDistrict.COLOMBO);
+        MerchantAccount merchant = merchantAccountRepository.findByMerchantId(merchantId)
+                .orElseThrow(() -> new com.swiftdrop.merchant.exception.MerchantNotFoundException("Merchant not found"));
+        if (merchant.getStatus() != com.swiftdrop.merchant.domain.entity.MerchantStatus.APPROVED) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Merchant approval required");
+        }
 
         UUID batchId = UUID.randomUUID();
         BulkIngestBatch batch = BulkIngestBatch.builder()
@@ -69,21 +72,26 @@ public class BulkOrderIngestionService {
         int rowIndex = 1;
 
         for (BulkOrderIngestItem item : request.orders()) {
-            UUID orderId = UUID.randomUUID();
-            String trackingNumber = generateTrackingNumber(pickupDistrict);
-
             try {
                 // Determine order speed
                 OrderSpeed speed = OrderSpeed.STANDARD;
                 if (item.deliverySpeed() != null && item.deliverySpeed().equalsIgnoreCase("EXPRESS")) {
                     speed = OrderSpeed.EXPRESS;
                 }
+                B2bOrderResult accepted = submissions.submit(merchantId, new B2bOrderRequest(item.externalRef(),
+                        new B2bAddress(merchant.getPickupAddress(), item.pickupCity(), merchant.getOperatingDistrict().name(),
+                                item.pickupPostalCode(), merchant.getBusinessName(), merchant.getContactPhone()),
+                        new B2bAddress(item.deliveryAddress(), item.deliveryCity(),
+                                item.deliveryDistrict() == null ? null : item.deliveryDistrict().name(), item.deliveryPostalCode(),
+                                item.recipientName(), item.recipientPhone()),
+                        new B2bParcel(item.packageWeightKg(), null, item.prohibitedItemsDeclared(), null, null, null),
+                        item.deliverySpeed()), correlation);
 
                 BulkBatchItem batchItem = BulkBatchItem.builder()
                         .batchId(batchId)
                         .rowIndex(rowIndex)
-                        .orderId(orderId)
-                        .trackingNumber(trackingNumber)
+                        .orderId(accepted.orderId())
+                        .trackingNumber(accepted.trackingNumber())
                         .recipientName(item.recipientName())
                         .recipientPhone(item.recipientPhone())
                         .deliveryDistrict(item.deliveryDistrict() != null ? item.deliveryDistrict() : SriLankanDistrict.COLOMBO)
@@ -94,26 +102,6 @@ public class BulkOrderIngestionService {
                         .build();
 
                 batchItemRepository.save(batchItem);
-
-                // Publish OrderCreatedEvent onto swiftdrop.events.exchange
-                BigDecimal estimatedPrice = speed == OrderSpeed.EXPRESS ? BigDecimal.valueOf(750.0) : BigDecimal.valueOf(450.0);
-                OrderCreatedEvent event = new OrderCreatedEvent(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        orderId,
-                        trackingNumber,
-                        merchantId,
-                        merchantId,
-                        pickupDistrict,
-                        item.deliveryDistrict() != null ? item.deliveryDistrict() : SriLankanDistrict.COLOMBO,
-                        speed,
-                        BigDecimal.ZERO,
-                        BigDecimal.valueOf(5000.0),
-                        estimatedPrice,
-                        "LKR",
-                        Instant.now()
-                );
-                eventPublisher.publishOrderCreated(event);
 
                 successCount++;
             } catch (Exception e) {
@@ -167,13 +155,6 @@ public class BulkOrderIngestionService {
         return batchItemRepository.findByBatchIdOrderByRowIndexAsc(batchId).stream()
                 .map(this::mapToItemResponse)
                 .toList();
-    }
-
-    private String generateTrackingNumber(SriLankanDistrict district) {
-        String distPrefix = district.name().substring(0, Math.min(3, district.name().length()));
-        String dateStr = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
-        int rand = 1000 + secureRandom.nextInt(9000);
-        return "SD-" + distPrefix + "-" + dateStr + "-" + rand;
     }
 
     private BulkIngestBatchResponse mapToBatchResponse(BulkIngestBatch batch) {
