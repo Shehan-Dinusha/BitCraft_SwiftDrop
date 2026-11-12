@@ -364,6 +364,10 @@ reply; without it the dock stays a prompt surface.
 
 ## Catalog and shell
 
+`AssistantPanel` accepts `disabled` to pause its composer and quick prompts during
+a rate-limit cooldown without displaying a typing indicator. Close and new
+conversation controls remain available; `typing` still represents an active request.
+
 The catalog is **public**: `/catalog` needs no login, no role and no backend, and
 it does not use `AppShell`. It has its own layout (index, search, Figma links).
 

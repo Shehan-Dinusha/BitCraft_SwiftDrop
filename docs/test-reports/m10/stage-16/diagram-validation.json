@@ -1,0 +1,37 @@
+{
+  "tables": 11,
+  "columns": 97,
+  "sqlForeignKeys": 0,
+  "cliVersion": "12.2.0",
+  "migrationVersions": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "artifacts": [
+    {
+      "diagram": "ai-tool-calling-sequence",
+      "pngWidth": 1963,
+      "pngHeight": 5200,
+      "files": [
+        "ai-tool-calling-sequence.mmd",
+        "ai-tool-calling-sequence.svg",
+        "ai-tool-calling-sequence.png",
+        "ai-tool-calling-sequence.pdf"
+      ]
+    },
+    {
+      "diagram": "analytics-erd",
+      "pngWidth": 3642,
+      "pngHeight": 1694,
+      "files": [
+        "analytics-erd.mmd",
+        "analytics-erd.svg",
+        "analytics-erd.png",
+        "analytics-erd.pdf"
+      ]
+    }
+  ]
+}

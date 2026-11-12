@@ -326,6 +326,14 @@ Rules:
 
 ### PR 3: MCP (optional bonus)
 
+**Implementation update (2026-11-12):** Stages 12–15 are implemented. MCP tools,
+the chart dependency, operational dashboard and customer widget improvements are
+covered in the [completion and commit guide](../design/m10/stages-12-to-15.md)
+and [validation evidence](../test-reports/m10/stages-12-to-15/README.md).
+Changes are committed in stage-based groups; PR merge remains separate. Current full gateway source packaging
+has a separate tracking-contract mismatch; live acceptance uses its previously
+packaged jar. Stage 7 live Azure verification and Stage 16 diagrams remain separate.
+
 
 #### Stage 12: MCP tools
 
@@ -389,6 +397,14 @@ Rules:
 
 
 #### Stage 16: Diagrams
+
+**Implementation update (2026-11-12):** Sources and SVG/PNG/PDF exports for the
+customer AI tool-calling sequence and complete analytics ERD are implemented.
+The ERD covers 10 application tables plus Flyway history (97 columns), checked
+against V1–V5 and the running analytics schema, with logical associations clearly
+separated from SQL constraints. See the [Stage 16 deliverables](../design/m10/stage-16-diagrams.md)
+and [validation evidence](../test-reports/m10/stage-16/README.md).
+Deliverables are committed locally; push and sharing with the team's design-document owner remain pending.
 
 **Objective:** Your assigned deliverable.
 

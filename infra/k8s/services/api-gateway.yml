@@ -108,7 +108,7 @@ spec:
             - name: JWT_BLACKLIST_PREFIX
               value: "jwt:blacklist:"
             - name: JWT_ALGORITHM
-              value: "HS256"
+              value: "RS256"
             - name: JWT_ISSUER
               value: "swiftdrop-iam"
             - name: JWT_AUDIENCE

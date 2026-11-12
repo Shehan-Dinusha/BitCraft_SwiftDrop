@@ -16,15 +16,9 @@ public class ChatSessionStore {
     ChatSessionStore(Clock clock) { this.clock = clock; }
 
     public synchronized Session acquire(UUID owner, UUID id) {
+        consumeRequest(owner);
         Instant now = clock.instant();
         sessions.values().removeIf(s -> s.lastUsed.isBefore(now.minusSeconds(1800)));
-        limits.values().removeIf(w -> w.start.isBefore(now.minusSeconds(60)));
-        var window = limits.get(owner);
-        if (window == null) {
-            if (limits.size() >= 10000) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Assistant capacity reached");
-            window = new Window(now); limits.put(owner, window);
-        }
-        if (++window.count > 10) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Limit is 10 messages per minute; retry in 60 seconds");
         if (id != null) {
             var session = sessions.get(id);
             if (session == null || !session.owner.equals(owner)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found or expired");
@@ -35,6 +29,18 @@ public class ChatSessionStore {
         var session = new Session(owner, now);
         sessions.put(session.id, session);
         return session;
+    }
+
+    /** Chat messages and MCP tool calls share one per-user budget without allocating MCP conversations. */
+    public synchronized void consumeRequest(UUID owner) {
+        Instant now = clock.instant();
+        limits.values().removeIf(w -> w.start.isBefore(now.minusSeconds(60)));
+        var window = limits.get(owner);
+        if (window == null) {
+            if (limits.size() >= 10000) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Assistant capacity reached");
+            window = new Window(now); limits.put(owner, window);
+        }
+        if (++window.count > 10) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Limit is 10 messages per minute; retry in 60 seconds");
     }
 
     public static final class Session {
