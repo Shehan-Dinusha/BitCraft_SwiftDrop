@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { deliveryApi } from '@/services/api/deliveryApi';
@@ -8,10 +8,12 @@ import type {
   DeliveryFailureReason,
   TrackingBreadcrumbResponse
 } from '@/services/api/deliveryApi';
+import { allowedTransitions } from '@/types/fsm';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
+import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBar/ErgonomicActionBar';
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
 import { GpsTelemetryPublisher } from '../components/GpsTelemetryPublisher';
@@ -42,6 +44,16 @@ export function ActiveDeliveryExecutionPage() {
   const [pendingState, setPendingState] = useState<DeliveryState | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Compute allowed next states for ErgonomicActionBar from FSM definition
+  const allowedNextStates = useMemo(() => {
+    if (!session?.currentState || !(session.currentState in allowedTransitions)) {
+      return [] as DeliveryState[];
+    }
+    return (allowedTransitions[session.currentState as DeliveryState] || []).filter(
+      (s) => s !== 'CANCELLED' && s !== 'FAILED'
+    ) as DeliveryState[];
+  }, [session?.currentState]);
 
   // Load delivery session
   const loadDelivery = useCallback(async () => {
@@ -98,16 +110,29 @@ export function ActiveDeliveryExecutionPage() {
     loadDelivery();
   }, [loadDelivery]);
 
-  // Handle state transition
+  // Handle state transition with optimistic update and rollback on 409 Conflict
   const handleTransition = async (
     targetState: DeliveryState,
     reason?: DeliveryFailureReason,
     notes?: string
   ) => {
     if (!session?.deliveryId) return;
+
+    // Snapshot current session for rollback
+    const previousSession = { ...session };
+
+    // 1. Optimistic update: advance local session immediately
+    setPendingState(targetState);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setSession({
+      ...session,
+      currentState: targetState,
+      ...(targetState === 'DELIVERED' ? { deliveredAt: new Date().toISOString() } : {}),
+      ...(targetState === 'FAILED' && reason ? { failedReason: reason } : {})
+    });
+
     try {
-      setPendingState(targetState);
-      setErrorMsg(null);
       const updated = await deliveryApi.transitionDelivery(session.deliveryId, {
         targetState,
         actorRole: 'COURIER',
@@ -115,9 +140,26 @@ export function ActiveDeliveryExecutionPage() {
         notes: notes || `Courier transitioned to ${targetState}`
       });
       setSession(updated);
-      setSuccessMsg(`Delivery successfully updated to ${targetState}!`);
+      setSuccessMsg(`Delivery moved to ${targetState.replace(/_/g, ' ')}!`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : `Failed to transition to ${targetState}`;
+      // 2. Rollback on 409 Conflict or any server error
+      setSession(previousSession);
+
+      let msg = `Failed to transition to ${targetState.replace(/_/g, ' ')}`;
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosErr = err as {
+          response?: { status?: number; data?: { message?: string; error?: string } };
+        };
+        const status = axiosErr.response?.status;
+        const serverMsg = axiosErr.response?.data?.message || axiosErr.response?.data?.error;
+        if (status === 409) {
+          msg = `State transition rejected (409 Conflict): ${serverMsg || 'Illegal state transition or missing proof of delivery'}`;
+        } else if (serverMsg) {
+          msg = serverMsg;
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
       setErrorMsg(msg);
     } finally {
       setPendingState(null);
@@ -325,6 +367,25 @@ export function ActiveDeliveryExecutionPage() {
                   </div>
                 </SurfaceCard>
               )}
+            </div>
+          )}
+
+          {/* Ergonomic Action Bar: thumb-friendly sticky bar for next allowed action */}
+          {allowedNextStates.length > 0 && (
+            <div className="sticky bottom-4 z-20 pt-2">
+              <ErgonomicActionBar
+                next={allowedNextStates}
+                onTransition={(target) => {
+                  if (target === 'DELIVERED' && !isPoDVerified) {
+                    setIsPoDModalOpen(true);
+                    return;
+                  }
+                  handleTransition(target);
+                }}
+                pendingState={pendingState}
+                density="touch"
+                label="Courier next actions"
+              />
             </div>
           )}
 

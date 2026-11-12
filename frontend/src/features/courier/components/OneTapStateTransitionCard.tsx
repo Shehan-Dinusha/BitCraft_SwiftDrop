@@ -11,7 +11,8 @@ import {
   AlertTriangle,
   FileCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  MapPin
 } from 'lucide-react';
 
 export interface OneTapStateTransitionCardProps {
@@ -111,6 +112,32 @@ export function OneTapStateTransitionCard({
 
         {currentState === 'IN_TRANSIT' && (
           <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              Package in transit. Arrive at recipient delivery destination and confirm you are Out for Delivery.
+            </p>
+            <SlideToTransitionBar
+              label="Slide to mark Out for Delivery"
+              confirmLabel="Release to confirm arrival"
+              onConfirm={() => onTransition('OUT_FOR_DELIVERY', undefined, 'Courier arrived at destination')}
+              disabled={isPending}
+              density="touch"
+              icon={<MapPin className="h-5 w-5" />}
+            />
+            <Button
+              variant="primary"
+              className="w-full min-h-[48px] text-sm"
+              onClick={() => onTransition('OUT_FOR_DELIVERY', undefined, 'Courier marked Out for Delivery')}
+              loading={pendingState === 'OUT_FOR_DELIVERY'}
+              disabled={isPending}
+            >
+              <MapPin className="mr-2 h-4 w-4" />
+              One-Tap: Arrived (Out for Delivery)
+            </Button>
+          </div>
+        )}
+
+        {currentState === 'OUT_FOR_DELIVERY' && (
+          <div className="space-y-3">
             <div className={`rounded-xl border p-4 ${
               isPoDVerified
                 ? 'border-emerald-500/40 bg-emerald-500/10'
@@ -184,7 +211,7 @@ export function OneTapStateTransitionCard({
         )}
 
         {/* Collapsible Report Failure Section for active states */}
-        {(currentState === 'ASSIGNED' || currentState === 'PICKED_UP' || currentState === 'IN_TRANSIT') && (
+        {(currentState === 'ASSIGNED' || currentState === 'PICKED_UP' || currentState === 'IN_TRANSIT' || currentState === 'OUT_FOR_DELIVERY') && (
           <div className="pt-2">
             <button
               type="button"
