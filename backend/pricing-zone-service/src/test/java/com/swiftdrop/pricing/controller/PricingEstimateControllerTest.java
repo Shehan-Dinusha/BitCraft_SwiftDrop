@@ -101,7 +101,7 @@ class PricingEstimateControllerTest {
     }
 
     @ParameterizedTest(name = "speed {0} is accepted and reported with strategy {1}")
-    @CsvSource({"STANDARD,STANDARD", "EXPRESS,EXPRESS", "SAME_DAY,EXPRESS"})
+    @CsvSource({"STANDARD,STANDARD", "EXPRESS,EXPRESS", "SAME_DAY,SAME_DAY"})
     @DisplayName("Every order speed is accepted")
     void everySpeedIsAccepted(OrderSpeed speed, String expectedStrategy) throws Exception {
         when(dynamicPricingEngine.calculateQuote(any(PricingQuoteRequest.class)))

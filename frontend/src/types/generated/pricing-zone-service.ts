@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pricing/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate a delivery fee estimate */
+        post: operations["estimateDeliveryFee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pricing/zones": {
         parameters: {
             query?: never;
@@ -144,6 +161,86 @@ export interface components {
             /** @example PRICING-2026-V1 */
             pricingRuleVersionId?: string;
         };
+        EstimateRequest: {
+            pickupDistrict: components["schemas"]["SriLankanDistrict"];
+            deliveryDistrict: components["schemas"]["SriLankanDistrict"];
+            /**
+             * Format: double
+             * @example 2.5
+             */
+            actualWeightKg: number;
+            /**
+             * Format: double
+             * @example 20
+             */
+            lengthCm?: number;
+            /**
+             * Format: double
+             * @example 15
+             */
+            widthCm?: number;
+            /**
+             * Format: double
+             * @example 10
+             */
+            heightCm?: number;
+            speed?: components["schemas"]["OrderSpeed"];
+        };
+        EstimateResponse: {
+            pickupDistrict?: components["schemas"]["SriLankanDistrict"];
+            deliveryDistrict?: components["schemas"]["SriLankanDistrict"];
+            /** @example ZONE_WESTERN */
+            pickupZone?: string;
+            /** @example ZONE_CENTRAL */
+            deliveryZone?: string;
+            /** @example false */
+            intraDistrict?: boolean;
+            /**
+             * Format: double
+             * @example 2.5
+             */
+            actualWeightKg?: number;
+            /**
+             * Format: double
+             * @example 0.6
+             */
+            volumetricWeightKg?: number;
+            /**
+             * Format: double
+             * @example 2.5
+             */
+            chargeableWeightKg?: number;
+            speed?: components["schemas"]["OrderSpeed"];
+            /**
+             * Format: double
+             * @example 550
+             */
+            baseFee?: number;
+            /**
+             * Format: double
+             * @example 240
+             */
+            weightFee?: number;
+            /**
+             * Format: double
+             * @example 395
+             */
+            speedSurcharge?: number;
+            /**
+             * Format: double
+             * @example 1185
+             */
+            estimatedFee?: number;
+            /** @example LKR */
+            currency?: string;
+            /** @example PRICING-2026-V1 */
+            pricingRuleVersionId?: string;
+            /**
+             * @description Pricing strategy used (STANDARD, EXPRESS or SAME_DAY)
+             * @example EXPRESS
+             */
+            strategy?: string;
+        };
         PricingZone: {
             /**
              * Format: int64
@@ -195,6 +292,15 @@ export interface components {
             /** @example Quotation calculated successfully */
             message?: string;
             data?: components["schemas"]["PricingQuoteResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseEstimateResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example Estimate calculated successfully */
+            message?: string;
+            data?: components["schemas"]["EstimateResponse"];
             /** Format: date-time */
             timestamp?: string;
         };
@@ -256,6 +362,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponsePricingQuoteResponse"];
+                };
+            };
+        };
+    };
+    estimateDeliveryFee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description Delivery fee estimate response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseEstimateResponse"];
                 };
             };
         };
