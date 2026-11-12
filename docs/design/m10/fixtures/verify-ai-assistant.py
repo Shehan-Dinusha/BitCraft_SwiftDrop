@@ -24,10 +24,13 @@ MODULES = ["auth-iam-service", "pricing-zone-service", "customer-order-service",
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--build-dir", default="target")
+    parser.add_argument("--analytics-build-dir", help="Optional analytics build override when testing against previously packaged dependencies")
     args = parser.parse_args()
     output = ROOT / "backend/analytics-ai-service" / args.build_dir / "ai-acceptance"
     output.mkdir(parents=True, exist_ok=True)
     jars = {name: ROOT / "backend" / name / args.build_dir / f"{name}-0.1.0-SNAPSHOT.jar" for name in MODULES}
+    if args.analytics_build_dir:
+        jars["analytics-ai-service"] = ROOT / "backend/analytics-ai-service" / args.analytics_build_dir / "analytics-ai-service-0.1.0-SNAPSHOT.jar"
     for jar in jars.values():
         if not jar.is_file():
             raise RuntimeError(f"Package the application first: {jar}")
@@ -82,7 +85,12 @@ def main():
             with urllib.request.urlopen(request, timeout=30) as response:
                 return response.status, json.load(response)
         except urllib.error.HTTPError as error:
-            return error.code, json.loads(error.read())
+            raw = error.read()
+            try:
+                return error.code, json.loads(raw)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                # Gateway CORS rejections may be plain text rather than a service JSON error.
+                return error.code, {}
 
     try:
         postgres, pgport = container("postgres", "postgres:16-alpine", 5432,
@@ -196,6 +204,42 @@ def main():
         check("eleventh request is rate limited", http(gateway, "/api/v1/ai/chat", {"message": "Hello"}, limited)[0] == 429)
         check("other user retains rate allowance", http(gateway, "/api/v1/ai/chat", {"message": "Hello"}, other)[0] == 200)
         check("gateway OpenAPI includes chat", "/api/v1/ai/chat" in http(gateway, "/api/v1/analytics/v3/api-docs")[1]["paths"])
+        # Stage 12: a native MCP client uses JSON-RPC through the same authenticated gateway.
+        mcp_path = "/api/v1/ai/mcp"
+        def mcp(method, params, token=other):
+            return http(gateway, mcp_path, {"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
+                        token, {"Accept": "application/json, text/event-stream"})
+        status, initialized = mcp("initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
+                                                "clientInfo": {"name": "swiftdrop-acceptance", "version": "1"}})
+        check("MCP initializes through gateway", status == 200 and initialized["result"]["protocolVersion"] == "2025-03-26")
+        status, listed = mcp("tools/list", {})
+        check("MCP lists both shared tools", status == 200 and {tool["name"] for tool in listed["result"]["tools"]}
+              == {"track_parcel", "calculate_estimate"})
+        status, estimate = mcp("tools/call", {"name": "calculate_estimate", "arguments": {
+            "weightKg": 2, "originCity": "COLOMBO", "destinationCity": "KANDY"}})
+        check("MCP estimate calls real pricing", status == 200 and not estimate["result"]["isError"]
+              and str(quote["data"]["estimatedFee"]) in estimate["result"]["content"][0]["text"])
+        status, foreign_mcp = mcp("tools/call", {"name": "track_parcel", "arguments": {"trackingNumber": tracking}})
+        status_unknown, unknown_mcp = mcp("tools/call", {"name": "track_parcel", "arguments": {"trackingNumber": "SD-ZZZZ-ZZZZ"}})
+        check("MCP foreign and unknown tracking are indistinguishable", status == status_unknown == 200
+              and foreign_mcp["result"] == unknown_mcp["result"] and foreign_mcp["result"]["isError"])
+        check("MCP rejects operational user", mcp("tools/list", {}, admin)[0] == 403)
+        check("MCP shares chat rate budget", mcp("tools/call", {"name": "track_parcel", "arguments": {
+            "trackingNumber": tracking}}, limited)[0] == 429)
+        check("MCP rejects browser Origin", http(gateway, mcp_path, {"jsonrpc": "2.0", "id": 1, "method": "ping"},
+              other, {"Origin": "https://untrusted.example"})[0] == 403)
+        check("gateway OpenAPI includes MCP", mcp_path in http(gateway, "/api/v1/analytics/v3/api-docs")[1]["paths"])
+
+        # Stage 14: the dashboard's report sources reflect a real order-created event.
+        from datetime import datetime, timezone, timedelta
+        # Colombo is UTC+05:30 without DST; avoid requiring tzdata on Windows.
+        today = datetime.now(timezone(timedelta(hours=5, minutes=30))).date().isoformat()
+        daily_path = f"/api/v1/analytics/deliveries/daily?from={today}&to={today}"
+        wait_until(lambda: http(gateway, daily_path, token=admin)[1].get("data", {}).get("days", [{}])[0].get("created", 0) >= 1)
+        check("dashboard daily source reflects real order event", True)
+        check("dashboard success source reachable", http(gateway, f"/api/v1/analytics/success-rate?from={today}&to={today}", token=admin)[0] == 200)
+        check("dashboard workload source reachable", http(gateway, "/api/v1/analytics/couriers/workload", token=admin)[0] == 200)
+        check("customer cannot access dashboard reports", http(gateway, daily_path, token=other)[0] == 403)
         consumers = docker("exec", rabbit, "rabbitmqctl", "list_consumers", "--quiet")
         check("analytics consumes real RabbitMQ queue", "analytics.events.queue" in consumers)
         print(f"Completed {len(checks)} acceptance checks; no paid model calls.", flush=True)

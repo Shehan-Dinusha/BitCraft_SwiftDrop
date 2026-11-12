@@ -1,0 +1,15 @@
+{
+  "unit": {
+    "tests": 108,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "integration": {
+    "tests": 26,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "serviceControllerLineCoveragePercent": 94.51
+}
