@@ -41,6 +41,19 @@ public class ProofOfDeliveryController {
             @RequestParam("recipientName") String recipientName,
             @RequestParam(value = "signature", required = false) String signature,
             @RequestParam(value = "otp", required = false) String otp) {
+        if (photo == null || photo.isEmpty()) {
+            throw new IllegalArgumentException("Proof photo file is required");
+        }
+        if (photo.getSize() > 5 * 1024 * 1024) {
+            throw new IllegalArgumentException("Photo exceeds maximum allowed size of 5 MB");
+        }
+        String contentType = photo.getContentType();
+        if (contentType == null || (!contentType.equalsIgnoreCase("image/jpeg") && !contentType.equalsIgnoreCase("image/png") && !contentType.equalsIgnoreCase("image/jpg"))) {
+            throw new IllegalArgumentException("Only JPEG and PNG images are allowed");
+        }
+        if (recipientName == null || recipientName.isBlank()) {
+            throw new IllegalArgumentException("Recipient name is required");
+        }
         ProofOfDeliveryResponse response = storageService.storeMultipart(deliveryId, photo, recipientName, signature, otp);
         return ApiResponse.success(response, "Proof-of-delivery evidence uploaded");
     }
