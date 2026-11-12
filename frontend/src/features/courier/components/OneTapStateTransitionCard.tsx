@@ -31,7 +31,7 @@ export function OneTapStateTransitionCard({
   pendingState
 }: OneTapStateTransitionCardProps) {
   const [showFailurePanel, setShowFailurePanel] = useState(false);
-  const [failureReason, setFailureReason] = useState<DeliveryFailureReason>('RECIPIENT_UNAVAILABLE');
+  const [failureReason, setFailureReason] = useState<DeliveryFailureReason>('CUSTOMER_UNAVAILABLE');
   const [failureNotes, setFailureNotes] = useState('');
 
   const currentState = session.currentState as DeliveryState;
@@ -223,41 +223,64 @@ export function OneTapStateTransitionCard({
             </button>
 
             {showFailurePanel && (
-              <div className="mt-3 space-y-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleReportFailure();
+                }}
+                className="mt-3 space-y-3 rounded-xl border border-rose-200 bg-rose-50/60 p-4"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-rose-600" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900">
+                    Report Delivery Failure Form
+                  </h4>
+                </div>
+                <p className="text-xs text-rose-700">
+                  Select the failure reason and provide operational notes to mark this delivery attempt as failed.
+                </p>
+
                 <label className="block text-xs font-semibold text-slate-700">
-                  Select Failure Reason:
+                  Failure Reason:
                 </label>
                 <select
                   value={failureReason}
                   onChange={(e) => setFailureReason(e.target.value as DeliveryFailureReason)}
-                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800"
+                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
                 >
-                  <option value="RECIPIENT_UNAVAILABLE">Recipient Unavailable / Not Home</option>
-                  <option value="INCORRECT_ADDRESS">Incorrect / Incomplete Address</option>
-                  <option value="CUSTOMER_REJECTED">Customer Refused Package</option>
-                  <option value="PACKAGE_DAMAGED">Package Damaged During Transit</option>
-                  <option value="COURIER_BREAKDOWN">Vehicle / Courier Breakdown</option>
+                  <option value="CUSTOMER_UNAVAILABLE">Recipient Unavailable / Not Home</option>
+                  <option value="WRONG_ADDRESS">Incorrect / Incomplete Address</option>
+                  <option value="REFUSED_BY_CUSTOMER">Customer Refused Package</option>
+                  <option value="ACCESS_RESTRICTED">Access Restricted / Gated Area</option>
+                  <option value="DAMAGED">Package Damaged During Transit</option>
+                  <option value="WEATHER_DELAY">Severe Weather / Road Block</option>
+                  <option value="PAYMENT_FAILED">COD / Payment Collection Failed</option>
                   <option value="OTHER">Other Reason</option>
                 </select>
 
+                <label className="block text-xs font-semibold text-slate-700">
+                  Courier Note / Explanation:
+                </label>
                 <input
                   type="text"
-                  placeholder="Additional context or notes..."
+                  placeholder="e.g. Phoned recipient 3 times, gate locked, no neighbor response"
                   value={failureNotes}
                   onChange={(e) => setFailureNotes(e.target.value)}
-                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800"
+                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
+                  required
                 />
 
                 <Button
+                  type="submit"
                   variant="destructive"
                   className="w-full min-h-[44px] text-xs font-bold"
-                  onClick={handleReportFailure}
                   loading={pendingState === 'FAILED'}
-                  disabled={isPending}
+                  disabled={isPending || !failureNotes.trim()}
                 >
+                  <AlertTriangle className="mr-2 h-4 w-4" />
                   Confirm & Report Delivery Failure
                 </Button>
-              </div>
+              </form>
             )}
           </div>
         )}

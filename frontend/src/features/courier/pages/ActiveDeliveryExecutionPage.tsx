@@ -16,6 +16,7 @@ import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBann
 import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBar/ErgonomicActionBar';
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
+import { DeliveryFailureReportModal } from '../components/DeliveryFailureReportModal';
 import { GpsTelemetryPublisher } from '../components/GpsTelemetryPublisher';
 import {
   ArrowLeft,
@@ -23,7 +24,8 @@ import {
   MapPin,
   Package,
   Phone,
-  Navigation
+  Navigation,
+  AlertTriangle
 } from 'lucide-react';
 
 export function ActiveDeliveryExecutionPage() {
@@ -40,6 +42,7 @@ export function ActiveDeliveryExecutionPage() {
   const [breadcrumbs, setBreadcrumbs] = useState<TrackingBreadcrumbResponse[]>([]);
   const [isPoDVerified, setIsPoDVerified] = useState(false);
   const [isPoDModalOpen, setIsPoDModalOpen] = useState(false);
+  const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [pendingState, setPendingState] = useState<DeliveryState | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -193,15 +196,29 @@ export function ActiveDeliveryExecutionPage() {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={loadDelivery}
-          disabled={loading || pendingState !== null}
-          className="self-start text-xs sm:self-auto min-h-[44px]"
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {session && (session.currentState !== 'DELIVERED' && session.currentState !== 'FAILED' && session.currentState !== 'CANCELLED') && (
+            <Button
+              variant="outline"
+              onClick={() => setIsFailureModalOpen(true)}
+              disabled={loading || pendingState !== null}
+              className="text-xs text-rose-600 hover:border-rose-300 hover:bg-rose-50 min-h-[44px]"
+            >
+              <AlertTriangle className="mr-1.5 h-4 w-4 text-rose-500" />
+              Report Failure
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={loadDelivery}
+            disabled={loading || pendingState !== null}
+            className="text-xs min-h-[44px]"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </header>
 
       {/* Notifications */}
@@ -403,6 +420,20 @@ export function ActiveDeliveryExecutionPage() {
                 setIsPoDVerified(true);
                 await handleTransition('DELIVERED', undefined, 'Completed delivery with verified photo proof');
               }}
+            />
+          )}
+
+          {/* Report Delivery Failure Modal */}
+          {session.deliveryId && (
+            <DeliveryFailureReportModal
+              open={isFailureModalOpen}
+              onClose={() => setIsFailureModalOpen(false)}
+              deliveryId={session.deliveryId}
+              trackingNumber={session.trackingNumber}
+              onSubmitFailure={async (reason, notes) => {
+                await handleTransition('FAILED', reason, notes);
+              }}
+              loading={pendingState === 'FAILED'}
             />
           )}
         </div>
