@@ -112,11 +112,20 @@ public class DeliveryExecutionService {
 
     @Transactional
     public DeliverySession transition(UUID deliveryId, TransitionDeliveryRequest request) {
+        return transition(deliveryId, request, null);
+    }
+
+    @Transactional
+    public DeliverySession transition(UUID deliveryId, TransitionDeliveryRequest request, CallerContext caller) {
         log.info("Attempting delivery transition for deliveryId: {} to targetState: {}",
                 deliveryId, request.targetState());
 
         DeliverySession session = deliverySessionRepository.findByDeliveryId(deliveryId)
                 .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found: " + deliveryId));
+
+        if (caller != null) {
+            DeliveryAccessPolicy.assertCanAccess(session, caller);
+        }
 
         DeliveryState fromState = session.getCurrentState();
         DeliveryState toState = request.targetState();
@@ -187,8 +196,17 @@ public class DeliveryExecutionService {
 
     @Transactional
     public TrackingBreadcrumb recordLocation(UUID deliveryId, CourierLocationUpdatePayload payload) {
+        return recordLocation(deliveryId, payload, null);
+    }
+
+    @Transactional
+    public TrackingBreadcrumb recordLocation(UUID deliveryId, CourierLocationUpdatePayload payload, CallerContext caller) {
         DeliverySession session = deliverySessionRepository.findByDeliveryId(deliveryId)
                 .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found: " + deliveryId));
+
+        if (caller != null) {
+            DeliveryAccessPolicy.assertCanAccess(session, caller);
+        }
 
         TrackingBreadcrumb breadcrumb = new TrackingBreadcrumb();
         breadcrumb.setDeliveryId(deliveryId);

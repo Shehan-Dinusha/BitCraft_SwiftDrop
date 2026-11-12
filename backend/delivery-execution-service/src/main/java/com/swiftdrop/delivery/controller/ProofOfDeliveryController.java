@@ -42,7 +42,12 @@ public class ProofOfDeliveryController {
     @Operation(summary = "Upload proof-of-delivery evidence")
     public ApiResponse<ProofOfDeliveryResponse> upload(
             @PathVariable UUID deliveryId,
-            @RequestBody ProofOfDeliveryUploadRequest request) {
+            @RequestBody ProofOfDeliveryUploadRequest request,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = resolveCaller(httpRequest);
+        if (caller != null && deliveryService != null) {
+            deliveryService.assertCanAccess(deliveryId, caller);
+        }
         ProofOfDeliveryResponse response = storageService.store(deliveryId, request);
         return ApiResponse.success(response, "Proof-of-delivery evidence uploaded");
     }
@@ -51,7 +56,12 @@ public class ProofOfDeliveryController {
     @Operation(summary = "Verify proof-of-delivery with recipient OTP")
     public ApiResponse<ProofOfDeliveryResponse> verify(
             @PathVariable UUID deliveryId,
-            @RequestParam String otp) {
+            @RequestParam String otp,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = resolveCaller(httpRequest);
+        if (caller != null && deliveryService != null) {
+            deliveryService.assertCanAccess(deliveryId, caller);
+        }
         ProofOfDeliveryResponse response = storageService.verify(deliveryId, otp);
         return ApiResponse.success(response, "Proof-of-delivery verified successfully");
     }

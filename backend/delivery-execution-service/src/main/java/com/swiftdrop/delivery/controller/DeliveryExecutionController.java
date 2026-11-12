@@ -94,8 +94,12 @@ public class DeliveryExecutionController {
     @Operation(summary = "Transition delivery lifecycle state", description = "Executes courier mobile action transitions governed by 12-state FSM.")
     public ApiResponse<DeliverySessionResponse> transition(
             @PathVariable UUID deliveryId,
-            @Valid @RequestBody TransitionDeliveryRequest request) {
-        var session = deliveryService.transition(deliveryId, request);
+            @Valid @RequestBody TransitionDeliveryRequest request,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = resolveCaller(httpRequest);
+        var session = caller != null
+                ? deliveryService.transition(deliveryId, request, caller)
+                : deliveryService.transition(deliveryId, request);
         return ApiResponse.success(DeliverySessionResponse.fromEntity(session), "Delivery transitioned to " + session.getCurrentState());
     }
 
@@ -103,8 +107,12 @@ public class DeliveryExecutionController {
     @Operation(summary = "Record courier GPS telemetry breadcrumb")
     public ApiResponse<TrackingBreadcrumbResponse> recordLocation(
             @PathVariable UUID deliveryId,
-            @Valid @RequestBody CourierLocationUpdatePayload payload) {
-        var breadcrumb = deliveryService.recordLocation(deliveryId, payload);
+            @Valid @RequestBody CourierLocationUpdatePayload payload,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = resolveCaller(httpRequest);
+        var breadcrumb = caller != null
+                ? deliveryService.recordLocation(deliveryId, payload, caller)
+                : deliveryService.recordLocation(deliveryId, payload);
         return ApiResponse.success(TrackingBreadcrumbResponse.fromEntity(breadcrumb), "Location breadcrumb recorded");
     }
 

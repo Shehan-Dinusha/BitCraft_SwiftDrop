@@ -227,4 +227,52 @@ class DeliveryExecutionServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.deliveryId()).isEqualTo(deliveryId);
     }
+
+    @Test
+    @DisplayName("transition with caller: Courier A updating Courier B throws ForbiddenException")
+    void testTransitionForbiddenForOtherCourier() {
+        UUID courierB = UUID.randomUUID();
+        DeliverySession session = new DeliverySession();
+        session.setDeliveryId(deliveryId);
+        session.setCourierId(courierB);
+        session.setCurrentState(DeliveryState.ASSIGNED);
+
+        when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
+
+        UUID courierA = UUID.randomUUID();
+        CallerContext caller = new CallerContext(courierA, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);
+
+        TransitionDeliveryRequest request = new TransitionDeliveryRequest(
+                DeliveryState.PICKED_UP,
+                "Picked up parcel",
+                BigDecimal.valueOf(6.9271),
+                BigDecimal.valueOf(79.8612),
+                null,
+                "COURIER"
+        );
+
+        assertThatThrownBy(() -> deliveryService.transition(deliveryId, request, caller))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    @DisplayName("recordLocation with caller: Courier A updating Courier B throws ForbiddenException")
+    void testRecordLocationForbiddenForOtherCourier() {
+        UUID courierB = UUID.randomUUID();
+        DeliverySession session = new DeliverySession();
+        session.setDeliveryId(deliveryId);
+        session.setCourierId(courierB);
+
+        when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
+
+        UUID courierA = UUID.randomUUID();
+        CallerContext caller = new CallerContext(courierA, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);
+
+        CourierLocationUpdatePayload payload = new CourierLocationUpdatePayload(
+                6.9271, 79.8612, 90.0, 30.0, 3.5
+        );
+
+        assertThatThrownBy(() -> deliveryService.recordLocation(deliveryId, payload, caller))
+                .isInstanceOf(ForbiddenException.class);
+    }
 }
