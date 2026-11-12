@@ -31,7 +31,7 @@ export function OneTapStateTransitionCard({
   pendingState
 }: OneTapStateTransitionCardProps) {
   const [showFailurePanel, setShowFailurePanel] = useState(false);
-  const [failureReason, setFailureReason] = useState<DeliveryFailureReason>('CUSTOMER_UNAVAILABLE');
+  const [failureReason, setFailureReason] = useState<DeliveryFailureReason>('RECIPIENT_UNAVAILABLE');
   const [failureNotes, setFailureNotes] = useState('');
 
   const currentState = session.currentState as DeliveryState;
@@ -248,13 +248,13 @@ export function OneTapStateTransitionCard({
                   onChange={(e) => setFailureReason(e.target.value as DeliveryFailureReason)}
                   className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
                 >
-                  <option value="CUSTOMER_UNAVAILABLE">Recipient Unavailable / Not Home</option>
-                  <option value="WRONG_ADDRESS">Incorrect / Incomplete Address</option>
-                  <option value="REFUSED_BY_CUSTOMER">Customer Refused Package</option>
+                  <option value="RECIPIENT_UNAVAILABLE">Recipient Unavailable / Not Home</option>
+                  <option value="INCORRECT_ADDRESS">Incorrect / Incomplete Address</option>
                   <option value="ACCESS_RESTRICTED">Access Restricted / Gated Area</option>
-                  <option value="DAMAGED">Package Damaged During Transit</option>
-                  <option value="WEATHER_DELAY">Severe Weather / Road Block</option>
-                  <option value="PAYMENT_FAILED">COD / Payment Collection Failed</option>
+                  <option value="RECIPIENT_REJECTED">Customer Refused Package</option>
+                  <option value="DAMAGED_IN_TRANSIT">Package Damaged During Transit</option>
+                  <option value="ADVERSE_WEATHER">Severe Weather / Road Block</option>
+                  <option value="SYSTEM_CANCELLATION">Order Cancelled by System</option>
                   <option value="OTHER">Other Reason</option>
                 </select>
 

@@ -17,19 +17,14 @@ export interface DeliveryFailureReportModalProps {
 
 export const FAILURE_REASONS: { value: DeliveryFailureReason; label: string; description: string }[] = [
   {
-    value: 'CUSTOMER_UNAVAILABLE',
+    value: 'RECIPIENT_UNAVAILABLE',
     label: 'Recipient Unavailable / Not Home',
     description: 'Customer not at address and unreachable by phone.'
   },
   {
-    value: 'WRONG_ADDRESS',
+    value: 'INCORRECT_ADDRESS',
     label: 'Incorrect / Incomplete Address',
     description: 'Address does not exist or missing house/building number.'
-  },
-  {
-    value: 'REFUSED_BY_CUSTOMER',
-    label: 'Customer Refused Package',
-    description: 'Recipient rejected delivery or cancelled order.'
   },
   {
     value: 'ACCESS_RESTRICTED',
@@ -37,19 +32,24 @@ export const FAILURE_REASONS: { value: DeliveryFailureReason; label: string; des
     description: 'Security gate refused entry or location inaccessible.'
   },
   {
-    value: 'DAMAGED',
+    value: 'RECIPIENT_REJECTED',
+    label: 'Customer Refused Package',
+    description: 'Recipient rejected delivery or cancelled order.'
+  },
+  {
+    value: 'DAMAGED_IN_TRANSIT',
     label: 'Package Damaged in Transit',
     description: 'Parcel seal broken or merchandise visibly damaged.'
   },
   {
-    value: 'WEATHER_DELAY',
+    value: 'ADVERSE_WEATHER',
     label: 'Severe Weather / Road Block',
     description: 'Flooding, storm, or impassable road conditions.'
   },
   {
-    value: 'PAYMENT_FAILED',
-    label: 'COD / Payment Collection Failed',
-    description: 'Customer unable to provide cash-on-delivery payment.'
+    value: 'SYSTEM_CANCELLATION',
+    label: 'Order Cancelled by System / Dispatch',
+    description: 'Dispatch or merchant aborted the delivery run.'
   },
   {
     value: 'OTHER',
@@ -65,7 +65,7 @@ export function DeliveryFailureReportModal({
   onSubmitFailure,
   loading = false
 }: DeliveryFailureReportModalProps) {
-  const [reason, setReason] = useState<DeliveryFailureReason>('CUSTOMER_UNAVAILABLE');
+  const [reason, setReason] = useState<DeliveryFailureReason>('RECIPIENT_UNAVAILABLE');
   const [notes, setNotes] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
