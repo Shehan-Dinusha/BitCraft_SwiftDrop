@@ -114,4 +114,36 @@ class ApiKeyManagementControllerTest {
                 .andExpect(jsonPath("$.valid").value(true))
                 .andExpect(jsonPath("$.merchantId").value(merchantId.toString()));
     }
+
+    @Test
+    void regenerateReturnsReplacementSecret() throws Exception {
+        UUID oldId = UUID.randomUUID();
+        UUID newId = UUID.randomUUID();
+        when(apiKeyService.regenerateApiKey(merchantId, oldId)).thenReturn(new ApiKeyResponse(
+                newId, merchantId, "ERP", "sk_live_new...", true, Instant.now(),
+                null, null, null, "sk_live_replacement"));
+        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + oldId + "/regenerate"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.keyId").value(newId.toString()))
+                .andExpect(jsonPath("$.data.rawApiKey").value("sk_live_replacement"));
+    }
+
+    @Test
+    void regenerateUnknownKeyReturns404() throws Exception {
+        UUID keyId = UUID.randomUUID();
+        when(apiKeyService.regenerateApiKey(merchantId, keyId))
+                .thenThrow(new com.swiftdrop.merchant.exception.ApiKeyNotFoundException("API key not found"));
+        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + keyId + "/regenerate"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void regenerateRevokedKeyReturns409() throws Exception {
+        UUID keyId = UUID.randomUUID();
+        when(apiKeyService.regenerateApiKey(merchantId, keyId)).thenThrow(
+                new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT, "Key already revoked"));
+        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + keyId + "/regenerate"))
+                .andExpect(status().isConflict());
+    }
 }
