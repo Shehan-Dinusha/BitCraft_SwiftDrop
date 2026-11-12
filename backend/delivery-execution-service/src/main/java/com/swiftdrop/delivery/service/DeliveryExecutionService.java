@@ -2,6 +2,7 @@ package com.swiftdrop.delivery.service;
 
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
 import com.swiftdrop.contracts.events.delivery.LocationUpdatedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
@@ -27,6 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 
@@ -327,5 +331,39 @@ public class DeliveryExecutionService {
         return breadcrumbRepository.findTop50ByDeliveryIdOrderByRecordedAtDesc(deliveryId).stream()
                 .map(TrackingBreadcrumbResponse::fromEntity)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliverySessionResponse> getMyDeliveries(UUID courierId, String dateStr) {
+        LocalDate targetDate;
+        if (dateStr == null || dateStr.isBlank() || "today".equalsIgnoreCase(dateStr.trim())) {
+            targetDate = LocalDate.now(ZoneId.of("Asia/Colombo"));
+        } else if ("all".equalsIgnoreCase(dateStr.trim())) {
+            return deliverySessionRepository.findByCourierIdOrderByCreatedAtAsc(courierId)
+                    .stream()
+                    .map(DeliverySessionResponse::fromEntity)
+                    .toList();
+        } else {
+            try {
+                targetDate = LocalDate.parse(dateStr.trim());
+            } catch (DateTimeParseException ex) {
+                throw new IllegalArgumentException("Invalid date format: " + dateStr + ". Expected YYYY-MM-DD or 'today'");
+            }
+        }
+
+        Instant startOfDay = targetDate.atStartOfDay(ZoneId.of("Asia/Colombo")).toInstant();
+        Instant endOfDay = targetDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Colombo")).toInstant();
+
+        List<DeliverySession> sessions = deliverySessionRepository.findByCourierIdAndDateRange(courierId, startOfDay, endOfDay);
+        return sessions.stream().map(DeliverySessionResponse::fromEntity).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliverySessionResponse> getMyDeliveries(CallerContext caller, String dateStr) {
+        if (caller == null) {
+            throw new UnauthenticatedCallerException("Caller context is required");
+        }
+        DeliveryAccessPolicy.assertCanAccess(caller.userId(), caller);
+        return getMyDeliveries(caller.userId(), dateStr);
     }
 }

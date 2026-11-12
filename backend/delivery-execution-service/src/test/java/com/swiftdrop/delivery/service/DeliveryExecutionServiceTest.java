@@ -28,6 +28,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -274,5 +275,42 @@ class DeliveryExecutionServiceTest {
 
         assertThatThrownBy(() -> deliveryService.recordLocation(deliveryId, payload, caller))
                 .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    @DisplayName("getMyDeliveries returns courier's deliveries for today")
+    void testGetMyDeliveriesSuccess() {
+        DeliverySession session = new DeliverySession();
+        session.setDeliveryId(deliveryId);
+        session.setCourierId(courierId);
+        session.setTrackingNumber("SD-COL-112233");
+        session.setCurrentState(DeliveryState.ASSIGNED);
+
+        when(deliverySessionRepository.findByCourierIdAndDateRange(eq(courierId), any(), any()))
+                .thenReturn(List.of(session));
+
+        CallerContext caller = new CallerContext(courierId, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);
+
+        var list = deliveryService.getMyDeliveries(caller, "today");
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).deliveryId()).isEqualTo(deliveryId);
+        assertThat(list.get(0).courierId()).isEqualTo(courierId);
+    }
+
+    @Test
+    @DisplayName("getMyDeliveries with invalid date format throws IllegalArgumentException")
+    void testGetMyDeliveriesInvalidDateFormat() {
+        CallerContext caller = new CallerContext(courierId, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);
+
+        assertThatThrownBy(() -> deliveryService.getMyDeliveries(caller, "not-a-valid-date"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid date format");
+    }
+
+    @Test
+    @DisplayName("getMyDeliveries without caller throws UnauthenticatedCallerException")
+    void testGetMyDeliveriesNullCaller() {
+        assertThatThrownBy(() -> deliveryService.getMyDeliveries((CallerContext) null, "today"))
+                .isInstanceOf(com.swiftdrop.contracts.security.UnauthenticatedCallerException.class);
     }
 }

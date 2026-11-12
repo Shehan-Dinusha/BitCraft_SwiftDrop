@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
+import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
 import com.swiftdrop.delivery.dto.CourierLocationUpdatePayload;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
 import com.swiftdrop.delivery.dto.TrackingBreadcrumbResponse;
@@ -39,6 +40,19 @@ public class DeliveryExecutionController {
     @Operation(summary = "Check delivery execution service health")
     public ApiResponse<String> health() {
         return ApiResponse.success("UP", "DeliveryExecutionController is ready");
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "List deliveries assigned to the authenticated courier", description = "Returns today's deliveries (or for a given date) assigned to the logged-in courier, ordered by assignment time.")
+    public ApiResponse<List<DeliverySessionResponse>> getMyDeliveries(
+            @RequestParam(required = false) String date,
+            HttpServletRequest request) {
+        CallerContext caller = resolveCaller(request);
+        if (caller == null) {
+            throw new UnauthenticatedCallerException("Caller context is required");
+        }
+        List<DeliverySessionResponse> response = deliveryService.getMyDeliveries(caller, date);
+        return ApiResponse.success(response, "Courier deliveries retrieved");
     }
 
     @GetMapping("/{deliveryId}")

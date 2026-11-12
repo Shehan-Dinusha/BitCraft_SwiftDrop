@@ -24,5 +24,13 @@ public interface DeliverySessionRepository extends JpaRepository<DeliverySession
 
     List<DeliverySession> findByCourierIdAndCurrentState(UUID courierId, DeliveryState currentState);
 
+    List<DeliverySession> findByCourierIdOrderByCreatedAtAsc(UUID courierId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM DeliverySession s WHERE s.courierId = :courierId AND ((s.createdAt >= :startOfDay AND s.createdAt < :endOfDay) OR (s.updatedAt >= :startOfDay AND s.updatedAt < :endOfDay)) ORDER BY s.createdAt ASC")
+    List<DeliverySession> findByCourierIdAndDateRange(
+            @org.springframework.data.repository.query.Param("courierId") UUID courierId,
+            @org.springframework.data.repository.query.Param("startOfDay") java.time.Instant startOfDay,
+            @org.springframework.data.repository.query.Param("endOfDay") java.time.Instant endOfDay);
+
     Page<DeliverySession> findByCurrentState(DeliveryState currentState, Pageable pageable);
 }
