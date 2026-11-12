@@ -6,6 +6,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5436/swiftdrop_delivery}
     username: ${DB_USERNAME:swiftdrop}
@@ -30,3 +34,6 @@ springdoc:
     version: OPENAPI_3_1
   swagger-ui:
     path: /swagger-ui.html
+swiftdrop:
+  delivery:
+    pod-storage-dir: ${POD_STORAGE_DIR:/tmp/swiftdrop/pod}

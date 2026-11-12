@@ -98,4 +98,31 @@ class ProofOfDeliveryStorageServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("OTP is invalid");
     }
+
+    @Test
+    @DisplayName("Store multipart PoD: writes file to storage directory with UUID filename and stores path in DB")
+    void testStoreMultipart_WritesFileSafely(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tempDir) throws Exception {
+        ProofOfDeliveryStorageService customStorage = new ProofOfDeliveryStorageService(repository, tempDir.toString());
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "photo",
+                "malicious../name.jpg",
+                "image/jpeg",
+                "test-photo-data".getBytes()
+        );
+
+        when(repository.save(any(ProofOfDelivery.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ProofOfDeliveryResponse response = customStorage.storeMultipart(deliveryId, file, "Sunil Perera", "sig-123", "998877");
+
+        assertThat(response).isNotNull();
+        verify(repository).save(argThat(pod -> {
+            assertThat(pod.getRecipientName()).isEqualTo("Sunil Perera");
+            assertThat(pod.getPhotoUrl()).startsWith(tempDir.toString());
+            assertThat(pod.getPhotoUrl()).doesNotContain("malicious");
+            assertThat(pod.getPhotoUrl()).endsWith(".jpg");
+            assertThat(java.nio.file.Files.exists(java.nio.file.Paths.get(pod.getPhotoUrl()))).isTrue();
+            return true;
+        }));
+    }
 }
