@@ -1,23 +1,31 @@
-# Member 10: Analytics and AI
+# Member 10: Analytics and customer AI assistant
 
-Part 1 establishes the starting evidence and intended contracts before changing application behavior.
+Use the [Member 10 guide](../../member-guides/member-10.md) as the scope and stage checklist.
+Stages 1–15 are implemented, including MCP tools, dashboard charts and the customer widget.
+The chatbot is customer-only; operational reports/audits remain restricted to dispatchers
+and administrators. Stage 16 diagram sources, exports and complete schema documentation
+are committed locally and ready for review and sharing. Stage 7 live Azure verification remains pending.
 
 | Document | Purpose |
 |---|---|
-| [Implementation roadmap](implementation-roadmap.md) | Ten required implementation parts and optional MCP work |
-| [Baseline notes](baseline-notes.md) | Current code, startup procedure, endpoints, schema, and existing defects |
-| [Reporting contracts](reporting-contracts.md) | Metric definitions, timezone, proposed API responses, and acceptance examples |
-| [Handoff requests](handoff-requests.md) | Verified interfaces and decisions requiring teammates' confirmation |
-| [Part 1 self-verification and viva guide](part-1-self-verification.md) | Commands you run yourself, expected observations, and explanations |
-| [Part 2 event reliability](part-2-event-reliability.md) | Inbox transaction, raw-message validation, bounded retries, broker parity, and tests |
-| [Part 2 self-verification and viva guide](part-2-self-verification.md) | Automated acceptance checks and an optional isolated broker/database demo |
-| [Part 3 analytics projections](part-3-analytics-projections.md) | Distinct-order metrics, event-time reconciliation, workload, catch-up, and compatibility changes |
-| [Part 3 self-verification and commit guide](part-3-self-verification.md) | Commands, repeatable demo, expected SQL/API results, commit groups, and viva/team summary |
-| [Part 4 reporting APIs](part-4-reporting-api.md) | Public report DTOs, inclusive dates, operational authorization, compatibility and viva/team explanation |
-| [Part 4 self-verification and commit guide](part-4-self-verification.md) | Real-token gateway checks, controlled SQL/API comparison and commit instructions |
-| [Part 4 implementation evidence](../../test-reports/m10/part-4/README.md) | Executed automated/HTTP checks and explicitly pending real-account gateway checks |
-| [Part 1 evidence](../../test-reports/m10/part-1/README.md) | Actual check results and captured runtime artifacts |
+| [Stages 12–15 completion](stages-12-to-15.md) | MCP, chart dependency, dashboard and customer widget |
+| [Stage 16 deliverables](stage-16-diagrams.md) | AI sequence and complete analytics ERD; Mermaid, SVG, PNG and PDF |
+| [Analytics schema dictionary](analytics-schema.md) | Every column, key, default, check constraint and index |
+| [Implementation roadmap](implementation-roadmap.md) | Remaining work, part ordering and dependencies |
+| [Stages 1?5 summary](stages-1-to-5-summary.md) | Completed analytics behavior and recorded evidence |
+| [AI setup and connection guide](stages-6-to-11-ai-assistant.md) | Mock startup, customer browser checks, real-model settings and limitations |
+| [Verification](verification.md) | Consolidated automated/manual checks, SQL reconciliation and review commands |
+| [Reporting contracts](reporting-contracts.md) | Metric meanings, timezone, ranges and acceptance examples |
+| [Event reliability](part-2-event-reliability.md) | Inbox transactions, validation, bounded retries, broker parity and tests |
+| [Analytics projections](part-3-analytics-projections.md) | Distinct-order/daily/courier projections and replay behavior |
+| [Reporting APIs](part-4-reporting-api.md) | Report contracts, operational authorization and compatibility |
+| [Handoff register](handoff-requests.md) | Cross-member policy and shared-file review dependencies |
+| [Historical baseline](baseline-notes.md) | Initial observations, not the current implementation status |
+| [Baseline evidence](../../test-reports/m10/part-1/README.md) | Recorded initial results |
+| [Reporting evidence](../../test-reports/m10/part-4/README.md) | Recorded reporting and authorization checks |
+| [Assistant evidence](../../test-reports/m10/stages-6-to-11/README.md) | Executed backend/frontend checks and pending Azure smoke |
 
-Part 1 documentation and baseline checks were completed on 2026-11-08. Existing runtime defects remain intentionally recorded for their planned implementation parts. Cross-member decisions are proposals until their owners confirm them; this documentation does not claim team approval.
-
-No application Java, TypeScript, migration, broker, deployment, or published API contract was changed in Part 1. Proposed future responses belong in the design document until implemented and synchronized with OpenAPI and generated types.
+Four overlapping Part 1?4 self-verification documents were consolidated into `verification.md`.
+The separate frontend AI demo walkthrough was merged into the AI setup guide. Historical
+technical explanations and curated test evidence are retained. Runtime logs, session data,
+model keys and build output stay outside commits.

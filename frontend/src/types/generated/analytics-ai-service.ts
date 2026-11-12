@@ -4,6 +4,47 @@
  */
 
 export interface paths {
+    "/api/v1/ai/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** No server-initiated SSE stream is offered */
+        get: operations["deliveryMcpStream"];
+        put?: never;
+        /**
+         * Customer-only stateless MCP Streamable HTTP tools
+         * @description MCP protocol 2025-03-26. Supports initialize, ping, tools/list and tools/call. Uses JSON-RPC envelopes instead of ApiResponse. Native clients only; all Origin headers are rejected. Send a customer Bearer token through the gateway. Tool calls share the chat ten-request per-minute per-user budget and reuse ownership checks, safe output, argument validation and durable audits. No session IDs or server-initiated streams. Notifications return 202 without a body.
+         */
+        post: operations["deliveryMcp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Customer-only tracking and pricing chat with at most three tool calls
+         * @description Requires CUSTOMER role. Tracking first verifies order ownership through the protected order API, then selects public-safe fields. Other customers' parcels and unknown parcels produce the same unavailable-to-you answer. Ten messages per minute per user per service instance. Conversations expire after 30 minutes of inactivity and are lost on restart. Unknown and foreign conversation IDs both return 404. Estimates use STANDARD speed and actual weight only.
+         */
+        post: operations["deliveryAssistantChat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/deliveries/daily": {
         parameters: {
             query?: never;
@@ -380,7 +421,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Query the AI logistics assistant agent in natural language */
+        /**
+         * Customer-only compatibility endpoint for order assistant chat
+         * @description Requires CUSTOMER role and uses the same safe chat flow and order ownership checks. callerPersona is ignored for authorization. Starts a new ephemeral conversation. confidence is 0 (not a calibrated probability); route optimization is outside this chat scope.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -402,6 +446,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["ApiResponseAssistantQuery"];
                     };
+                };
+                /** @description Chat requires CUSTOMER role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -451,6 +502,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AiChatRequest: {
+            message: string;
+            /** Format: uuid */
+            conversationId?: string;
+        };
+        AiToolUse: {
+            /** @enum {string} */
+            name: "track_parcel" | "calculate_estimate" | "DISALLOWED_TOOL";
+            /** @enum {string} */
+            outcome: "OK" | "INVALID_ARGUMENTS" | "NOT_FOUND" | "UNAVAILABLE" | "REFUSED" | "LIMIT_REACHED";
+        };
+        AiChatResponse: {
+            reply: string;
+            /** Format: uuid */
+            conversationId: string;
+            toolCalls: components["schemas"]["AiToolUse"][];
+        };
+        ApiResponseAiChat: {
+            success: boolean;
+            message: string;
+            data: components["schemas"]["AiChatResponse"];
+            /** Format: date-time */
+            timestamp: string;
+        };
         ApiErrorResponse: {
             status: number;
             error: string;
@@ -682,12 +757,14 @@ export interface components {
         };
         AssistantQueryRequest: {
             query: string;
+            /** @description Ignored for authorization */
             callerPersona?: string;
             contextTrackingNumber?: string;
         };
         AssistantQueryResponse: {
             answer?: string;
             detectedIntent?: string;
+            /** @description Deprecated compatibility field; always 0 */
             confidence?: number;
             suggestedActions?: string[];
             toolInvocations?: string[];
@@ -704,8 +781,10 @@ export interface components {
             auditId?: string;
             toolName?: string;
             callerPersona?: string;
-            promptOrQuery?: string;
-            outputResult?: string;
+            /** @description Deprecated field; no raw prompts are stored */
+            promptOrQuery?: null;
+            /** @description Safe outcome code only */
+            outputResult?: string | null;
             executionTimeMs?: number;
             success?: boolean;
             /** Format: date-time */
@@ -769,6 +848,171 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    deliveryMcpStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            401: components["responses"]["Unauthenticated"];
+            /** @description Customer role required or browser Origin rejected */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Use POST; server-initiated SSE is not supported */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deliveryMcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @constant */
+                    jsonrpc: "2.0";
+                    id?: string | number;
+                    method: string;
+                    params?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description JSON-RPC result or protocol error (-32700 parse error, -32600 invalid request, -32601 unknown method, -32602 invalid params); tool failures have result.isError true */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        jsonrpc: "2.0";
+                        id: string | number | null;
+                        result?: {
+                            [key: string]: unknown;
+                        };
+                        error?: {
+                            code: number;
+                            message: string;
+                        };
+                    };
+                };
+            };
+            /** @description Notification accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description Customer role required or browser Origin rejected */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Shared assistant request limit reached */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tool audit could not be persisted */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limiter capacity reached */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deliveryAssistantChat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Assistant reply and safe tool execution labels */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseAiChat"];
+                };
+            };
+            /** @description Invalid message or conversation UUID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description Chat requires CUSTOMER role */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conversation not found or expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ten-message per-minute limit reached; retry in 60 seconds */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Model provider unavailable or conversation capacity reached */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     dailyDeliveryReport: {
         parameters: {
             query: {

@@ -39,7 +39,8 @@ import java.util.List;
  * {@code X-Merchant-Id}, {@code X-District-Id}) into downstream service requests.
  *
  * <p>Only auth, public tracking, documentation, and health endpoints are
- * whitelisted. Merchant API-key paths are handled exclusively by
+ * whitelisted. The /api/v1/ai/** chat route requires JWT authentication and
+ * receives only gateway-verified identity headers. Merchant API-key paths are handled exclusively by
  * {@link MerchantApiKeyGlobalFilter} and therefore bypass JWT validation.
  * Blacklisted token IDs, token hashes, and user IDs are checked against Redis;
  * Redis failures fail open for local development availability and are logged

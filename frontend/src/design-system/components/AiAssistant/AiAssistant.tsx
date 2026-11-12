@@ -1,5 +1,5 @@
-import { Send, Sparkles, X } from 'lucide-react';
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { RotateCcw, Send, Sparkles, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/utils/cn';
 
 export interface AssistantMessage {
@@ -47,8 +47,11 @@ export interface AssistantPanelProps {
   suggestions?: string[];
   /** Shows the animated "typing" bubble (Figma: State = Typing). */
   typing?: boolean;
+  /** Disables the composer and quick prompts without showing a typing indicator. */
+  disabled?: boolean;
   onSend: (text: string) => void;
   onClose?: () => void;
+  onReset?: () => void;
   title?: string;
   subtitle?: string;
   placeholder?: string;
@@ -60,8 +63,10 @@ export function AssistantPanel({
   messages,
   suggestions = [],
   typing = false,
+  disabled = false,
   onSend,
   onClose,
+  onReset,
   title = 'SwiftDrop assistant',
   subtitle = 'Answers from your orders and our FAQ',
   placeholder = 'Ask about an order or a fee…',
@@ -70,10 +75,13 @@ export function AssistantPanel({
   const [value, setValue] = useState('');
   const inputId = useId();
   const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
+  }, [messages, typing]);
 
   const send = (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || typing || disabled) return;
     onSend(trimmed);
     setValue('');
     window.setTimeout(() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight }), 0);
@@ -98,6 +106,17 @@ export function AssistantPanel({
           <p className="truncate text-body-strong text-primary">{title}</p>
           <p className="truncate text-caption text-secondary">{subtitle}</p>
         </div>
+        {onReset ? (
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={typing}
+            aria-label="New conversation"
+            className="inline-flex size-7 items-center justify-center rounded-md text-secondary hover:bg-elevated disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+          >
+            <RotateCcw aria-hidden="true" className="size-[18px]" />
+          </button>
+        ) : null}
         {onClose ? (
           <button
             type="button"
@@ -155,6 +174,7 @@ export function AssistantPanel({
             <button
               key={suggestion}
               type="button"
+              disabled={typing || disabled}
               onClick={() => send(suggestion)}
               className="rounded-full border border-border-subtle px-2.5 py-[5px] text-caption text-primary transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
             >
@@ -176,6 +196,8 @@ export function AssistantPanel({
         </label>
         <input
           id={inputId}
+          maxLength={2000}
+          disabled={typing || disabled}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder={placeholder}
@@ -184,7 +206,7 @@ export function AssistantPanel({
         <button
           type="submit"
           aria-label="Send"
-          disabled={!value.trim()}
+          disabled={typing || disabled || !value.trim()}
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-brand-primary text-brand-on transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
         >
           <Send aria-hidden="true" className="size-[18px]" />

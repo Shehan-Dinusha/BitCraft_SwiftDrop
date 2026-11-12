@@ -40,6 +40,8 @@ class BulkOrderIngestionServiceTest {
 
     @Mock
     private B2bOrderSubmissionService submissions;
+    @Mock
+    private MerchantApprovalGuard approvalGuard;
 
     private BulkOrderIngestionService ingestionService;
 
@@ -51,7 +53,8 @@ class BulkOrderIngestionServiceTest {
                 batchRepository,
                 batchItemRepository,
                 merchantAccountRepository,
-                submissions
+                submissions,
+                approvalGuard
         );
     }
 

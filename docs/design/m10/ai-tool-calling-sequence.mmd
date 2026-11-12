@@ -1,0 +1,121 @@
+---
+title: SwiftDrop customer AI - guarded tool-calling sequence
+---
+sequenceDiagram
+    autonumber
+    actor customer as Authenticated CUSTOMER
+    participant widget as CustomerAiAssistant
+    participant gateway as API gateway :8080
+    participant chat as AiChatService :8089
+    participant sessions as ChatSessionStore - memory
+    participant model as LlmClient - mock or real provider
+    participant tools as ToolExecutor and HTTP clients
+    participant orders as Customer order service
+    participant tracking as Gateway public tracking
+    participant pricing as Pricing service
+    participant database as Analytics PostgreSQL
+
+    customer->>widget: Ask about own parcel or delivery price
+    widget->>gateway: POST /api/v1/ai/chat - message, optional conversationId, Bearer token
+    gateway->>gateway: Verify JWT and forward trusted identity and correlation ID
+    alt Missing or invalid token
+        gateway-->>widget: 401
+    else Authenticated caller
+        gateway->>chat: Forward chat request with caller context
+        alt Caller role is not CUSTOMER
+            chat-->>gateway: 403
+            gateway-->>widget: Customer account required
+        else CUSTOMER caller
+            chat->>chat: Validate message length - 1 to 2000 characters
+            chat->>sessions: Consume shared 10 requests per minute and acquire owned conversation
+            alt Rate limited or conversation unknown or foreign
+                sessions-->>chat: 429 or account-safe 404
+                chat-->>gateway: Safe HTTP error
+                gateway-->>widget: Visible failure and retry guidance
+            else Conversation acquired
+                sessions-->>chat: Redacted history - 30-minute idle lifetime, at most 8 prior turns
+                chat->>chat: Lock session, redact input, apply private-data guard
+                alt Request asks for private data or credentials
+                    chat->>tools: Audit chat REFUSED
+                    tools->>database: Persist metadata-only ai_tool_invocation_audit row
+                    database-->>tools: Audit saved
+                    tools-->>chat: Refusal audited
+                    chat->>chat: Produce fixed safe refusal
+                else Allowed request
+                    loop Model turns until final answer - at most 3 tool executions total
+                        chat->>model: System rules, redacted history and prompt, prior safe tool results
+                        alt Provider unavailable
+                            model-->>chat: Provider failure
+                            break Provider failure stops the request
+                                chat->>tools: Audit PROVIDER_UNAVAILABLE
+                                tools->>database: Persist safe audit metadata
+                                chat-->>gateway: 503 - no silent provider fallback
+                                gateway-->>widget: Safe provider-unavailable error
+                            end
+                        else Model responds
+                            model-->>chat: Final answer or tool calls with arguments
+                            opt Model requests a tool and remaining call budget exists
+                                chat->>tools: Execute allowed tool with caller token and correlation ID
+                                tools->>tools: Allowlist name and validate exact argument schema
+                                alt Unknown tool or invalid arguments
+                                    tools->>tools: REFUSED or INVALID_ARGUMENTS - no downstream HTTP
+                                else track_parcel
+                                    tools->>gateway: GET /api/v1/orders/tracking/{number} - caller Bearer token
+                                    gateway->>orders: Protected order lookup
+                                    orders-->>gateway: Owned order or access error
+                                    gateway-->>tools: Protected response - never passed to model
+                                    tools->>tools: Require returned customerId to match caller userId
+                                    alt Unknown parcel or another customer's parcel
+                                        tools->>tools: Same NOT_FOUND outcome, do not call public tracking
+                                    else Ownership verified
+                                        tools->>gateway: GET /api/v1/public/track/{number}
+                                        gateway->>tracking: Read sanitized tracking view
+                                        tracking-->>gateway: Public tracking fields
+                                        gateway-->>tools: Public view
+                                        tools->>tools: Allowlist status, tracking number and districts only
+                                    end
+                                else calculate_estimate
+                                    tools->>gateway: POST /api/v1/pricing/estimate - weight, districts, STANDARD speed
+                                    gateway->>pricing: Forward authenticated request
+                                    pricing-->>gateway: ApiResponse - estimatedFee and currency
+                                    gateway-->>tools: Real pricing result
+                                    tools->>tools: Validate nonnegative LKR fee and select safe estimate fields
+                                end
+                                tools->>database: Save audit - safe name, actor, role, correlation, outcome and duration
+                                alt Audit persistence fails
+                                    database-->>tools: Persistence failure
+                                    break Audit failure stops the request
+                                        tools-->>chat: Fail closed - no tool result released
+                                        chat-->>gateway: 500
+                                        gateway-->>widget: Safe request failure
+                                    end
+                                else Audit persisted
+                                    database-->>tools: Audit saved
+                                    tools-->>chat: Safe tool result and outcome
+                                    alt Outcome is REFUSED
+                                        break Stop the model loop
+                                            chat->>chat: Produce fixed allowed-tools-only reply
+                                        end
+                                    else Validated execution outcome
+                                        chat->>chat: Append safe tool result for the next model turn
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    opt Requested tools exceed the budget
+                        chat->>tools: Audit LIMIT_REACHED and stop further executions
+                        tools->>database: Persist metadata-only audit
+                        chat->>chat: Produce fixed call-limit reply
+                    end
+                end
+                opt Chat completes successfully
+                    chat->>chat: Redact final reply
+                    chat->>sessions: Retain redacted user and assistant turns - memory only
+                    chat-->>gateway: ApiResponse - reply, conversationId and safe tool-use labels
+                    gateway-->>widget: 200
+                    widget-->>customer: Reply, tool outcomes and preserved conversation
+                end
+            end
+        end
+    end

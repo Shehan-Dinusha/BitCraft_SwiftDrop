@@ -56,7 +56,7 @@ public record EstimateResponse(
         @Schema(description = "Locked pricing rule version ID for order anchoring", example = "PRICING-2026-V1")
         String pricingRuleVersionId,
 
-        @Schema(description = "Pricing strategy used (STANDARD or EXPRESS)", example = "EXPRESS")
+        @Schema(description = "Pricing strategy used (STANDARD, EXPRESS or SAME_DAY)", example = "EXPRESS")
         String strategy
 ) {
 
@@ -78,7 +78,7 @@ public record EstimateResponse(
                 .estimatedFee(quote.estimatedFee())
                 .currency(quote.currency())
                 .pricingRuleVersionId(quote.pricingRuleVersionId())
-                .strategy(quote.speed() == OrderSpeed.STANDARD ? "STANDARD" : "EXPRESS")
+                .strategy(quote.speed().name())
                 .build();
     }
 }

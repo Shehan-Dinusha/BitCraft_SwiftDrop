@@ -6,6 +6,82 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1/ai/mcp:
+    post:
+      tags: [DeliveryMcp]
+      operationId: deliveryMcp
+      summary: Customer-only stateless MCP Streamable HTTP tools
+      description: MCP protocol 2025-03-26. Supports initialize, ping, tools/list and tools/call. Uses JSON-RPC envelopes instead of ApiResponse. Native clients only; all Origin headers are rejected. Send a customer Bearer token through the gateway. Tool calls share the chat ten-request per-minute per-user budget and reuse ownership checks, safe output, argument validation and durable audits. No session IDs or server-initiated streams. Notifications return 202 without a body.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [jsonrpc, method]
+              properties:
+                jsonrpc: { type: string, const: '2.0' }
+                id: { type: [string, integer] }
+                method: { type: string }
+                params: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: JSON-RPC result or protocol error (-32700 parse error, -32600 invalid request, -32601 unknown method, -32602 invalid params); tool failures have result.isError true
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jsonrpc, id]
+                properties:
+                  jsonrpc: { type: string, const: '2.0' }
+                  id: { type: [string, integer, 'null'] }
+                  result: { type: object, additionalProperties: true }
+                  error:
+                    type: object
+                    required: [code, message]
+                    properties:
+                      code: { type: integer }
+                      message: { type: string }
+        "202": { description: Notification accepted }
+        "401": { $ref: '#/components/responses/Unauthenticated' }
+        "403": { description: Customer role required or browser Origin rejected }
+        "429": { description: Shared assistant request limit reached }
+        "500": { description: Tool audit could not be persisted }
+        "503": { description: Rate limiter capacity reached }
+    get:
+      tags: [DeliveryMcp]
+      operationId: deliveryMcpStream
+      summary: No server-initiated SSE stream is offered
+      security: [{ bearerAuth: [] }]
+      responses:
+        "405": { description: Use POST; server-initiated SSE is not supported }
+        "401": { $ref: '#/components/responses/Unauthenticated' }
+        "403": { description: Customer role required or browser Origin rejected }
+  /api/v1/ai/chat:
+    post:
+      tags: [DeliveryChat]
+      operationId: deliveryAssistantChat
+      summary: Customer-only tracking and pricing chat with at most three tool calls
+      description: Requires CUSTOMER role. Tracking first verifies order ownership through the protected order API, then selects public-safe fields. Other customers' parcels and unknown parcels produce the same unavailable-to-you answer. Ten messages per minute per user per service instance. Conversations expire after 30 minutes of inactivity and are lost on restart. Unknown and foreign conversation IDs both return 404. Estimates use STANDARD speed and actual weight only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AiChatRequest' }
+      responses:
+        "200":
+          description: Assistant reply and safe tool execution labels
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponseAiChat' }
+        "400": { description: Invalid message or conversation UUID }
+        "401": { $ref: '#/components/responses/Unauthenticated' }
+        "403": { description: Chat requires CUSTOMER role }
+        "404": { description: Conversation not found or expired }
+        "429": { description: Ten-message per-minute limit reached; retry in 60 seconds }
+        "503": { description: Model provider unavailable or conversation capacity reached }
   /api/v1/analytics/deliveries/daily:
     get:
       tags: [AnalyticsReports]
@@ -197,7 +273,9 @@ paths:
   /api/v1/analytics/ai/agent-query:
     post:
       tags: [AiDeliveryAssistant]
-      summary: Query the AI logistics assistant agent in natural language
+      summary: Customer-only compatibility endpoint for order assistant chat
+      description: Requires CUSTOMER role and uses the same safe chat flow and order ownership checks. callerPersona is ignored for authorization. Starts a new ephemeral conversation. confidence is 0 (not a calibrated probability); route optimization is outside this chat scope.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
@@ -211,6 +289,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponseAssistantQuery'
+        "403": { description: Chat requires CUSTOMER role }
 
   /api/v1/analytics/ai/audits:
     get:
@@ -267,6 +346,36 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiErrorResponse' }
   schemas:
+    AiChatRequest:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 1, maxLength: 2000 }
+        conversationId: { type: string, format: uuid }
+    AiToolUse:
+      type: object
+      required: [name, outcome]
+      properties:
+        name: { type: string, enum: [track_parcel, calculate_estimate, DISALLOWED_TOOL] }
+        outcome: { type: string, enum: [OK, INVALID_ARGUMENTS, NOT_FOUND, UNAVAILABLE, REFUSED, LIMIT_REACHED] }
+    AiChatResponse:
+      type: object
+      required: [reply, conversationId, toolCalls]
+      properties:
+        reply: { type: string }
+        conversationId: { type: string, format: uuid }
+        toolCalls:
+          type: array
+          maxItems: 3
+          items: { $ref: '#/components/schemas/AiToolUse' }
+    ApiResponseAiChat:
+      type: object
+      required: [success, message, data, timestamp]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/AiChatResponse' }
+        timestamp: { type: string, format: date-time }
     ApiErrorResponse:
       type: object
       required: [status, error, message, path, timestamp]
@@ -486,16 +595,16 @@ components:
       type: object
       required: [query]
       properties:
-        query: { type: string }
-        callerPersona: { type: string }
-        contextTrackingNumber: { type: string }
+        query: { type: string, minLength: 1, maxLength: 1800 }
+        callerPersona: { type: string, maxLength: 64, description: Ignored for authorization }
+        contextTrackingNumber: { type: string, maxLength: 64 }
 
     AssistantQueryResponse:
       type: object
       properties:
         answer: { type: string }
         detectedIntent: { type: string }
-        confidence: { type: number }
+        confidence: { type: number, description: Deprecated compatibility field; always 0 }
         suggestedActions:
           type: array
           items: { type: string }
@@ -517,8 +626,8 @@ components:
         auditId: { type: string, format: uuid }
         toolName: { type: string }
         callerPersona: { type: string }
-        promptOrQuery: { type: string }
-        outputResult: { type: string }
+        promptOrQuery: { type: 'null', description: Deprecated field; no raw prompts are stored }
+        outputResult: { type: [string, 'null'], description: Safe outcome code only }
         executionTimeMs: { type: integer }
         success: { type: boolean }
         createdAt: { type: string, format: date-time }

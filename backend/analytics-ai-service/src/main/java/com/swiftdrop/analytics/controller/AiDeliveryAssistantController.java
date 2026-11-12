@@ -45,7 +45,7 @@ public class AiDeliveryAssistantController {
     }
 
     @PostMapping("/agent-query")
-    @Operation(summary = "Query the AI logistics assistant agent in natural language")
+    @Operation(summary = "Customer-only compatibility endpoint for order assistant chat")
     public ApiResponse<AssistantQueryResponse> queryAgent(
             @Valid @RequestBody AssistantQueryRequest request) {
         return ApiResponse.success(assistantService.processAgentQuery(request), "Agent query processed");

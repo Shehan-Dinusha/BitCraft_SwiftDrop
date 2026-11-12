@@ -2,12 +2,11 @@ import { useState } from 'react';
 import {
   analyticsAiApi,
   type DelayRiskPredictionResponse,
-  type AssistantQueryResponse,
   type AiAudit
 } from '@/services/api/analyticsAiApi';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
-import { Bot, Sparkles, Send } from 'lucide-react';
+import { Bot, Sparkles } from 'lucide-react';
 
 const SRI_LANKAN_DISTRICTS = [
   'COLOMBO',
@@ -26,12 +25,7 @@ const SRI_LANKAN_DISTRICTS = [
 ];
 
 export function AiDeliveryAssistantPanel() {
-  const [activeTab, setActiveTab] = useState<'assistant' | 'predictor' | 'audits'>('assistant');
-
-  // Co-Pilot State
-  const [query, setQuery] = useState('');
-  const [assistantLoading, setAssistantLoading] = useState(false);
-  const [assistantResult, setAssistantResult] = useState<AssistantQueryResponse | null>(null);
+  const [activeTab, setActiveTab] = useState<'predictor' | 'audits'>('predictor');
 
   // Predictor State
   const [origin, setOrigin] = useState('COLOMBO');
@@ -45,22 +39,6 @@ export function AiDeliveryAssistantPanel() {
   // Audits State
   const [audits, setAudits] = useState<AiAudit[]>([]);
   const [auditsLoading, setAuditsLoading] = useState(false);
-
-  const handleAskAgent = async () => {
-    if (!query.trim()) return;
-    try {
-      setAssistantLoading(true);
-      const res = await analyticsAiApi.queryAssistant({
-        query: query.trim(),
-        callerPersona: 'ADMIN_OPS'
-      });
-      setAssistantResult(res);
-    } catch {
-      // Fallback
-    } finally {
-      setAssistantLoading(false);
-    }
-  };
 
   const handlePredictDelay = async () => {
     try {
@@ -100,28 +78,15 @@ export function AiDeliveryAssistantPanel() {
             <Bot className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900">
-              AI Logistics Co-Pilot & Route Predictor
-            </h2>
+            <h2 className="text-sm font-bold text-slate-900">Operational Delay Risk & Audits</h2>
             <p className="text-[11px] text-slate-500">
-              Heuristic delay risk scoring, transit reroute suggestions, and SLA assistant
+              Operational delay risk scoring and safe tool audit records
             </p>
           </div>
         </div>
 
         {/* Tab Buttons */}
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('assistant')}
-            className={`rounded px-2.5 py-1 font-medium transition-colors ${
-              activeTab === 'assistant'
-                ? 'bg-indigo-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            Co-Pilot Chat
-          </button>
           <button
             type="button"
             onClick={() => setActiveTab('predictor')}
@@ -150,57 +115,6 @@ export function AiDeliveryAssistantPanel() {
         </div>
       </div>
 
-      {/* Tab 1: Assistant Chat */}
-      {activeTab === 'assistant' && (
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAskAgent()}
-              placeholder="E.g. What is the ETA for Colombo to Kandy under heavy rain? Or suggest reroute..."
-              className="flex-1 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs"
-            />
-            <Button
-              variant="primary"
-              onClick={handleAskAgent}
-              disabled={assistantLoading || !query.trim()}
-              leftIcon={<Send className="h-3.5 w-3.5" />}
-              className="h-8 text-xs"
-            >
-              Ask AI
-            </Button>
-          </div>
-
-          {assistantResult && (
-            <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3">
-              <div className="flex items-center justify-between text-[11px] text-indigo-700">
-                <span className="font-semibold">Intent: {assistantResult.detectedIntent}</span>
-                <span>Confidence: {((assistantResult.confidence ?? 0.9) * 100).toFixed(0)}%</span>
-              </div>
-              <p className="mt-1.5 font-medium text-slate-800">
-                {assistantResult.answer}
-              </p>
-
-              {assistantResult.suggestedActions && assistantResult.suggestedActions.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] text-slate-500">Quick Actions:</span>
-                  {assistantResult.suggestedActions.map((act) => (
-                    <span
-                      key={act}
-                      className="rounded bg-indigo-200/70 px-1.5 py-0.5 text-[10px] font-bold text-indigo-900"
-                    >
-                      {act}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Tab 2: Delay Risk Predictor */}
       {activeTab === 'predictor' && (
         <div className="space-y-4">
@@ -213,7 +127,9 @@ export function AiDeliveryAssistantPanel() {
                 className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
               >
                 {SRI_LANKAN_DISTRICTS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
                 ))}
               </select>
             </div>
@@ -226,7 +142,9 @@ export function AiDeliveryAssistantPanel() {
                 className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
               >
                 {SRI_LANKAN_DISTRICTS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
                 ))}
               </select>
             </div>
@@ -304,13 +222,12 @@ export function AiDeliveryAssistantPanel() {
                 </div>
 
                 <span className="font-mono text-[11px] text-slate-500">
-                  Mitigation: <strong className="text-indigo-600">{prediction.recommendedAction}</strong>
+                  Mitigation:{' '}
+                  <strong className="text-indigo-600">{prediction.recommendedAction}</strong>
                 </span>
               </div>
 
-              <p className="mt-2 text-slate-600">
-                {prediction.reasoning}
-              </p>
+              <p className="mt-2 text-slate-600">{prediction.reasoning}</p>
             </div>
           )}
         </div>
@@ -322,7 +239,9 @@ export function AiDeliveryAssistantPanel() {
           {auditsLoading ? (
             <p className="py-4 text-center text-slate-500">Loading AI audit logs...</p>
           ) : audits.length === 0 ? (
-            <p className="py-4 text-center text-slate-500">No recent AI tool invocations logged yet.</p>
+            <p className="py-4 text-center text-slate-500">
+              No recent AI tool invocations logged yet.
+            </p>
           ) : (
             <div className="space-y-1.5">
               {audits.map((a) => (
@@ -332,11 +251,13 @@ export function AiDeliveryAssistantPanel() {
                 >
                   <div className="space-y-0.5">
                     <span className="font-mono font-bold text-indigo-600">{a.toolName}</span>
-                    <p className="text-slate-600">{a.promptOrQuery}</p>
+                    <p className="text-slate-600">{a.outputResult ?? 'No outcome recorded'}</p>
                   </div>
                   <div className="text-right text-slate-500">
                     <span>{a.executionTimeMs} ms</span>
-                    <span className="ml-2 font-semibold text-emerald-600">SUCCESS</span>
+                    <span className="ml-2 font-semibold">
+                      {a.success ? 'SUCCESS' : 'NOT COMPLETED'}
+                    </span>
                   </div>
                 </div>
               ))}

@@ -68,7 +68,8 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_PROFILES_ACTIVE: default
+      # "dev" alone permits ephemeral RSA keys when JWT_PRIVATE_KEY/JWT_PUBLIC_KEY are blank.
+      SPRING_PROFILES_ACTIVE: dev
       DB_URL: jdbc:postgresql://iam-postgres:5432/swiftdrop_iam
       DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
@@ -78,6 +79,9 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
       JWT_ISSUER: ${JWT_ISSUER:-swiftdrop-iam}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-swiftdrop}
@@ -138,7 +142,7 @@ services:
       PUBLIC_TRACKING_RATE_WINDOW_SECONDS: ${PUBLIC_TRACKING_RATE_WINDOW_SECONDS:-60}
       JWT_BLACKLIST_PREFIX: ${JWT_BLACKLIST_PREFIX:-jwt:blacklist:}
       JWT_SECRET: ${JWT_SECRET:-swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
-      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_ISSUER: ${JWT_ISSUER:-swiftdrop-iam}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-swiftdrop}
       JWT_JWKS_URL: ${JWT_JWKS_URL:-http://auth-iam-service:8081/api/v1/auth/.well-known/jwks.json}
@@ -387,6 +391,11 @@ services:
     ports:
       - "8089:8089"
     environment:
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_ENDPOINT: ${AI_ENDPOINT:-}
+      GATEWAY_URL: http://api-gateway:8080
       DB_URL: jdbc:postgresql://analytics-postgres:5432/swiftdrop_analytics
       DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}

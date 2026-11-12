@@ -38,6 +38,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tracking/{trackingNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the latest sanitized tracking view (compatibility alias)
+         * @description Compatibility alias for `/api/v1/public/track/{trackingNumber}`. Both
+         *     prefixes are handled by the same controller and return the same payload.
+         */
+        get: operations["getTrackingView"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tracking/{trackingNumber}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscribe to SSE tracking updates (compatibility alias)
+         * @description Compatibility alias for `/api/v1/public/track/{trackingNumber}/stream`.
+         */
+        get: operations["streamTrackingView"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -137,6 +178,72 @@ export interface operations {
         };
     };
     streamPublicTrackingView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackingNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-Sent Events stream of sanitized tracking views */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["PublicTrackingView"];
+                };
+            };
+            /** @description Public tracking rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTrackingView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example SD-2026-000123 */
+                trackingNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Latest sanitized tracking view */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicTrackingView"];
+                };
+            };
+            /** @description Tracking data is not available */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Public tracking rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    streamTrackingView: {
         parameters: {
             query?: never;
             header?: never;

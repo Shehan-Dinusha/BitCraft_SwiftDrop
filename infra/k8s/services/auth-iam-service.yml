@@ -96,8 +96,9 @@ spec:
                 secretKeyRef:
                   name: swiftdrop-jwt-credentials
                   key: secret
+            # RS256 requires swiftdrop-jwt-credentials to contain private-key and public-key.
             - name: JWT_ALGORITHM
-              value: HS256
+              value: RS256
             - name: JWT_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:

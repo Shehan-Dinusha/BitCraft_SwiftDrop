@@ -17,6 +17,15 @@ class GatewayRoutesConfigTest {
     private RouteLocator routeLocator;
 
     @Test
+    void chatPathMatchesAnalyticsRoute() {
+        var route = routeLocator.getRoutes().filter(r -> r.getId().equals("analytics-ai-service")).blockFirst();
+        var exchange = org.springframework.mock.web.server.MockServerWebExchange.from(
+                org.springframework.mock.http.server.reactive.MockServerHttpRequest.post("/api/v1/ai/chat"));
+        assertThat(route).isNotNull();
+        assertThat(reactor.core.publisher.Mono.from(route.getPredicate().apply(exchange)).block()).isTrue();
+    }
+
+    @Test
     void bindsOrderRouteToConfiguredUrl() {
         var orderRoute = routeLocator.getRoutes()
                 .filter(route -> route.getId().equals("customer-order-service"))

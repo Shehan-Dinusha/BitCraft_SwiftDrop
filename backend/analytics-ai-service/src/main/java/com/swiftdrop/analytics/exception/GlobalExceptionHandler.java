@@ -24,7 +24,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BindException.class, ServletRequestBindingException.class,
             MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class, IllegalArgumentException.class})
     public ResponseEntity<ApiErrorResponse> invalid(Exception ex, HttpServletRequest request) {
-        return error(HttpStatus.BAD_REQUEST, "Invalid request. Reporting dates must use yyyy-MM-dd and span 1 to 90 inclusive days", request);
+        String message = request.getRequestURI().contains("/ai/") || request.getRequestURI().contains("/ai-delivery-assistant/")
+                ? "Invalid assistant request; check message length, tracking number and conversation UUID"
+                : "Invalid request. Reporting dates must use yyyy-MM-dd and span 1 to 90 inclusive days";
+        return error(HttpStatus.BAD_REQUEST, message, request);
     }
 
     @ExceptionHandler(RuntimeException.class)

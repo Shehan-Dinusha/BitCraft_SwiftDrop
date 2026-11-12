@@ -12,7 +12,7 @@ Implementation run: 2026-11-09, branch `Buddhika/feat/reporting-api`, Java 25, l
 | `npm.cmd run api:sync:specs` | Passed; analytics declaration regenerated from YAML. |
 | `npm.cmd run lint` | Passed. |
 | `npm.cmd run build` | Passed; existing bundle-size warning remains nonfatal. |
-| Real IAM-token requests through gateway 8080 | Not run: local IAM/gateway were not running. Follow the self-verification guide before claiming end-to-end authorization acceptance. |
+| Real IAM-token requests through gateway 8080 | Passed on 2026-11-10 using `docs/design/m10/fixtures/verify-stage5.py`: 30 checks with isolated IAM, gateway, analytics, PostgreSQL, RabbitMQ and Redis. Real admin/dispatcher/customer logins verified 200/403, missing-token 401, spoofed-header rejection, legacy protections, date validation and OpenAPI. Uses local HS256 configuration. |
 
 Fresh reports are generated in `backend/analytics-ai-service/target/surefire-reports/` and `target/failsafe-reports/`; coverage is in `target/site/jacoco/`. These are build outputs and are not committed. Initial sandbox execution lacked Maven-cache/Docker permission; the successful run used approved access. An early run before adapting existing controller tests failed as expected when the new authorization rejected their missing test identities; the final run includes those adaptations and passes.
 

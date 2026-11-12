@@ -59,6 +59,20 @@ spec:
             - containerPort: 8080
               name: http
           env:
+            - name: AI_PROVIDER
+              value: mock
+            - name: AI_MODEL
+              value: ""
+            - name: AI_ENDPOINT
+              value: ""
+            - name: AI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: analytics-ai-provider
+                  key: api-key
+                  optional: true
+            - name: GATEWAY_URL
+              value: http://api-gateway.swiftdrop-apps.svc.cluster.local:8080
             - name: SPRING_PROFILES_ACTIVE
               value: kubernetes
             - name: SERVER_PORT

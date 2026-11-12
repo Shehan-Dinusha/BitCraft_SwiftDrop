@@ -11,6 +11,8 @@ export type AnomalyRerouteResponse = components['schemas']['AnomalyRerouteRespon
 export type AssistantQueryRequest = components['schemas']['AssistantQueryRequest'];
 export type AssistantQueryResponse = components['schemas']['AssistantQueryResponse'];
 export type AiAudit = components['schemas']['AiAuditResponse'];
+export type AiChatRequest = components['schemas']['AiChatRequest'];
+export type AiChatResponse = components['schemas']['AiChatResponse'];
 
 interface ApiResponse<T> {
   success: boolean;
@@ -20,6 +22,35 @@ interface ApiResponse<T> {
 }
 
 export const analyticsAiApi = {
+  getDailyDeliveries: async (from: string, to: string, signal?: AbortSignal) => {
+    const res = await apiClient.get<components['schemas']['ApiResponseDailyDeliveryReport']>(
+      '/v1/analytics/deliveries/daily',
+      { params: { from, to }, signal }
+    );
+    return res.data.data;
+  },
+  getSuccessRate: async (from: string, to: string, signal?: AbortSignal) => {
+    const res = await apiClient.get<components['schemas']['ApiResponseDeliverySuccessRate']>(
+      '/v1/analytics/success-rate',
+      { params: { from, to }, signal }
+    );
+    return res.data.data;
+  },
+  getCourierWorkload: async (signal?: AbortSignal) => {
+    const res = await apiClient.get<components['schemas']['ApiResponseCourierWorkloadReport']>(
+      '/v1/analytics/couriers/workload',
+      { signal }
+    );
+    return res.data.data;
+  },
+  chat: async (payload: AiChatRequest, signal?: AbortSignal): Promise<AiChatResponse> => {
+    const res = await apiClient.post<components['schemas']['ApiResponseAiChat']>(
+      '/v1/ai/chat',
+      payload,
+      { signal }
+    );
+    return res.data.data;
+  },
   getOperationalKpis: async (): Promise<OperationalKpiSummary> => {
     const res = await apiClient.get<ApiResponse<OperationalKpiSummary>>('/v1/analytics/kpis');
     return res.data.data;

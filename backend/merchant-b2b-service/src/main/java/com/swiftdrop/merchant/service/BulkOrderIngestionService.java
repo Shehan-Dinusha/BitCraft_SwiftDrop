@@ -30,12 +30,14 @@ public class BulkOrderIngestionService {
     private final BulkBatchItemRepository batchItemRepository;
     private final MerchantAccountRepository merchantAccountRepository;
     private final B2bOrderSubmissionService submissions;
+    private final MerchantApprovalGuard approvalGuard;
 
     public BulkIngestBatchResponse processBulkIngest(UUID merchantId, BulkIngestRequest request) {
         return processBulkIngest(merchantId, request, UUID.randomUUID());
     }
 
     public BulkIngestBatchResponse processBulkIngest(UUID merchantId, BulkIngestRequest request, UUID correlationId) {
+        approvalGuard.requireApproved(merchantId);
         if (request.orders() == null || request.orders().isEmpty() || request.orders().size() > 500) {
             throw new IllegalArgumentException("A batch must contain 1 to 500 orders");
         }

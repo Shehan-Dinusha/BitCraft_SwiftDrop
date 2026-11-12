@@ -1,0 +1,40 @@
+{
+  "cliVersion": "12.2.0",
+  "sourcesSha256": {
+    "ai-tool-calling-sequence.mmd": "83cae9d3510a873291f4706dfb0768c500a8cb58aaaa1f2ec83da13887e6c875",
+    "analytics-erd.mmd": "b824fc10d33682f4ab00d781a0b3b748dc199d60e8dd710d886e9db32cd666ef",
+    "mermaid-config.json": "d97b7e99c46085d468534a60ee297a3fdf6637e443917e737b11a3cb7d2f79bd"
+  },
+  "outputs": [
+    {
+      "file": "ai-tool-calling-sequence.svg",
+      "bytes": 100354,
+      "sha256": "ab4010f45295e08491a196276a1ccb8b37d47d31d98f3f8f9ee99dbf0a99812f"
+    },
+    {
+      "file": "ai-tool-calling-sequence.png",
+      "bytes": 986987,
+      "sha256": "3fa55da42913221e2acbadb437fc3f8ea195315cbfcc7efa365e7290511bbeee"
+    },
+    {
+      "file": "ai-tool-calling-sequence.pdf",
+      "bytes": 517742,
+      "sha256": "a3b6653102d3d859a7e39116977fe721f266fae20a86af2fa4aa9b5f2ac359e6"
+    },
+    {
+      "file": "analytics-erd.svg",
+      "bytes": 321324,
+      "sha256": "c63213cc7d8207952eaa4bcff7bab1180a24f5394e1513786a763bd70f88f604"
+    },
+    {
+      "file": "analytics-erd.png",
+      "bytes": 361701,
+      "sha256": "c0b8802092909ea8ebdde86799746ffee372de064d62b6b82cec11e16b0df882"
+    },
+    {
+      "file": "analytics-erd.pdf",
+      "bytes": 551913,
+      "sha256": "c0080a7d2a515c0cbb7cf09e9b42bd72924db1a7457fa815d008f2152194f8ab"
+    }
+  ]
+}

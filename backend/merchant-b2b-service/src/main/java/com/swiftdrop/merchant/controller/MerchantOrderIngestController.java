@@ -29,6 +29,7 @@ public class MerchantOrderIngestController {
 
     private final BulkOrderIngestionService ingestionService;
     private final BulkCsvOrderProcessor csvProcessor;
+    private final com.swiftdrop.merchant.service.MerchantApprovalGuard approvalGuard;
 
     @GetMapping("/api/v1/merchant-order-ingest/health")
     @Operation(summary = "Check order ingestion controller health")
@@ -55,6 +56,7 @@ public class MerchantOrderIngestController {
             @PathVariable UUID merchantId,
             @RequestHeader(value = com.swiftdrop.contracts.security.JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
             @RequestParam("file") MultipartFile file) {
+        approvalGuard.requireApproved(merchantId);
         log.info("Received CSV order ingestion upload for merchant: {}, file: {}", merchantId, file.getOriginalFilename());
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Uploaded CSV file cannot be empty");
