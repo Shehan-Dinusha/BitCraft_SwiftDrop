@@ -6,6 +6,7 @@ import com.swiftdrop.delivery.dto.ProofOfDeliveryResponse;
 import com.swiftdrop.delivery.dto.ProofOfDeliveryUploadRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -29,6 +30,47 @@ public class ProofOfDeliveryStorageService {
         pod.setCreatedAt(Instant.now());
         pod.setVerified(false);
         return toResponse(repository.save(pod));
+    }
+
+    @Transactional
+    public ProofOfDeliveryResponse storeMultipart(UUID deliveryId, MultipartFile photo, String recipientName, String signature, String otp) {
+        validateMultipart(photo, recipientName);
+        ProofOfDelivery pod = new ProofOfDelivery();
+        pod.setDeliveryId(deliveryId);
+        pod.setRecipientName(recipientName != null ? recipientName.trim() : null);
+        pod.setRecipientSignature(signature);
+        pod.setConfirmationOtp(otp);
+        pod.setCreatedAt(Instant.now());
+        pod.setVerified(false);
+
+        String originalFilename = photo.getOriginalFilename();
+        String extension = "";
+        if (originalFilename != null && originalFilename.lastIndexOf('.') > 0) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf('.'));
+        }
+        if (extension.isBlank()) {
+            extension = ".jpg";
+        }
+        String storedFilename = UUID.randomUUID() + extension;
+        pod.setPhotoUrl(storedFilename);
+
+        return toResponse(repository.save(pod));
+    }
+
+    private void validateMultipart(MultipartFile photo, String recipientName) {
+        if (photo == null || photo.isEmpty()) {
+            throw new IllegalArgumentException("Proof photo file is required");
+        }
+        if (photo.getSize() > 5 * 1024 * 1024) {
+            throw new IllegalArgumentException("Photo exceeds maximum allowed size of 5 MB");
+        }
+        String contentType = photo.getContentType();
+        if (contentType == null || (!contentType.equalsIgnoreCase("image/jpeg") && !contentType.equalsIgnoreCase("image/png") && !contentType.equalsIgnoreCase("image/jpg"))) {
+            throw new IllegalArgumentException("Only JPEG and PNG images are allowed");
+        }
+        if (recipientName == null || recipientName.isBlank()) {
+            throw new IllegalArgumentException("Recipient name is required");
+        }
     }
 
     @Transactional
