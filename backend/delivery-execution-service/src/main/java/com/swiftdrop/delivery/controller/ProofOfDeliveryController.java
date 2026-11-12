@@ -48,7 +48,12 @@ public class ProofOfDeliveryController {
             @RequestParam("photo") MultipartFile photo,
             @RequestParam("recipientName") String recipientName,
             @RequestParam(value = "signature", required = false) String signature,
-            @RequestParam(value = "otp", required = false) String otp) {
+            @RequestParam(value = "otp", required = false) String otp,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = resolveCaller(httpRequest);
+        if (caller != null && deliveryService != null) {
+            deliveryService.assertCanAccess(deliveryId, caller);
+        }
         if (photo == null || photo.isEmpty()) {
             throw new IllegalArgumentException("Proof photo file is required");
         }

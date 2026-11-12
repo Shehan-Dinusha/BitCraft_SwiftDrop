@@ -4,6 +4,7 @@ import com.swiftdrop.delivery.domain.entity.ProofOfDelivery;
 import com.swiftdrop.delivery.domain.repository.ProofOfDeliveryRepository;
 import com.swiftdrop.delivery.dto.ProofOfDeliveryResponse;
 import com.swiftdrop.delivery.dto.ProofOfDeliveryUploadRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +23,15 @@ public class ProofOfDeliveryStorageService {
     private final ProofOfDeliveryRepository repository;
     private final String storageDir;
 
+    public ProofOfDeliveryStorageService() {
+        this(null, "/tmp/swiftdrop/pod");
+    }
+
     public ProofOfDeliveryStorageService(ProofOfDeliveryRepository repository) {
         this(repository, System.getenv("POD_STORAGE_DIR") != null ? System.getenv("POD_STORAGE_DIR") : "/tmp/swiftdrop/pod");
     }
 
+    @Autowired
     public ProofOfDeliveryStorageService(
             ProofOfDeliveryRepository repository,
             @Value("${swiftdrop.delivery.pod-storage-dir:${POD_STORAGE_DIR:/tmp/swiftdrop/pod}}") String storageDir) {
