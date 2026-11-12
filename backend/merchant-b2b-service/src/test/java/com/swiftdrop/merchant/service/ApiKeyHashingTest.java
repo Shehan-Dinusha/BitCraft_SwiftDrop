@@ -25,7 +25,7 @@ class ApiKeyHashingTest {
 
     @BeforeEach
     void setup() {
-        service = new MerchantApiKeyService(repository);
+        service = new MerchantApiKeyService(repository, mock(MerchantApprovalGuard.class));
         when(repository.save(any())).thenAnswer(invocation -> {
             MerchantApiKey key = invocation.getArgument(0);
             key.prePersist();
