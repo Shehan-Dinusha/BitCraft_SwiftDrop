@@ -6,6 +6,58 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1/ai/mcp:
+    post:
+      tags: [DeliveryMcp]
+      operationId: deliveryMcp
+      summary: Customer-only stateless MCP Streamable HTTP tools
+      description: MCP protocol 2025-03-26. Supports initialize, ping, tools/list and tools/call. Uses JSON-RPC envelopes instead of ApiResponse. Native clients only; all Origin headers are rejected. Send a customer Bearer token through the gateway. Tool calls share the chat ten-request per-minute per-user budget and reuse ownership checks, safe output, argument validation and durable audits. No session IDs or server-initiated streams. Notifications return 202 without a body.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [jsonrpc, method]
+              properties:
+                jsonrpc: { type: string, const: '2.0' }
+                id: { type: [string, integer] }
+                method: { type: string }
+                params: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: JSON-RPC result or protocol error (-32700 parse error, -32600 invalid request, -32601 unknown method, -32602 invalid params); tool failures have result.isError true
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jsonrpc, id]
+                properties:
+                  jsonrpc: { type: string, const: '2.0' }
+                  id: { type: [string, integer, 'null'] }
+                  result: { type: object, additionalProperties: true }
+                  error:
+                    type: object
+                    required: [code, message]
+                    properties:
+                      code: { type: integer }
+                      message: { type: string }
+        "202": { description: Notification accepted }
+        "401": { $ref: '#/components/responses/Unauthenticated' }
+        "403": { description: Customer role required or browser Origin rejected }
+        "429": { description: Shared assistant request limit reached }
+        "500": { description: Tool audit could not be persisted }
+        "503": { description: Rate limiter capacity reached }
+    get:
+      tags: [DeliveryMcp]
+      operationId: deliveryMcpStream
+      summary: No server-initiated SSE stream is offered
+      security: [{ bearerAuth: [] }]
+      responses:
+        "405": { description: Use POST; server-initiated SSE is not supported }
+        "401": { $ref: '#/components/responses/Unauthenticated' }
+        "403": { description: Customer role required or browser Origin rejected }
   /api/v1/ai/chat:
     post:
       tags: [DeliveryChat]

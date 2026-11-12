@@ -13,9 +13,31 @@ export function CustomerAiAssistant() {
   const failedQuestion = useRef('');
   const nextId = useRef(1);
   const wrapper = useRef<HTMLDivElement>(null);
+  const activeRequest = useRef<AbortController>();
+  const wasOpen = useRef(false);
+  const [retryAt, setRetryAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const retrySeconds = Math.max(0, Math.ceil((retryAt - now) / 1000));
+
+  useEffect(() => () => activeRequest.current?.abort(), []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!retryAt) return;
+    const timer = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= retryAt) setRetryAt(0);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [retryAt]);
+
+  useEffect(() => {
+    if (!open) {
+      if (wasOpen.current) wrapper.current?.querySelector('button')?.focus();
+      wasOpen.current = false;
+      return;
+    }
+    wasOpen.current = true;
     wrapper.current?.querySelector('input')?.focus();
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
@@ -24,17 +46,23 @@ export function CustomerAiAssistant() {
     return () => document.removeEventListener('keydown', escape);
   }, [open]);
 
-  async function send(question: string) {
-    if (!question.trim() || sending.current) return;
+  async function send(question: string, retry = false) {
+    if (!question.trim() || sending.current || Date.now() < retryAt) return;
     sending.current = true;
     setPending(true);
     setError(undefined);
-    setMessages((previous) => [
-      ...previous,
-      { id: nextId.current++, role: 'user', text: question }
-    ]);
+    if (!retry)
+      setMessages((previous) => [
+        ...previous,
+        { id: nextId.current++, role: 'user', text: question }
+      ]);
+    const controller = new AbortController();
+    activeRequest.current = controller;
     try {
-      const reply = await analyticsAiApi.chat({ message: question, conversationId });
+      const reply = await analyticsAiApi.chat(
+        { message: question, conversationId },
+        controller.signal
+      );
       setConversationId(reply.conversationId);
       setMessages((previous) => [
         ...previous,
@@ -49,14 +77,19 @@ export function CustomerAiAssistant() {
                   (tool) =>
                     `${tool.name === 'track_parcel' ? 'Order tracking' : tool.name === 'calculate_estimate' ? 'Delivery estimate' : 'Request declined'}: ${tool.outcome}`
                 )
-                .join(' ? ')}
+                .join(' · ')}
             </span>
           ) : undefined
         }
       ]);
       failedQuestion.current = '';
     } catch (failure) {
+      if (controller.signal.aborted) return;
       const status = axios.isAxiosError(failure) ? failure.response?.status : undefined;
+      if (status === 429) {
+        setRetryAt(Date.now() + 60_000);
+        setNow(Date.now());
+      }
       if (status === 404) setConversationId(undefined);
       failedQuestion.current = question;
       setError(
@@ -87,6 +120,7 @@ export function CustomerAiAssistant() {
             placeholder="Ask about your order or a delivery fee..."
             messages={messages}
             typing={pending}
+            disabled={retrySeconds > 0}
             className="max-h-[calc(100dvh-11rem)] md:max-h-[calc(100dvh-4rem)]"
             suggestions={
               messages.length
@@ -96,6 +130,7 @@ export function CustomerAiAssistant() {
             onSend={(question) => void send(question)}
             onClose={() => setOpen(false)}
             onReset={() => {
+              if (sending.current) return;
               setConversationId(undefined);
               setMessages([]);
               setError(undefined);
@@ -111,10 +146,10 @@ export function CustomerAiAssistant() {
               <Button
                 variant="ghost"
                 density="comfortable"
-                disabled={pending}
-                onClick={() => void send(failedQuestion.current)}
+                disabled={pending || retrySeconds > 0}
+                onClick={() => void send(failedQuestion.current, true)}
               >
-                Retry message
+                {retrySeconds > 0 ? `Retry in ${retrySeconds}s` : 'Retry message'}
               </Button>
             </div>
           )}
