@@ -81,10 +81,7 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
     },
     {
       label: 'Platform',
-      items: [
-        { id: 'notifications', label: 'Notification logs', icon: 'bell', to: '/ops/notifications' },
-        { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
-      ]
+      items: [{ id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }]
     }
   ],
   'system-admin': [
@@ -94,7 +91,6 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
         { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
         { id: 'analytics', label: 'Analytics', icon: 'grid', to: '/ops/analytics' },
         { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
-        { id: 'notifications', label: 'Notification logs', icon: 'bell', to: '/ops/notifications' },
         { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
       ]
     }

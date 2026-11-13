@@ -15,7 +15,7 @@ import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPorta
 import { MerchantRegistrationPage } from '@/features/merchant/pages/MerchantRegistrationPage';
 import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
-import { ZoneManagementPage } from '@/features/admin-ops/pages/ZoneManagementPage';
+import { ZonePricingEditorPage } from '@/features/admin-ops/pages/ZonePricingEditorPage';
 import { DispatchBoardPage } from '@/features/admin-ops/pages/DispatchBoardPage';
 import { MerchantApprovalsPage } from '@/features/admin-ops/pages/MerchantApprovalsPage';
 import { NotificationConsolePage } from '@/features/admin-ops/pages/NotificationConsolePage';
@@ -154,7 +154,7 @@ export const routes: RouteObject[] = [
         path: '/ops/zones',
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
-            <ZoneManagementPage />
+            <ZonePricingEditorPage />
           </RoleGuard>
         )
       },

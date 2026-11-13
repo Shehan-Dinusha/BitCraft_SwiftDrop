@@ -72,6 +72,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pricing/tariffs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all tariff rule versions, newest first */
+        get: operations["listTariffRules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/tariffs/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the active default tariff rule */
+        get: operations["getActiveTariffRule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing/tariffs/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Publish a new default tariff version (dispatcher or system admin only) */
+        put: operations["publishTariffRule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List pricing zones */
+        get: operations["listZones"];
+        put?: never;
+        /** Create a pricing zone (dispatcher or system admin only) */
+        post: operations["createZone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/zones/{zoneCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                zoneCode: string;
+            };
+            cookie?: never;
+        };
+        /** Get a pricing zone */
+        get: operations["getZone"];
+        /** Update a pricing zone (dispatcher or system admin only) */
+        put: operations["updateZone"];
+        post?: never;
+        /** Delete a zone that has no districts mapped (dispatcher or system admin only) */
+        delete: operations["deleteZone"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/zones/districts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List district to zone mappings */
+        get: operations["listDistrictMappings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/zones/districts/{district}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Assign a district to a zone (dispatcher or system admin only) */
+        put: operations["assignDistrictToZone"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -313,6 +437,155 @@ export interface components {
             /** Format: date-time */
             timestamp?: string;
         };
+        ZoneRequest: {
+            /** @example ZONE_WESTERN */
+            zoneCode: string;
+            /** @example Western Province Metro */
+            zoneName: string;
+            /** @example METRO */
+            tier: string;
+            /**
+             * Format: double
+             * @example 350
+             */
+            baseFee: number;
+            /**
+             * Format: double
+             * @example 80
+             */
+            perKgFee: number;
+            /**
+             * Format: double
+             * @example 1.5
+             */
+            expressMultiplier: number;
+            /**
+             * Format: double
+             * @example 2
+             */
+            sameDayMultiplier: number;
+            /** @example ACTIVE */
+            status?: string;
+        };
+        ZoneResponse: {
+            /** Format: int64 */
+            id?: number;
+            zoneCode?: string;
+            zoneName?: string;
+            tier?: string;
+            /** Format: double */
+            baseFee?: number;
+            /** Format: double */
+            perKgFee?: number;
+            /** Format: double */
+            expressMultiplier?: number;
+            /** Format: double */
+            sameDayMultiplier?: number;
+            status?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        DistrictMappingRequest: {
+            /** @example ZONE_CENTRAL */
+            zoneCode: string;
+        };
+        DistrictMappingResponse: {
+            district?: components["schemas"]["SriLankanDistrict"];
+            zoneCode?: string;
+        };
+        TariffRuleRequest: {
+            /**
+             * @description Optional. Generated when blank.
+             * @example PRICING-2026-V2
+             */
+            ruleVersionId?: string;
+            /**
+             * Format: double
+             * @example 550
+             */
+            basePrice: number;
+            /**
+             * Format: double
+             * @example 1
+             */
+            weightStepKg: number;
+            /**
+             * Format: double
+             * @example 120
+             */
+            pricePerStep: number;
+            /**
+             * Format: double
+             * @example 5000
+             */
+            volumetricDivisor: number;
+        };
+        TariffRuleResponse: {
+            /** Format: int64 */
+            id?: number;
+            ruleVersionId?: string;
+            fromDistrict?: string;
+            toDistrict?: string;
+            /** Format: double */
+            basePrice?: number;
+            /** Format: double */
+            weightStepKg?: number;
+            /** Format: double */
+            pricePerStep?: number;
+            /** Format: double */
+            volumetricDivisor?: number;
+            active?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        ApiResponseVoid: {
+            success?: boolean;
+            message?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseZoneResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ZoneResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListZoneResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ZoneResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseDistrictMappingResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DistrictMappingResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListDistrictMappingResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["DistrictMappingResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseTariffRuleResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["TariffRuleResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListTariffRuleResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["TariffRuleResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -406,6 +679,365 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseListPricingZone"];
+                };
+            };
+        };
+    };
+    listTariffRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tariff rule versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListTariffRuleResponse"];
+                };
+            };
+        };
+    };
+    getActiveTariffRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active tariff rule */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseTariffRuleResponse"];
+                };
+            };
+            /** @description No active tariff rule */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+        };
+    };
+    publishTariffRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TariffRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description New tariff version published */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseTariffRuleResponse"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Caller role is not permitted */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Tariff rule version already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+        };
+    };
+    listZones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pricing zones */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListZoneResponse"];
+                };
+            };
+        };
+    };
+    createZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ZoneRequest"];
+            };
+        };
+        responses: {
+            /** @description Zone created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseZoneResponse"];
+                };
+            };
+            /** @description Caller role is not permitted */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Zone code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+        };
+    };
+    getZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                zoneCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pricing zone */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseZoneResponse"];
+                };
+            };
+            /** @description Zone not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+        };
+    };
+    updateZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                zoneCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ZoneRequest"];
+            };
+        };
+        responses: {
+            /** @description Zone updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseZoneResponse"];
+                };
+            };
+            /** @description Caller role is not permitted */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Zone not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+        };
+    };
+    deleteZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                zoneCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Zone deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Caller role is not permitted */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Zone not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Zone still has districts mapped to it */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+        };
+    };
+    listDistrictMappings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description District mappings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDistrictMappingResponse"];
+                };
+            };
+        };
+    };
+    assignDistrictToZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                district: components["schemas"]["SriLankanDistrict"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DistrictMappingRequest"];
+            };
+        };
+        responses: {
+            /** @description Mapping updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDistrictMappingResponse"];
+                };
+            };
+            /** @description Unknown district */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Caller role is not permitted */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Zone not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
                 };
             };
         };
