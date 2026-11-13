@@ -48,6 +48,10 @@ public class TariffRule {
     @Builder.Default
     private BigDecimal pricePerStep = new BigDecimal("100.00");
 
+    @Column(name = "volumetric_divisor", nullable = false, precision = 8, scale = 2)
+    @Builder.Default
+    private BigDecimal volumetricDivisor = new BigDecimal("5000.00");
+
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
