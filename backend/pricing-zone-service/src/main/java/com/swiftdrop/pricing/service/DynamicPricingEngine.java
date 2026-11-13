@@ -3,13 +3,14 @@ package com.swiftdrop.pricing.service;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.pricing.domain.entity.DistrictZoneMapping;
 import com.swiftdrop.pricing.domain.entity.PricingZone;
+import com.swiftdrop.pricing.domain.entity.TariffRule;
 import com.swiftdrop.pricing.domain.repository.DistrictZoneMappingRepository;
 import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
+import com.swiftdrop.pricing.domain.repository.TariffRuleRepository;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
 import com.swiftdrop.pricing.exception.UnsupportedPricingSpeedException;
 import com.swiftdrop.pricing.service.strategy.PricingStrategy;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,17 +24,21 @@ import java.util.List;
 @Slf4j
 public class DynamicPricingEngine {
 
-    public static final String CURRENT_RULE_VERSION = "PRICING-2026-V1";
-    private static final BigDecimal VOLUMETRIC_DIVISOR = new BigDecimal("5000");
+    private static final String DEFAULT_ROUTE = "ALL";
 
     private final DistrictZoneMappingRepository districtZoneMappingRepository;
     private final PricingZoneRepository pricingZoneRepository;
     private final List<PricingStrategy> pricingStrategies;
+    private final TariffRuleRepository tariffRuleRepository;
 
     public PricingQuoteResponse calculateQuote(PricingQuoteRequest request) {
         log.info("Calculating delivery quote from {} to {}, weight={}kg, speed={}",
                 request.pickupDistrict(), request.deliveryDistrict(),
                 request.actualWeightKg(), request.speed());
+
+        TariffRule rule = tariffRuleRepository.findActiveRules(DEFAULT_ROUTE, DEFAULT_ROUTE).stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No active default tariff rule is configured"));
 
         // 1. Resolve zones
         String pickupZoneCode = districtZoneMappingRepository.findByDistrict(request.pickupDistrict().name())
@@ -56,7 +61,7 @@ public class DynamicPricingEngine {
                 && request.widthCm().compareTo(BigDecimal.ZERO) > 0
                 && request.heightCm().compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal volume = request.lengthCm().multiply(request.widthCm()).multiply(request.heightCm());
-            volumetricWeight = volume.divide(VOLUMETRIC_DIVISOR, 2, RoundingMode.HALF_UP);
+            volumetricWeight = volume.divide(rule.getVolumetricDivisor(), 2, RoundingMode.HALF_UP);
         }
 
         BigDecimal chargeableWeight = request.actualWeightKg().max(volumetricWeight)
@@ -70,9 +75,9 @@ public class DynamicPricingEngine {
             baseFee = pickupZone != null ? pickupZone.getBaseFee() : new BigDecimal("350.00");
             perKgFee = pickupZone != null ? pickupZone.getPerKgFee() : new BigDecimal("80.00");
         } else {
-            // Inter-district baseline: 550.00 base, 120.00 per extra kg
-            baseFee = new BigDecimal("550.00");
-            perKgFee = new BigDecimal("120.00");
+            // Inter-district fees come from the active default tariff rule
+            baseFee = rule.getBasePrice();
+            perKgFee = rule.getPricePerStep();
         }
 
         BigDecimal weightFee = BigDecimal.ZERO;
@@ -109,7 +114,7 @@ public class DynamicPricingEngine {
                 .speedSurcharge(speedSurcharge)
                 .estimatedFee(totalFee)
                 .currency("LKR")
-                .pricingRuleVersionId(CURRENT_RULE_VERSION)
+                .pricingRuleVersionId(rule.getRuleVersionId())
                 .build();
     }
 }
