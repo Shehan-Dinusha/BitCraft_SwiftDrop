@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
@@ -18,6 +19,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -82,5 +84,38 @@ class ProofOfDeliveryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.verified").value(true));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/deliveries/{deliveryId}/proof-of-delivery with multipart/form-data uploads evidence")
+    void testUploadPodMultipart() throws Exception {
+        UUID deliveryId = UUID.randomUUID();
+        MockMultipartFile photo = new MockMultipartFile(
+                "photo",
+                "evidence.jpg",
+                "image/jpeg",
+                "fake image content".getBytes()
+        );
+
+        ProofOfDeliveryResponse response = new ProofOfDeliveryResponse(
+                2L,
+                deliveryId,
+                false,
+                Instant.now(),
+                null
+        );
+
+        when(storageService.storeMultipart(eq(deliveryId), any(), eq("Kamal Silva"), eq("sig-data"), eq("654321")))
+                .thenReturn(response);
+
+        mockMvc.perform(multipart("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")
+                        .file(photo)
+                        .param("recipientName", "Kamal Silva")
+                        .param("signature", "sig-data")
+                        .param("otp", "654321"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.deliveryId").value(deliveryId.toString()))
+                .andExpect(jsonPath("$.data.verified").value(false));
     }
 }

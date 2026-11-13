@@ -16,6 +16,7 @@ public class ProofOfDelivery {
     private Long id;
     private UUID deliveryId;
     private String photoUrl;
+    private String recipientName;
     private String recipientSignature;
     private String confirmationOtp;
     private boolean verified;
@@ -28,6 +29,8 @@ public class ProofOfDelivery {
     public void setDeliveryId(UUID deliveryId) { this.deliveryId = deliveryId; }
     public String getPhotoUrl() { return photoUrl; }
     public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
+    public String getRecipientName() { return recipientName; }
+    public void setRecipientName(String recipientName) { this.recipientName = recipientName; }
     public String getRecipientSignature() { return recipientSignature; }
     public void setRecipientSignature(String recipientSignature) { this.recipientSignature = recipientSignature; }
     public String getConfirmationOtp() { return confirmationOtp; }
