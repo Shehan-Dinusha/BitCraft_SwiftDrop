@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>B2bOrderSubmissionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.service</a> &gt; <span class="el_source">B2bOrderSubmissionService.java</span></div><h1>B2bOrderSubmissionService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.service;
+
+import com.swiftdrop.merchant.domain.entity.*;
+import com.swiftdrop.merchant.domain.repository.*;
+import com.swiftdrop.merchant.dto.*;
+import com.swiftdrop.merchant.exception.MerchantNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class B2bOrderSubmissionService {
+    private final MerchantAccountRepository merchants;
+    private final MerchantOrderReceiptRepository receipts;
+    private final MerchantOrderNormalizer normalizer;
+    private final OrderServiceClient orders;
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public B2bOrderResult submit(UUID merchantId, B2bOrderRequest request, UUID correlationId) {
+        // Serialize submissions per merchant across replicas, including the local receipt write.
+<span class="fc" id="L25">        MerchantAccount merchant = merchants.findForUpdate(merchantId)</span>
+<span class="pc" id="L26">                .orElseThrow(() -&gt; new MerchantNotFoundException(&quot;Merchant not found&quot;));</span>
+<span class="fc bfc" id="L27" title="All 2 branches covered.">        if (merchant.getStatus() != MerchantStatus.APPROVED) {</span>
+<span class="fc" id="L28">            throw new ResponseStatusException(HttpStatus.FORBIDDEN, &quot;Merchant approval required&quot;);</span>
+        }
+<span class="fc" id="L30">        var body = normalizer.normalize(merchantId, request);</span>
+<span class="fc" id="L31">        var existing = receipts.findByMerchantIdAndExternalRef(merchantId, request.externalRef());</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        if (existing.isPresent()) {</span>
+<span class="fc" id="L33">            var receipt = existing.get();</span>
+<span class="fc" id="L34">            return new B2bOrderResult(request.externalRef(), receipt.getOrderId(), receipt.getTrackingNumber(), false, null);</span>
+        }
+<span class="fc bfc" id="L36" title="All 2 branches covered.">        var result = orders.create(body, correlationId != null ? correlationId : UUID.randomUUID());</span>
+<span class="fc" id="L37">        receipts.save(MerchantOrderReceipt.builder().merchantId(merchantId).externalRef(request.externalRef())</span>
+<span class="fc" id="L38">                .orderId(result.orderId()).trackingNumber(result.trackingNumber()).build());</span>
+<span class="fc" id="L39">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

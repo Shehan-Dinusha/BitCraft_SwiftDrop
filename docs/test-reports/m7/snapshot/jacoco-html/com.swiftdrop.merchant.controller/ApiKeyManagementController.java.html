@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiKeyManagementController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.controller</a> &gt; <span class="el_source">ApiKeyManagementController.java</span></div><h1>ApiKeyManagementController.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.controller;
+
+import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.contracts.dto.MerchantApiKeyValidationRequest;
+import com.swiftdrop.contracts.dto.MerchantApiKeyValidationResult;
+import com.swiftdrop.merchant.dto.ApiKeyResponse;
+import com.swiftdrop.merchant.dto.CreateApiKeyRequest;
+import com.swiftdrop.merchant.service.MerchantApiKeyService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+<span class="fc" id="L21">@Slf4j</span>
+@RestController
+@RequiredArgsConstructor
+@Tag(name = &quot;ApiKeyManagement&quot;, description = &quot;Merchant API key provisioning, rotation, and gateway validation&quot;)
+public class ApiKeyManagementController {
+
+    private final MerchantApiKeyService apiKeyService;
+
+    @GetMapping(&quot;/api/v1/api-key-management/health&quot;)
+    @Operation(summary = &quot;Check API key management controller health&quot;)
+    public ApiResponse&lt;String&gt; health() {
+<span class="fc" id="L32">        return ApiResponse.success(&quot;ApiKeyManagementController is active&quot;);</span>
+    }
+
+    @PostMapping(&quot;/api/v1/merchants/{merchantId}/api-keys&quot;)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = &quot;Generate a new merchant API key&quot;, description = &quot;Returns the raw API key secret ONLY ONCE.&quot;)
+    public ApiResponse&lt;ApiKeyResponse&gt; generateApiKey(
+            @PathVariable UUID merchantId,
+            @Valid @RequestBody CreateApiKeyRequest request) {
+<span class="fc" id="L41">        ApiKeyResponse response = apiKeyService.generateApiKey(merchantId, request);</span>
+<span class="fc" id="L42">        return ApiResponse.success(response, &quot;API key successfully generated. Store secret securely.&quot;);</span>
+    }
+
+    @GetMapping(&quot;/api/v1/merchants/{merchantId}/api-keys&quot;)
+    @Operation(summary = &quot;List all API keys for a merchant&quot;, description = &quot;Raw secret key is not returned.&quot;)
+    public ApiResponse&lt;List&lt;ApiKeyResponse&gt;&gt; listApiKeys(@PathVariable UUID merchantId) {
+<span class="fc" id="L48">        List&lt;ApiKeyResponse&gt; keys = apiKeyService.listApiKeys(merchantId);</span>
+<span class="fc" id="L49">        return ApiResponse.success(keys, &quot;API keys retrieved successfully&quot;);</span>
+    }
+
+    @DeleteMapping(&quot;/api/v1/merchants/{merchantId}/api-keys/{keyId}&quot;)
+    @Operation(summary = &quot;Revoke a merchant API key&quot;)
+    public ApiResponse&lt;ApiKeyResponse&gt; revokeApiKey(
+            @PathVariable UUID merchantId,
+            @PathVariable UUID keyId) {
+<span class="nc" id="L57">        ApiKeyResponse revoked = apiKeyService.revokeApiKey(merchantId, keyId);</span>
+<span class="nc" id="L58">        return ApiResponse.success(revoked, &quot;API key successfully revoked&quot;);</span>
+    }
+
+    @PostMapping(&quot;/api/v1/merchants/{merchantId}/api-keys/{keyId}/regenerate&quot;)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = &quot;Regenerate a merchant API key&quot;,
+            description = &quot;Atomically creates a fresh key and revokes the old key. Preserves the label and expiry. &quot;
+                    + &quot;Returns the new raw secret once. Unknown or foreign keys return 404; revoked/expired keys return 409.&quot;)
+    public ApiResponse&lt;ApiKeyResponse&gt; regenerateApiKey(@PathVariable UUID merchantId, @PathVariable UUID keyId) {
+<span class="fc" id="L67">        return ApiResponse.success(apiKeyService.regenerateApiKey(merchantId, keyId),</span>
+                &quot;API key regenerated. Store the new secret securely; the old key is revoked.&quot;);
+    }
+
+    /**
+     * Internal endpoint invoked by API Gateway MerchantApiKeyGlobalFilter.
+     * Must not be exposed to the public edge.
+     */
+    @PostMapping(&quot;/internal/v1/api-keys/validate&quot;)
+    @Operation(summary = &quot;Internal API key validation&quot;, description = &quot;Invoked by API Gateway filter to authenticate merchant calls.&quot;)
+    public ResponseEntity&lt;MerchantApiKeyValidationResult&gt; validateApiKey(
+            @Valid @RequestBody MerchantApiKeyValidationRequest request) {
+<span class="fc" id="L79">        MerchantApiKeyValidationResult result = apiKeyService.validateApiKey(request.apiKey());</span>
+<span class="fc" id="L80">        return ResponseEntity.ok(result);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

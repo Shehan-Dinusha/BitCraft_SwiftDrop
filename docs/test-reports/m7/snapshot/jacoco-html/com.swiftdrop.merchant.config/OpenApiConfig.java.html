@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OpenApiConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.config</a> &gt; <span class="el_source">OpenApiConfig.java</span></div><h1>OpenApiConfig.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.config;
+
+import com.swiftdrop.contracts.openapi.OpenApiConstants;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+<span class="nc" id="L13">public class OpenApiConfig {</span>
+    @Bean
+    public OpenAPI merchantB2bOpenAPI() {
+<span class="nc" id="L16">        return new OpenAPI().info(new Info().title(&quot;SwiftDrop Merchant B2B API&quot;)</span>
+<span class="nc" id="L17">                .description(&quot;Merchant onboarding, API key, and order ingestion APIs.&quot;).version(&quot;v1.0.0&quot;))</span>
+<span class="nc" id="L18">                .servers(java.util.List.of(new Server().url(&quot;http://localhost:8080&quot;).description(&quot;API Gateway&quot;)))</span>
+<span class="nc" id="L19">                .components(new Components()</span>
+<span class="nc" id="L20">                        .addSecuritySchemes(OpenApiConstants.BEARER_AUTH_SCHEME,</span>
+<span class="nc" id="L21">                                new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme(&quot;bearer&quot;).bearerFormat(&quot;JWT&quot;))</span>
+<span class="nc" id="L22">                        .addSecuritySchemes(&quot;apiKeyAuth&quot;,</span>
+<span class="nc" id="L23">                                new SecurityScheme().type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.HEADER)</span>
+<span class="nc" id="L24">                                        .name(&quot;X-Merchant-Api-Key&quot;)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantApprovalService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.service</a> &gt; <span class="el_source">MerchantApprovalService.java</span></div><h1>MerchantApprovalService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.service;
+
+import com.swiftdrop.merchant.domain.entity.MerchantAccount;
+import com.swiftdrop.merchant.domain.entity.MerchantStatus;
+import com.swiftdrop.merchant.domain.repository.MerchantAccountRepository;
+import com.swiftdrop.merchant.dto.MerchantApprovalResponse;
+import com.swiftdrop.merchant.dto.RegisterMerchantRequest;
+import com.swiftdrop.merchant.exception.MerchantNotFoundException;
+import com.swiftdrop.merchant.messaging.event.MerchantApprovedEvent;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class MerchantApprovalService {
+    private final MerchantAccountRepository accounts;
+    private final ApplicationEventPublisher events;
+
+    @Transactional
+    public MerchantApprovalResponse register(UUID owner, RegisterMerchantRequest request) {
+<span class="fc" id="L28">        MerchantAccount account = MerchantAccount.builder()</span>
+<span class="fc" id="L29">                .ownerUserId(owner).businessName(request.businessName().trim())</span>
+<span class="fc" id="L30">                .businessRegNo(request.businessRegNo().trim()).contactEmail(request.contactEmail().trim())</span>
+<span class="fc" id="L31">                .contactPhone(request.contactPhone().trim()).pickupAddress(request.pickupAddress().trim())</span>
+<span class="fc" id="L32">                .operatingDistrict(request.operatingDistrict()).status(MerchantStatus.PENDING_APPROVAL).build();</span>
+<span class="fc" id="L33">        return MerchantApprovalResponse.from(accounts.save(account));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;MerchantApprovalResponse&gt; list(MerchantStatus status) {
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        return (status == null ? accounts.findAll() : accounts.findByStatus(status))</span>
+<span class="fc" id="L39">                .stream().map(MerchantApprovalResponse::from).toList();</span>
+    }
+
+    @Transactional
+    public MerchantApprovalResponse approve(UUID merchantId, UUID administrator, UUID correlationId) {
+<span class="fc" id="L44">        MerchantAccount account = pending(merchantId);</span>
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        if (account.getOwnerUserId() == null) {</span>
+<span class="fc" id="L46">            throw new ResponseStatusException(HttpStatus.CONFLICT, &quot;Business must register an owner before approval&quot;);</span>
+        }
+<span class="fc" id="L48">        Instant now = Instant.now();</span>
+<span class="fc" id="L49">        account.setStatus(MerchantStatus.APPROVED);</span>
+<span class="fc" id="L50">        account.setApprovedBy(administrator);</span>
+<span class="fc" id="L51">        account.setApprovedAt(now);</span>
+<span class="fc" id="L52">        account.setRejectionReason(null);</span>
+<span class="fc" id="L53">        accounts.save(account);</span>
+<span class="fc" id="L54">        events.publishEvent(new MerchantApprovedEvent(null, correlationId, merchantId, account.getOwnerUserId(), now, now));</span>
+<span class="fc" id="L55">        return MerchantApprovalResponse.from(account);</span>
+    }
+
+    @Transactional
+    public MerchantApprovalResponse reject(UUID merchantId, String reason) {
+<span class="fc" id="L60">        MerchantAccount account = pending(merchantId);</span>
+<span class="fc" id="L61">        account.setStatus(MerchantStatus.REJECTED);</span>
+<span class="fc" id="L62">        account.setRejectionReason(reason.trim());</span>
+<span class="fc" id="L63">        account.setApprovedBy(null);</span>
+<span class="fc" id="L64">        account.setApprovedAt(null);</span>
+<span class="fc" id="L65">        return MerchantApprovalResponse.from(accounts.save(account));</span>
+    }
+
+    private MerchantAccount pending(UUID merchantId) {
+<span class="fc" id="L69">        MerchantAccount account = accounts.findForUpdate(merchantId)</span>
+<span class="pc" id="L70">                .orElseThrow(() -&gt; new MerchantNotFoundException(&quot;Merchant not found: &quot; + merchantId));</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        if (account.getStatus() != MerchantStatus.PENDING_APPROVAL) {</span>
+<span class="fc" id="L72">            throw new ResponseStatusException(HttpStatus.CONFLICT, &quot;Only pending merchants can be approved or rejected&quot;);</span>
+        }
+<span class="fc" id="L74">        return account;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

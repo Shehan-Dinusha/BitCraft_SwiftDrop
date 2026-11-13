@@ -1,0 +1,90 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1500' height='1530' viewBox='0 0 1500 1530'><rect width='100%' height='100%' fill='white'/>
+<text x='40' y='45' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#507298'>SwiftDrop | Member 7</text>
+<text x='40' y='96' font-family='Segoe UI,Arial,sans-serif' font-size='36' fill='#16324f'>Merchant verification workflow</text>
+<text x='40' y='137' font-family='Segoe UI,Arial,sans-serif' font-size='22' fill='#16324f'>Registration and approval are authenticated; API keys and ingestion require APPROVED.</text>
+<rect x='460' y='170' width='580' height='78' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='474' y='202' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>MERCHANT: submit /merchant/register</text>
+<text x='474' y='229' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Business details; owner from gateway user ID</text>
+<line x1='750' y1='248' x2='750' y2='280' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='280' x2='744.24689353675' y2='269.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='280' x2='755.75310646325' y2='269.469009257316' stroke='#507298' stroke-width='2'/>
+<rect x='460' y='280' width='580' height='78' rx='4' fill='#fff5e9' stroke='#adc3db' stroke-width='2'/>
+<text x='474' y='312' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Persist PENDING_APPROVAL</text>
+<text x='474' y='339' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Keys and order ingestion blocked</text>
+<line x1='750' y1='358' x2='750' y2='390' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='390' x2='744.24689353675' y2='379.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='390' x2='755.75310646325' y2='379.469009257316' stroke='#507298' stroke-width='2'/>
+<rect x='460' y='390' width='580' height='78' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='474' y='422' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>SYSTEM_ADMIN: review /ops/merchants</text>
+<text x='474' y='449' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Approve/reject pending applications only</text>
+<rect x='45' y='385' width='365' height='105' rx='4' fill='#fff5e9' stroke='#adc3db' stroke-width='2'/>
+<text x='59' y='417' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Gateway dependency</text>
+<text x='59' y='444' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Admin merchant routes still required;</text>
+<text x='59' y='471' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>non-admin admin calls return 403.</text>
+<line x1='750' y1='468' x2='750' y2='510' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='510' x2='390' y2='510' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='510' x2='390' y2='555' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='555' x2='384.24689353675' y2='544.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='555' x2='395.75310646325' y2='544.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='510' x2='1110' y2='510' stroke='#507298' stroke-width='2'/>
+<line x1='1110' y1='510' x2='1110' y2='555' stroke='#507298' stroke-width='2'/>
+<line x1='1110' y1='555' x2='1104.24689353675' y2='544.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='1110' y1='555' x2='1115.75310646325' y2='544.469009257316' stroke='#507298' stroke-width='2'/>
+<text x='220' y='538' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>APPROVE: owner required</text>
+<text x='930' y='538' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>REJECT: reason required</text>
+<rect x='100' y='555' width='580' height='88' rx='4' fill='#f0f8f4' stroke='#adc3db' stroke-width='2'/>
+<text x='114' y='587' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>APPROVED</text>
+<text x='114' y='614' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Save approvedBy and approvedAt; clear rejection</text>
+<rect x='820' y='555' width='580' height='88' rx='4' fill='#fff1f1' stroke='#adc3db' stroke-width='2'/>
+<text x='834' y='587' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>REJECTED</text>
+<text x='834' y='614' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Save rejection reason; clear approval audit</text>
+<line x1='390' y1='643' x2='390' y2='690' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='690' x2='384.24689353675' y2='679.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='690' x2='395.75310646325' y2='679.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='1110' y1='643' x2='1110' y2='690' stroke='#507298' stroke-width='2'/>
+<line x1='1110' y1='690' x2='1104.24689353675' y2='679.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='1110' y1='690' x2='1115.75310646325' y2='679.469009257316' stroke='#507298' stroke-width='2'/>
+<rect x='100' y='690' width='580' height='78' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='114' y='722' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>After commit: publish merchant.approved</text>
+<text x='114' y='749' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>merchantId + ownerUserId + event metadata</text>
+<rect x='820' y='690' width='580' height='78' rx='4' fill='#fff1f1' stroke='#adc3db' stroke-width='2'/>
+<text x='834' y='722' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Keys and order ingestion remain blocked</text>
+<text x='834' y='749' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>No rejection-to-approval action in this controller</text>
+<line x1='390' y1='768' x2='390' y2='815' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='815' x2='384.24689353675' y2='804.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='815' x2='395.75310646325' y2='804.469009257316' stroke='#507298' stroke-width='2'/>
+<rect x='100' y='815' width='580' height='78' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='114' y='847' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>IAM consumes approval event</text>
+<text x='114' y='874' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Links merchantId to owner user</text>
+<line x1='390' y1='893' x2='390' y2='940' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='940' x2='384.24689353675' y2='929.469009257316' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='940' x2='395.75310646325' y2='929.469009257316' stroke='#507298' stroke-width='2'/>
+<rect x='100' y='940' width='580' height='78' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='114' y='972' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Merchant signs in again</text>
+<text x='114' y='999' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Refresh verified merchant claim/profile</text>
+<line x1='390' y1='1018' x2='390' y2='1065' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='1065' x2='384.24689353675' y2='1054.46900925732' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='1065' x2='395.75310646325' y2='1054.46900925732' stroke='#507298' stroke-width='2'/>
+<rect x='100' y='1065' width='580' height='78' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='114' y='1097' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Generate API key</text>
+<text x='114' y='1124' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Secret shown once; SHA-256 hash stored</text>
+<line x1='390' y1='1143' x2='390' y2='1190' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='1190' x2='384.24689353675' y2='1179.46900925732' stroke='#507298' stroke-width='2'/>
+<line x1='390' y1='1190' x2='395.75310646325' y2='1179.46900925732' stroke='#507298' stroke-width='2'/>
+<rect x='100' y='1190' width='580' height='78' rx='4' fill='#f0f8f4' stroke='#adc3db' stroke-width='2'/>
+<text x='114' y='1222' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Create B2B orders and view dashboard</text>
+<text x='114' y='1249' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Tracking number and public delivery status</text>
+<rect x='820' y='855' width='580' height='110' rx='4' fill='#fff5e9' stroke='#adc3db' stroke-width='2'/>
+<text x='834' y='887' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>SUSPENDED is a blocked enum value.</text>
+<text x='834' y='914' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>No suspend endpoint is implemented</text>
+<text x='834' y='941' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>in the inspected approval workflow.</text>
+<rect x='820' y='1010' width='580' height='150' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='834' y='1042' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Broker publication is AFTER_COMMIT.</text>
+<text x='834' y='1069' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>This is not a durable outbox guarantee.</text>
+<text x='834' y='1096' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Check IAM event consumption and token</text>
+<text x='834' y='1123' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>refresh during live integration testing.</text>
+<rect x='45' y='1330' width='1355' height='125' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='59' y='1362' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Review scope: Member 7 merchant lifecycle; gateway and IAM remain their owning members&apos; modules.</text>
+<text x='59' y='1389' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Approve/reject UI and copied API examples require gateway integration before the demo can pass.</text>
+<text x='59' y='1416' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Rendered diagrams describe the contract, not a claim that the live distributed flow was verified.</text>
+</svg>

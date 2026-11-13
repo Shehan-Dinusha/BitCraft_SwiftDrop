@@ -23,6 +23,8 @@ Approval/registration/regeneration contracts were added to the merchant OpenAPI 
 
 ## Validation and remaining integration checks
 
+Historical PR 4 results below describe the original review. PR 5 follow-up on 13 November 2026: installing locked dependencies resolved the missing `recharts` error; frontend lint and production build now pass on the local working tree. See the [current evidence index](../../test-reports/m7/README.md) for dependency context and remaining live checks.
+
 - Backend `mvn -f backend/pom.xml -pl merchant-b2b-service -am test` passed: 69 merchant tests, including two receipt-list authorization/pagination tests, with zero failures or errors. Shared-contract tests also passed.
 - Frontend lint currently stops on a pre-existing missing installed dependency: `recharts`, imported by Member 10's analytics page. No analytics source or package manifest was changed.
 - Dependency installation requiring elevated access was declined. Frontend build and live UI flows are not verified in this environment.

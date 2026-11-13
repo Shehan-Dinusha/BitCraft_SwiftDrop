@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BulkBatchItemResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.dto</a> &gt; <span class="el_source">BulkBatchItemResponse.java</span></div><h1>BulkBatchItemResponse.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.dto;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+@Schema(description = &quot;Bulk order row item detail&quot;)
+<span class="nc" id="L11">public record BulkBatchItemResponse(</span>
+        @Schema(description = &quot;Batch identifier&quot;)
+        UUID batchId,
+
+        @Schema(description = &quot;Row number within file&quot;)
+        int rowIndex,
+
+        @Schema(description = &quot;Generated tracking number (e.g. SD-COL-20261027-ABCD)&quot;)
+        String trackingNumber,
+
+        @Schema(description = &quot;Created order UUID&quot;)
+        UUID orderId,
+
+        @Schema(description = &quot;Recipient full name&quot;)
+        String recipientName,
+
+        @Schema(description = &quot;Recipient telephone number&quot;)
+        String recipientPhone,
+
+        @Schema(description = &quot;Delivery destination district&quot;)
+        SriLankanDistrict deliveryDistrict,
+
+        @Schema(description = &quot;Delivery destination address&quot;)
+        String deliveryAddress,
+
+        @Schema(description = &quot;Package weight in kg&quot;)
+        BigDecimal packageWeightKg,
+
+        @Schema(description = &quot;Delivery service speed&quot;)
+        String deliverySpeed,
+
+        @Schema(description = &quot;Processing item status: PENDING, SUCCESS, FAILED&quot;)
+        String itemStatus,
+
+        @Schema(description = &quot;Error details if failed&quot;)
+        String errorMessage,
+
+        @Schema(description = &quot;Record creation timestamp&quot;)
+        Instant createdAt
+) {
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
