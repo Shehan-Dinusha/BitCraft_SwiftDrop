@@ -9,8 +9,6 @@ import java.math.BigDecimal;
 @Component
 public class SameDayPricingStrategy implements PricingStrategy {
 
-    private static final BigDecimal DEFAULT_MULTIPLIER = new BigDecimal("2.00");
-
     @Override
     public boolean supports(OrderSpeed speed) {
         return speed == OrderSpeed.SAME_DAY;
@@ -18,7 +16,6 @@ public class SameDayPricingStrategy implements PricingStrategy {
 
     @Override
     public BigDecimal apply(BigDecimal subtotal, PricingZone zone) {
-        BigDecimal multiplier = zone != null ? zone.getSameDayMultiplier() : DEFAULT_MULTIPLIER;
-        return subtotal.multiply(multiplier);
+        return subtotal.multiply(zone.getSameDayMultiplier());
     }
 }
