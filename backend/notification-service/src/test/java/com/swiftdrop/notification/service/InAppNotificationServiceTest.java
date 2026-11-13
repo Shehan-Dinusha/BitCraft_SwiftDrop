@@ -127,3 +127,4 @@ class InAppNotificationServiceTest {
         verify(repository).countByUserIdAndReadFalse(userId);
     }
 }
+

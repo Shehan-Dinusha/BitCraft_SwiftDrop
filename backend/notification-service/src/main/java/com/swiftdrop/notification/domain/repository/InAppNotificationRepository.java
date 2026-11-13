@@ -24,3 +24,4 @@ public interface InAppNotificationRepository extends JpaRepository<InAppNotifica
     @Query("UPDATE InAppNotification n SET n.read = true WHERE n.userId = :userId AND n.read = false")
     int markAllReadByUserId(@Param("userId") UUID userId);
 }
+

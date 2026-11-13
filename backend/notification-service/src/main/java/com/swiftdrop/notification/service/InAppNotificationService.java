@@ -76,3 +76,4 @@ public class InAppNotificationService {
         return repository.markAllReadByUserId(userId);
     }
 }
+

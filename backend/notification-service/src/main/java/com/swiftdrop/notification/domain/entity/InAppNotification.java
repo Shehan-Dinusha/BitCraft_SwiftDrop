@@ -39,3 +39,4 @@ public class InAppNotification {
     @Builder.Default
     private Instant createdAt = Instant.now();
 }
+

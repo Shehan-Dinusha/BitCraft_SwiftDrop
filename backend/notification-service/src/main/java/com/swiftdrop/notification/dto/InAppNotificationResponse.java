@@ -29,3 +29,4 @@ public record InAppNotificationResponse(
         @Schema(description = "Timestamp when notification was created")
         Instant createdAt
 ) {}
+

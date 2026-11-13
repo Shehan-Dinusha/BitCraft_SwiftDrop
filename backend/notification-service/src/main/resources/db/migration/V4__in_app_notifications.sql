@@ -21,3 +21,4 @@ COMMENT ON COLUMN in_app_notifications.body IS 'Notification body text';
 COMMENT ON COLUMN in_app_notifications.tracking_number IS 'Associated parcel tracking number if applicable';
 COMMENT ON COLUMN in_app_notifications.read IS 'Whether the notification has been marked as read by the user';
 COMMENT ON COLUMN in_app_notifications.created_at IS 'Timestamp when the notification was created';
+
