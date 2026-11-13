@@ -12,4 +12,10 @@ public interface TariffRuleRepository extends JpaRepository<TariffRule, Long> {
     @Query("select t from TariffRule t where t.fromDistrict = :from and t.toDistrict = :to "
             + "and t.isActive = true order by t.id desc")
     List<TariffRule> findActiveRules(@Param("from") String from, @Param("to") String to);
+
+    List<TariffRule> findAllByOrderByIdDesc();
+
+    boolean existsByRuleVersionId(String ruleVersionId);
+
+    long countByFromDistrictAndToDistrict(String fromDistrict, String toDistrict);
 }
