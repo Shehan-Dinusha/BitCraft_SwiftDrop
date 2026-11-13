@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
@@ -11,7 +12,64 @@ export interface ApiKeyManagerCardProps {
   merchantId: string;
 }
 
+function usageExamples(secret: string) {
+  const url = `${window.location.origin}/api/v1/b2b/orders`;
+  const payload = {
+    externalRef: 'SHOP-001',
+    pickup: {
+      addressLine1: '10 Galle Road',
+      city: 'Colombo',
+      district: 'COLOMBO',
+      postalCode: '00300',
+      contactName: 'Test Shop',
+      contactPhone: '+94771234567'
+    },
+    delivery: {
+      addressLine1: '25 Kandy Road',
+      city: 'Gampaha',
+      district: 'GAMPAHA',
+      postalCode: '11000',
+      contactName: 'Test Recipient',
+      contactPhone: '+94711234567'
+    },
+    parcel: { weightGrams: 1500, prohibitedItemsDeclared: true, itemDescription: 'Books' },
+    speed: 'STANDARD'
+  };
+  return {
+    curl: `curl --request POST '${url}' --header 'X-API-Key: ${secret}' --header 'Content-Type: application/json' --data '${JSON.stringify(payload)}'`,
+    postman: JSON.stringify(
+      {
+        info: {
+          name: 'SwiftDrop merchant order',
+          schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
+        },
+        item: [
+          {
+            name: 'Create order',
+            request: {
+              method: 'POST',
+              url,
+              header: [
+                { key: 'X-API-Key', value: secret },
+                { key: 'Content-Type', value: 'application/json' }
+              ],
+              body: {
+                mode: 'raw',
+                raw: JSON.stringify(payload, null, 2),
+                options: { raw: { language: 'json' } }
+              }
+            }
+          }
+        ]
+      },
+      null,
+      2
+    )
+  };
+}
+
 export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
+  const [mutating, setMutating] = useState(false);
   const [keys, setKeys] = useState<ApiKeyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,6 +105,10 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
       setErrorMsg('Key name is required');
       return;
     }
+    if (expiresInDays !== '' && (!Number.isInteger(expiresInDays) || expiresInDays < 1)) {
+      setErrorMsg('Expiration must be a positive whole number of days.');
+      return;
+    }
 
     try {
       setGenerating(true);
@@ -69,12 +131,17 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
   };
 
   const handleRevokeKey = async (keyId?: string) => {
-    if (!keyId) return;
-    if (!window.confirm('Are you sure you want to revoke this API key? This will immediately disconnect any active integrations.')) {
+    if (!keyId || mutating) return;
+    if (
+      !window.confirm(
+        'Are you sure you want to revoke this API key? This will immediately disconnect any active integrations.'
+      )
+    ) {
       return;
     }
 
     try {
+      setMutating(true);
       setErrorMsg(null);
       await merchantApi.revokeApiKey(merchantId, keyId);
       setSuccessMsg('API key revoked successfully');
@@ -82,14 +149,43 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to revoke API key';
       setErrorMsg(msg);
+    } finally {
+      setMutating(false);
+    }
+  };
+
+  const handleRegenerateKey = async (keyId?: string) => {
+    if (
+      !keyId ||
+      mutating ||
+      !window.confirm('Replace this key? The previous secret will stop working immediately.')
+    )
+      return;
+    setMutating(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const replacement = await merchantApi.regenerateApiKey(merchantId, keyId);
+      setNewlyCreatedKey(replacement);
+      setCopied(false);
+      setIsModalOpen(true);
+      await fetchKeys();
+    } catch (err) {
+      setErrorMsg(apiErrorMessage(err, 'Unable to regenerate API key.'));
+    } finally {
+      setMutating(false);
     }
   };
 
   const handleCopySecret = async (secret?: string) => {
     if (!secret) return;
-    await navigator.clipboard.writeText(secret);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setErrorMsg('Clipboard unavailable. Select and copy the text manually.');
+    }
   };
 
   return (
@@ -104,7 +200,8 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             variant="outline"
             className="h-8 px-2 text-xs"
             onClick={fetchKeys}
-            disabled={loading}
+            disabled={loading || mutating}
+            aria-label="Refresh API keys"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
@@ -115,6 +212,7 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
               setNewlyCreatedKey(null);
               setIsModalOpen(true);
             }}
+            disabled={mutating || generating}
           >
             <Plus className="mr-1 h-3.5 w-3.5" />
             Generate New Key
@@ -150,27 +248,27 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             {keys.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-6 text-center text-slate-500">
-                  No active API keys. Click "Generate New Key" to create an integration key for machine-to-machine order ingestion.
+                  {loading
+                    ? 'Loading API keys…'
+                    : 'No API keys found. Generate a key to connect your integration.'}
                 </td>
               </tr>
             ) : (
               keys.map((k) => (
                 <tr key={k.keyId} className="hover:bg-slate-50/50">
-                  <td className="py-2.5 font-medium text-slate-900">
-                    {k.keyName}
-                  </td>
-                  <td className="py-2.5 font-mono text-slate-600">
-                    {k.keyPrefix}
-                  </td>
+                  <td className="py-2.5 font-medium text-slate-900">{k.keyName}</td>
+                  <td className="py-2.5 font-mono text-slate-600">{k.keyPrefix}</td>
                   <td className="py-2.5">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        k.active
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-slate-100 text-slate-700'
+                        k.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {k.active ? 'ACTIVE' : 'REVOKED'}
+                      {!k.active
+                        ? 'REVOKED'
+                        : k.expiresAt && new Date(k.expiresAt).getTime() <= Date.now()
+                          ? 'EXPIRED'
+                          : 'ACTIVE'}
                     </span>
                   </td>
                   <td className="py-2.5 text-slate-500">
@@ -180,10 +278,20 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
                     {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : 'Never'}
                   </td>
                   <td className="py-2.5 text-right">
+                    {k.active && (!k.expiresAt || new Date(k.expiresAt).getTime() > Date.now()) && (
+                      <Button
+                        variant="outline"
+                        disabled={mutating}
+                        onClick={() => handleRegenerateKey(k.keyId)}
+                      >
+                        Regenerate
+                      </Button>
+                    )}
                     {k.active && (
                       <button
                         type="button"
                         onClick={() => handleRevokeKey(k.keyId)}
+                        disabled={mutating}
                         className="inline-flex items-center gap-1 rounded p-1 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                         title="Revoke Key"
                       >
@@ -222,14 +330,13 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
                 <span>Save Your Secret Token</span>
               </div>
               <p className="mt-1">
-                For security reasons, SwiftDrop stores only a salted SHA-256 hash. If lost, you must revoke this key and generate a new one.
+                SwiftDrop stores only a SHA-256 hash. Copy this secret now; closing this dialog
+                removes it from view.
               </p>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Secret API Key Token:
-              </label>
+              <label className="text-xs font-semibold text-slate-700">Secret API Key Token:</label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -248,6 +355,48 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
               </div>
             </div>
 
+            <div className="space-y-2 text-xs">
+              <p className="font-semibold">Usage examples</p>
+              <p>
+                Replace the sample business and parcel details before submitting. Keep your secret
+                out of shared files.
+              </p>
+              <textarea
+                aria-label="cURL example"
+                className="w-full rounded border border-border-subtle bg-card p-2 font-mono"
+                rows={6}
+                readOnly
+                value={usageExamples(newlyCreatedKey.rawApiKey || '').curl}
+              />
+              <Button
+                variant="outline"
+                onClick={() =>
+                  handleCopySecret(usageExamples(newlyCreatedKey.rawApiKey || '').curl)
+                }
+              >
+                Copy cURL
+              </Button>
+              <textarea
+                aria-label="Postman collection"
+                className="w-full rounded border border-border-subtle bg-card p-2 font-mono"
+                rows={5}
+                readOnly
+                value={usageExamples(newlyCreatedKey.rawApiKey || '').postman}
+              />
+              <Button
+                variant="outline"
+                onClick={() =>
+                  handleCopySecret(usageExamples(newlyCreatedKey.rawApiKey || '').postman)
+                }
+              >
+                Copy Postman collection
+              </Button>
+              {errorMsg && (
+                <p role="alert" className="text-status-danger">
+                  {errorMsg}
+                </p>
+              )}
+            </div>
             <div className="flex justify-end pt-2">
               <Button
                 variant="outline"
@@ -276,14 +425,16 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Expiration (Days)
-              </label>
+              <label className="text-xs font-semibold text-slate-700">Expiration (Days)</label>
               <div className="relative">
                 <Input
+                  inputMode="numeric"
+                  pattern="[0-9]+"
                   placeholder="e.g. 90 (or leave blank for non-expiring)"
                   value={expiresInDays}
-                  onChange={(e) => setExpiresInDays(e.target.value === '' ? '' : Number(e.target.value))}
+                  onChange={(e) =>
+                    setExpiresInDays(e.target.value === '' ? '' : Number(e.target.value))
+                  }
                 />
                 <Clock className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
               </div>

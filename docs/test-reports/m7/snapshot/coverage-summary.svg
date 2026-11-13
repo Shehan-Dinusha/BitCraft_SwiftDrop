@@ -1,0 +1,15 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='650' viewBox='0 0 1300 650'><rect width='100%' height='100%' fill='white'/>
+<text x='40' y='62' font-family='Segoe UI,Arial,sans-serif' font-size='32' fill='#16324f'>Member 7 | Recorded backend evidence</text>
+<text x='40' y='114' font-family='Segoe UI,Arial,sans-serif' font-size='24' fill='#16324f'>Tests: 69   Failures: 0   Errors: 0   Skipped: 0</text>
+<text x='40' y='161' font-family='Segoe UI,Arial,sans-serif' font-size='21' fill='#16324f'>Line coverage extracted from JaCoCo CSV; run command and timestamps are in manifest.json.</text>
+<rect x='40' y='205' width='1220' height='58' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='54' y='237' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Entire merchant module: 77.58%  |  488 covered, 141 missed</text>
+<rect x='40' y='280' width='1220' height='58' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='54' y='312' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Controllers: 78.41%  |  69 covered, 19 missed</text>
+<rect x='40' y='355' width='1220' height='58' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='54' y='387' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Services: 87.23%  |  362 covered, 53 missed</text>
+<rect x='40' y='430' width='1220' height='58' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='54' y='462' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Controllers + services: 85.69%  |  431 covered, 72 missed</text>
+<text x='40' y='551' font-family='Segoe UI,Arial,sans-serif' font-size='21' fill='#16324f'>Guide target: aim for 70%+ on service/controller code. Consult package results separately.</text>
+<text x='40' y='590' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Source timestamps and capture context: manifest.json. Full coverage report: jacoco-html/index.html.</text>
+</svg>

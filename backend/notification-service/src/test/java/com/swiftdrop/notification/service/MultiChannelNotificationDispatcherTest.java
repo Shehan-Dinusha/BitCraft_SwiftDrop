@@ -1,11 +1,13 @@
 package com.swiftdrop.notification.service;
 
+import com.swiftdrop.notification.client.ContactClient;
 import com.swiftdrop.notification.domain.entity.NotificationDispatchLog;
 import com.swiftdrop.notification.domain.entity.RecipientPreference;
 import com.swiftdrop.notification.domain.repository.NotificationDispatchLogRepository;
 import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
+import com.swiftdrop.notification.dto.RecipientContact;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,9 @@ class MultiChannelNotificationDispatcherTest {
 
     @Mock
     private TemplateRendererService templateRenderer;
+
+    @Mock
+    private ContactClient contactClient;
 
     @InjectMocks
     private MultiChannelNotificationDispatcher dispatcher;
@@ -117,6 +122,7 @@ class MultiChannelNotificationDispatcherTest {
     @DisplayName("Should fail dispatch when destination is missing")
     void testDispatch_MissingDestination() {
         when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.empty());
+        when(contactClient.lookupContact(recipientId)).thenReturn(Optional.empty());
         when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
                 .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "SMS"));
         when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
@@ -134,6 +140,32 @@ class MultiChannelNotificationDispatcherTest {
 
         assertThat(response.status()).isEqualTo("FAILED");
         assertThat(response.failureReason()).contains("No valid SMS destination address");
+    }
+
+    @Test
+    @DisplayName("Should resolve contact via ContactClient when preference lacks phone/email")
+    void testDispatch_ResolvesFromContactClient() {
+        when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.empty());
+        when(contactClient.lookupContact(recipientId))
+                .thenReturn(Optional.of(new RecipientContact("iam-user@example.com", "+94779998888")));
+        when(templateRenderer.renderTemplate(eq("PARCEL_DELIVERED"), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("Delivered", "Your parcel was delivered", "EMAIL"));
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        DispatchNotificationRequest request = new DispatchNotificationRequest(
+                recipientId,
+                "EMAIL",
+                "PARCEL_DELIVERED",
+                null,
+                Map.of(),
+                "SD-IAM-001"
+        );
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(request);
+
+        assertThat(response.status()).isEqualTo("SENT");
+        assertThat(response.channel()).isEqualTo("EMAIL");
+        verify(contactClient).lookupContact(recipientId);
     }
 
     @Test

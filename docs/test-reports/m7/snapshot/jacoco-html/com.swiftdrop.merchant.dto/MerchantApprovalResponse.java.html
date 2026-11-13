@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantApprovalResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.dto</a> &gt; <span class="el_source">MerchantApprovalResponse.java</span></div><h1>MerchantApprovalResponse.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.dto;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.merchant.domain.entity.MerchantAccount;
+import com.swiftdrop.merchant.domain.entity.MerchantStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.Instant;
+import java.util.UUID;
+
+@Schema(description = &quot;Business application and approval audit information&quot;)
+<span class="fc" id="L11">public record MerchantApprovalResponse(</span>
+        @Schema(description = &quot;Merchant ID&quot;) UUID merchantId,
+        @Schema(description = &quot;Business owner ID&quot;) UUID ownerUserId,
+        @Schema(description = &quot;Business name&quot;) String businessName,
+        @Schema(description = &quot;Registration number&quot;) String businessRegNo,
+        @Schema(description = &quot;Business email&quot;) String contactEmail,
+        @Schema(description = &quot;Business phone&quot;) String contactPhone,
+        @Schema(description = &quot;Pickup address&quot;) String pickupAddress,
+        @Schema(description = &quot;Operating district&quot;) SriLankanDistrict operatingDistrict,
+        @Schema(description = &quot;Approval status&quot;) MerchantStatus status,
+        @Schema(description = &quot;Approving administrator&quot;) UUID approvedBy,
+        @Schema(description = &quot;Approval time&quot;) Instant approvedAt,
+        @Schema(description = &quot;Rejection reason&quot;) String rejectionReason,
+        @Schema(description = &quot;Application time&quot;) Instant createdAt
+) {
+    public static MerchantApprovalResponse from(MerchantAccount account) {
+<span class="fc" id="L27">        return new MerchantApprovalResponse(account.getMerchantId(), account.getOwnerUserId(),</span>
+<span class="fc" id="L28">                account.getBusinessName(), account.getBusinessRegNo(), account.getContactEmail(),</span>
+<span class="fc" id="L29">                account.getContactPhone(), account.getPickupAddress(), account.getOperatingDistrict(),</span>
+<span class="fc" id="L30">                account.getStatus(), account.getApprovedBy(), account.getApprovedAt(),</span>
+<span class="fc" id="L31">                account.getRejectionReason(), account.getCreatedAt());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

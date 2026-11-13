@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
@@ -20,10 +21,8 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
 
   const handleDownloadTemplate = () => {
     const csvContent =
-      'recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed\n' +
-      'Kasun Perera,+94 77 123 4567,COLOMBO,"123 Galle Road, Colombo 03",2.5,EXPRESS\n' +
-      'Nimal Silva,+94 71 987 6543,GAMPAHA,"45 Kandy Road, Kadawatha",1.0,STANDARD\n' +
-      'Priyantha De Silva,+94 77 555 8899,KALUTARA,"18 Beach Road, Wadduwa",0.8,STANDARD\n';
+      'recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,prohibited_items_declared\n' +
+      'Test Recipient,+94771234567,COLOMBO,123 Galle Road,2.5,EXPRESS,SHOP-001,Colombo,00300,Gampaha,11000,true\n';
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -33,13 +32,17 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.csv')) {
+    if (uploading) return;
+    setSelectedFile(null);
+    setPreviewRows([]);
+    if (!file.name.toLowerCase().endsWith('.csv')) {
       setErrorMsg('Please select a valid .csv file');
       return;
     }
@@ -54,7 +57,24 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
       const text = event.target?.result as string;
       if (text) {
         const lines = text.split('\n').filter((l) => l.trim().length > 0);
-        const rows = lines.slice(0, 4).map((line) => line.split(','));
+        const rows = lines.slice(0, 4).map((line) => {
+          const cells: string[] = [];
+          let cell = '';
+          let quoted = false;
+          for (let i = 0; i < line.length; i++) {
+            if (line[i] === '"') {
+              if (quoted && line[i + 1] === '"') {
+                cell += '"';
+                i++;
+              } else quoted = !quoted;
+            } else if (line[i] === ',' && !quoted) {
+              cells.push(cell);
+              cell = '';
+            } else cell += line[i];
+          }
+          cells.push(cell);
+          return cells;
+        });
         setPreviewRows(rows);
       }
     };
@@ -62,14 +82,14 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || uploading) return;
 
     try {
       setUploading(true);
       setErrorMsg(null);
       const res = await merchantApi.uploadCsvOrders(merchantId, selectedFile);
       setSuccessMsg(
-        `Batch ${res.fileName} ingested successfully! Total: ${res.totalRecords}, Dispatched: ${res.successCount}, Failed: ${res.failedCount}`
+        `Batch ${res.fileName} processed. Total: ${res.totalRecords}, Accepted: ${res.successCount}, Failed: ${res.failedCount}. ${res.errorSummary || ''}`
       );
       setSelectedFile(null);
       setPreviewRows([]);
@@ -80,7 +100,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
         onBatchIngested(res);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to upload CSV orders';
+      const msg = apiErrorMessage(err, 'Failed to upload CSV orders');
       setErrorMsg(msg);
     } finally {
       setUploading(false);
@@ -92,15 +112,9 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
-          <h3 className="text-sm font-bold text-slate-900">
-            Bulk CSV Order Ingestion
-          </h3>
+          <h3 className="text-sm font-bold text-slate-900">Bulk CSV Order Ingestion</h3>
         </div>
-        <Button
-          variant="outline"
-          className="h-8 px-2 text-xs"
-          onClick={handleDownloadTemplate}
-        >
+        <Button variant="outline" className="h-8 px-2 text-xs" onClick={handleDownloadTemplate}>
           <Download className="mr-1 h-3.5 w-3.5 text-slate-500" />
           CSV Template
         </Button>
@@ -118,27 +132,26 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
       )}
 
       {/* Drag and Drop Zone */}
-      <div
-        className="relative grid min-h-32 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border-subtle bg-slate-50/50 p-4 transition-colors hover:border-indigo-400 hover:bg-indigo-50/20"
-        onClick={() => fileInputRef.current?.click()}
-      >
+      <label className="relative grid min-h-32 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border-subtle bg-slate-50/50 p-4 transition-colors hover:border-indigo-400 hover:bg-indigo-50/20">
         <input
           ref={fileInputRef}
           type="file"
           accept=".csv"
-          className="hidden"
+          className="sr-only"
+          disabled={uploading}
+          aria-label="Select order CSV file"
           onChange={handleFileChange}
         />
         <div className="text-center">
           <UploadCloud className="mx-auto h-8 w-8 text-indigo-500" />
           <p className="mt-2 text-xs font-semibold text-slate-700">
-            {selectedFile ? selectedFile.name : 'Click to select CSV batch file or drag & drop'}
+            {selectedFile ? selectedFile.name : 'Select a CSV batch file'}
           </p>
           <p className="mt-0.5 text-[11px] text-slate-400">
             Supports standardized UTF-8 CSV with recipient address and Sri Lankan district
           </p>
         </div>
-      </div>
+      </label>
 
       {/* Selected File & Preview */}
       {selectedFile && previewRows.length > 0 && (

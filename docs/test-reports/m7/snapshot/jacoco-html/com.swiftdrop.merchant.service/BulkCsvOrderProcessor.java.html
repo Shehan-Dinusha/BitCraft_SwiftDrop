@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BulkCsvOrderProcessor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.service</a> &gt; <span class="el_source">BulkCsvOrderProcessor.java</span></div><h1>BulkCsvOrderProcessor.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.service;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.merchant.dto.BulkOrderIngestItem;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+<span class="fc" id="L16">@Slf4j</span>
+@Service
+<span class="fc" id="L18">public class BulkCsvOrderProcessor {</span>
+
+    /**
+     * Parses a CSV file with expected headers:
+     * recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed
+     */
+    public List&lt;BulkOrderIngestItem&gt; parseCsv(InputStream inputStream) {
+<span class="fc" id="L25">        List&lt;BulkOrderIngestItem&gt; items = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L26">        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {</span>
+            String line;
+<span class="fc" id="L28">            boolean isHeader = true;</span>
+
+<span class="fc bfc" id="L30" title="All 2 branches covered.">            while ((line = reader.readLine()) != null) {</span>
+<span class="fc" id="L31">                line = line.trim();</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">                if (line.isEmpty()) continue;</span>
+
+<span class="fc bfc" id="L34" title="All 2 branches covered.">                if (isHeader) {</span>
+<span class="fc" id="L35">                    isHeader = false;</span>
+                    // Skip header row if it contains recipient or district
+<span class="pc bpc" id="L37" title="1 of 4 branches missed.">                    if (line.toLowerCase().contains(&quot;recipient&quot;) || line.toLowerCase().contains(&quot;district&quot;)) {</span>
+<span class="nc" id="L38">                        continue;</span>
+                    }
+                }
+
+<span class="fc" id="L42">                String[] tokens = line.split(&quot;,(?=(?:[^\&quot;]*\&quot;[^\&quot;]*\&quot;)*[^\&quot;]*$)&quot;, -1);</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">                if (tokens.length &lt; 4) {</span>
+<span class="fc" id="L44">                    items.add(new BulkOrderIngestItem(null, null, null, null, null, null));</span>
+<span class="fc" id="L45">                    continue;</span>
+                }
+
+<span class="fc" id="L48">                String recipientName = stripQuotes(tokens[0]);</span>
+<span class="fc" id="L49">                String recipientPhone = stripQuotes(tokens[1]);</span>
+<span class="fc" id="L50">                String districtStr = stripQuotes(tokens[2]).toUpperCase();</span>
+<span class="fc" id="L51">                String deliveryAddress = stripQuotes(tokens[3]);</span>
+
+<span class="fc" id="L53">                BigDecimal weight = null;</span>
+<span class="pc bpc" id="L54" title="1 of 4 branches missed.">                if (tokens.length &gt; 4 &amp;&amp; !tokens[4].trim().isEmpty()) {</span>
+                    try {
+<span class="fc" id="L56">                        weight = new BigDecimal(stripQuotes(tokens[4]));</span>
+<span class="fc" id="L57">                    } catch (NumberFormatException e) {</span>
+<span class="fc" id="L58">                        weight = null;</span>
+<span class="fc" id="L59">                    }</span>
+                }
+
+<span class="fc" id="L62">                String speed = &quot;STANDARD&quot;;</span>
+<span class="pc bpc" id="L63" title="1 of 4 branches missed.">                if (tokens.length &gt; 5 &amp;&amp; !tokens[5].trim().isEmpty()) {</span>
+<span class="fc" id="L64">                    speed = stripQuotes(tokens[5]).toUpperCase();</span>
+                }
+
+                SriLankanDistrict district;
+                try {
+<span class="fc" id="L69">                    district = SriLankanDistrict.valueOf(districtStr);</span>
+<span class="fc" id="L70">                } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L71">                    district = null;</span>
+<span class="fc" id="L72">                }</span>
+
+<span class="fc" id="L74">                items.add(new BulkOrderIngestItem(</span>
+                        recipientName,
+                        recipientPhone,
+                        district,
+                        deliveryAddress,
+                        weight,
+                        speed,
+<span class="fc" id="L81">                        column(tokens, 6), column(tokens, 7), column(tokens, 8), column(tokens, 9), column(tokens, 10),</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">                        column(tokens, 11) == null ? null : declaration(column(tokens, 11))</span>
+                ));
+<span class="fc" id="L84">            }</span>
+<span class="nc" id="L85">        } catch (Exception e) {</span>
+<span class="nc" id="L86">            log.error(&quot;Failed to parse merchant CSV order batch&quot;, e);</span>
+<span class="nc" id="L87">            throw new IllegalArgumentException(&quot;Failed to parse CSV file: &quot; + e.getMessage(), e);</span>
+<span class="fc" id="L88">        }</span>
+<span class="fc" id="L89">        return items;</span>
+    }
+
+    private String stripQuotes(String val) {
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">        if (val == null) return &quot;&quot;;</span>
+<span class="fc" id="L94">        val = val.trim();</span>
+<span class="pc bpc" id="L95" title="2 of 6 branches missed.">        if (val.startsWith(&quot;\&quot;&quot;) &amp;&amp; val.endsWith(&quot;\&quot;&quot;) &amp;&amp; val.length() &gt;= 2) {</span>
+<span class="fc" id="L96">            return val.substring(1, val.length() - 1).trim();</span>
+        }
+<span class="fc" id="L98">        return val;</span>
+    }
+
+    private String column(String[] values, int index) {
+<span class="pc bpc" id="L102" title="1 of 4 branches missed.">        return values.length &gt; index &amp;&amp; !stripQuotes(values[index]).isBlank() ? stripQuotes(values[index]) : null;</span>
+    }
+
+    private Boolean declaration(String value) {
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">        if (value.equalsIgnoreCase(&quot;true&quot;)) return true;</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (value.equalsIgnoreCase(&quot;false&quot;)) return false;</span>
+<span class="nc" id="L108">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

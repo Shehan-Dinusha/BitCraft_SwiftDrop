@@ -370,6 +370,9 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+      AUTH_SERVICE_URL: http://auth-iam-service:8081
+      CONTACT_MODE: ${CONTACT_MODE:-fake}
+      CONTACT_CACHE_TTL_MINUTES: ${CONTACT_CACHE_TTL_MINUTES:-10}
     depends_on:
       notify-postgres:
         condition: service_healthy

@@ -2,17 +2,44 @@ package com.swiftdrop.notification.service;
 
 import com.swiftdrop.notification.domain.entity.NotificationTemplate;
 import com.swiftdrop.notification.domain.repository.NotificationTemplateRepository;
+import com.swiftdrop.notification.util.PiiMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TemplateRendererService {
+
+    private static final Pattern UNKNOWN_PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{[^}]+\\}\\}");
+    private static final Pattern CREDIT_CARD_PATTERN = Pattern.compile("\\b(?:\\d[ -]*?){13,19}\\b");
+    private static final Pattern SRI_LANKAN_PHONE_PATTERN = Pattern.compile("\\b(?:(?:\\+?94)|0)?7\\d{8}\\b");
+
+    private static final Set<String> FORBIDDEN_SECRET_KEYS = Set.of(
+            "password", "passwd", "pin", "cvv", "cvc", "secret", "authtoken", "auth_token", "jwt", "privatekey", "private_key"
+    );
+
+    private static final Set<String> FORBIDDEN_CARD_KEYS = Set.of(
+            "cardnumber", "card_number", "creditcard", "credit_card", "debitcard", "debit_card", "pan"
+    );
+
+    private static final Set<String> FORBIDDEN_ADDRESS_KEYS = Set.of(
+            "fulladdress", "full_address", "streetaddress", "street_address", "addressline", "address_line",
+            "addressline1", "address_line1", "addressline2", "address_line2"
+    );
+
+    private static final Set<String> PHONE_KEYS = Set.of(
+            "phone", "phonenumber", "phone_number", "mobile", "mobilenumber", "mobile_number",
+            "contact", "contactnumber", "contact_number", "recipientphone", "recipient_phone",
+            "senderphone", "sender_phone"
+    );
 
     private final NotificationTemplateRepository templateRepository;
 
@@ -68,18 +95,64 @@ public class TemplateRendererService {
     }
 
     /**
-     * Replaces {{paramKey}} occurrences with matching value from params map.
+     * Replaces {{paramKey}} occurrences with matching safe value from params map.
+     * Guarantees that:
+     * 1. Passwords, card numbers, and full addresses are never output.
+     * 2. Phone numbers are masked (07X***5678).
+     * 3. Unknown placeholders are replaced with empty string.
      */
     public String interpolate(String template, Map<String, String> params) {
         if (template == null) return "";
-        if (params == null || params.isEmpty()) return template;
 
         String result = template;
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            String placeholder = "{{" + entry.getKey() + "}}";
-            String value = entry.getValue() != null ? entry.getValue() : "";
-            result = result.replace(placeholder, value);
+        if (params != null && !params.isEmpty()) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                String rawKey = entry.getKey();
+                String normalizedKey = rawKey != null ? rawKey.trim().toLowerCase().replaceAll("[_-]", "") : "";
+                String value = entry.getValue() != null ? entry.getValue() : "";
+
+                // Never expose passwords or secrets
+                if (FORBIDDEN_SECRET_KEYS.contains(normalizedKey) || normalizedKey.contains("password") || normalizedKey.contains("secret")) {
+                    value = "";
+                }
+                // Never expose payment cards
+                else if (FORBIDDEN_CARD_KEYS.contains(normalizedKey) || normalizedKey.contains("cardnumber") || normalizedKey.contains("creditcard")) {
+                    value = "";
+                }
+                // Never expose full street address
+                else if (FORBIDDEN_ADDRESS_KEYS.contains(normalizedKey) || normalizedKey.contains("fulladdress") || normalizedKey.contains("streetaddress")) {
+                    value = "";
+                }
+                // Always mask phone numbers
+                else if (PHONE_KEYS.contains(normalizedKey) || normalizedKey.contains("phone")) {
+                    value = PiiMasker.maskPhone(value);
+                }
+
+                String placeholder = "{{" + rawKey + "}}";
+                result = result.replace(placeholder, value);
+            }
         }
+
+        // Unknown / unmapped placeholders render empty
+        result = UNKNOWN_PLACEHOLDER_PATTERN.matcher(result).replaceAll("");
+
+        // Post-processing safety filter: redact leaked payment card numbers
+        result = CREDIT_CARD_PATTERN.matcher(result).replaceAll("");
+
+        // Post-processing safety filter: mask any full phone numbers that may have slipped into general fields
+        result = maskFullPhonesInText(result);
+
         return result;
+    }
+
+    private String maskFullPhonesInText(String text) {
+        Matcher matcher = SRI_LANKAN_PHONE_PATTERN.matcher(text);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String match = matcher.group();
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(PiiMasker.maskPhone(match)));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 }

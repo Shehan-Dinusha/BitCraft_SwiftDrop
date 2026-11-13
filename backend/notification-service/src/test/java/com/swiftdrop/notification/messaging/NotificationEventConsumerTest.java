@@ -5,6 +5,7 @@ import com.swiftdrop.notification.domain.repository.ProcessedEventRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.messaging.consumer.NotificationEventConsumer;
 import com.swiftdrop.notification.messaging.trigger.*;
+import com.swiftdrop.notification.service.InAppNotificationService;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +38,9 @@ class NotificationEventConsumerTest {
     @Mock
     private ProcessedEventRepository processedEventRepository;
 
+    @Mock
+    private InAppNotificationService inAppNotificationService;
+
     private NotificationEventConsumer consumer;
 
     @BeforeEach
@@ -46,7 +50,7 @@ class NotificationEventConsumerTest {
                 new OutForDeliveryTrigger(),
                 new DeliveredTrigger(),
                 new FailedTrigger()
-        ), processedEventRepository);
+        ), processedEventRepository, inAppNotificationService);
     }
 
     @Test
@@ -77,6 +81,7 @@ class NotificationEventConsumerTest {
         assertThat(request.channel()).isEqualTo("SMS");
         assertThat(request.referenceId()).isEqualTo("SD-1111");
         assertThat(request.templateParams()).containsEntry("courierName", "Kamal Perera");
+        verify(inAppNotificationService).saveNotification(eq(customerId), any(), any(), eq("SD-1111"));
     }
 
     @Test

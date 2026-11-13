@@ -112,14 +112,21 @@ export function NotificationTray({
           </button>
         ) : null}
       </header>
-      <div>
-        {items.map((item) => (
-          <NotificationItem
-            key={item.id}
-            {...item}
-            onClick={onItemClick ? () => onItemClick(item.id) : undefined}
-          />
-        ))}
+      <div className="max-h-[380px] overflow-y-auto">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <p className="text-body-strong text-primary">All caught up!</p>
+            <p className="mt-1 text-caption text-secondary">You have no notifications right now.</p>
+          </div>
+        ) : (
+          items.map((item) => (
+            <NotificationItem
+              key={item.id}
+              {...item}
+              onClick={onItemClick ? () => onItemClick(item.id) : undefined}
+            />
+          ))
+        )}
       </div>
       {onViewAll ? (
         <footer className="px-4 py-3">

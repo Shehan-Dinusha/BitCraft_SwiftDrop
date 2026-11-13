@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.swiftdrop.merchant.controller.PendingMerchantCannotOrderTest" time="1.254" tests="4" errors="0" skipped="0" failures="0">
+  <testcase name="unapprovedMerchantsCannotGenerateKeysOrIngestOrders(MerchantStatus)[1]" classname="com.swiftdrop.merchant.controller.PendingMerchantCannotOrderTest" time="0.107">
+  </testcase>
+  <testcase name="unapprovedMerchantsCannotGenerateKeysOrIngestOrders(MerchantStatus)[2]" classname="com.swiftdrop.merchant.controller.PendingMerchantCannotOrderTest" time="0.031">
+  </testcase>
+  <testcase name="unapprovedMerchantsCannotGenerateKeysOrIngestOrders(MerchantStatus)[3]" classname="com.swiftdrop.merchant.controller.PendingMerchantCannotOrderTest" time="0.024">
+  </testcase>
+  <testcase name="approvedMerchantCanGenerateKey" classname="com.swiftdrop.merchant.controller.PendingMerchantCannotOrderTest" time="0.03">
+  </testcase>
+</testsuite>
