@@ -11,8 +11,10 @@ import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBann
 import { Modal } from '@/design-system/primitives/Modal';
 import { SlaBreachAlertTicker } from '../components/SlaBreachAlertTicker';
 import { AiDeliveryAssistantPanel } from '../components/AiDeliveryAssistantPanel';
+import { NotificationLogModal } from '@/features/notifications/NotificationLogModal';
 import { analyticsAiApi, type OperationalKpiSummary } from '@/services/api/analyticsAiApi';
 import {
+  Bell,
   Bike,
   CheckCircle,
   Filter,
@@ -54,6 +56,7 @@ export function FleetControlTowerPage() {
   const [selectedCourierId, setSelectedCourierId] = useState<string>('');
   const [overrideReason, setOverrideReason] = useState<string>('');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -128,6 +131,15 @@ export function FleetControlTowerPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsLogsOpen(true)}
+            className="h-8 text-xs gap-1.5"
+          >
+            <Bell className="h-3.5 w-3.5 text-indigo-600" />
+            Notification Logs
+          </Button>
+
           <Button
             variant="outline"
             onClick={fetchData}
@@ -483,6 +495,11 @@ export function FleetControlTowerPage() {
           </div>
         )}
       </Modal>
+
+      <NotificationLogModal
+        open={isLogsOpen}
+        onClose={() => setIsLogsOpen(false)}
+      />
     </main>
   );
 }
