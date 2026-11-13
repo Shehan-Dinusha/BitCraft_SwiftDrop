@@ -5,9 +5,11 @@ import com.swiftdrop.pricing.dto.DistrictMappingRequest;
 import com.swiftdrop.pricing.dto.DistrictMappingResponse;
 import com.swiftdrop.pricing.dto.ZoneRequest;
 import com.swiftdrop.pricing.dto.ZoneResponse;
+import com.swiftdrop.pricing.security.AdminAccessGuard;
 import com.swiftdrop.pricing.service.ZoneAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +32,7 @@ import java.util.List;
 public class ZoneAdminController {
 
     private final ZoneAdminService zoneAdminService;
+    private final AdminAccessGuard adminAccessGuard;
 
     @GetMapping
     @Operation(summary = "List pricing zones")
@@ -45,21 +48,26 @@ public class ZoneAdminController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create a pricing zone")
-    public ApiResponse<ZoneResponse> createZone(@Valid @RequestBody ZoneRequest request) {
+    @Operation(summary = "Create a pricing zone (dispatcher or system admin only)")
+    public ApiResponse<ZoneResponse> createZone(@Valid @RequestBody ZoneRequest request,
+                                                HttpServletRequest httpRequest) {
+        adminAccessGuard.requireAdmin(httpRequest);
         return ApiResponse.success(zoneAdminService.createZone(request), "Zone created successfully");
     }
 
     @PutMapping("/{zoneCode}")
-    @Operation(summary = "Update a pricing zone")
+    @Operation(summary = "Update a pricing zone (dispatcher or system admin only)")
     public ApiResponse<ZoneResponse> updateZone(@PathVariable String zoneCode,
-                                                @Valid @RequestBody ZoneRequest request) {
+                                                @Valid @RequestBody ZoneRequest request,
+                                                HttpServletRequest httpRequest) {
+        adminAccessGuard.requireAdmin(httpRequest);
         return ApiResponse.success(zoneAdminService.updateZone(zoneCode, request), "Zone updated successfully");
     }
 
     @DeleteMapping("/{zoneCode}")
-    @Operation(summary = "Delete a pricing zone that has no districts mapped")
-    public ApiResponse<Void> deleteZone(@PathVariable String zoneCode) {
+    @Operation(summary = "Delete a pricing zone that has no districts mapped (dispatcher or system admin only)")
+    public ApiResponse<Void> deleteZone(@PathVariable String zoneCode, HttpServletRequest httpRequest) {
+        adminAccessGuard.requireAdmin(httpRequest);
         zoneAdminService.deleteZone(zoneCode);
         return ApiResponse.success(null, "Zone deleted successfully");
     }
@@ -71,9 +79,11 @@ public class ZoneAdminController {
     }
 
     @PutMapping("/districts/{district}")
-    @Operation(summary = "Assign a district to a zone")
+    @Operation(summary = "Assign a district to a zone (dispatcher or system admin only)")
     public ApiResponse<DistrictMappingResponse> assignDistrict(@PathVariable String district,
-                                                               @Valid @RequestBody DistrictMappingRequest request) {
+                                                               @Valid @RequestBody DistrictMappingRequest request,
+                                                               HttpServletRequest httpRequest) {
+        adminAccessGuard.requireAdmin(httpRequest);
         return ApiResponse.success(zoneAdminService.assignDistrict(district, request), "District mapping updated");
     }
 }

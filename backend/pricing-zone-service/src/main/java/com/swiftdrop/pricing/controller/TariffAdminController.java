@@ -3,9 +3,11 @@ package com.swiftdrop.pricing.controller;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.pricing.dto.TariffRuleRequest;
 import com.swiftdrop.pricing.dto.TariffRuleResponse;
+import com.swiftdrop.pricing.security.AdminAccessGuard;
 import com.swiftdrop.pricing.service.TariffAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +25,7 @@ import java.util.List;
 public class TariffAdminController {
 
     private final TariffAdminService tariffAdminService;
+    private final AdminAccessGuard adminAccessGuard;
 
     @GetMapping
     @Operation(summary = "List all tariff rule versions, newest first")
@@ -37,8 +40,10 @@ public class TariffAdminController {
     }
 
     @PutMapping("/default")
-    @Operation(summary = "Publish a new default tariff version and deactivate the previous one")
-    public ApiResponse<TariffRuleResponse> publishNewVersion(@Valid @RequestBody TariffRuleRequest request) {
+    @Operation(summary = "Publish a new default tariff version (dispatcher or system admin only)")
+    public ApiResponse<TariffRuleResponse> publishNewVersion(@Valid @RequestBody TariffRuleRequest request,
+                                                             HttpServletRequest httpRequest) {
+        adminAccessGuard.requireAdmin(httpRequest);
         return ApiResponse.success(tariffAdminService.publishNewVersion(request), "Tariff version published successfully");
     }
 }
