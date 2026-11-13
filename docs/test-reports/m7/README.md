@@ -28,9 +28,15 @@ The refreshed report includes the PR 4 receipt-list controller. Controller and s
 
 The archived suites cover API-key hashing, validation and rotation, approval authorization and events, unapproved merchant restrictions, B2B normalization and forwarding with mocked downstream dependencies, CSV ingestion, and merchant receipt-list authorization/pagination. Refer to the individual test case names in the XML for exact assertions. MockMvc/service tests are not proof of gateway filter behavior or live RabbitMQ delivery.
 
+## Frontend verification follow-up
+
+On 13 November 2026, `npm ci --no-audit --no-fund` installed 236 packages from the existing lockfile. `npm run lint` and `npm run build` then passed. The previous missing installed `recharts` error is resolved. Vite built 2,256 modules and reported a non-blocking warning for the JavaScript chunk exceeding 500 kB after minification. The successful build ran outside the agent filesystem sandbox after the sandbox blocked Vite configuration access.
+
+These checks used the local working tree with existing React Router package changes (`^6.28.0` to `^7.18.5`). Installation did not edit those package files. This is local validation evidence, not a claim that a clean checkout of the current committed dependency set was tested. Recheck the exact package files included in the final PR. No live browser workflow was verified.
+
 ## What remains unverified
 
-- Frontend lint/build after installing declared dependencies; both were attempted again for PR 5 and fail with TS2307 on missing installed `recharts` in the analytics page.
+- Frontend lint/build against the final PR dependency set if it differs from the validated local package files.
 - The complete live registration/approval/IAM claim refresh flow.
 - B2B gateway route and API-key/JWT filter integration.
 - Real order persistence, dispatch event consumption and dashboard tracking in one distributed run.

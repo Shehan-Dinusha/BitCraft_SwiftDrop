@@ -10,7 +10,8 @@ The diagrams explain API-key authentication, approval guards, normalization, dat
 
 - Both PNG diagrams and the coverage summary were rendered and visually inspected.
 - Backend verification and current coverage results are recorded in the [evidence index](../../test-reports/m7/README.md) and [manifest](../../test-reports/m7/snapshot/manifest.json).
-- Frontend lint and build were attempted on 13 November 2026. Both fail with TS2307 for the missing installed `recharts` dependency in `AnalyticsDashboardPage.tsx`.
+- After `npm ci --no-audit --no-fund`, frontend lint and production build passed on 13 November 2026. The missing installed `recharts` error is resolved. Vite's chunk-size warning is non-blocking; the build required filesystem access outside the agent sandbox.
+- Frontend validation used existing local package changes upgrading React Router to `^7.18.5`. This documentation update leaves those changes untouched; validate the final PR dependency set before merging.
 - Docker is not installed in this environment. Live gateway, database and RabbitMQ flows were not tested.
 
 ## Acceptance and handoff
@@ -22,7 +23,7 @@ The diagrams explain API-key authentication, approval guards, normalization, dat
 - [x] Contribution summary and known integration dependencies documented.
 - [ ] Capture a browser screenshot/PDF of the archived JaCoCo report for final submission.
 - [ ] Member 1: route `/api/v1/b2b/**` and admin merchant paths; coordinate API-key and JWT filters.
-- [ ] Install declared frontend dependencies and pass lint/build.
+- [x] Install locked frontend dependencies and pass lint/build on the local working tree.
 - [ ] Run the live demo checklist, including broker consumption and IAM token refresh.
 - [ ] Commit/push this documentation, open PR into `dev`, and share exports with the final design-document owner.
 
@@ -36,4 +37,4 @@ PR 5 adds documentation and evidence only. The unused legacy merchant `publishOr
 
 Adds Member 7's B2B ingestion and merchant verification diagrams with editable sources and PNG/SVG exports. Includes a reproducible evidence capture script, sanitized test/coverage archive, demo acceptance checklist and contribution summary.
 
-Backend verification results are linked in the evidence index. Diagram exports were visually checked. Frontend lint/build are blocked by missing installed `recharts`; live integration awaits Member 1 gateway routes and a Docker-enabled environment. No application source or shared service configuration is changed.
+Backend verification passed with 69 merchant tests and 77.58% overall line coverage. Frontend lint and production build passed after installing locked dependencies; Vite reports a non-blocking chunk-size warning. Diagram exports were visually checked. Live integration awaits Member 1 gateway routes and a Docker-enabled environment. Frontend checks used existing local React Router package changes, so recheck the dependency set chosen for the final PR. This documentation update changes no application source or shared service configuration.

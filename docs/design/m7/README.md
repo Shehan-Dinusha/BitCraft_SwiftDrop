@@ -31,7 +31,9 @@ IAM consumes `merchant.approved` to link the owner and merchant. Sign in again a
 
 At PR 5 review, the gateway merchant route does not include `/api/v1/b2b/**` or `/api/v1/admin/merchants` and `/api/v1/admin/merchants/**`. Member 1 must add those routes and coordinate B2B API-key handling with JWT filtering. The diagrams mark this dependency. Do not bypass the gateway with browser requests or expose `/internal/**` publicly.
 
-Frontend lint/build were rerun on 13 November 2026 and both fail with TS2307 for the missing installed `recharts` dependency. Backend verification was rerun for PR 5; see the evidence index for results. Backend automated checks do not establish frontend build success, gateway authentication, broker consumption, or the complete live demo.
+After installing locked dependencies with `npm ci --no-audit --no-fund`, frontend lint and production build passed on 13 November 2026. This resolves the earlier missing installed `recharts` error. Vite reports a non-blocking warning for a minified JavaScript chunk larger than 500 kB. The build required filesystem access outside the agent sandbox. Backend verification was also rerun for PR 5; see the evidence index for results. These automated checks do not establish gateway authentication, broker consumption, or the complete live demo.
+
+Frontend checks used the local working tree, which already contained a React Router upgrade from `^6.28.0` to `^7.18.5` in the package files. Those changes were not made by the dependency installation or this documentation update. Recheck the exact dependency set selected for the final PR before merging.
 
 ## Reproduce exports
 
