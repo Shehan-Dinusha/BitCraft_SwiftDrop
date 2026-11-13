@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface DistrictZoneMappingRepository extends JpaRepository<DistrictZoneMapping, String> {
     Optional<DistrictZoneMapping> findByDistrict(String district);
+
+    boolean existsByZoneCode(String zoneCode);
 }
