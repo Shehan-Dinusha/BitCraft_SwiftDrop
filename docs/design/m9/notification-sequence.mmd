@@ -1,0 +1,71 @@
+sequenceDiagram
+    autonumber
+    participant Producer as Delivery / Order Service
+    participant Broker as RabbitMQ (swiftdrop.events.exchange)
+    participant Consumer as NotificationEventConsumer
+    participant DB as Postgres (swiftdrop_notify)
+    participant IAM as auth-iam-service (:8081)
+    participant Dispatcher as MultiChannelNotificationDispatcher
+    participant UI as React Frontend (Member 9)
+
+    Note over Producer, Broker: Domain Event Published (Zero PII)
+    Producer->>Broker: convertAndSend("swiftdrop.events.exchange", "parcel.status.changed.DELIVERED", event)
+    Broker->>Consumer: delivery to notification.events.queue (AMQP message)
+
+    Note over Consumer, DB: Stage 9: Idempotency & Deduplication
+    Consumer->>DB: INSERT INTO processed_events (event_id, processed_at) VALUES (?, NOW())
+    alt Duplicate Event (Primary Key Conflict)
+        DB-->>Consumer: UniqueConstraintViolationException
+        Consumer-->>Broker: ACK message (skip processing, log idempotency hit)
+    else First Time Seen (Successful Insert)
+        DB-->>Consumer: Row Inserted
+
+        Note over Consumer: Observer Pattern: NotificationTrigger Evaluation
+        Consumer->>Consumer: triggers.stream().filter(t -> t.matches(envelope))
+        
+        loop For Each Matching Trigger (e.g. DeliveredTrigger)
+            Consumer->>Consumer: trigger.build(envelope) -> List<NotificationRequest>
+            
+            Note over Consumer, IAM: Stage 11: Contact Lookup (Cached)
+            Consumer->>IAM: GET /internal/v1/users/{recipientId}/contact
+            alt Cache Hit (10 min Caffeine Cache)
+                Consumer->>Consumer: Return cached contact info
+            else Cache Miss / Fallback
+                IAM-->>Consumer: Return ContactInfo(phone, email, name)
+            end
+
+            Note over Consumer, DB: Stage 14: In-App Notification Persistence
+            Consumer->>DB: INSERT INTO in_app_notifications (user_id, title, body, tracking_number, read)
+            DB-->>Consumer: InAppNotification persisted
+
+            Note over Consumer, Dispatcher: Stage 12 & 13: Template Sanitization & Dispatch
+            Consumer->>Dispatcher: dispatch(NotificationRequest)
+            Dispatcher->>Dispatcher: TemplateRendererService.render(template, params)
+            Dispatcher->>Dispatcher: PiiMasker.maskPhone(phone), PiiMasker.maskEmail(email)
+            
+            alt User Preferences Check
+                Dispatcher->>DB: SELECT * FROM recipient_preferences WHERE recipient_id = ?
+                DB-->>Dispatcher: Preferences (emailEnabled=true, smsEnabled=true)
+                Dispatcher->>Dispatcher: Transmit to Mock SMS/Email Gateway
+                Dispatcher->>DB: INSERT INTO notification_dispatch_logs (masked destination, SENT)
+            else User Channel Suppressed
+                Dispatcher->>DB: INSERT INTO notification_dispatch_logs (status: SUPPRESSED)
+            end
+        end
+
+        Consumer-->>Broker: ACK message (Delivery completed)
+    end
+
+    Note over UI, Consumer: PR 5: Frontend In-App Updates
+    loop Every 20 Seconds (Polling)
+        UI->>Consumer: GET /api/v1/notifications/me/unread-count (Bearer JWT -> X-User-Id)
+        Consumer-->>UI: { success: true, data: 1 } (Badge Counter Updates)
+    end
+
+    opt User Clicks Notification Bell
+        UI->>Consumer: GET /api/v1/notifications/me
+        Consumer-->>UI: Return In-App Notification List
+        UI->>Consumer: PATCH /api/v1/notifications/me/{id}/read
+        Consumer-->>UI: { success: true } (Unread count decrements to 0)
+    end
+
