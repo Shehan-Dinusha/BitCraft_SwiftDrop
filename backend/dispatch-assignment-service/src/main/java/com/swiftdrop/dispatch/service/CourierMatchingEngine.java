@@ -47,21 +47,31 @@ public class CourierMatchingEngine {
         log.info("Processing dispatch matching for order: {}, pickup district: {}",
                 event.orderId(), event.pickupDistrict());
 
-        DispatchAssignment assignment = assignmentRepository.findByOrderId(event.orderId())
-                .orElseGet(() -> {
-                    DispatchAssignment newAssignment = new DispatchAssignment();
-                    newAssignment.setAssignmentId(UUID.randomUUID());
-                    newAssignment.setOrderId(event.orderId());
-                    newAssignment.setTrackingNumber(event.trackingNumber());
-                    newAssignment.setPickupDistrict(event.pickupDistrict());
-                    newAssignment.setDeliveryDistrict(event.deliveryDistrict());
-                    newAssignment.setOrderSpeed(event.speed() != null ? event.speed() : OrderSpeed.STANDARD);
-                    newAssignment.setStatus(AssignmentStatus.UNASSIGNED);
-                    newAssignment.setAssignedBy("AUTO_ENGINE");
-                    newAssignment.setRetryCount(0);
-                    return newAssignment;
-                });
+        var existingAssignment = assignmentRepository.findByOrderId(event.orderId());
+        DispatchAssignment assignment;
+        if (existingAssignment.isPresent()) {
+            assignment = existingAssignment.get();
+            if (assignment.getCourierId() != null
+                    || assignment.getStatus() != AssignmentStatus.UNASSIGNED
+                    || (event.eventId() != null
+                    && event.eventId().equals(assignment.getLastOrderCreatedEventId()))) {
+                log.info("Ignoring duplicate order.created event for existing assignment: {}", event.orderId());
+                return assignment;
+            }
+        } else {
+            assignment = new DispatchAssignment();
+            assignment.setAssignmentId(UUID.randomUUID());
+            assignment.setOrderId(event.orderId());
+            assignment.setTrackingNumber(event.trackingNumber());
+            assignment.setPickupDistrict(event.pickupDistrict());
+            assignment.setDeliveryDistrict(event.deliveryDistrict());
+            assignment.setOrderSpeed(event.speed() != null ? event.speed() : OrderSpeed.STANDARD);
+            assignment.setStatus(AssignmentStatus.UNASSIGNED);
+            assignment.setAssignedBy("AUTO_ENGINE");
+            assignment.setRetryCount(0);
+        }
 
+        assignment.setLastOrderCreatedEventId(event.eventId());
         SriLankanDistrict pickupDistrict = event.pickupDistrict();
         List<CourierShift> availableCouriers = courierShiftRepository.findAvailableCandidates(
                 pickupDistrict,

@@ -2,6 +2,7 @@ package com.swiftdrop.dispatch.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,20 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLocking(
+            ObjectOptimisticLockingFailureException ex,
+            HttpServletRequest request) {
+        log.warn("Concurrent dispatch update rejected for {}", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(
+                        409,
+                        "Conflict",
+                        "The dispatch record was changed by another operation. Refresh and retry.",
+                        request.getRequestURI()
+                ));
+    }
 
     @ExceptionHandler(AssignmentNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(AssignmentNotFoundException ex, HttpServletRequest request) {

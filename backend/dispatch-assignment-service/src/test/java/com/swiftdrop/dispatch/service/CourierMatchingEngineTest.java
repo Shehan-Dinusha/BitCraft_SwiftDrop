@@ -151,4 +151,39 @@ class CourierMatchingEngineTest {
         ));
         verify(eventPublisher, never()).publishCourierAssigned(any());
     }
+
+    @Test
+    @DisplayName("Process duplicate order.created: returns existing unassigned record without retrying")
+    void testProcessOrderCreated_DuplicateAssignmentIsIgnored() {
+        UUID eventId = UUID.randomUUID();
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                eventId,
+                UUID.randomUUID(),
+                orderId,
+                "SD-COL-12345",
+                customerId,
+                UUID.randomUUID(),
+                SriLankanDistrict.COLOMBO,
+                SriLankanDistrict.GAMPAHA,
+                OrderSpeed.STANDARD,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(500),
+                BigDecimal.valueOf(350),
+                "LKR",
+                Instant.now()
+        );
+
+        DispatchAssignment existing = new DispatchAssignment();
+        existing.setOrderId(orderId);
+        existing.setStatus(AssignmentStatus.UNASSIGNED);
+        existing.setLastOrderCreatedEventId(eventId);
+
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(existing));
+
+        DispatchAssignment result = matchingEngine.processOrderCreated(event);
+
+        assertThat(result).isSameAs(existing);
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
+        verify(assignmentRepository, never()).save(any(DispatchAssignment.class));
+    }
 }

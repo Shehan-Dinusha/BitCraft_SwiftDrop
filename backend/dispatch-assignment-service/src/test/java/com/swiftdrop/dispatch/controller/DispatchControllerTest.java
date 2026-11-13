@@ -16,6 +16,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.time.Instant;
 import java.util.List;
@@ -112,5 +113,29 @@ class DispatchControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].status").value("UNASSIGNED"))
                 .andExpect(jsonPath("$.data[0].pickupDistrict").value("COLOMBO"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/dispatch/assign returns 409 after concurrent update")
+    void testManualAssign_OptimisticLockConflict() throws Exception {
+        ManualAssignRequest request = new ManualAssignRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "ADMIN",
+                "Retry after conflict"
+        );
+
+        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(DispatchAssignment.class, 1L));
+
+        mockMvc.perform(post("/api/v1/dispatch/assign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.message").value(
+                        "The dispatch record was changed by another operation. Refresh and retry."
+                ));
     }
 }
