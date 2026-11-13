@@ -107,6 +107,8 @@ class CourierMatchingEngineTest {
         verify(eventPublisher).publishCourierAssigned(assignedCaptor.capture());
         assertThat(assignedCaptor.getValue().orderId()).isEqualTo(orderId);
         assertThat(assignedCaptor.getValue().courierId()).isEqualTo(courierId);
+        assertThat(assignedCaptor.getValue().trackingNumber()).isEqualTo("SD-COL-12345");
+        assertThat(assignedCaptor.getValue().merchantId()).isNotNull();
 
         ArgumentCaptor<ParcelStatusChangedEvent> statusCaptor = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
         verify(eventPublisher).publishParcelStatusChanged(statusCaptor.capture());
@@ -136,6 +138,8 @@ class CourierMatchingEngineTest {
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
         when(courierShiftRepository.findAvailableCandidates(SriLankanDistrict.JAFFNA, ShiftStatus.AVAILABLE))
                 .thenReturn(Collections.emptyList());
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE))
+                .thenReturn(Collections.emptyList());
         when(assignmentRepository.save(any(DispatchAssignment.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -144,12 +148,55 @@ class CourierMatchingEngineTest {
         assertThat(result).isNotNull();
         assertThat(result.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
         assertThat(result.getRetryCount()).isEqualTo(1);
-        assertThat(result.getFailureReason()).contains("No available couriers in JAFFNA");
+        assertThat(result.getFailureReason()).contains("No available courier in Sri Lanka");
 
         verify(eventPublisher).publishDispatchFailed(argThat(e ->
                 e.orderId().equals(orderId) && e.attemptCount() == 1 && e.retryable()
         ));
         verify(eventPublisher, never()).publishCourierAssigned(any());
+    }
+
+    @Test
+    @DisplayName("Process order.created: falls back to an available courier in another district")
+    void testProcessOrderCreated_UsesIslandWideFallback() {
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                orderId,
+                "SD-JAF-12345",
+                customerId,
+                UUID.randomUUID(),
+                SriLankanDistrict.JAFFNA,
+                SriLankanDistrict.COLOMBO,
+                OrderSpeed.STANDARD,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(500),
+                BigDecimal.valueOf(350),
+                "LKR",
+                Instant.now()
+        );
+        CourierShift remoteCourier = new CourierShift();
+        remoteCourier.setCourierId(courierId);
+        remoteCourier.setCourierName("Remote Courier");
+        remoteCourier.setCurrentDistrict(SriLankanDistrict.COLOMBO);
+        remoteCourier.setShiftStatus(ShiftStatus.AVAILABLE);
+        remoteCourier.setActiveParcelsCount(0);
+        remoteCourier.setMaxCapacity(5);
+
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(courierShiftRepository.findAvailableCandidates(SriLankanDistrict.JAFFNA, ShiftStatus.AVAILABLE))
+                .thenReturn(Collections.emptyList());
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE))
+                .thenReturn(List.of(remoteCourier));
+        when(assignmentRepository.save(any(DispatchAssignment.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        DispatchAssignment result = matchingEngine.processOrderCreated(event);
+
+        assertThat(result.getCourierId()).isEqualTo(courierId);
+        assertThat(result.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
+        verify(courierShiftRepository).save(remoteCourier);
+        verify(eventPublisher).publishCourierAssigned(any(CourierAssignedEvent.class));
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.dto.PagedResult;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
+import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
@@ -112,6 +113,16 @@ public class DispatchController {
         return ApiResponse.success(
                 dispatchAssignmentService.getAssignmentsForCourier(courierId, status),
                 "Courier assignments retrieved"
+        );
+    }
+
+    @GetMapping("/orders/{orderId}/suggestions")
+    @Operation(summary = "Suggest available couriers for an order",
+            description = "Returns up to three available couriers, preferring the pickup district and then lowest workload.")
+    public ApiResponse<List<CourierSuggestionResponse>> getCourierSuggestions(@PathVariable UUID orderId) {
+        return ApiResponse.success(
+                dispatchAssignmentService.getSuggestions(orderId),
+                "Courier suggestions retrieved"
         );
     }
 }

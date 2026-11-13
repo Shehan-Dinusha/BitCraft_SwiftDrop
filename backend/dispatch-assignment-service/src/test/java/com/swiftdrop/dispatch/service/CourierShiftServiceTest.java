@@ -7,6 +7,7 @@ import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
+import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -122,5 +124,26 @@ class CourierShiftServiceTest {
         assertThat(response.latitude()).isEqualTo(BigDecimal.valueOf(7.0840));
         assertThat(response.longitude()).isEqualTo(BigDecimal.valueOf(79.9939));
         assertThat(response.lastHeartbeatAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Workloads: returns active parcel counts for all courier shifts")
+    void testGetWorkloads() {
+        CourierShift shift = new CourierShift();
+        shift.setCourierId(courierId);
+        shift.setCourierName("Nuwan Perera");
+        shift.setCurrentDistrict(SriLankanDistrict.COLOMBO);
+        shift.setShiftStatus(ShiftStatus.AVAILABLE);
+        shift.setActiveParcelsCount(2);
+        shift.setMaxCapacity(6);
+        when(courierShiftRepository.findAll()).thenReturn(List.of(shift));
+
+        List<CourierWorkloadResponse> workloads = courierShiftService.getWorkloads();
+
+        assertThat(workloads).singleElement().satisfies(workload -> {
+            assertThat(workload.courierId()).isEqualTo(courierId);
+            assertThat(workload.activeParcels()).isEqualTo(2);
+            assertThat(workload.maxCapacity()).isEqualTo(6);
+        });
     }
 }

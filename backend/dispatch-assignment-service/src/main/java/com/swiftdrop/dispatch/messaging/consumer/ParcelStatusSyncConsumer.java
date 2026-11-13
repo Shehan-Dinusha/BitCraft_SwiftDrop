@@ -25,8 +25,9 @@ public class ParcelStatusSyncConsumer {
                 event.orderId(), event.trackingNumber(), event.newPublicStatus());
         try {
             dispatchAssignmentService.handleParcelStatusChanged(event);
-        } catch (Exception ex) {
+        } catch (RuntimeException ex) {
             log.error("Failed to sync parcel status in dispatch service: {}", event.trackingNumber(), ex);
+            throw ex;
         }
     }
 }

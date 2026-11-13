@@ -32,6 +32,9 @@ public class DispatchAssignment {
     @Column(name = "order_id", nullable = false)
     private UUID orderId;
 
+    @Column(name = "merchant_id")
+    private UUID merchantId;
+
     @Column(name = "tracking_number", length = 32)
     private String trackingNumber;
 
@@ -119,6 +122,9 @@ public class DispatchAssignment {
 
     public UUID getOrderId() { return orderId; }
     public void setOrderId(UUID orderId) { this.orderId = orderId; }
+
+    public UUID getMerchantId() { return merchantId; }
+    public void setMerchantId(UUID merchantId) { this.merchantId = merchantId; }
 
     public String getTrackingNumber() { return trackingNumber; }
     public void setTrackingNumber(String trackingNumber) { this.trackingNumber = trackingNumber; }

@@ -62,6 +62,7 @@ public class CourierMatchingEngine {
             assignment = new DispatchAssignment();
             assignment.setAssignmentId(UUID.randomUUID());
             assignment.setOrderId(event.orderId());
+            assignment.setMerchantId(event.merchantId());
             assignment.setTrackingNumber(event.trackingNumber());
             assignment.setPickupDistrict(event.pickupDistrict());
             assignment.setDeliveryDistrict(event.deliveryDistrict());
@@ -77,13 +78,16 @@ public class CourierMatchingEngine {
                 pickupDistrict,
                 ShiftStatus.AVAILABLE
         );
+        if (availableCouriers.isEmpty()) {
+            availableCouriers = courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE);
+        }
 
         if (availableCouriers.isEmpty()) {
-            log.warn("No available couriers in district: {} for order: {}", pickupDistrict, event.orderId());
+            log.warn("No available couriers island-wide for order: {}", event.orderId());
             int newRetryCount = (assignment.getRetryCount() != null ? assignment.getRetryCount() : 0) + 1;
             assignment.setRetryCount(newRetryCount);
             assignment.setStatus(newRetryCount >= 3 ? AssignmentStatus.FAILED : AssignmentStatus.UNASSIGNED);
-            assignment.setFailureReason("No available couriers in " + pickupDistrict);
+            assignment.setFailureReason("No available courier in Sri Lanka");
             assignmentRepository.save(assignment);
 
             DispatchFailedEvent failedEvent = new DispatchFailedEvent(
@@ -131,7 +135,9 @@ public class CourierMatchingEngine {
                 selectedCourier.getCourierName(),
                 estimatedMinutes,
                 Instant.now(),
-                Instant.now()
+                Instant.now(),
+                assignment.getTrackingNumber(),
+                assignment.getMerchantId()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
 

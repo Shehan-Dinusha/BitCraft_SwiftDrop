@@ -6,6 +6,7 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
+import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
@@ -113,6 +114,29 @@ class DispatchControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].status").value("UNASSIGNED"))
                 .andExpect(jsonPath("$.data[0].pickupDistrict").value("COLOMBO"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/dispatch/orders/{orderId}/suggestions returns ranked couriers")
+    void testGetCourierSuggestions() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID courierId = UUID.randomUUID();
+        CourierSuggestionResponse suggestion = new CourierSuggestionResponse(
+                courierId,
+                "Sunil Perera",
+                SriLankanDistrict.COLOMBO,
+                true,
+                1,
+                5,
+                com.swiftdrop.dispatch.domain.enums.ShiftStatus.AVAILABLE
+        );
+        when(dispatchAssignmentService.getSuggestions(orderId)).thenReturn(List.of(suggestion));
+
+        mockMvc.perform(get("/api/v1/dispatch/orders/{orderId}/suggestions", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].courierId").value(courierId.toString()))
+                .andExpect(jsonPath("$.data[0].samePickupDistrict").value(true));
     }
 
     @Test

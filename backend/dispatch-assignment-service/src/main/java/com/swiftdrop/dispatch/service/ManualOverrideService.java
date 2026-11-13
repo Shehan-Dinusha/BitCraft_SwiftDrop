@@ -57,9 +57,14 @@ public class ManualOverrideService {
             throw new CourierNotAvailableException(
                     "Courier " + newCourier.getCourierName() + " is currently OFFLINE");
         }
+        if (!newCourier.canAcceptParcel()) {
+            throw new CourierNotAvailableException(
+                    "Courier " + newCourier.getCourierName() + " is not available or has reached capacity");
+        }
 
         UUID prevCourierId = assignment.getCourierId();
-        if (prevCourierId != null && !prevCourierId.equals(request.courierId())) {
+        boolean changingCourier = prevCourierId == null || !prevCourierId.equals(request.courierId());
+        if (prevCourierId != null && changingCourier) {
             courierShiftRepository.findByCourierId(prevCourierId).ifPresent(prevCourier -> {
                 int count = Math.max(0, prevCourier.getActiveParcelsCount() - 1);
                 prevCourier.setActiveParcelsCount(count);
@@ -71,12 +76,14 @@ public class ManualOverrideService {
         }
 
         // Increment count for new courier
-        int newCount = newCourier.getActiveParcelsCount() + 1;
-        newCourier.setActiveParcelsCount(newCount);
-        if (newCount >= newCourier.getMaxCapacity()) {
-            newCourier.setShiftStatus(ShiftStatus.BUSY);
+        if (changingCourier) {
+            int newCount = newCourier.getActiveParcelsCount() + 1;
+            newCourier.setActiveParcelsCount(newCount);
+            if (newCount >= newCourier.getMaxCapacity()) {
+                newCourier.setShiftStatus(ShiftStatus.BUSY);
+            }
+            courierShiftRepository.save(newCourier);
         }
-        courierShiftRepository.save(newCourier);
 
         assignment.setCourierId(newCourier.getCourierId());
         assignment.setCourierName(newCourier.getCourierName());
@@ -94,7 +101,9 @@ public class ManualOverrideService {
                 newCourier.getCourierName(),
                 assignment.getEstimatedPickupMinutes() != null ? assignment.getEstimatedPickupMinutes() : 25,
                 Instant.now(),
-                Instant.now()
+                Instant.now(),
+                assignment.getTrackingNumber(),
+                assignment.getMerchantId()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
 

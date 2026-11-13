@@ -6,6 +6,7 @@ import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
+import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import org.slf4j.Logger;
@@ -123,5 +124,12 @@ public class CourierShiftService {
         return courierShiftRepository.findByCourierId(courierId)
                 .map(CourierShiftResponse::fromEntity)
                 .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<CourierWorkloadResponse> getWorkloads() {
+        return courierShiftRepository.findAll().stream()
+                .map(CourierWorkloadResponse::fromEntity)
+                .toList();
     }
 }

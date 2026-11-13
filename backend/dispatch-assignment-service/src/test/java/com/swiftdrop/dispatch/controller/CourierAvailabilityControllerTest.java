@@ -6,6 +6,7 @@ import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
+import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
 import com.swiftdrop.dispatch.service.CourierShiftService;
@@ -20,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -159,5 +161,26 @@ class CourierAvailabilityControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.latitude").value(6.9271))
                 .andExpect(jsonPath("$.data.longitude").value(79.8612));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/dispatch/couriers/workload returns workload metrics")
+    void testGetWorkloads() throws Exception {
+        UUID courierId = UUID.randomUUID();
+        CourierWorkloadResponse workload = new CourierWorkloadResponse(
+                courierId,
+                "Kamal Silva",
+                2,
+                5,
+                SriLankanDistrict.COLOMBO,
+                ShiftStatus.AVAILABLE
+        );
+        when(courierShiftService.getWorkloads()).thenReturn(List.of(workload));
+
+        mockMvc.perform(get("/api/v1/dispatch/couriers/workload"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].courierId").value(courierId.toString()))
+                .andExpect(jsonPath("$.data[0].activeParcels").value(2));
     }
 }
