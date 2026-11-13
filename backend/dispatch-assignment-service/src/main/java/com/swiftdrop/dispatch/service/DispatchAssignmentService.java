@@ -8,10 +8,12 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
+import com.swiftdrop.dispatch.domain.state.AssignmentStateMachine;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
+import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -108,14 +110,22 @@ public class DispatchAssignmentService {
         log.info("Processing order cancellation in dispatch for order: {}", event.orderId());
 
         assignmentRepository.findByOrderId(event.orderId()).ifPresent(assignment -> {
-            if (assignment.getStatus() == AssignmentStatus.ASSIGNED || assignment.getStatus() == AssignmentStatus.REASSIGNED) {
-                if (assignment.getCourierId() != null) {
-                    decrementCourierWorkload(assignment.getCourierId());
-                }
+            if (assignment.getStatus() == AssignmentStatus.CANCELLED) {
+                return;
             }
+            if (assignment.getStatus().isTerminal()) {
+                throw new InvalidAssignmentTransitionException(
+                        "Cannot cancel an assignment in state " + assignment.getStatus());
+            }
+            boolean releasedWorkload = assignment.getStatus() == AssignmentStatus.ASSIGNED
+                    || assignment.getStatus() == AssignmentStatus.REASSIGNED;
+            AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.CANCELLED);
             assignment.setStatus(AssignmentStatus.CANCELLED);
             assignment.setFailureReason("Order cancelled: " + event.reason());
             assignmentRepository.save(assignment);
+            if (releasedWorkload && assignment.getCourierId() != null) {
+                decrementCourierWorkload(assignment.getCourierId());
+            }
         });
     }
 
@@ -134,12 +144,25 @@ public class DispatchAssignmentService {
                     : assignmentRepository.findByTrackingNumber(event.trackingNumber());
 
             assignmentOpt.ifPresent(assignment -> {
-                if (assignment.getStatus() == AssignmentStatus.ASSIGNED || assignment.getStatus() == AssignmentStatus.REASSIGNED) {
-                    assignment.setStatus(toTerminalAssignmentStatus(event.newPublicStatus()));
-                    if (assignment.getCourierId() != null) {
-                        decrementCourierWorkload(assignment.getCourierId());
+                AssignmentStatus targetStatus = toTerminalAssignmentStatus(event.newPublicStatus());
+                if (assignment.getStatus().isTerminal()) {
+                    if (assignment.getStatus() == targetStatus) {
+                        return;
                     }
-                    assignmentRepository.save(assignment);
+                    throw new InvalidAssignmentTransitionException(
+                            "Cannot transition terminal assignment from " + assignment.getStatus()
+                                    + " to " + targetStatus);
+                }
+                boolean releasedWorkload = assignment.getStatus() == AssignmentStatus.ASSIGNED
+                        || assignment.getStatus() == AssignmentStatus.REASSIGNED;
+                AssignmentStateMachine.transition(assignment.getStatus(), targetStatus);
+                assignment.setStatus(targetStatus);
+                if (event.newPublicStatus() == PublicOrderStatus.FAILED) {
+                    assignment.setFailureReason("Parcel delivery failed");
+                }
+                assignmentRepository.save(assignment);
+                if (releasedWorkload && assignment.getCourierId() != null) {
+                    decrementCourierWorkload(assignment.getCourierId());
                 }
             });
         }
@@ -148,8 +171,7 @@ public class DispatchAssignmentService {
     private AssignmentStatus toTerminalAssignmentStatus(PublicOrderStatus status) {
         return switch (status) {
             case DELIVERED -> AssignmentStatus.COMPLETED;
-            case FAILED -> AssignmentStatus.FAILED;
-            case CANCELLED, RETURNED_TO_SENDER -> AssignmentStatus.CANCELLED;
+            case FAILED, CANCELLED, RETURNED_TO_SENDER -> AssignmentStatus.CANCELLED;
             default -> throw new IllegalArgumentException("Non-terminal status: " + status);
         };
     }

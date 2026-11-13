@@ -12,6 +12,7 @@ import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
+import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
 import com.swiftdrop.dispatch.messaging.publisher.DispatchEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -135,5 +136,37 @@ class ManualOverrideServiceTest {
         assertThatThrownBy(() -> manualOverrideService.manualAssign(request))
                 .isInstanceOf(AssignmentNotFoundException.class)
                 .hasMessageContaining("not found");
+    }
+
+    @Test
+    @DisplayName("Manual assign rejects a completed assignment")
+    void testManualAssign_CompletedAssignmentRejected() {
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(orderId);
+        assignment.setStatus(AssignmentStatus.COMPLETED);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        ManualAssignRequest request = new ManualAssignRequest(orderId, newCourierId, "DISPATCH_SUPERVISOR", null);
+
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(request))
+                .isInstanceOf(InvalidAssignmentTransitionException.class);
+
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Manual assign rejects a cancelled assignment")
+    void testManualAssign_CancelledAssignmentRejected() {
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(orderId);
+        assignment.setStatus(AssignmentStatus.CANCELLED);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        ManualAssignRequest request = new ManualAssignRequest(orderId, newCourierId, "DISPATCH_SUPERVISOR", null);
+
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(request))
+                .isInstanceOf(InvalidAssignmentTransitionException.class);
+
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
     }
 }

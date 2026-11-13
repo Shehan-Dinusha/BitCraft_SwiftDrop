@@ -46,6 +46,20 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(409, "Courier Not Available", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(InvalidAssignmentTransitionException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidAssignmentTransition(
+            InvalidAssignmentTransitionException ex,
+            HttpServletRequest request) {
+        log.warn("Invalid assignment transition on {}", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(
+                        409,
+                        "Invalid Assignment Transition",
+                        ex.getMessage(),
+                        request.getRequestURI()
+                ));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         String errors = ex.getBindingResult().getFieldErrors().stream()

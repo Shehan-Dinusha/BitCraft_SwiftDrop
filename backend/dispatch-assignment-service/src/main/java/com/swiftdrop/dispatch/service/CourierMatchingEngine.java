@@ -14,6 +14,7 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
+import com.swiftdrop.dispatch.domain.state.AssignmentStateMachine;
 import com.swiftdrop.dispatch.messaging.publisher.DispatchEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,7 +87,6 @@ public class CourierMatchingEngine {
             log.warn("No available couriers island-wide for order: {}", event.orderId());
             int newRetryCount = (assignment.getRetryCount() != null ? assignment.getRetryCount() : 0) + 1;
             assignment.setRetryCount(newRetryCount);
-            assignment.setStatus(newRetryCount >= 3 ? AssignmentStatus.FAILED : AssignmentStatus.UNASSIGNED);
             assignment.setFailureReason("No available courier in Sri Lanka");
             assignmentRepository.save(assignment);
 
@@ -114,6 +114,7 @@ public class CourierMatchingEngine {
 
         int estimatedMinutes = calculatePickupMinutes(event.speed());
 
+        AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.ASSIGNED);
         assignment.setCourierId(selectedCourier.getCourierId());
         assignment.setCourierName(selectedCourier.getCourierName());
         assignment.setStatus(AssignmentStatus.ASSIGNED);

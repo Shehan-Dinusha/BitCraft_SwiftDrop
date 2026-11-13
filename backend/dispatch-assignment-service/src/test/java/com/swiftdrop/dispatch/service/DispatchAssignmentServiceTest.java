@@ -10,6 +10,7 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
+import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -123,7 +125,7 @@ class DispatchAssignmentServiceTest {
     }
 
     @Test
-    @DisplayName("Handle parcel.status.changed (FAILED): marks assignment failed and releases workload")
+    @DisplayName("Handle parcel.status.changed (FAILED): cancels assignment and releases workload")
     void testHandleParcelFailed() {
         DispatchAssignment assignment = assignedAssignment();
         CourierShift courier = courierWithWorkload(1, ShiftStatus.BUSY, 2);
@@ -132,7 +134,8 @@ class DispatchAssignmentServiceTest {
 
         dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.FAILED));
 
-        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.FAILED);
+        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.CANCELLED);
+        assertThat(assignment.getFailureReason()).isEqualTo("Parcel delivery failed");
         assertThat(courier.getActiveParcelsCount()).isEqualTo(0);
         verify(courierShiftRepository).save(courier);
     }
@@ -150,6 +153,62 @@ class DispatchAssignmentServiceTest {
 
         assertThat(courier.getActiveParcelsCount()).isEqualTo(0);
         verify(courierShiftRepository, times(1)).save(courier);
+    }
+
+    @Test
+    @DisplayName("Repeated parcel failure does not decrement courier workload twice")
+    void testHandleParcelFailed_IsIdempotentAfterTerminalState() {
+        DispatchAssignment assignment = assignedAssignment();
+        CourierShift courier = courierWithWorkload(1, ShiftStatus.BUSY, 2);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(courier));
+
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.FAILED));
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.FAILED));
+
+        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.CANCELLED);
+        assertThat(courier.getActiveParcelsCount()).isEqualTo(0);
+        verify(courierShiftRepository, times(1)).save(courier);
+    }
+
+    @Test
+    @DisplayName("Terminal assignment rejects a different terminal event")
+    void testHandleParcelStatusChanged_RejectsInvalidTerminalTransition() {
+        DispatchAssignment assignment = assignedAssignment();
+        assignment.setStatus(AssignmentStatus.COMPLETED);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        assertThatThrownBy(() -> dispatchAssignmentService.handleParcelStatusChanged(
+                parcelStatus(PublicOrderStatus.FAILED)))
+                .isInstanceOf(InvalidAssignmentTransitionException.class);
+
+        verify(assignmentRepository, never()).save(any(DispatchAssignment.class));
+        verifyNoInteractions(courierShiftRepository);
+    }
+
+    @Test
+    @DisplayName("Unassigned cancellation transitions without releasing courier workload")
+    void testHandleOrderCancelled_UnassignedAssignment() {
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(orderId);
+        assignment.setStatus(AssignmentStatus.UNASSIGNED);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        OrderCancelledEvent event = new OrderCancelledEvent(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                orderId,
+                UUID.randomUUID(),
+                "Customer requested cancellation",
+                "CUSTOMER",
+                Instant.now()
+        );
+
+        dispatchAssignmentService.handleOrderCancelled(event);
+
+        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.CANCELLED);
+        verify(assignmentRepository).save(assignment);
+        verifyNoInteractions(courierShiftRepository);
     }
 
     @Test

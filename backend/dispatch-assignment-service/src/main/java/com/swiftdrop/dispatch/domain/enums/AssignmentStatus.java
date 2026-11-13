@@ -4,7 +4,10 @@ public enum AssignmentStatus {
     UNASSIGNED,
     ASSIGNED,
     REASSIGNED,
-    FAILED,
     CANCELLED,
-    COMPLETED
+    COMPLETED;
+
+    public boolean isTerminal() {
+        return this == CANCELLED || this == COMPLETED;
+    }
 }
