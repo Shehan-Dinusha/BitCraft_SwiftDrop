@@ -1,0 +1,19 @@
+flowchart TD
+    A[Authenticated MERCHANT opens /merchant/register] --> B[Submit business details]
+    B --> C[Gateway injects verified user ID and role]
+    C --> D[POST /api/v1/merchants/register]
+    D --> E[PENDING_APPROVAL persisted with ownerUserId]
+    E --> F[Keys and order ingestion blocked]
+    E --> G[SYSTEM_ADMIN reviews /ops/merchants]
+    G --> H{Approve or reject?}
+    H -->|Approve: pending + owner required| I[APPROVED: approvedBy and approvedAt saved]
+    H -->|Reject: nonblank reason required| J[REJECTED: rejection reason saved]
+    J --> K[Keys and order ingestion remain blocked]
+    I --> L[After commit: publish merchant.approved]
+    L --> M[IAM consumer links merchantId to owner]
+    M --> N[Merchant signs in again to refresh claims]
+    N --> O[Generate API key; raw secret returned once]
+    O --> P[Create merchant orders; show dashboard tracking]
+    Q[Non-admin caller] -->|403| R[Admin review denied]
+    S[Integration dependency: admin merchant gateway routes must be added] -.-> G
+    T[SUSPENDED enum exists; no suspend endpoint in this workflow] -.-> K

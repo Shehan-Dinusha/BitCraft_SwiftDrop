@@ -1,0 +1,5 @@
+﻿"Scope","LinesCovered","LinesMissed","LinePercent"
+"Entire merchant module","488","141","77.58"
+"Controllers","69","19","78.41"
+"Services","362","53","87.23"
+"Controllers + services","431","72","85.69"

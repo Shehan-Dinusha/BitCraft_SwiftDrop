@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BulkOrderIngestionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.service</a> &gt; <span class="el_source">BulkOrderIngestionService.java</span></div><h1>BulkOrderIngestionService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.service;
+
+import com.swiftdrop.contracts.enums.OrderSpeed;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.merchant.domain.entity.BulkBatchItem;
+import com.swiftdrop.merchant.domain.entity.BulkIngestBatch;
+import com.swiftdrop.merchant.domain.entity.MerchantAccount;
+import com.swiftdrop.merchant.domain.repository.BulkBatchItemRepository;
+import com.swiftdrop.merchant.domain.repository.BulkIngestBatchRepository;
+import com.swiftdrop.merchant.domain.repository.MerchantAccountRepository;
+import com.swiftdrop.merchant.dto.*;
+import com.swiftdrop.merchant.exception.BatchNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+<span class="fc" id="L24">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class BulkOrderIngestionService {
+
+    private final BulkIngestBatchRepository batchRepository;
+    private final BulkBatchItemRepository batchItemRepository;
+    private final MerchantAccountRepository merchantAccountRepository;
+    private final B2bOrderSubmissionService submissions;
+    private final MerchantApprovalGuard approvalGuard;
+
+    public BulkIngestBatchResponse processBulkIngest(UUID merchantId, BulkIngestRequest request) {
+<span class="fc" id="L36">        return processBulkIngest(merchantId, request, UUID.randomUUID());</span>
+    }
+
+    public BulkIngestBatchResponse processBulkIngest(UUID merchantId, BulkIngestRequest request, UUID correlationId) {
+<span class="fc" id="L40">        approvalGuard.requireApproved(merchantId);</span>
+<span class="pc bpc" id="L41" title="3 of 6 branches missed.">        if (request.orders() == null || request.orders().isEmpty() || request.orders().size() &gt; 500) {</span>
+<span class="nc" id="L42">            throw new IllegalArgumentException(&quot;A batch must contain 1 to 500 orders&quot;);</span>
+        }
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        UUID correlation = correlationId != null ? correlationId : UUID.randomUUID();</span>
+<span class="fc" id="L45">        log.info(&quot;Processing bulk order ingest for merchant: {}, total orders: {}&quot;,</span>
+<span class="fc" id="L46">                merchantId, request.orders().size());</span>
+
+        // Lookup or resolve merchant's operating district
+<span class="fc" id="L49">        MerchantAccount merchant = merchantAccountRepository.findByMerchantId(merchantId)</span>
+<span class="pc" id="L50">                .orElseThrow(() -&gt; new com.swiftdrop.merchant.exception.MerchantNotFoundException(&quot;Merchant not found&quot;));</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        if (merchant.getStatus() != com.swiftdrop.merchant.domain.entity.MerchantStatus.APPROVED) {</span>
+<span class="nc" id="L52">            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,</span>
+                    &quot;Merchant approval required&quot;);
+        }
+
+<span class="fc" id="L56">        UUID batchId = UUID.randomUUID();</span>
+<span class="fc" id="L57">        BulkIngestBatch batch = BulkIngestBatch.builder()</span>
+<span class="fc" id="L58">                .batchId(batchId)</span>
+<span class="fc" id="L59">                .merchantId(merchantId)</span>
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">                .fileName(request.fileName() != null ? request.fileName() : &quot;batch_&quot; + batchId.toString().substring(0, 8) + &quot;.csv&quot;)</span>
+<span class="fc" id="L61">                .batchStatus(&quot;PROCESSING&quot;)</span>
+<span class="fc" id="L62">                .totalRecords(request.orders().size())</span>
+<span class="fc" id="L63">                .successCount(0)</span>
+<span class="fc" id="L64">                .failedCount(0)</span>
+<span class="fc" id="L65">                .build();</span>
+
+<span class="fc" id="L67">        batch = batchRepository.save(batch);</span>
+
+<span class="fc" id="L69">        int successCount = 0;</span>
+<span class="fc" id="L70">        int failedCount = 0;</span>
+<span class="fc" id="L71">        List&lt;String&gt; errors = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L72">        int rowIndex = 1;</span>
+
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        for (BulkOrderIngestItem item : request.orders()) {</span>
+            try {
+                // Determine order speed
+<span class="fc" id="L77">                OrderSpeed speed = OrderSpeed.STANDARD;</span>
+<span class="pc bpc" id="L78" title="1 of 4 branches missed.">                if (item.deliverySpeed() != null &amp;&amp; item.deliverySpeed().equalsIgnoreCase(&quot;EXPRESS&quot;)) {</span>
+<span class="fc" id="L79">                    speed = OrderSpeed.EXPRESS;</span>
+                }
+<span class="fc" id="L81">                B2bOrderResult accepted = submissions.submit(merchantId, new B2bOrderRequest(item.externalRef(),</span>
+<span class="fc" id="L82">                        new B2bAddress(merchant.getPickupAddress(), item.pickupCity(), merchant.getOperatingDistrict().name(),</span>
+<span class="fc" id="L83">                                item.pickupPostalCode(), merchant.getBusinessName(), merchant.getContactPhone()),</span>
+<span class="fc" id="L84">                        new B2bAddress(item.deliveryAddress(), item.deliveryCity(),</span>
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">                                item.deliveryDistrict() == null ? null : item.deliveryDistrict().name(), item.deliveryPostalCode(),</span>
+<span class="fc" id="L86">                                item.recipientName(), item.recipientPhone()),</span>
+<span class="fc" id="L87">                        new B2bParcel(item.packageWeightKg(), null, item.prohibitedItemsDeclared(), null, null, null),</span>
+<span class="fc" id="L88">                        item.deliverySpeed()), correlation);</span>
+
+<span class="fc" id="L90">                BulkBatchItem batchItem = BulkBatchItem.builder()</span>
+<span class="fc" id="L91">                        .batchId(batchId)</span>
+<span class="fc" id="L92">                        .rowIndex(rowIndex)</span>
+<span class="fc" id="L93">                        .orderId(accepted.orderId())</span>
+<span class="fc" id="L94">                        .trackingNumber(accepted.trackingNumber())</span>
+<span class="fc" id="L95">                        .recipientName(item.recipientName())</span>
+<span class="fc" id="L96">                        .recipientPhone(item.recipientPhone())</span>
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">                        .deliveryDistrict(item.deliveryDistrict() != null ? item.deliveryDistrict() : SriLankanDistrict.COLOMBO)</span>
+<span class="fc" id="L98">                        .deliveryAddress(item.deliveryAddress())</span>
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">                        .packageWeightKg(item.packageWeightKg() != null ? item.packageWeightKg() : BigDecimal.valueOf(1.0))</span>
+<span class="fc" id="L100">                        .deliverySpeed(speed.name())</span>
+<span class="fc" id="L101">                        .itemStatus(&quot;SUCCESS&quot;)</span>
+<span class="fc" id="L102">                        .build();</span>
+
+<span class="fc" id="L104">                batchItemRepository.save(batchItem);</span>
+
+<span class="fc" id="L106">                successCount++;</span>
+<span class="fc" id="L107">            } catch (Exception e) {</span>
+<span class="fc" id="L108">                log.error(&quot;Failed to process row {} in batch {}&quot;, rowIndex, batchId, e);</span>
+<span class="fc" id="L109">                failedCount++;</span>
+<span class="fc" id="L110">                errors.add(&quot;Row &quot; + rowIndex + &quot;: &quot; + e.getMessage());</span>
+
+<span class="fc" id="L112">                BulkBatchItem failedItem = BulkBatchItem.builder()</span>
+<span class="fc" id="L113">                        .batchId(batchId)</span>
+<span class="fc" id="L114">                        .rowIndex(rowIndex)</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">                        .recipientName(item.recipientName() != null ? item.recipientName() : &quot;Unknown&quot;)</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">                        .recipientPhone(item.recipientPhone() != null ? item.recipientPhone() : &quot;N/A&quot;)</span>
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">                        .deliveryDistrict(item.deliveryDistrict() != null ? item.deliveryDistrict() : SriLankanDistrict.COLOMBO)</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">                        .deliveryAddress(item.deliveryAddress() != null ? item.deliveryAddress() : &quot;N/A&quot;)</span>
+<span class="fc" id="L119">                        .itemStatus(&quot;FAILED&quot;)</span>
+<span class="fc" id="L120">                        .errorMessage(e.getMessage())</span>
+<span class="fc" id="L121">                        .build();</span>
+<span class="fc" id="L122">                batchItemRepository.save(failedItem);</span>
+<span class="fc" id="L123">            }</span>
+<span class="fc" id="L124">            rowIndex++;</span>
+<span class="fc" id="L125">        }</span>
+
+<span class="fc" id="L127">        batch.setSuccessCount(successCount);</span>
+<span class="fc" id="L128">        batch.setFailedCount(failedCount);</span>
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        batch.setBatchStatus(successCount &gt; 0 ? &quot;COMPLETED&quot; : &quot;FAILED&quot;);</span>
+<span class="fc" id="L130">        batch.setCompletedAt(Instant.now());</span>
+<span class="fc bfc" id="L131" title="All 2 branches covered.">        if (!errors.isEmpty()) {</span>
+<span class="fc" id="L132">            batch.setErrorSummary(String.join(&quot;; &quot;, errors));</span>
+        }
+
+<span class="fc" id="L135">        BulkIngestBatch finalBatch = batchRepository.save(batch);</span>
+<span class="fc" id="L136">        return mapToBatchResponse(finalBatch);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public BulkIngestBatchResponse getBatchById(UUID batchId) {
+<span class="fc" id="L141">        BulkIngestBatch batch = batchRepository.findByBatchId(batchId)</span>
+<span class="pc" id="L142">                .orElseThrow(() -&gt; new BatchNotFoundException(&quot;Bulk ingest batch not found: &quot; + batchId));</span>
+<span class="fc" id="L143">        return mapToBatchResponse(batch);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;BulkIngestBatchResponse&gt; listBatches(UUID merchantId) {
+<span class="nc" id="L148">        return batchRepository.findByMerchantIdOrderByCreatedAtDesc(merchantId).stream()</span>
+<span class="nc" id="L149">                .map(this::mapToBatchResponse)</span>
+<span class="nc" id="L150">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;BulkBatchItemResponse&gt; getBatchItems(UUID batchId) {
+<span class="nc" id="L155">        return batchItemRepository.findByBatchIdOrderByRowIndexAsc(batchId).stream()</span>
+<span class="nc" id="L156">                .map(this::mapToItemResponse)</span>
+<span class="nc" id="L157">                .toList();</span>
+    }
+
+    private BulkIngestBatchResponse mapToBatchResponse(BulkIngestBatch batch) {
+<span class="fc" id="L161">        return new BulkIngestBatchResponse(</span>
+<span class="fc" id="L162">                batch.getBatchId(),</span>
+<span class="fc" id="L163">                batch.getMerchantId(),</span>
+<span class="fc" id="L164">                batch.getFileName(),</span>
+<span class="fc" id="L165">                batch.getBatchStatus(),</span>
+<span class="fc" id="L166">                batch.getTotalRecords(),</span>
+<span class="fc" id="L167">                batch.getSuccessCount(),</span>
+<span class="fc" id="L168">                batch.getFailedCount(),</span>
+<span class="fc" id="L169">                batch.getErrorSummary(),</span>
+<span class="fc" id="L170">                batch.getCreatedAt(),</span>
+<span class="fc" id="L171">                batch.getCompletedAt()</span>
+        );
+    }
+
+    private BulkBatchItemResponse mapToItemResponse(BulkBatchItem item) {
+<span class="nc" id="L176">        return new BulkBatchItemResponse(</span>
+<span class="nc" id="L177">                item.getBatchId(),</span>
+<span class="nc" id="L178">                item.getRowIndex(),</span>
+<span class="nc" id="L179">                item.getTrackingNumber(),</span>
+<span class="nc" id="L180">                item.getOrderId(),</span>
+<span class="nc" id="L181">                item.getRecipientName(),</span>
+<span class="nc" id="L182">                item.getRecipientPhone(),</span>
+<span class="nc" id="L183">                item.getDeliveryDistrict(),</span>
+<span class="nc" id="L184">                item.getDeliveryAddress(),</span>
+<span class="nc" id="L185">                item.getPackageWeightKg(),</span>
+<span class="nc" id="L186">                item.getDeliverySpeed(),</span>
+<span class="nc" id="L187">                item.getItemStatus(),</span>
+<span class="nc" id="L188">                item.getErrorMessage(),</span>
+<span class="nc" id="L189">                item.getCreatedAt()</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

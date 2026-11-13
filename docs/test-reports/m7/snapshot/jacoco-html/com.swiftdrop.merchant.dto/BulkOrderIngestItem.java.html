@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BulkOrderIngestItem.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.dto</a> &gt; <span class="el_source">BulkOrderIngestItem.java</span></div><h1>BulkOrderIngestItem.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.dto;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+import java.math.BigDecimal;
+
+@Schema(description = &quot;Single order item within a bulk order ingestion batch&quot;)
+<span class="fc" id="L12">public record BulkOrderIngestItem(</span>
+        @NotBlank(message = &quot;Recipient name is required&quot;)
+        @Schema(description = &quot;Recipient name&quot;, example = &quot;Amara Gunawardena&quot;)
+        String recipientName,
+
+        @NotBlank(message = &quot;Recipient phone is required&quot;)
+        @Schema(description = &quot;Recipient phone number&quot;, example = &quot;+94 77 987 6543&quot;)
+        String recipientPhone,
+
+        @NotNull(message = &quot;Delivery district is required&quot;)
+        @Schema(description = &quot;Delivery destination district&quot;, example = &quot;GAMPAHA&quot;)
+        SriLankanDistrict deliveryDistrict,
+
+        @NotBlank(message = &quot;Delivery address is required&quot;)
+        @Schema(description = &quot;Full delivery address&quot;, example = &quot;45 Kandy Road, Kadawatha&quot;)
+        String deliveryAddress,
+
+        @DecimalMin(value = &quot;0.1&quot;, message = &quot;Package weight must be at least 0.1 kg&quot;)
+        @Schema(description = &quot;Package weight in kilograms&quot;, example = &quot;2.5&quot;)
+        BigDecimal packageWeightKg,
+
+        @Schema(description = &quot;Delivery service speed: STANDARD or EXPRESS&quot;, example = &quot;STANDARD&quot;)
+        String deliverySpeed,
+        @Schema(description = &quot;Stable merchant reference required for forwarding&quot;) String externalRef,
+        @Schema(description = &quot;Delivery city required for forwarding&quot;) String deliveryCity,
+        @Schema(description = &quot;Five-digit delivery postal code&quot;) String deliveryPostalCode,
+        @Schema(description = &quot;Pickup city&quot;) String pickupCity,
+        @Schema(description = &quot;Five-digit pickup postal code&quot;) String pickupPostalCode,
+        @Schema(description = &quot;Explicit prohibited-items declaration&quot;) Boolean prohibitedItemsDeclared
+) {
+    public BulkOrderIngestItem(String recipientName, String recipientPhone, SriLankanDistrict deliveryDistrict,
+                              String deliveryAddress, BigDecimal packageWeightKg, String deliverySpeed) {
+<span class="fc" id="L44">        this(recipientName, recipientPhone, deliveryDistrict, deliveryAddress, packageWeightKg, deliverySpeed,</span>
+                null, null, null, null, null, null);
+<span class="fc" id="L46">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

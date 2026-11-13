@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.swiftdrop.merchant.service.B2bOrderForwardingTest" time="0.239" tests="3" errors="0" skipped="0" failures="0">
+  <testcase name="forwardsOnceAndReturnsPersistedIdentityOnRetry" classname="com.swiftdrop.merchant.service.B2bOrderForwardingTest" time="0.205" />
+  <testcase name="downstreamFailureDoesNotStoreSuccessReceipt" classname="com.swiftdrop.merchant.service.B2bOrderForwardingTest" time="0.014" />
+  <testcase name="unapprovedMerchantCannotReachOrderService" classname="com.swiftdrop.merchant.service.B2bOrderForwardingTest" time="0.006" />
+</testsuite>
