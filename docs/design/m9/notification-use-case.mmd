@@ -1,0 +1,42 @@
+graph LR
+    %% Actors
+    Customer(["Customer / Recipient"])
+    Courier(["Courier"])
+    Merchant(["Merchant Owner"])
+    Dispatcher(["Operations Dispatcher"])
+    SystemBroker(["RabbitMQ Event Bus"])
+
+    subgraph NotificationSystem ["SwiftDrop Notification System (Member 9)"]
+        UC1(["Consume Domain Events<br/>(DELIVERED, OUT_FOR_DELIVERY, ORDER_CREATED)"])
+        UC2(["Enforce Idempotency & Deduplication"])
+        UC3(["Trigger Evaluation via Observer Pattern"])
+        UC4(["Look Up Contact from IAM with Cache"])
+        UC5(["Mask PII in Logs & Templates"])
+        UC6(["Persist In-App Notification"])
+        UC7(["Poll & View Unread Notification Badge"])
+        UC8(["Open Sliding Tray & Mark Read"])
+        UC9(["Deep-Link to Package Tracking"])
+        UC10(["Inspect Masked Dispatch Audit Logs"])
+        UC11(["Filter Logs by Channel & Status"])
+    end
+
+    %% Relationships
+    SystemBroker --> UC1
+    UC1 --> UC2
+    UC2 --> UC3
+    UC3 --> UC4
+    UC4 --> UC5
+    UC5 --> UC6
+
+    Customer --> UC7
+    Customer --> UC8
+    Customer --> UC9
+
+    Merchant --> UC7
+    Merchant --> UC8
+    Merchant --> UC9
+
+    Courier -.->|"State change advances FSM"| SystemBroker
+
+    Dispatcher --> UC10
+    Dispatcher --> UC11

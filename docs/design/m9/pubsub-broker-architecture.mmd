@@ -1,0 +1,95 @@
+graph TD
+    %% Producers
+    subgraph Producers ["Event Producers (Publishers)"]
+        OrderSvc["customer-order-service<br/>(Port 8082)"]
+        DeliverySvc["delivery-execution-service<br/>(Port 8085)"]
+        DispatchSvc["dispatch-assignment-service<br/>(Port 8084)"]
+        MerchantSvc["merchant-b2b-service<br/>(Port 8086)"]
+        IamSvc["auth-iam-service<br/>(Port 8081)"]
+    end
+
+    %% Primary Exchange
+    subgraph ExchangeCluster ["RabbitMQ Broker Cluster (AMQP :5672)"]
+        MainExchange["swiftdrop.events.exchange<br/>Type: topic | Durable: true"]
+        DlxExchange["swiftdrop.dlx.exchange<br/>Type: topic | Durable: true"]
+    end
+
+    %% Routing Keys
+    OrderSvc -->|"order.created<br/>order.cancelled"| MainExchange
+    DeliverySvc -->|"parcel.status.changed.*<br/>parcel.fee.revised<br/>cash.transaction.recorded"| MainExchange
+    DispatchSvc -->|"dispatch.courier.assigned<br/>dispatch.failed"| MainExchange
+    MerchantSvc -->|"merchant.approved"| MainExchange
+    IamSvc -->|"auth.user.created"| MainExchange
+
+    %% Queues
+    subgraph QuorumQueues ["Durable Quorum Queues (x-queue-type: quorum)"]
+        OrderQ["order.events.queue<br/>Binding: order.#"]
+        DispatchOrderCreatedQ["dispatch.order-created.queue<br/>Binding: order.created"]
+        DispatchParcelStatusQ["dispatch.parcel-status.queue<br/>Binding: parcel.status.changed.#"]
+        DeliveryDispatchQ["delivery.dispatch-assigned.queue<br/>Binding: dispatch.courier.assigned"]
+        DeliveryEventsQ["delivery.events.queue<br/>Binding: delivery.#"]
+        NotificationQ["notification.events.queue<br/>Binding: parcel.status.changed.#<br/>Binding: order.created<br/>Binding: notification.#"]
+        WebhookQ["webhook.events.queue<br/>Binding: parcel.status.changed.#<br/>Binding: order.created<br/>Binding: webhook.dispatch.requested"]
+        GatewayTrackingQ["swiftdrop.gateway.tracking.queue<br/>Binding: parcel.status.changed.#"]
+        AnalyticsQ["analytics.events.queue<br/>Binding: parcel.status.changed.#<br/>Binding: dispatch.#"]
+        IamMerchantQ["iam.merchant-approved.queue<br/>Binding: merchant.approved"]
+    end
+
+    %% Bindings to Queues
+    MainExchange -->|"order.#"| OrderQ
+    MainExchange -->|"order.created"| DispatchOrderCreatedQ
+    MainExchange -->|"parcel.status.changed.#"| DispatchParcelStatusQ
+    MainExchange -->|"dispatch.courier.assigned"| DeliveryDispatchQ
+    MainExchange -->|"delivery.#"| DeliveryEventsQ
+    MainExchange -->|"parcel.status.changed.# & order.created"| NotificationQ
+    MainExchange -->|"parcel.status.changed.# & order.created"| WebhookQ
+    MainExchange -->|"parcel.status.changed.#"| GatewayTrackingQ
+    MainExchange -->|"parcel.status.changed.# & dispatch.#"| AnalyticsQ
+    MainExchange -->|"merchant.approved"| IamMerchantQ
+
+    %% Consumers
+    subgraph Consumers ["Event Consumers"]
+        OrderConsumer["Customer Order Service"]
+        DispatchConsumer["Dispatch Assignment Service"]
+        DeliveryConsumer["Delivery Execution Service"]
+        NotificationConsumer["notification-service (Member 9)<br/>Observer Pattern + In-App Inbox"]
+        WebhookConsumer["Webhook Resiliency Service"]
+        GatewayConsumer["API Gateway (Real-Time Tracking Hub)"]
+        AnalyticsConsumer["Analytics & AI Service"]
+        IamConsumer["Auth IAM Service"]
+    end
+
+    OrderQ --> OrderConsumer
+    DispatchOrderCreatedQ --> DispatchConsumer
+    DispatchParcelStatusQ --> DispatchConsumer
+    DeliveryDispatchQ --> DeliveryConsumer
+    DeliveryEventsQ --> DeliveryConsumer
+    NotificationQ --> NotificationConsumer
+    WebhookQ --> WebhookConsumer
+    GatewayTrackingQ --> GatewayConsumer
+    AnalyticsQ --> AnalyticsConsumer
+    IamMerchantQ --> IamConsumer
+
+    %% Dead Letter Queues
+    subgraph DLQCluster ["Dead-Letter Queues (TTL: 7 Days)"]
+        OrderDLQ["dlq.order.events.queue"]
+        DispatchDLQ["dlq.dispatch.events.queue"]
+        DeliveryDLQ["dlq.delivery.events.queue"]
+        NotificationDLQ["dlq.notification.events.queue"]
+        WebhookDLQ["dlq.webhook.events.queue"]
+        AnalyticsDLQ["dlq.analytics.events.queue"]
+    end
+
+    NotificationQ -.->|"x-dead-letter-routing-key: dlq.notification.events<br/>(Failed after 5 attempts)"| DlxExchange
+    OrderQ -.->|"dlq.order.events"| DlxExchange
+    DispatchParcelStatusQ -.->|"dlq.dispatch.events"| DlxExchange
+    DeliveryDispatchQ -.->|"dlq.delivery.events"| DlxExchange
+    WebhookQ -.->|"dlq.webhook.events"| DlxExchange
+    AnalyticsQ -.->|"dlq.analytics.events"| DlxExchange
+
+    DlxExchange --> OrderDLQ
+    DlxExchange --> DispatchDLQ
+    DlxExchange --> DeliveryDLQ
+    DlxExchange --> NotificationDLQ
+    DlxExchange --> WebhookDLQ
+    DlxExchange --> AnalyticsDLQ
