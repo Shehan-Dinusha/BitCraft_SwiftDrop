@@ -12,20 +12,27 @@ public final class PiiMasker {
 
     /**
      * Masks a phone number while keeping minimal prefix/suffix context for troubleshooting,
-     * e.g. {@code 0771234567 -> 077***4567} or {@code +94771234567 -> +94***4567}.
+     * e.g. {@code 0771235678 -> 07X***5678} or {@code +94771235678 -> 07X***5678}.
      */
     public static String maskPhone(String phone) {
         if (phone == null || phone.isBlank()) {
             return "";
         }
-        String trimmed = phone.trim();
-        if (trimmed.length() <= 4) {
+        String digits = phone.replaceAll("\\D", "");
+        // International form (+94 then nine digits) is the same number as 0 then nine digits.
+        if (digits.length() == 11 && digits.startsWith("94")) {
+            digits = "0" + digits.substring(2);
+        }
+        if (digits.length() == 10) {
+            return digits.substring(0, 2) + "X***" + digits.substring(6);
+        }
+        if (digits.length() <= 4) {
             return "***";
         }
-        if (trimmed.length() <= 7) {
-            return trimmed.substring(0, 2) + "***" + trimmed.substring(trimmed.length() - 2);
+        if (digits.length() <= 7) {
+            return digits.substring(0, 2) + "***" + digits.substring(digits.length() - 2);
         }
-        return trimmed.substring(0, 3) + "***" + trimmed.substring(trimmed.length() - 4);
+        return digits.substring(0, 3) + "***" + digits.substring(digits.length() - 4);
     }
 
     /**
@@ -52,7 +59,7 @@ public final class PiiMasker {
             return "";
         }
         String trimmed = destination.trim();
-        if ("UNRESOLVED".equals(trimmed)) {
+        if ("UNRESOLVED".equalsIgnoreCase(trimmed)) {
             return trimmed;
         }
         if (trimmed.contains("@")) {

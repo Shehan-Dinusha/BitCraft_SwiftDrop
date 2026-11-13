@@ -8,6 +8,7 @@ import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepositor
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.util.PiiMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -70,7 +71,7 @@ public class MultiChannelNotificationDispatcher {
                 executeMockDelivery(channel, destination, rendered.subject(), rendered.body());
                 status = "SENT";
                 sentAt = Instant.now();
-                log.info("Notification successfully dispatched to {} via {}", destination, channel);
+                log.info("Notification successfully dispatched to {} via {}", PiiMasker.maskDestination(destination), channel);
             } catch (Exception e) {
                 log.error("Failed to transmit notification via {}: {}", channel, e.getMessage());
                 status = "FAILED";
@@ -167,12 +168,12 @@ public class MultiChannelNotificationDispatcher {
         if ("SMS".equalsIgnoreCase(channel)) {
             // E.164 phone sanity check
             if (!destination.matches("^\\+?[0-9]{9,15}$")) {
-                throw new IllegalArgumentException("Invalid phone number format for SMS: " + destination);
+                throw new IllegalArgumentException("Invalid phone number format for SMS: " + PiiMasker.maskDestination(destination));
             }
         } else if ("EMAIL".equalsIgnoreCase(channel)) {
             // Email sanity check
             if (!destination.contains("@")) {
-                throw new IllegalArgumentException("Invalid email destination format: " + destination);
+                throw new IllegalArgumentException("Invalid email destination format: " + PiiMasker.maskDestination(destination));
             }
         }
         // Transmission successful simulated
