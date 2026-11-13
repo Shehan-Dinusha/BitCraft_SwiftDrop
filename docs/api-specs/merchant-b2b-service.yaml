@@ -6,45 +6,206 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1/merchants/register:
+    post:
+      tags: [MerchantApproval]
+      summary: Register a business as the authenticated merchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterMerchantRequest"
+      responses:
+        "201":
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantApprovalResponse"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not authorized
+        "409":
+          description: Resource state conflicts with the request
+  /api/v1/admin/merchants:
+    get:
+      tags: [MerchantApproval]
+      summary: List applications (SYSTEM_ADMIN only)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/MerchantStatus"
+      responses:
+        "200":
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListMerchantApprovalResponse"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not authorized
+        "409":
+          description: Resource state conflicts with the request
+  /api/v1/admin/merchants/{merchantId}/approve:
+    post:
+      tags: [MerchantApproval]
+      summary: approve a pending merchant (SYSTEM_ADMIN only)
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantApprovalResponse"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not authorized
+        "409":
+          description: Resource state conflicts with the request
+  /api/v1/admin/merchants/{merchantId}/reject:
+    post:
+      tags: [MerchantApproval]
+      summary: reject a pending merchant (SYSTEM_ADMIN only)
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectMerchantRequest"
+      responses:
+        "200":
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantApprovalResponse"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not authorized
+        "409":
+          description: Resource state conflicts with the request
+  /api/v1/merchants/{merchantId}/api-keys/{keyId}/regenerate:
+    post:
+      tags: [ApiKeyManagement]
+      summary: Replace a key and revoke its old secret atomically
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: keyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseApiKeyResponse"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not authorized
+        "409":
+          description: Resource state conflicts with the request
+  /api/v1/merchants/{merchantId}/orders:
+    get:
+      tags: [MerchantOrders]
+      summary: List receipts for the authenticated merchant
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListMerchantOrderReceiptResponse"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not authorized
+        "409":
+          description: Resource state conflicts with the request
   /api/v1/b2b/orders:
     post:
       tags: [B2bOrders]
       summary: Create a merchant order or return an existing order for the same reference
       description: Requires a trusted merchant context injected after API-key authentication at the gateway.
       parameters:
-        - $ref: '#/components/parameters/B2bMerchantId'
-        - $ref: '#/components/parameters/B2bRole'
-        - $ref: '#/components/parameters/B2bCorrelationId'
+        - $ref: "#/components/parameters/B2bMerchantId"
+        - $ref: "#/components/parameters/B2bRole"
+        - $ref: "#/components/parameters/B2bCorrelationId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/B2bOrderRequest'
+              $ref: "#/components/schemas/B2bOrderRequest"
       responses:
-        '201':
+        "201":
           description: Order created by the order service
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponseB2bOrderResult'
-        '200':
+                $ref: "#/components/schemas/ApiResponseB2bOrderResult"
+        "200":
           description: Existing order for this merchant and external reference
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponseB2bOrderResult'
-        '400':
+                $ref: "#/components/schemas/ApiResponseB2bOrderResult"
+        "400":
           description: Invalid order details
-        '401':
+        "401":
           description: Missing authenticated merchant context
-        '403':
+        "403":
           description: Merchant is not approved or caller role is not MERCHANT
-        '404':
+        "404":
           description: Merchant not found
-        '502':
+        "502":
           description: Invalid or failed order-service response
-        '503':
+        "503":
           description: Order service unavailable; retry with the same external reference
 
   /api/v1/b2b/orders/bulk:
@@ -52,29 +213,29 @@ paths:
       tags: [B2bOrders]
       summary: Submit up to 500 orders with per-item results
       parameters:
-        - $ref: '#/components/parameters/B2bMerchantId'
-        - $ref: '#/components/parameters/B2bRole'
-        - $ref: '#/components/parameters/B2bCorrelationId'
+        - $ref: "#/components/parameters/B2bMerchantId"
+        - $ref: "#/components/parameters/B2bRole"
+        - $ref: "#/components/parameters/B2bCorrelationId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/B2bBulkRequest'
+              $ref: "#/components/schemas/B2bBulkRequest"
       responses:
-        '200':
+        "200":
           description: Results in input order, including validation and forwarding errors per item
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponseB2bBulkResponse'
-        '400':
+                $ref: "#/components/schemas/ApiResponseB2bBulkResponse"
+        "400":
           description: Empty batch, more than 500 items, or malformed JSON
-        '401':
+        "401":
           description: Missing authenticated merchant context
-        '403':
+        "403":
           description: Merchant approval required
-        '404':
+        "404":
           description: Merchant not found
 
   /api/v1/merchants/health:
@@ -384,9 +545,88 @@ components:
         type: string
         format: uuid
   schemas:
+    MerchantStatus:
+      type: string
+      enum: [PENDING_APPROVAL, APPROVED, REJECTED, SUSPENDED]
+    RegisterMerchantRequest:
+      type: object
+      required:
+        [
+          businessName,
+          businessRegNo,
+          contactEmail,
+          contactPhone,
+          pickupAddress,
+          operatingDistrict,
+        ]
+      properties:
+        businessName: { type: string, minLength: 1, maxLength: 150 }
+        businessRegNo: { type: string, minLength: 1, maxLength: 64 }
+        contactEmail: { type: string, format: email, maxLength: 100 }
+        contactPhone: { type: string, minLength: 1, maxLength: 30 }
+        pickupAddress: { type: string, minLength: 1, maxLength: 255 }
+        operatingDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+    RejectMerchantRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    MerchantApprovalResponse:
+      type: object
+      properties:
+        merchantId: { type: string, format: uuid }
+        ownerUserId: { type: string, format: uuid }
+        businessName: { type: string }
+        businessRegNo: { type: string }
+        contactEmail: { type: string }
+        contactPhone: { type: string }
+        pickupAddress: { type: string }
+        operatingDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        status:
+          $ref: "#/components/schemas/MerchantStatus"
+        approvedBy: { type: string, format: uuid }
+        approvedAt: { type: string, format: date-time }
+        rejectionReason: { type: string }
+        createdAt: { type: string, format: date-time }
+    MerchantOrderReceiptResponse:
+      type: object
+      required: [externalRef, orderId, trackingNumber, createdAt]
+      properties:
+        externalRef: { type: string }
+        orderId: { type: string, format: uuid }
+        trackingNumber: { type: string }
+        createdAt: { type: string, format: date-time }
+    ApiResponseMerchantApprovalResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/MerchantApprovalResponse"
+    ApiResponseListMerchantApprovalResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MerchantApprovalResponse"
+    ApiResponseListMerchantOrderReceiptResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MerchantOrderReceiptResponse"
     B2bAddress:
       type: object
-      required: [addressLine1, city, district, postalCode, contactName, contactPhone]
+      required:
+        [addressLine1, city, district, postalCode, contactName, contactPhone]
       properties:
         addressLine1:
           type: string
@@ -442,13 +682,13 @@ components:
           type: string
           minLength: 1
           maxLength: 128
-          pattern: '^[A-Za-z0-9._:/#-]+$'
+          pattern: "^[A-Za-z0-9._:/#-]+$"
         pickup:
-          $ref: '#/components/schemas/B2bAddress'
+          $ref: "#/components/schemas/B2bAddress"
         delivery:
-          $ref: '#/components/schemas/B2bAddress'
+          $ref: "#/components/schemas/B2bAddress"
         parcel:
-          $ref: '#/components/schemas/B2bParcel'
+          $ref: "#/components/schemas/B2bParcel"
         speed:
           type: string
           description: STANDARD (default) or EXPRESS; case-insensitive
@@ -461,7 +701,7 @@ components:
           minItems: 1
           maxItems: 500
           items:
-            $ref: '#/components/schemas/B2bOrderRequest'
+            $ref: "#/components/schemas/B2bOrderRequest"
     B2bOrderResult:
       type: object
       properties:
@@ -489,7 +729,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/B2bOrderResult'
+            $ref: "#/components/schemas/B2bOrderResult"
     ApiResponseB2bOrderResult:
       type: object
       properties:
@@ -498,7 +738,7 @@ components:
         message:
           type: string
         data:
-          $ref: '#/components/schemas/B2bOrderResult'
+          $ref: "#/components/schemas/B2bOrderResult"
         timestamp:
           type: string
           format: date-time
@@ -510,7 +750,7 @@ components:
         message:
           type: string
         data:
-          $ref: '#/components/schemas/B2bBulkResponse'
+          $ref: "#/components/schemas/B2bBulkResponse"
         timestamp:
           type: string
           format: date-time
