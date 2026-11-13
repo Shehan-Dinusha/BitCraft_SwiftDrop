@@ -28,7 +28,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class NotificationEventConsumer {
 
     private final ObjectMapper objectMapper;
