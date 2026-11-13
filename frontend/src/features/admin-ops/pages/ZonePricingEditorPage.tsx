@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { TariffEditor } from './TariffEditor';
 import { Plus } from 'lucide-react';
 import {
   Button,
@@ -309,6 +310,8 @@ export function ZonePricingEditorPage() {
           />
         )}
       </SurfaceCard>
+
+      <TariffEditor />
 
       <Modal
         open={editing !== null}
