@@ -109,6 +109,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/orders/{orderId}/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggest available couriers for an order
+         * @description Returns up to three available couriers, preferring the pickup district and then lowest workload.
+         */
+        get: operations["getCourierSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatch/couriers/{courierId}/assignments": {
         parameters: {
             query?: never;
@@ -152,6 +172,23 @@ export interface paths {
         };
         /** List couriers with optional district and shift status filters */
         get: operations["getCouriers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/workload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List current courier workloads */
+        get: operations["getWorkloads"];
         put?: never;
         post?: never;
         delete?: never;
@@ -338,6 +375,25 @@ export interface components {
             /** Format: date-time */
             lastHeartbeatAt?: string;
         };
+        CourierWorkloadResponse: {
+            /** Format: uuid */
+            courierId?: string;
+            courierName?: string;
+            activeParcels?: number;
+            maxCapacity?: number;
+            currentDistrict?: components["schemas"]["SriLankanDistrict"];
+            shiftStatus?: components["schemas"]["ShiftStatus"];
+        };
+        CourierSuggestionResponse: {
+            /** Format: uuid */
+            courierId?: string;
+            courierName?: string;
+            currentDistrict?: components["schemas"]["SriLankanDistrict"];
+            samePickupDistrict?: boolean;
+            activeParcels?: number;
+            maxCapacity?: number;
+            shiftStatus?: components["schemas"]["ShiftStatus"];
+        };
         ApiResponseString: {
             success?: boolean;
             message?: string;
@@ -370,6 +426,20 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["CourierShiftResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListCourierWorkloadResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierWorkloadResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListCourierSuggestionResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierSuggestionResponse"][];
             /** Format: date-time */
             timestamp?: string;
         };
@@ -557,6 +627,35 @@ export interface operations {
             };
         };
     };
+    getCourierSuggestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier suggestions retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListCourierSuggestionResponse"];
+                };
+            };
+            /** @description Assignment or order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getCourierAssignments: {
         parameters: {
             query?: {
@@ -620,6 +719,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseListCourierShiftResponse"];
+                };
+            };
+        };
+    };
+    getWorkloads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier workloads retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListCourierWorkloadResponse"];
                 };
             };
         };

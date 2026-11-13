@@ -4,6 +4,8 @@ import type { components } from '@/types/generated/dispatch-assignment-service';
 export type DispatchAssignmentResponse = components['schemas']['DispatchAssignmentResponse'];
 export type CourierShiftResponse = components['schemas']['CourierShiftResponse'];
 export type ManualAssignRequest = components['schemas']['ManualAssignRequest'];
+export type CourierWorkloadResponse = components['schemas']['CourierWorkloadResponse'];
+export type CourierSuggestionResponse = components['schemas']['CourierSuggestionResponse'];
 export type StartShiftRequest = components['schemas']['StartShiftRequest'];
 export type UpdateShiftStatusRequest = components['schemas']['UpdateShiftStatusRequest'];
 export type CourierLocationPingRequest = components['schemas']['CourierLocationPingRequest'];
@@ -51,6 +53,14 @@ export const dispatchApi = {
     return data.data;
   },
 
+  getCourierSuggestions: async (orderId: string) => {
+    const { data } = await apiClient.get<{
+      success: boolean;
+      data: CourierSuggestionResponse[];
+    }>(`/v1/dispatch/orders/${orderId}/suggestions`);
+    return data.data;
+  },
+
   manualAssign: async (request: ManualAssignRequest) => {
     const { data } = await apiClient.post<{ success: boolean; data: DispatchAssignmentResponse }>(
       '/v1/dispatch/assign',
@@ -72,6 +82,14 @@ export const dispatchApi = {
       '/v1/dispatch/couriers',
       { params }
     );
+    return data.data;
+  },
+
+  getCourierWorkloads: async () => {
+    const { data } = await apiClient.get<{
+      success: boolean;
+      data: CourierWorkloadResponse[];
+    }>('/v1/dispatch/couriers/workload');
     return data.data;
   },
 
@@ -111,5 +129,5 @@ export const dispatchApi = {
       request
     );
     return data.data;
-  },
+  }
 };
