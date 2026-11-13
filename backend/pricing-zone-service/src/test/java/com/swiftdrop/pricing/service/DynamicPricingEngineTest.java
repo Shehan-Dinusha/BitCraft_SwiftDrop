@@ -240,4 +240,64 @@ class DynamicPricingEngineTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("No active default tariff rule");
     }
+
+    @Test
+    @DisplayName("District without a zone mapping fails instead of defaulting to the western zone")
+    void testMissingZoneMappingThrows() {
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO")).thenReturn(Optional.empty());
+
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.COLOMBO)
+                .actualWeightKg(new BigDecimal("1.00"))
+                .speed(OrderSpeed.STANDARD)
+                .build();
+
+        assertThatThrownBy(() -> pricingEngine.calculateQuote(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No pricing zone is mapped");
+    }
+
+    @Test
+    @DisplayName("Mapped zone code without a zone record fails with a clear message")
+    void testMissingZoneRecordThrows() {
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("COLOMBO").zoneCode("ZONE_WESTERN").build()));
+        when(pricingZoneRepository.findByZoneCode("ZONE_WESTERN")).thenReturn(Optional.empty());
+
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.COLOMBO)
+                .actualWeightKg(new BigDecimal("1.00"))
+                .speed(OrderSpeed.STANDARD)
+                .build();
+
+        assertThatThrownBy(() -> pricingEngine.calculateQuote(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Pricing zone not found");
+    }
+
+    @Test
+    @DisplayName("Weight step from the tariff rule decides how many extra steps are billed")
+    void testWeightStepFromTariffRule() {
+        defaultRule.setWeightStepKg(new BigDecimal("2.00"));
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("COLOMBO").zoneCode("ZONE_WESTERN").build()));
+        when(districtZoneMappingRepository.findByDistrict("KANDY"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("KANDY").zoneCode("ZONE_CENTRAL").build()));
+        when(pricingZoneRepository.findByZoneCode("ZONE_WESTERN")).thenReturn(Optional.of(westernZone));
+
+        // 5 kg with 2 kg steps: first step in base fee, (5 - 2) / 2 = 1.5 -> 2 extra steps * 120.00 = 240.00
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.KANDY)
+                .actualWeightKg(new BigDecimal("5.00"))
+                .speed(OrderSpeed.STANDARD)
+                .build();
+
+        PricingQuoteResponse response = pricingEngine.calculateQuote(request);
+
+        assertThat(response.weightFee()).isEqualByComparingTo("240.00");
+        assertThat(response.estimatedFee()).isEqualByComparingTo("790.00");
+    }
 }

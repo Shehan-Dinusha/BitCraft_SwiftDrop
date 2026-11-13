@@ -9,8 +9,6 @@ import java.math.BigDecimal;
 @Component
 public class ExpressPricingStrategy implements PricingStrategy {
 
-    private static final BigDecimal DEFAULT_MULTIPLIER = new BigDecimal("1.50");
-
     @Override
     public boolean supports(OrderSpeed speed) {
         return speed == OrderSpeed.EXPRESS;
@@ -18,7 +16,6 @@ public class ExpressPricingStrategy implements PricingStrategy {
 
     @Override
     public BigDecimal apply(BigDecimal subtotal, PricingZone zone) {
-        BigDecimal multiplier = zone != null ? zone.getExpressMultiplier() : DEFAULT_MULTIPLIER;
-        return subtotal.multiply(multiplier);
+        return subtotal.multiply(zone.getExpressMultiplier());
     }
 }

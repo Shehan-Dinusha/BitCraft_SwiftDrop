@@ -1,6 +1,7 @@
 package com.swiftdrop.pricing.service;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.pricing.domain.entity.DistrictZoneMapping;
 import com.swiftdrop.pricing.domain.entity.PricingZone;
 import com.swiftdrop.pricing.domain.entity.TariffRule;
@@ -41,20 +42,15 @@ public class DynamicPricingEngine {
                 .orElseThrow(() -> new IllegalStateException("No active default tariff rule is configured"));
 
         // 1. Resolve zones
-        String pickupZoneCode = districtZoneMappingRepository.findByDistrict(request.pickupDistrict().name())
-                .map(DistrictZoneMapping::getZoneCode)
-                .orElse("ZONE_WESTERN");
-
-        String deliveryZoneCode = districtZoneMappingRepository.findByDistrict(request.deliveryDistrict().name())
-                .map(DistrictZoneMapping::getZoneCode)
-                .orElse("ZONE_WESTERN");
+        String pickupZoneCode = resolveZoneCode(request.pickupDistrict());
+        String deliveryZoneCode = resolveZoneCode(request.deliveryDistrict());
 
         PricingZone pickupZone = pricingZoneRepository.findByZoneCode(pickupZoneCode)
-                .orElse(null);
+                .orElseThrow(() -> new IllegalStateException("Pricing zone not found: " + pickupZoneCode));
 
         boolean isIntraDistrict = request.pickupDistrict() == request.deliveryDistrict();
 
-        // 2. Volumetric and Chargeable weight calculation
+        // 2. Volumetric and chargeable weight calculation
         BigDecimal volumetricWeight = BigDecimal.ZERO;
         if (request.lengthCm() != null && request.widthCm() != null && request.heightCm() != null
                 && request.lengthCm().compareTo(BigDecimal.ZERO) > 0
@@ -67,24 +63,25 @@ public class DynamicPricingEngine {
         BigDecimal chargeableWeight = request.actualWeightKg().max(volumetricWeight)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        // 3. Base fee & Per-kg surcharge calculation
+        // 3. Base fee and per-step fee
         BigDecimal baseFee;
-        BigDecimal perKgFee;
+        BigDecimal perStepFee;
 
         if (isIntraDistrict) {
-            baseFee = pickupZone != null ? pickupZone.getBaseFee() : new BigDecimal("350.00");
-            perKgFee = pickupZone != null ? pickupZone.getPerKgFee() : new BigDecimal("80.00");
+            baseFee = pickupZone.getBaseFee();
+            perStepFee = pickupZone.getPerKgFee();
         } else {
             // Inter-district fees come from the active default tariff rule
             baseFee = rule.getBasePrice();
-            perKgFee = rule.getPricePerStep();
+            perStepFee = rule.getPricePerStep();
         }
 
+        // The base fee covers the first weight step; every started extra step is billed
+        BigDecimal step = rule.getWeightStepKg();
         BigDecimal weightFee = BigDecimal.ZERO;
-        if (chargeableWeight.compareTo(BigDecimal.ONE) > 0) {
-            BigDecimal extraKg = chargeableWeight.subtract(BigDecimal.ONE)
-                    .setScale(0, RoundingMode.CEILING); // standard logistics billing rounds up extra fractional kg
-            weightFee = extraKg.multiply(perKgFee).setScale(2, RoundingMode.HALF_UP);
+        if (chargeableWeight.compareTo(step) > 0) {
+            BigDecimal extraSteps = chargeableWeight.subtract(step).divide(step, 0, RoundingMode.CEILING);
+            weightFee = extraSteps.multiply(perStepFee).setScale(2, RoundingMode.HALF_UP);
         }
 
         BigDecimal standardSubtotal = baseFee.add(weightFee);
@@ -116,5 +113,11 @@ public class DynamicPricingEngine {
                 .currency("LKR")
                 .pricingRuleVersionId(rule.getRuleVersionId())
                 .build();
+    }
+
+    private String resolveZoneCode(SriLankanDistrict district) {
+        return districtZoneMappingRepository.findByDistrict(district.name())
+                .map(DistrictZoneMapping::getZoneCode)
+                .orElseThrow(() -> new IllegalStateException("No pricing zone is mapped for district: " + district));
     }
 }
