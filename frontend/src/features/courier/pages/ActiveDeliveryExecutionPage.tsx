@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { deliveryApi } from '@/services/api/deliveryApi';
 import type {
@@ -8,12 +8,15 @@ import type {
   DeliveryFailureReason,
   TrackingBreadcrumbResponse
 } from '@/services/api/deliveryApi';
+import { allowedTransitions } from '@/types/fsm';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
+import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBar/ErgonomicActionBar';
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
+import { DeliveryFailureReportModal } from '../components/DeliveryFailureReportModal';
 import { GpsTelemetryPublisher } from '../components/GpsTelemetryPublisher';
 import {
   ArrowLeft,
@@ -21,26 +24,39 @@ import {
   MapPin,
   Package,
   Phone,
-  Navigation
+  Navigation,
+  AlertTriangle
 } from 'lucide-react';
 
 export function ActiveDeliveryExecutionPage() {
+  const { id } = useParams<{ id?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const courierId = user?.id || '11111111-1111-1111-1111-111111111111';
 
   const orderIdParam = searchParams.get('orderId');
-  const deliveryIdParam = searchParams.get('deliveryId');
+  const deliveryIdParam = id || searchParams.get('deliveryId');
 
   const [session, setSession] = useState<DeliverySessionResponse | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<TrackingBreadcrumbResponse[]>([]);
   const [isPoDVerified, setIsPoDVerified] = useState(false);
   const [isPoDModalOpen, setIsPoDModalOpen] = useState(false);
+  const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [pendingState, setPendingState] = useState<DeliveryState | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Compute allowed next states for ErgonomicActionBar from FSM definition
+  const allowedNextStates = useMemo(() => {
+    if (!session?.currentState || !(session.currentState in allowedTransitions)) {
+      return [] as DeliveryState[];
+    }
+    return (allowedTransitions[session.currentState as DeliveryState] || []).filter(
+      (s) => s !== 'CANCELLED' && s !== 'FAILED'
+    ) as DeliveryState[];
+  }, [session?.currentState]);
 
   // Load delivery session
   const loadDelivery = useCallback(async () => {
@@ -97,16 +113,29 @@ export function ActiveDeliveryExecutionPage() {
     loadDelivery();
   }, [loadDelivery]);
 
-  // Handle state transition
+  // Handle state transition with optimistic update and rollback on 409 Conflict
   const handleTransition = async (
     targetState: DeliveryState,
     reason?: DeliveryFailureReason,
     notes?: string
   ) => {
     if (!session?.deliveryId) return;
+
+    // Snapshot current session for rollback
+    const previousSession = { ...session };
+
+    // 1. Optimistic update: advance local session immediately
+    setPendingState(targetState);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setSession({
+      ...session,
+      currentState: targetState,
+      ...(targetState === 'DELIVERED' ? { deliveredAt: new Date().toISOString() } : {}),
+      ...(targetState === 'FAILED' && reason ? { failedReason: reason } : {})
+    });
+
     try {
-      setPendingState(targetState);
-      setErrorMsg(null);
       const updated = await deliveryApi.transitionDelivery(session.deliveryId, {
         targetState,
         actorRole: 'COURIER',
@@ -114,9 +143,26 @@ export function ActiveDeliveryExecutionPage() {
         notes: notes || `Courier transitioned to ${targetState}`
       });
       setSession(updated);
-      setSuccessMsg(`Delivery successfully updated to ${targetState}!`);
+      setSuccessMsg(`Delivery moved to ${targetState.replace(/_/g, ' ')}!`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : `Failed to transition to ${targetState}`;
+      // 2. Rollback on 409 Conflict or any server error
+      setSession(previousSession);
+
+      let msg = `Failed to transition to ${targetState.replace(/_/g, ' ')}`;
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosErr = err as {
+          response?: { status?: number; data?: { message?: string; error?: string } };
+        };
+        const status = axiosErr.response?.status;
+        const serverMsg = axiosErr.response?.data?.message || axiosErr.response?.data?.error;
+        if (status === 409) {
+          msg = `State transition rejected (409 Conflict): ${serverMsg || 'Illegal state transition or missing proof of delivery'}`;
+        } else if (serverMsg) {
+          msg = serverMsg;
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
       setErrorMsg(msg);
     } finally {
       setPendingState(null);
@@ -150,15 +196,29 @@ export function ActiveDeliveryExecutionPage() {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={loadDelivery}
-          disabled={loading || pendingState !== null}
-          className="self-start text-xs sm:self-auto min-h-[44px]"
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {session && (session.currentState !== 'DELIVERED' && session.currentState !== 'FAILED' && session.currentState !== 'CANCELLED') && (
+            <Button
+              variant="outline"
+              onClick={() => setIsFailureModalOpen(true)}
+              disabled={loading || pendingState !== null}
+              className="text-xs text-rose-600 hover:border-rose-300 hover:bg-rose-50 min-h-[44px]"
+            >
+              <AlertTriangle className="mr-1.5 h-4 w-4 text-rose-500" />
+              Report Failure
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={loadDelivery}
+            disabled={loading || pendingState !== null}
+            className="text-xs min-h-[44px]"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </header>
 
       {/* Notifications */}
@@ -327,6 +387,25 @@ export function ActiveDeliveryExecutionPage() {
             </div>
           )}
 
+          {/* Ergonomic Action Bar: thumb-friendly sticky bar for next allowed action */}
+          {allowedNextStates.length > 0 && (
+            <div className="sticky bottom-4 z-20 pt-2">
+              <ErgonomicActionBar
+                next={allowedNextStates}
+                onTransition={(target) => {
+                  if (target === 'DELIVERED' && !isPoDVerified) {
+                    setIsPoDModalOpen(true);
+                    return;
+                  }
+                  handleTransition(target);
+                }}
+                pendingState={pendingState}
+                density="touch"
+                label="Courier next actions"
+              />
+            </div>
+          )}
+
           {/* Proof of Delivery Capture Modal */}
           {session.deliveryId && (
             <ProofOfDeliveryCaptureModal
@@ -337,6 +416,24 @@ export function ActiveDeliveryExecutionPage() {
                 setIsPoDVerified(true);
                 setSuccessMsg('Proof of Delivery recorded and verified!');
               }}
+              onTransitionToDelivered={async () => {
+                setIsPoDVerified(true);
+                await handleTransition('DELIVERED', undefined, 'Completed delivery with verified photo proof');
+              }}
+            />
+          )}
+
+          {/* Report Delivery Failure Modal */}
+          {session.deliveryId && (
+            <DeliveryFailureReportModal
+              open={isFailureModalOpen}
+              onClose={() => setIsFailureModalOpen(false)}
+              deliveryId={session.deliveryId}
+              trackingNumber={session.trackingNumber}
+              onSubmitFailure={async (reason, notes) => {
+                await handleTransition('FAILED', reason, notes);
+              }}
+              loading={pendingState === 'FAILED'}
             />
           )}
         </div>

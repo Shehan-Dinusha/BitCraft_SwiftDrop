@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   dispatchApi,
@@ -7,9 +8,11 @@ import {
   type ShiftStatus,
   type SriLankanDistrict
 } from '@/services/api/dispatchApi';
+import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
+import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 import {
   Bike,
   Coffee,
@@ -20,7 +23,8 @@ import {
   Send,
   ShieldCheck,
   CheckCircle2,
-  Clock
+  Clock,
+  ChevronRight
 } from 'lucide-react';
 
 const SRI_LANKAN_DISTRICTS: SriLankanDistrict[] = [
@@ -39,11 +43,13 @@ const SRI_LANKAN_DISTRICTS: SriLankanDistrict[] = [
 ];
 
 export function CourierShiftDashboard() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const courierId = user?.id || '11111111-1111-1111-1111-111111111111';
 
   const [shift, setShift] = useState<CourierShiftResponse | null>(null);
   const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
+  const [todayDeliveries, setTodayDeliveries] = useState<DeliverySessionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -58,14 +64,30 @@ export function CourierShiftDashboard() {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const shiftData = await dispatchApi.getCourier(courierId);
-      setShift(shiftData);
 
-      const assignedOrders = await dispatchApi.getCourierAssignments(courierId, 'ASSIGNED');
-      setAssignments(assignedOrders);
-    } catch {
-      // If courier not registered yet, leave shift as null so they can start
-      setShift(null);
+      // Fetch courier shift data
+      try {
+        const shiftData = await dispatchApi.getCourier(courierId);
+        setShift(shiftData);
+      } catch {
+        setShift(null);
+      }
+
+      // Fetch today's deliveries from delivery-execution-service (/api/v1/deliveries/me)
+      try {
+        const myDeliveries = await deliveryApi.getMyDeliveries('today');
+        setTodayDeliveries(myDeliveries || []);
+      } catch (err) {
+        console.warn('Could not load deliveries from /deliveries/me:', err);
+      }
+
+      // Fetch active dispatch assignments
+      try {
+        const assignedOrders = await dispatchApi.getCourierAssignments(courierId, 'ASSIGNED');
+        setAssignments(assignedOrders || []);
+      } catch {
+        setAssignments([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -369,6 +391,69 @@ export function CourierShiftDashboard() {
           </SurfaceCard>
         </div>
       )}
+
+      {/* Stage 14: Today's Deliveries List (/deliveries/me) with Touch Density (56px rows) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900">
+              Today's Deliveries
+            </h2>
+            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+              {todayDeliveries.length}
+            </span>
+          </div>
+          <span className="text-xs text-slate-500">Live from /deliveries/me &bull; Touch density</span>
+        </div>
+
+        {todayDeliveries.length === 0 ? (
+          <SurfaceCard className="p-6 text-center">
+            <Package className="mx-auto h-8 w-8 text-slate-400" />
+            <p className="mt-2 text-sm font-medium text-slate-700">
+              No deliveries assigned for today
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Assigned parcels from the dispatch engine will appear here.
+            </p>
+          </SurfaceCard>
+        ) : (
+          <div className="space-y-2">
+            {todayDeliveries.map((delivery) => (
+              <div
+                key={delivery.deliveryId}
+                onClick={() => navigate(`/courier/delivery/${delivery.deliveryId}`)}
+                className="group flex min-h-[56px] h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm transition-all hover:border-indigo-300 hover:bg-slate-50/80 active:scale-[0.99] touch-manipulation cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100">
+                    <Package className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-bold text-slate-900 truncate">
+                        {delivery.trackingNumber}
+                      </span>
+                      <FsmStatusBadge state={delivery.currentState || 'ASSIGNED'} density="touch" size="sm" />
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 truncate">
+                      <span>{delivery.pickupDistrict}</span>
+                      <span>&rarr;</span>
+                      <span className="font-medium text-slate-700">{delivery.deliveryDistrict}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="hidden sm:inline text-xs font-medium text-indigo-600 group-hover:underline">
+                    View
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Active Dispatched Assignments Queue */}
       <section className="space-y-3">

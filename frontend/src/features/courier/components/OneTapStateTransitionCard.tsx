@@ -11,7 +11,8 @@ import {
   AlertTriangle,
   FileCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  MapPin
 } from 'lucide-react';
 
 export interface OneTapStateTransitionCardProps {
@@ -111,6 +112,32 @@ export function OneTapStateTransitionCard({
 
         {currentState === 'IN_TRANSIT' && (
           <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              Package in transit. Arrive at recipient delivery destination and confirm you are Out for Delivery.
+            </p>
+            <SlideToTransitionBar
+              label="Slide to mark Out for Delivery"
+              confirmLabel="Release to confirm arrival"
+              onConfirm={() => onTransition('OUT_FOR_DELIVERY', undefined, 'Courier arrived at destination')}
+              disabled={isPending}
+              density="touch"
+              icon={<MapPin className="h-5 w-5" />}
+            />
+            <Button
+              variant="primary"
+              className="w-full min-h-[48px] text-sm"
+              onClick={() => onTransition('OUT_FOR_DELIVERY', undefined, 'Courier marked Out for Delivery')}
+              loading={pendingState === 'OUT_FOR_DELIVERY'}
+              disabled={isPending}
+            >
+              <MapPin className="mr-2 h-4 w-4" />
+              One-Tap: Arrived (Out for Delivery)
+            </Button>
+          </div>
+        )}
+
+        {currentState === 'OUT_FOR_DELIVERY' && (
+          <div className="space-y-3">
             <div className={`rounded-xl border p-4 ${
               isPoDVerified
                 ? 'border-emerald-500/40 bg-emerald-500/10'
@@ -184,7 +211,7 @@ export function OneTapStateTransitionCard({
         )}
 
         {/* Collapsible Report Failure Section for active states */}
-        {(currentState === 'ASSIGNED' || currentState === 'PICKED_UP' || currentState === 'IN_TRANSIT') && (
+        {(currentState === 'ASSIGNED' || currentState === 'PICKED_UP' || currentState === 'IN_TRANSIT' || currentState === 'OUT_FOR_DELIVERY') && (
           <div className="pt-2">
             <button
               type="button"
@@ -196,41 +223,64 @@ export function OneTapStateTransitionCard({
             </button>
 
             {showFailurePanel && (
-              <div className="mt-3 space-y-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleReportFailure();
+                }}
+                className="mt-3 space-y-3 rounded-xl border border-rose-200 bg-rose-50/60 p-4"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-rose-600" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900">
+                    Report Delivery Failure Form
+                  </h4>
+                </div>
+                <p className="text-xs text-rose-700">
+                  Select the failure reason and provide operational notes to mark this delivery attempt as failed.
+                </p>
+
                 <label className="block text-xs font-semibold text-slate-700">
-                  Select Failure Reason:
+                  Failure Reason:
                 </label>
                 <select
                   value={failureReason}
                   onChange={(e) => setFailureReason(e.target.value as DeliveryFailureReason)}
-                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800"
+                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
                 >
                   <option value="RECIPIENT_UNAVAILABLE">Recipient Unavailable / Not Home</option>
                   <option value="INCORRECT_ADDRESS">Incorrect / Incomplete Address</option>
-                  <option value="CUSTOMER_REJECTED">Customer Refused Package</option>
-                  <option value="PACKAGE_DAMAGED">Package Damaged During Transit</option>
-                  <option value="COURIER_BREAKDOWN">Vehicle / Courier Breakdown</option>
+                  <option value="ACCESS_RESTRICTED">Access Restricted / Gated Area</option>
+                  <option value="RECIPIENT_REJECTED">Customer Refused Package</option>
+                  <option value="DAMAGED_IN_TRANSIT">Package Damaged During Transit</option>
+                  <option value="ADVERSE_WEATHER">Severe Weather / Road Block</option>
+                  <option value="SYSTEM_CANCELLATION">Order Cancelled by System</option>
                   <option value="OTHER">Other Reason</option>
                 </select>
 
+                <label className="block text-xs font-semibold text-slate-700">
+                  Courier Note / Explanation:
+                </label>
                 <input
                   type="text"
-                  placeholder="Additional context or notes..."
+                  placeholder="e.g. Phoned recipient 3 times, gate locked, no neighbor response"
                   value={failureNotes}
                   onChange={(e) => setFailureNotes(e.target.value)}
-                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800"
+                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
+                  required
                 />
 
                 <Button
+                  type="submit"
                   variant="destructive"
                   className="w-full min-h-[44px] text-xs font-bold"
-                  onClick={handleReportFailure}
                   loading={pendingState === 'FAILED'}
-                  disabled={isPending}
+                  disabled={isPending || !failureNotes.trim()}
                 >
+                  <AlertTriangle className="mr-2 h-4 w-4" />
                   Confirm & Report Delivery Failure
                 </Button>
-              </div>
+              </form>
             )}
           </div>
         )}
