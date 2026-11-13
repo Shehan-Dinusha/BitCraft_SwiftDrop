@@ -335,3 +335,4 @@ Every event serialized onto the bus complies with the following baseline rules:
   "timestamp": "2026-11-13T16:15:32Z"
 }
 ```
+

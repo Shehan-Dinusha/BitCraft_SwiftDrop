@@ -225,3 +225,4 @@ During the final presentation / exam evaluation, follow these three steps:
    - Template identifier: `PARCEL_DELIVERED`.
    - Status: `SENT`.
 4. Click the row to inspect the rendered body in the audit inspector panel, proving zero PII leakage.
+
