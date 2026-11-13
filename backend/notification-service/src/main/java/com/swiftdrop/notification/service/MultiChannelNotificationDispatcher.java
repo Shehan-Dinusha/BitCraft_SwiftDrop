@@ -1,11 +1,14 @@
 package com.swiftdrop.notification.service;
 
+import com.swiftdrop.notification.client.ContactClient;
 import com.swiftdrop.notification.domain.entity.NotificationDispatchLog;
 import com.swiftdrop.notification.domain.entity.RecipientPreference;
 import com.swiftdrop.notification.domain.repository.NotificationDispatchLogRepository;
 import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
+import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.util.PiiMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ public class MultiChannelNotificationDispatcher {
     private final RecipientPreferenceRepository preferenceRepository;
     private final NotificationDispatchLogRepository logRepository;
     private final TemplateRendererService templateRenderer;
+    private final ContactClient contactClient;
 
     /**
      * Executes omnichannel notification dispatch, verifying recipient preferences and logging the outcome.
@@ -41,7 +45,7 @@ public class MultiChannelNotificationDispatcher {
         boolean isChannelEnabled = isChannelEnabled(pref, channel);
 
         // Resolve destination
-        String destination = resolveDestination(request.destination(), pref, channel);
+        String destination = resolveDestination(request.destination(), pref, channel, request.recipientId());
 
         // Render template
         TemplateRendererService.RenderedNotification rendered = templateRenderer.renderTemplate(
@@ -67,7 +71,7 @@ public class MultiChannelNotificationDispatcher {
                 executeMockDelivery(channel, destination, rendered.subject(), rendered.body());
                 status = "SENT";
                 sentAt = Instant.now();
-                log.info("Notification successfully dispatched to {} via {}", destination, channel);
+                log.info("Notification successfully dispatched to {} via {}", PiiMasker.maskDestination(destination), channel);
             } catch (Exception e) {
                 log.error("Failed to transmit notification via {}: {}", channel, e.getMessage());
                 status = "FAILED";
@@ -128,17 +132,34 @@ public class MultiChannelNotificationDispatcher {
         };
     }
 
-    private String resolveDestination(String requestDest, RecipientPreference pref, String channel) {
+    private String resolveDestination(String requestDest, RecipientPreference pref, String channel, UUID recipientId) {
         if (requestDest != null && !requestDest.isBlank()) {
             return requestDest.trim();
         }
         if (pref != null) {
-            return switch (channel) {
+            String prefDestination = switch (channel) {
                 case "SMS" -> pref.getPhoneNumber();
                 case "EMAIL" -> pref.getEmailAddress();
                 case "PUSH" -> pref.getRecipientId().toString();
                 default -> null;
             };
+            if (prefDestination != null && !prefDestination.isBlank()) {
+                return prefDestination.trim();
+            }
+        }
+        if ("PUSH".equals(channel) && recipientId != null) {
+            return recipientId.toString();
+        }
+        if (contactClient != null && recipientId != null) {
+            Optional<RecipientContact> contactOpt = contactClient.lookupContact(recipientId);
+            if (contactOpt.isPresent()) {
+                RecipientContact contact = contactOpt.get();
+                return switch (channel) {
+                    case "SMS" -> contact.phone();
+                    case "EMAIL" -> contact.email();
+                    default -> null;
+                };
+            }
         }
         return null;
     }
@@ -147,12 +168,12 @@ public class MultiChannelNotificationDispatcher {
         if ("SMS".equalsIgnoreCase(channel)) {
             // E.164 phone sanity check
             if (!destination.matches("^\\+?[0-9]{9,15}$")) {
-                throw new IllegalArgumentException("Invalid phone number format for SMS: " + destination);
+                throw new IllegalArgumentException("Invalid phone number format for SMS: " + PiiMasker.maskDestination(destination));
             }
         } else if ("EMAIL".equalsIgnoreCase(channel)) {
             // Email sanity check
             if (!destination.contains("@")) {
-                throw new IllegalArgumentException("Invalid email destination format: " + destination);
+                throw new IllegalArgumentException("Invalid email destination format: " + PiiMasker.maskDestination(destination));
             }
         }
         // Transmission successful simulated

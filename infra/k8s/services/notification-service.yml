@@ -87,6 +87,12 @@ spec:
                   key: password
             - name: RABBITMQ_HOST
               value: rabbitmq.swiftdrop-messaging.svc.cluster.local
+            - name: AUTH_SERVICE_URL
+              value: http://auth-iam-service.swiftdrop-apps.svc.cluster.local:8080
+            - name: CONTACT_MODE
+              value: iam
+            - name: CONTACT_CACHE_TTL_MINUTES
+              value: "10"
           resources:
             requests:
               cpu: 250m
