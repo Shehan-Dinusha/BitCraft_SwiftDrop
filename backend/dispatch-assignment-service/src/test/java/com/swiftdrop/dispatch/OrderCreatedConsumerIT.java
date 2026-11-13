@@ -14,7 +14,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.QueueInformation;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.MessageListenerContainer;
@@ -39,6 +44,8 @@ import static org.awaitility.Awaitility.await;
 @SpringBootTest(classes = DispatchAssignmentApplication.class)
 @Testcontainers(disabledWithoutDocker = true)
 class OrderCreatedConsumerIT {
+
+    private static final String DISPATCH_DLQ = "dlq.dispatch.events.queue";
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
@@ -77,6 +84,8 @@ class OrderCreatedConsumerIT {
         startListeners();
         stopListeners();
         rabbitAdmin.purgeQueue(RabbitMQConfig.ORDER_CREATED_QUEUE, true);
+        declareInfrastructureDeadLetterTopology();
+        rabbitAdmin.purgeQueue(DISPATCH_DLQ, true);
 
         List<CourierShift> couriers = courierShiftRepository.findAll();
         couriers.forEach(courier -> courier.setShiftStatus(ShiftStatus.OFFLINE));
@@ -122,7 +131,7 @@ class OrderCreatedConsumerIT {
     }
 
     @Test
-    void malformedOrderCreatedMessageIsRejectedWithoutPersistenceOrConfiguredDlq() {
+    void malformedOrderCreatedMessageIsRejectedAndRoutedToTheDispatchDlq() {
         stopListeners();
 
         MessageProperties properties = new MessageProperties();
@@ -138,8 +147,22 @@ class OrderCreatedConsumerIT {
 
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             assertThat(queueInfo().getMessageCount()).isZero();
-            assertThat(rabbitAdmin.getQueueInfo("dlq.dispatch.events.queue")).isNull();
+            QueueInformation deadLetterQueue = rabbitAdmin.getQueueInfo(DISPATCH_DLQ);
+            assertThat(deadLetterQueue).isNotNull();
+            assertThat(deadLetterQueue.getMessageCount()).isEqualTo(1);
         });
+    }
+
+    private void declareInfrastructureDeadLetterTopology() {
+        rabbitAdmin.declareExchange(new TopicExchange(RabbitMQConfig.DEAD_LETTER_EXCHANGE_NAME, true, false));
+        Queue deadLetterQueue = QueueBuilder.durable(DISPATCH_DLQ)
+                .quorum()
+                .withArgument("x-message-ttl", 604_800_000)
+                .build();
+        rabbitAdmin.declareQueue(deadLetterQueue);
+        rabbitAdmin.declareBinding(BindingBuilder.bind(deadLetterQueue)
+                .to(new TopicExchange(RabbitMQConfig.DEAD_LETTER_EXCHANGE_NAME, true, false))
+                .with(RabbitMQConfig.DISPATCH_DEAD_LETTER_ROUTING_KEY));
     }
 
     private OrderCreatedEvent newEvent() {

@@ -9,11 +9,16 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.amqp.core.QueueBuilder;
 
 @Configuration
 public class RabbitMQConfig {
 
     public static final String EXCHANGE_NAME = "swiftdrop.events.exchange";
+    public static final String DEAD_LETTER_EXCHANGE_NAME = "swiftdrop.dlx.exchange";
+    public static final String DISPATCH_DEAD_LETTER_ROUTING_KEY = "dlq.dispatch.events";
+    public static final int DISPATCH_QUEUE_TTL_MILLIS = 86_400_000;
 
     public static final String ORDER_CREATED_QUEUE = "dispatch.order-created.queue";
     public static final String ORDER_CANCELLED_QUEUE = "dispatch.order-cancelled.queue";
@@ -33,12 +38,19 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue orderCreatedQueue() {
-        return new Queue(ORDER_CREATED_QUEUE, true);
+    public TopicExchange deadLetterExchange() {
+        return new TopicExchange(DEAD_LETTER_EXCHANGE_NAME, true, false);
     }
 
     @Bean
-    public Binding orderCreatedBinding(Queue orderCreatedQueue, TopicExchange eventsExchange) {
+    public Queue orderCreatedQueue() {
+        return dispatchQueue(ORDER_CREATED_QUEUE);
+    }
+
+    @Bean
+    public Binding orderCreatedBinding(
+            Queue orderCreatedQueue,
+            @Qualifier("eventsExchange") TopicExchange eventsExchange) {
         return BindingBuilder.bind(orderCreatedQueue)
                 .to(eventsExchange)
                 .with(ROUTING_KEY_ORDER_CREATED);
@@ -46,11 +58,13 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue orderCancelledQueue() {
-        return new Queue(ORDER_CANCELLED_QUEUE, true);
+        return dispatchQueue(ORDER_CANCELLED_QUEUE);
     }
 
     @Bean
-    public Binding orderCancelledBinding(Queue orderCancelledQueue, TopicExchange eventsExchange) {
+    public Binding orderCancelledBinding(
+            Queue orderCancelledQueue,
+            @Qualifier("eventsExchange") TopicExchange eventsExchange) {
         return BindingBuilder.bind(orderCancelledQueue)
                 .to(eventsExchange)
                 .with(ROUTING_KEY_ORDER_CANCELLED);
@@ -58,14 +72,25 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue parcelStatusQueue() {
-        return new Queue(PARCEL_STATUS_QUEUE, true);
+        return dispatchQueue(PARCEL_STATUS_QUEUE);
     }
 
     @Bean
-    public Binding parcelStatusBinding(Queue parcelStatusQueue, TopicExchange eventsExchange) {
+    public Binding parcelStatusBinding(
+            Queue parcelStatusQueue,
+            @Qualifier("eventsExchange") TopicExchange eventsExchange) {
         return BindingBuilder.bind(parcelStatusQueue)
                 .to(eventsExchange)
                 .with(ROUTING_KEY_PARCEL_STATUS_CHANGED);
+    }
+
+    private Queue dispatchQueue(String queueName) {
+        return QueueBuilder.durable(queueName)
+                .quorum()
+                .withArgument("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE_NAME)
+                .withArgument("x-dead-letter-routing-key", DISPATCH_DEAD_LETTER_ROUTING_KEY)
+                .withArgument("x-message-ttl", DISPATCH_QUEUE_TTL_MILLIS)
+                .build();
     }
 
     @Bean
