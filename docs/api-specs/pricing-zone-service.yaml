@@ -70,6 +70,256 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseListPricingZone"
 
+  /api/v1/pricing/tariffs:
+    get:
+      tags: [ Tariff Management ]
+      summary: List all tariff rule versions, newest first
+      operationId: listTariffRules
+      responses:
+        "200":
+          description: Tariff rule versions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListTariffRuleResponse"
+
+  /api/v1/pricing/tariffs/active:
+    get:
+      tags: [ Tariff Management ]
+      summary: Get the active default tariff rule
+      operationId: getActiveTariffRule
+      responses:
+        "200":
+          description: Active tariff rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTariffRuleResponse"
+        "404":
+          description: No active tariff rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+
+  /api/v1/pricing/tariffs/default:
+    put:
+      tags: [ Tariff Management ]
+      summary: Publish a new default tariff version (dispatcher or system admin only)
+      operationId: publishTariffRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TariffRuleRequest"
+      responses:
+        "200":
+          description: New tariff version published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTariffRuleResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "403":
+          description: Caller role is not permitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "409":
+          description: Tariff rule version already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+
+  /api/v1/zones:
+    get:
+      tags: [ Zone Management ]
+      summary: List pricing zones
+      operationId: listZones
+      responses:
+        "200":
+          description: Pricing zones
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListZoneResponse"
+    post:
+      tags: [ Zone Management ]
+      summary: Create a pricing zone (dispatcher or system admin only)
+      operationId: createZone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoneRequest"
+      responses:
+        "201":
+          description: Zone created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseZoneResponse"
+        "403":
+          description: Caller role is not permitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "409":
+          description: Zone code already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+
+  /api/v1/zones/{zoneCode}:
+    parameters:
+      - name: zoneCode
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [ Zone Management ]
+      summary: Get a pricing zone
+      operationId: getZone
+      responses:
+        "200":
+          description: Pricing zone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseZoneResponse"
+        "404":
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+    put:
+      tags: [ Zone Management ]
+      summary: Update a pricing zone (dispatcher or system admin only)
+      operationId: updateZone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoneRequest"
+      responses:
+        "200":
+          description: Zone updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseZoneResponse"
+        "403":
+          description: Caller role is not permitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "404":
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+    delete:
+      tags: [ Zone Management ]
+      summary: Delete a zone that has no districts mapped (dispatcher or system admin only)
+      operationId: deleteZone
+      responses:
+        "200":
+          description: Zone deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "403":
+          description: Caller role is not permitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "404":
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "409":
+          description: Zone still has districts mapped to it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+
+  /api/v1/zones/districts:
+    get:
+      tags: [ Zone Management ]
+      summary: List district to zone mappings
+      operationId: listDistrictMappings
+      responses:
+        "200":
+          description: District mappings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDistrictMappingResponse"
+
+  /api/v1/zones/districts/{district}:
+    put:
+      tags: [ Zone Management ]
+      summary: Assign a district to a zone (dispatcher or system admin only)
+      operationId: assignDistrictToZone
+      parameters:
+        - name: district
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DistrictMappingRequest"
+      responses:
+        "200":
+          description: Mapping updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDistrictMappingResponse"
+        "400":
+          description: Unknown district
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "403":
+          description: Caller role is not permitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "404":
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+
 components:
   schemas:
     OrderSpeed:
@@ -377,6 +627,261 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PricingZone"
+        timestamp:
+          type: string
+          format: date-time
+
+    ZoneRequest:
+      type: object
+      required:
+        - zoneCode
+        - zoneName
+        - tier
+        - baseFee
+        - perKgFee
+        - expressMultiplier
+        - sameDayMultiplier
+      properties:
+        zoneCode:
+          type: string
+          maxLength: 32
+          example: ZONE_WESTERN
+        zoneName:
+          type: string
+          maxLength: 128
+          example: Western Province Metro
+        tier:
+          type: string
+          maxLength: 32
+          example: METRO
+        baseFee:
+          type: number
+          format: double
+          minimum: 0
+          example: 350.0
+        perKgFee:
+          type: number
+          format: double
+          minimum: 0
+          example: 80.0
+        expressMultiplier:
+          type: number
+          format: double
+          minimum: 1
+          example: 1.5
+        sameDayMultiplier:
+          type: number
+          format: double
+          minimum: 1
+          example: 2.0
+        status:
+          type: string
+          maxLength: 64
+          example: ACTIVE
+
+    ZoneResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        zoneCode:
+          type: string
+        zoneName:
+          type: string
+        tier:
+          type: string
+        baseFee:
+          type: number
+          format: double
+        perKgFee:
+          type: number
+          format: double
+        expressMultiplier:
+          type: number
+          format: double
+        sameDayMultiplier:
+          type: number
+          format: double
+        status:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    DistrictMappingRequest:
+      type: object
+      required:
+        - zoneCode
+      properties:
+        zoneCode:
+          type: string
+          maxLength: 32
+          example: ZONE_CENTRAL
+
+    DistrictMappingResponse:
+      type: object
+      properties:
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        zoneCode:
+          type: string
+
+    TariffRuleRequest:
+      type: object
+      required:
+        - basePrice
+        - weightStepKg
+        - pricePerStep
+        - volumetricDivisor
+      properties:
+        ruleVersionId:
+          type: string
+          maxLength: 64
+          description: Optional. Generated when blank.
+          example: PRICING-2026-V2
+        basePrice:
+          type: number
+          format: double
+          minimum: 0
+          example: 550.0
+        weightStepKg:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 1.0
+        pricePerStep:
+          type: number
+          format: double
+          minimum: 0
+          example: 120.0
+        volumetricDivisor:
+          type: number
+          format: double
+          minimum: 1
+          example: 5000.0
+
+    TariffRuleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        ruleVersionId:
+          type: string
+        fromDistrict:
+          type: string
+        toDistrict:
+          type: string
+        basePrice:
+          type: number
+          format: double
+        weightStepKg:
+          type: number
+          format: double
+        pricePerStep:
+          type: number
+          format: double
+        volumetricDivisor:
+          type: number
+          format: double
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiResponseVoid:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseZoneResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/ZoneResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListZoneResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZoneResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseDistrictMappingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/DistrictMappingResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListDistrictMappingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistrictMappingResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseTariffRuleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/TariffRuleResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListTariffRuleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TariffRuleResponse"
         timestamp:
           type: string
           format: date-time
