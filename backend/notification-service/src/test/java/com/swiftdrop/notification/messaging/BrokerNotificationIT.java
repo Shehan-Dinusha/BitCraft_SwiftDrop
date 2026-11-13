@@ -1,8 +1,10 @@
 package com.swiftdrop.notification.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.notification.domain.entity.InAppNotification;
 import com.swiftdrop.notification.domain.entity.NotificationDispatchLog;
 import com.swiftdrop.notification.domain.entity.RecipientPreference;
+import com.swiftdrop.notification.domain.repository.InAppNotificationRepository;
 import com.swiftdrop.notification.domain.repository.NotificationDispatchLogRepository;
 import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -63,6 +65,9 @@ class BrokerNotificationIT {
     private NotificationDispatchLogRepository logRepository;
 
     @Autowired
+    private InAppNotificationRepository inAppRepository;
+
+    @Autowired
     private RecipientPreferenceRepository preferenceRepository;
 
     @Autowired
@@ -114,6 +119,12 @@ class BrokerNotificationIT {
             assertThat(log.getChannel()).isEqualTo("EMAIL");
             assertThat(log.getReferenceId()).isEqualTo(trackingNumber);
             assertThat(log.getStatus()).isIn("SENT", "FAILED", "SUPPRESSED");
+
+            List<InAppNotification> inAppRows = inAppRepository.findByUserIdOrderByCreatedAtDesc(customerId);
+            assertThat(inAppRows).isNotEmpty();
+            InAppNotification inApp = inAppRows.getFirst();
+            assertThat(inApp.getTrackingNumber()).isEqualTo(trackingNumber);
+            assertThat(inApp.isRead()).isFalse();
         });
     }
 }

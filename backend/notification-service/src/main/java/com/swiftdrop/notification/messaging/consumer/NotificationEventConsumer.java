@@ -5,8 +5,10 @@ import com.swiftdrop.notification.config.RabbitMQConfig;
 import com.swiftdrop.notification.domain.entity.ProcessedEvent;
 import com.swiftdrop.notification.domain.repository.ProcessedEventRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
+import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.messaging.trigger.EventEnvelope;
 import com.swiftdrop.notification.messaging.trigger.NotificationTrigger;
+import com.swiftdrop.notification.service.InAppNotificationService;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,13 +28,36 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class NotificationEventConsumer {
 
     private final ObjectMapper objectMapper;
     private final MultiChannelNotificationDispatcher dispatcher;
     private final List<NotificationTrigger> triggers;
     private final ProcessedEventRepository processedEventRepository;
+    private final InAppNotificationService inAppNotificationService;
+
+    public NotificationEventConsumer(
+            ObjectMapper objectMapper,
+            MultiChannelNotificationDispatcher dispatcher,
+            List<NotificationTrigger> triggers,
+            ProcessedEventRepository processedEventRepository
+    ) {
+        this(objectMapper, dispatcher, triggers, processedEventRepository, null);
+    }
+
+    public NotificationEventConsumer(
+            ObjectMapper objectMapper,
+            MultiChannelNotificationDispatcher dispatcher,
+            List<NotificationTrigger> triggers,
+            ProcessedEventRepository processedEventRepository,
+            InAppNotificationService inAppNotificationService
+    ) {
+        this.objectMapper = objectMapper;
+        this.dispatcher = dispatcher;
+        this.triggers = triggers;
+        this.processedEventRepository = processedEventRepository;
+        this.inAppNotificationService = inAppNotificationService;
+    }
 
     @RabbitListener(queues = RabbitMQConfig.NOTIFICATION_EVENTS_QUEUE)
     public void onNotificationEvent(Message message) {
@@ -61,7 +86,28 @@ public class NotificationEventConsumer {
                 List<DispatchNotificationRequest> requests = trigger.build(envelope);
                 if (requests != null && !requests.isEmpty()) {
                     for (DispatchNotificationRequest request : requests) {
-                        dispatcher.dispatch(request);
+                        NotificationDispatchLogResponse dispatchLog = dispatcher.dispatch(request);
+                        if (request.recipientId() != null) {
+                            String title = dispatchLog != null && dispatchLog.subject() != null
+                                    ? dispatchLog.subject()
+                                    : "SwiftDrop Notification";
+                            String body = dispatchLog != null && dispatchLog.content() != null
+                                    ? dispatchLog.content()
+                                    : "Notification received";
+                            String trackingNumber = dispatchLog != null && dispatchLog.referenceId() != null
+                                    ? dispatchLog.referenceId()
+                                    : envelope.extractTrackingNumber();
+
+                            if (inAppNotificationService != null) {
+                                inAppNotificationService.saveNotification(request.recipientId(), title, body, trackingNumber);
+
+                                // For merchant orders, also write to merchant owner inbox if distinct
+                                Optional<UUID> merchantOwnerId = envelope.extractMerchantOwnerId();
+                                if (merchantOwnerId.isPresent() && !merchantOwnerId.get().equals(request.recipientId())) {
+                                    inAppNotificationService.saveNotification(merchantOwnerId.get(), title, body, trackingNumber);
+                                }
+                            }
+                        }
                     }
                 }
             }

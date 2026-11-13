@@ -6,6 +6,7 @@ import com.swiftdrop.notification.domain.repository.ProcessedEventRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.messaging.consumer.NotificationEventConsumer;
 import com.swiftdrop.notification.messaging.trigger.PickedUpTrigger;
+import com.swiftdrop.notification.service.InAppNotificationService;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +37,9 @@ class DuplicateEventTest {
     @Mock
     private ProcessedEventRepository processedEventRepository;
 
+    @Mock
+    private InAppNotificationService inAppNotificationService;
+
     private NotificationEventConsumer consumer;
 
     @BeforeEach
@@ -44,7 +48,8 @@ class DuplicateEventTest {
                 objectMapper,
                 dispatcher,
                 List.of(new PickedUpTrigger()),
-                processedEventRepository
+                processedEventRepository,
+                inAppNotificationService
         );
     }
 
