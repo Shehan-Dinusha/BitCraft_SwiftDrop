@@ -10,7 +10,10 @@ export const apiClient = axios.create({ baseURL: '/api' });
 // Attach the in-memory Bearer token to every outgoing request.
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
+  const user = useAuthStore.getState().user;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (user?.id) config.headers['X-User-Id'] = user.id;
+  if (user?.role) config.headers['X-User-Role'] = user.role;
   return config;
 });
 

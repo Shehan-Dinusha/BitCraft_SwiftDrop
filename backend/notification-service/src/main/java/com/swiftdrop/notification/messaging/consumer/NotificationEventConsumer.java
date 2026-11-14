@@ -45,6 +45,7 @@ public class NotificationEventConsumer {
         this(objectMapper, dispatcher, triggers, processedEventRepository, null);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public NotificationEventConsumer(
             ObjectMapper objectMapper,
             MultiChannelNotificationDispatcher dispatcher,

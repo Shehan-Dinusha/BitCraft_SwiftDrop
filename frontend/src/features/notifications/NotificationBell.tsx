@@ -43,13 +43,12 @@ export function NotificationBell() {
 
   const token = useAuthStore((state) => state.token);
   const role = useAuthStore((state) => state.role);
-  const isDevSession = useAuthStore((state) => state.isDevSession);
 
   // Poll unread count every 20 seconds as required by Member 9 spec
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: notificationApi.getUnreadCount,
-    enabled: !!token && !isDevSession,
+    enabled: !!token,
     refetchInterval: 20_000,
     staleTime: 10_000,
     retry: false
@@ -59,7 +58,7 @@ export function NotificationBell() {
   const { data: rawNotifications = [] } = useQuery({
     queryKey: ['notifications', 'my-list'],
     queryFn: notificationApi.listMyNotifications,
-    enabled: !!token && !isDevSession && isOpen,
+    enabled: !!token && isOpen,
     staleTime: 5_000
   });
 

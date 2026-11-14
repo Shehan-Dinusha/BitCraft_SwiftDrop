@@ -52,7 +52,19 @@ export const useAuthStore = create<Session>()(
       role: 'CUSTOMER',
       isDevSession: false,
       setSession: (token, role) =>
-        set({ token, role, refreshToken: null, user: null, isDevSession: true }),
+        set({
+          token,
+          role,
+          refreshToken: null,
+          user: {
+            id: '018f6c32-b7e1-7d34-9128-498c257b4201',
+            username: `dev-${role.toLowerCase()}`,
+            email: `${role.toLowerCase()}@swiftdrop.lk`,
+            role: role === 'ADMIN_OPS' ? 'DISPATCHER' : (role as UserRole),
+            district: 'COLOMBO'
+          },
+          isDevSession: true
+        }),
       setAuth: (tokens) =>
         set({
           token: tokens.accessToken ?? null,
