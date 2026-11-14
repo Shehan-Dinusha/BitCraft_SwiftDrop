@@ -219,6 +219,15 @@ public class WebhookUrlPolicy {
         return Optional.empty();
     }
 
+    /**
+     * Whether {@code host:port} is an exact entry of the development allowlist (always false in production, where
+     * the list must be empty). Used by the connect-time guard so it honours the same narrow exception.
+     */
+    public boolean isDevAllowlisted(String host, int port) {
+        return host != null && !devHttpAllowlist.isEmpty() && devHttpAllowlist.contains(normaliseHost(host) + ":" + port);
+    }
+
+    /** True for any address that is not a permitted public destination (the ranges listed on this class). */
     static boolean isBlocked(InetAddress address) {
         if (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress()
                 || address.isSiteLocalAddress() || address.isMulticastAddress()) {

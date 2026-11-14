@@ -52,3 +52,9 @@ springdoc:
     version: OPENAPI_3_1
   swagger-ui:
     path: /swagger-ui.html
+logging:
+  level:
+    # Reactor Netty logs "The connection observed an error" at WARN with the remote host, IP and raw TLS/IO exception
+    # text. Merchant hosts and raw errors must not reach logs; the webhook sender logs every failure itself in a
+    # sanitised form (ids, error class, status, latency). Applies to all profiles, including aks.
+    reactor.netty.http.client.HttpClientConnect: ERROR
