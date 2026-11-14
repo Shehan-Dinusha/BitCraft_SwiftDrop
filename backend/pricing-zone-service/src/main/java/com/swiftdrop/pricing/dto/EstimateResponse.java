@@ -29,7 +29,7 @@ public record EstimateResponse(
         @Schema(description = "Actual package weight in kg", example = "2.50")
         BigDecimal actualWeightKg,
 
-        @Schema(description = "Volumetric weight in kg (L*W*H / 5000)", example = "0.60")
+        @Schema(description = "Volumetric weight in kg (L*W*H / volumetric divisor of the active tariff rule)", example = "0.60")
         BigDecimal volumetricWeightKg,
 
         @Schema(description = "Chargeable billable weight in kg", example = "2.50")

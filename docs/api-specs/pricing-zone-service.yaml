@@ -23,6 +23,7 @@ paths:
     post:
       tags: [Pricing]
       summary: Calculate dynamic delivery fee quotation
+      description: Also served under the alias prefix /api/v1/pricing-quote.
       operationId: calculatePricingQuote
       requestBody:
         required: true
@@ -37,11 +38,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponsePricingQuoteResponse"
+        "400":
+          description: Validation failed, or no active tariff or zone mapping is configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/pricing/estimate:
     post:
       tags: [Pricing]
       summary: Calculate a delivery fee estimate
+      description: Also served under the alias prefix /api/v1/pricing-quote.
       operationId: estimateDeliveryFee
       requestBody:
         required: true
@@ -56,11 +64,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseEstimateResponse"
+        "400":
+          description: Validation failed, or no active tariff or zone mapping is configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/pricing/zones:
     get:
       tags: [Pricing]
-      summary: List all active pricing geofence zones
+      summary: List all pricing geofence zones
       operationId: listPricingZones
       responses:
         "200":
@@ -69,6 +83,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListPricingZone"
+
+  /api/v1/geofence-zone/health:
+    get:
+      tags: [Geofence Zone]
+      summary: Check geofence zone endpoint health
+      operationId: checkGeofenceZoneHealth
+      responses:
+        "200":
+          description: Service health response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
 
   /api/v1/pricing/tariffs:
     get:
@@ -125,6 +152,12 @@ paths:
           content:
             application/json:
               schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "401":
+          description: Caller is not authenticated
+          content:
+            application/json:
+              schema:
                 $ref: "#/components/schemas/ApiResponseVoid"
         "403":
           description: Caller role is not permitted
@@ -168,6 +201,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseZoneResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "401":
+          description: Caller is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
         "403":
           description: Caller role is not permitted
           content:
@@ -188,6 +233,7 @@ paths:
         required: true
         schema:
           type: string
+          example: ZONE_WESTERN
     get:
       tags: [ Zone Management ]
       summary: Get a pricing zone
@@ -222,6 +268,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseZoneResponse"
+        "400":
+          description: Validation error (ApiErrorResponse), or the zone code in the body differs from the path (ApiResponseVoid)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ApiErrorResponse"
+                  - $ref: "#/components/schemas/ApiResponseVoid"
+        "401":
+          description: Caller is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
         "403":
           description: Caller role is not permitted
           content:
@@ -241,6 +301,12 @@ paths:
       responses:
         "200":
           description: Zone deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoid"
+        "401":
+          description: Caller is not authenticated
           content:
             application/json:
               schema:
@@ -286,6 +352,7 @@ paths:
         - name: district
           in: path
           required: true
+          description: District name, case-insensitive
           schema:
             $ref: "#/components/schemas/SriLankanDistrict"
       requestBody:
@@ -302,7 +369,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseDistrictMappingResponse"
         "400":
-          description: Unknown district
+          description: Validation error (ApiErrorResponse), or unknown district (ApiResponseVoid)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ApiErrorResponse"
+                  - $ref: "#/components/schemas/ApiResponseVoid"
+        "401":
+          description: Caller is not authenticated
           content:
             application/json:
               schema:
@@ -376,17 +451,22 @@ components:
         lengthCm:
           type: number
           format: double
+          minimum: 0.1
           example: 25.0
         widthCm:
           type: number
           format: double
+          minimum: 0.1
           example: 20.0
         heightCm:
           type: number
           format: double
+          minimum: 0.1
           example: 10.0
         speed:
-          $ref: "#/components/schemas/OrderSpeed"
+          allOf:
+            - $ref: "#/components/schemas/OrderSpeed"
+          default: STANDARD
 
     PricingQuoteResponse:
       type: object
@@ -411,24 +491,29 @@ components:
         volumetricWeightKg:
           type: number
           format: double
+          description: Volumetric weight in kg (L*W*H / volumetric divisor of the active tariff rule)
           example: 1.0
         chargeableWeightKg:
           type: number
           format: double
+          description: Chargeable billable weight in kg (the higher of actual and volumetric weight)
           example: 1.5
         speed:
           $ref: "#/components/schemas/OrderSpeed"
         baseFee:
           type: number
           format: double
+          description: Base starting fee (first weight step included)
           example: 550.0
         weightFee:
           type: number
           format: double
+          description: Additional weight fee for every started extra weight step
           example: 60.0
         speedSurcharge:
           type: number
           format: double
+          description: Speed surcharge in LKR (total fee minus the standard subtotal)
           example: 0.0
         estimatedFee:
           type: number
@@ -473,7 +558,9 @@ components:
           minimum: 0.1
           example: 10.0
         speed:
-          $ref: "#/components/schemas/OrderSpeed"
+          allOf:
+            - $ref: "#/components/schemas/OrderSpeed"
+          default: STANDARD
 
     EstimateResponse:
       type: object
@@ -498,6 +585,7 @@ components:
         volumetricWeightKg:
           type: number
           format: double
+          description: Volumetric weight in kg (L*W*H / volumetric divisor of the active tariff rule)
           example: 0.6
         chargeableWeightKg:
           type: number
@@ -567,6 +655,43 @@ components:
         status:
           type: string
           example: ACTIVE
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ApiErrorResponse:
+      type: object
+      description: Error body returned by the global exception handler for 400 responses
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: Bad Request
+        message:
+          type: string
+          example: Validation failed
+        path:
+          type: string
+          example: /api/v1/pricing/estimate
+        correlationId:
+          type: string
+          description: Correlation identifier for tracing the failure. Omitted when not set
+          example: 0f5e8c4a-2c6d-4a58-9c8f-4c2c4e7b8a11
+        fieldErrors:
+          type: object
+          description: Present for validation errors. Field name mapped to its error messages
+          additionalProperties:
+            type: array
+            items:
+              type: string
 
     ApiResponseString:
       type: object
@@ -645,6 +770,7 @@ components:
         zoneCode:
           type: string
           maxLength: 32
+          description: Unique zone code. Cannot be changed on update
           example: ZONE_WESTERN
         zoneName:
           type: string
@@ -658,11 +784,13 @@ components:
           type: number
           format: double
           minimum: 0
+          description: Base fee in LKR for deliveries inside one district of this zone
           example: 350.0
         perKgFee:
           type: number
           format: double
           minimum: 0
+          description: Fee in LKR for each extra weight step
           example: 80.0
         expressMultiplier:
           type: number
@@ -677,6 +805,7 @@ components:
         status:
           type: string
           maxLength: 64
+          description: Optional. Defaults to ACTIVE on create and keeps the current value on update
           example: ACTIVE
 
     ZoneResponse:
@@ -717,6 +846,7 @@ components:
         zoneCode:
           type: string
           maxLength: 32
+          description: Code of an existing zone to map the district to
           example: ZONE_CENTRAL
 
     DistrictMappingResponse:
@@ -744,21 +874,25 @@ components:
           type: number
           format: double
           minimum: 0
+          description: Base price in LKR for different-district deliveries. Covers the first weight step
           example: 550.0
         weightStepKg:
           type: number
           format: double
           minimum: 0.01
+          description: Size of one weight step in kg
           example: 1.0
         pricePerStep:
           type: number
           format: double
           minimum: 0
+          description: Price in LKR for each extra weight step
           example: 120.0
         volumetricDivisor:
           type: number
           format: double
           minimum: 1
+          description: Divisor used to turn length x width x height (cm) into volumetric weight (kg)
           example: 5000.0
 
     TariffRuleResponse:
@@ -771,8 +905,12 @@ components:
           type: string
         fromDistrict:
           type: string
+          description: Origin district, or ALL for the default rule
+          example: ALL
         toDistrict:
           type: string
+          description: Destination district, or ALL for the default rule
+          example: ALL
         basePrice:
           type: number
           format: double

@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/geofence-zone")
-@Tag(name = "GeofenceZone", description = "GeofenceZone API operations")
+@Tag(name = "Geofence Zone", description = "Geofence zone service status")
 public class GeofenceZoneController {
     @GetMapping("/health")
-    @Operation(summary = "GET /health")
+    @Operation(summary = "Check geofence zone endpoint health")
     public ApiResponse<String> health() {
         return ApiResponse.success("GeofenceZoneController is ready");
     }
