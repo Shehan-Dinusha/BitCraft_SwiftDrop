@@ -39,6 +39,7 @@ export function WebhookResiliencyConsolePage() {
 
   // Endpoint Creation Form
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [targetUrl, setTargetUrl] = useState('');
   const [subscribedEvents, setSubscribedEvents] = useState('parcel.status.changed');
   const [description, setDescription] = useState('');
@@ -83,6 +84,7 @@ export function WebhookResiliencyConsolePage() {
 
     try {
       setCreating(true);
+      setCreateError(null);
       // No merchantId: the backend registers the endpoint under the caller's own merchant identity.
       const request: CreateWebhookEndpointRequest = {
         targetUrl: targetUrl.trim(),
@@ -104,11 +106,17 @@ export function WebhookResiliencyConsolePage() {
       setTargetUrl('');
       setDescription('');
     } catch (err: unknown) {
-      const msg = apiErrorMessage(err, 'Failed to register webhook endpoint');
-      setBanner({ tone: 'danger', message: msg });
+      // Shown inside the still-open dialog (a page-level banner would be hidden behind it), so the
+      // merchant can read the backend's message, fix the input and resubmit.
+      setCreateError(apiErrorMessage(err, 'Failed to register webhook endpoint'));
     } finally {
       setCreating(false);
     }
+  };
+
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+    setCreateError(null);
   };
 
   const handleToggleActive = async (endpoint: WebhookEndpointResponse) => {
@@ -451,11 +459,17 @@ export function WebhookResiliencyConsolePage() {
       {/* Registration Modal */}
       <Modal
         open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={closeCreateModal}
         title="Register New Webhook Endpoint"
         size="md"
       >
         <form onSubmit={handleCreateEndpoint} className="space-y-4 p-4 text-xs">
+          {createError && (
+            <StatusBanner tone="danger" title="Registration failed" onDismiss={() => setCreateError(null)}>
+              {createError}
+            </StatusBanner>
+          )}
+
           <div>
             <label className="block font-medium text-primary">Target Endpoint URL (HTTPS)</label>
             <input
@@ -502,7 +516,7 @@ export function WebhookResiliencyConsolePage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={closeCreateModal}
             >
               Cancel
             </Button>
