@@ -6,6 +6,7 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
+import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,12 +48,26 @@ public class DispatchController {
     }
 
     @PostMapping("/assign")
-    @Operation(summary = "Manual courier assignment override", description = "Allows dispatcher to manually assign or reassign a courier to an order.")
+    @Operation(summary = "Assign a courier to an unassigned order",
+            description = "Dispatcher confirms a courier for an order in the unassigned queue. "
+                    + "Returns 409 if the order already has a courier; use /reassign to change it.")
     public ApiResponse<DispatchAssignmentResponse> manualAssign(@Valid @RequestBody ManualAssignRequest request) {
         var assignment = manualOverrideService.manualAssign(request);
         return ApiResponse.success(
                 DispatchAssignmentResponse.fromEntity(assignment),
                 "Order successfully assigned to courier"
+        );
+    }
+
+    @PostMapping("/reassign")
+    @Operation(summary = "Reassign an order to a different courier",
+            description = "Explicitly moves an assigned order to another courier. The request must name the courier "
+                    + "currently assigned; returns 409 if the assignment changed since it was viewed.")
+    public ApiResponse<DispatchAssignmentResponse> reassign(@Valid @RequestBody ReassignCourierRequest request) {
+        var assignment = manualOverrideService.reassign(request);
+        return ApiResponse.success(
+                DispatchAssignmentResponse.fromEntity(assignment),
+                "Order successfully reassigned to courier"
         );
     }
 

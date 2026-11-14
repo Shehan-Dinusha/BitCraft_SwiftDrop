@@ -32,6 +32,15 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(AssignmentConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleAssignmentConflict(
+            AssignmentConflictException ex,
+            HttpServletRequest request) {
+        log.warn("Assignment conflict on {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(409, "Assignment Conflict", ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(AssignmentNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(AssignmentNotFoundException ex, HttpServletRequest request) {
         log.warn("Assignment not found: {}", ex.getMessage());

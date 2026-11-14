@@ -25,8 +25,10 @@ paths:
     post:
       tags:
         - Dispatch
-      summary: Manual courier assignment override
-      description: Allows dispatcher or supervisor to manually assign or reassign a courier to an order.
+      summary: Assign a courier to an unassigned order
+      description: >-
+        Dispatcher confirms a courier for an order in the unassigned queue. An order that
+        already has a courier is never replaced by this operation; use /api/v1/dispatch/reassign.
       operationId: manualAssign
       requestBody:
         required: true
@@ -41,10 +43,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseDispatchAssignmentResponse"
+        "400":
+          description: Validation failed
         "404":
           description: Assignment or order not found
         "409":
-          description: Courier not available
+          description: >-
+            Order already assigned (Assignment Conflict), courier not available, assignment in a
+            terminal state, or the record was changed by a concurrent operation
+
+  /api/v1/dispatch/reassign:
+    post:
+      tags:
+        - Dispatch
+      summary: Reassign an order to a different courier
+      description: >-
+        Explicitly moves an assigned order to another courier. The request must name the courier
+        currently assigned, so a reassignment based on a stale view is rejected instead of
+        overwriting another dispatcher's decision.
+      operationId: reassign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReassignCourierRequest"
+      responses:
+        "200":
+          description: Order reassigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseDispatchAssignmentResponse"
+        "400":
+          description: Validation failed, or the new courier is the current courier
+        "404":
+          description: Assignment or order not found
+        "409":
+          description: >-
+            Order has no courier yet or is no longer assigned to the expected courier
+            (Assignment Conflict), courier not available, assignment in a terminal state, or the
+            record was changed by a concurrent operation
 
   /api/v1/dispatch/assignments:
     get:
@@ -402,6 +441,29 @@ components:
           type: string
           format: uuid
         courierId:
+          type: string
+          format: uuid
+        assignedBy:
+          type: string
+          example: DISPATCHER_ADMIN
+        reason:
+          type: string
+
+    ReassignCourierRequest:
+      type: object
+      required:
+        - orderId
+        - expectedCurrentCourierId
+        - newCourierId
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        expectedCurrentCourierId:
+          type: string
+          format: uuid
+          description: Courier the dispatcher believes is currently assigned
+        newCourierId:
           type: string
           format: uuid
         assignedBy:

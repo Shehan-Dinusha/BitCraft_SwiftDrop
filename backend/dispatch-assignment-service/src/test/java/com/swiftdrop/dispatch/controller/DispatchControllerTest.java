@@ -8,6 +8,8 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
+import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
+import com.swiftdrop.dispatch.exception.AssignmentConflictException;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -161,5 +164,61 @@ class DispatchControllerTest {
                 .andExpect(jsonPath("$.message").value(
                         "The dispatch record was changed by another operation. Refresh and retry."
                 ));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/dispatch/assign returns 409 when the order is already assigned")
+    void testManualAssign_AlreadyAssignedConflict() throws Exception {
+        ManualAssignRequest request = new ManualAssignRequest(UUID.randomUUID(), UUID.randomUUID(), "DISPATCHER_TWO", null);
+        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class)))
+                .thenThrow(new AssignmentConflictException("Order is already assigned to a courier."));
+
+        mockMvc.perform(post("/api/v1/dispatch/assign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Assignment Conflict"))
+                .andExpect(jsonPath("$.message").value("Order is already assigned to a courier."));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/dispatch/reassign moves the order to the new courier")
+    void testReassign() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID newCourierId = UUID.randomUUID();
+        ReassignCourierRequest request = new ReassignCourierRequest(
+                orderId, UUID.randomUUID(), newCourierId, "DISPATCH_SUPERVISOR", "Courier vehicle breakdown");
+
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setAssignmentId(UUID.randomUUID());
+        assignment.setOrderId(orderId);
+        assignment.setCourierId(newCourierId);
+        assignment.setCourierName("Kamal Silva");
+        assignment.setStatus(AssignmentStatus.REASSIGNED);
+        when(manualOverrideService.reassign(any(ReassignCourierRequest.class))).thenReturn(assignment);
+
+        mockMvc.perform(post("/api/v1/dispatch/reassign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.courierId").value(newCourierId.toString()))
+                .andExpect(jsonPath("$.data.status").value("REASSIGNED"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/dispatch/reassign requires the expected current courier")
+    void testReassign_MissingExpectedCourierIsRejected() throws Exception {
+        ReassignCourierRequest request = new ReassignCourierRequest(
+                UUID.randomUUID(), null, UUID.randomUUID(), "DISPATCH_SUPERVISOR", null);
+
+        mockMvc.perform(post("/api/v1/dispatch/reassign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        verifyNoInteractions(manualOverrideService);
     }
 }

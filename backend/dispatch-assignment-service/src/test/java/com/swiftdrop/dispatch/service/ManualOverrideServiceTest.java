@@ -10,6 +10,8 @@ import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
+import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
+import com.swiftdrop.dispatch.exception.AssignmentConflictException;
 import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
@@ -57,52 +59,137 @@ class ManualOverrideServiceTest {
     }
 
     @Test
-    @DisplayName("Manual assign override: successfully reassigns order from old courier to new courier")
-    void testManualAssign_ReassignSuccess() {
-        DispatchAssignment assignment = new DispatchAssignment();
-        assignment.setOrderId(orderId);
-        assignment.setCourierId(oldCourierId);
-        assignment.setCourierName("Old Courier");
-        assignment.setStatus(AssignmentStatus.ASSIGNED);
-        assignment.setPickupDistrict(SriLankanDistrict.COLOMBO);
-        assignment.setDeliveryDistrict(SriLankanDistrict.GAMPAHA);
-        assignment.setOrderSpeed(OrderSpeed.STANDARD);
-        assignment.setTrackingNumber("SD-COL-11111");
+    @DisplayName("Assign: confirms a courier for an unassigned order and publishes assignment events")
+    void testManualAssign_UnassignedOrderSucceeds() {
+        DispatchAssignment assignment = unassignedOrder();
+        CourierShift courier = courier(newCourierId, "New Courier", 1);
 
-        CourierShift oldCourier = new CourierShift();
-        oldCourier.setCourierId(oldCourierId);
-        oldCourier.setCourierName("Old Courier");
-        oldCourier.setActiveParcelsCount(2);
-        oldCourier.setMaxCapacity(5);
-        oldCourier.setShiftStatus(ShiftStatus.AVAILABLE);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(courier));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        CourierShift newCourier = new CourierShift();
-        newCourier.setCourierId(newCourierId);
-        newCourier.setCourierName("New Courier");
-        newCourier.setActiveParcelsCount(1);
-        newCourier.setMaxCapacity(5);
-        newCourier.setShiftStatus(ShiftStatus.AVAILABLE);
+        DispatchAssignment result = manualOverrideService.manualAssign(
+                new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_ONE", null));
+
+        assertThat(result.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
+        assertThat(result.getCourierId()).isEqualTo(newCourierId);
+        assertThat(result.getAssignedBy()).isEqualTo("DISPATCHER_ONE");
+        verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(newCourierId) && c.getActiveParcelsCount() == 2));
+        verify(eventPublisher).publishCourierAssigned(any(CourierAssignedEvent.class));
+        verify(eventPublisher).publishParcelStatusChanged(any());
+    }
+
+    @Test
+    @DisplayName("Assign: a second dispatcher cannot replace an existing assignment")
+    void testManualAssign_AlreadyAssignedOrderIsRejected() {
+        DispatchAssignment assignment = assignedOrder(AssignmentStatus.ASSIGNED);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        ManualAssignRequest secondDispatcher = new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_TWO", null);
+
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(secondDispatcher))
+                .isInstanceOf(AssignmentConflictException.class)
+                .hasMessageContaining("already assigned");
+
+        assertThat(assignment.getCourierId()).isEqualTo(oldCourierId);
+        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Assign: a reassigned order is also protected from a normal assignment")
+    void testManualAssign_ReassignedOrderIsRejected() {
+        when(assignmentRepository.findByOrderId(orderId))
+                .thenReturn(Optional.of(assignedOrder(AssignmentStatus.REASSIGNED)));
+
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(
+                new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_TWO", null)))
+                .isInstanceOf(AssignmentConflictException.class);
+
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Reassign: moves the order to a new courier and rebalances both workloads")
+    void testReassign_Success() {
+        DispatchAssignment assignment = assignedOrder(AssignmentStatus.ASSIGNED);
+        CourierShift oldCourier = courier(oldCourierId, "Old Courier", 2);
+        CourierShift newCourier = courier(newCourierId, "New Courier", 1);
 
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
         when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(newCourier));
         when(courierShiftRepository.findByCourierId(oldCourierId)).thenReturn(Optional.of(oldCourier));
         when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ManualAssignRequest request = new ManualAssignRequest(orderId, newCourierId, "DISPATCH_SUPERVISOR", "Customer urgent request");
-        DispatchAssignment result = manualOverrideService.manualAssign(request);
+        DispatchAssignment result = manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", "Customer urgent request"));
 
         assertThat(result.getCourierId()).isEqualTo(newCourierId);
         assertThat(result.getCourierName()).isEqualTo("New Courier");
         assertThat(result.getStatus()).isEqualTo(AssignmentStatus.REASSIGNED);
         assertThat(result.getAssignedBy()).isEqualTo("DISPATCH_SUPERVISOR");
-
-        // Old courier decremented
         verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(oldCourierId) && c.getActiveParcelsCount() == 1));
-        // New courier incremented
         verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(newCourierId) && c.getActiveParcelsCount() == 2));
-
         verify(eventPublisher).publishCourierAssigned(any(CourierAssignedEvent.class));
         verify(eventPublisher).publishParcelStatusChanged(any());
+    }
+
+    @Test
+    @DisplayName("Reassign: rejected when the assignment changed since the dispatcher viewed it")
+    void testReassign_StaleExpectedCourierIsRejected() {
+        DispatchAssignment assignment = assignedOrder(AssignmentStatus.ASSIGNED);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        UUID staleCourierId = UUID.randomUUID();
+        assertThatThrownBy(() -> manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, staleCourierId, newCourierId, "DISPATCHER_TWO", null)))
+                .isInstanceOf(AssignmentConflictException.class)
+                .hasMessageContaining("no longer assigned");
+
+        assertThat(assignment.getCourierId()).isEqualTo(oldCourierId);
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Reassign: rejected for an order that has no courier yet")
+    void testReassign_UnassignedOrderIsRejected() {
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
+
+        assertThatThrownBy(() -> manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCHER_ONE", null)))
+                .isInstanceOf(AssignmentConflictException.class)
+                .hasMessageContaining("assign operation");
+
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Reassign: rejected without side effects when the new courier is the current courier")
+    void testReassign_SameCourierIsRejected() {
+        when(assignmentRepository.findByOrderId(orderId))
+                .thenReturn(Optional.of(assignedOrder(AssignmentStatus.ASSIGNED)));
+
+        assertThatThrownBy(() -> manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, oldCourierId, "DISPATCHER_ONE", null)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Reassign: rejected for a completed assignment")
+    void testReassign_CompletedAssignmentIsRejected() {
+        when(assignmentRepository.findByOrderId(orderId))
+                .thenReturn(Optional.of(assignedOrder(AssignmentStatus.COMPLETED)));
+
+        assertThatThrownBy(() -> manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCHER_ONE", null)))
+                .isInstanceOf(InvalidAssignmentTransitionException.class);
+
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
     }
 
     @Test
@@ -168,5 +255,34 @@ class ManualOverrideServiceTest {
                 .isInstanceOf(InvalidAssignmentTransitionException.class);
 
         verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    private DispatchAssignment unassignedOrder() {
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(orderId);
+        assignment.setStatus(AssignmentStatus.UNASSIGNED);
+        assignment.setPickupDistrict(SriLankanDistrict.COLOMBO);
+        assignment.setDeliveryDistrict(SriLankanDistrict.GAMPAHA);
+        assignment.setOrderSpeed(OrderSpeed.STANDARD);
+        assignment.setTrackingNumber("SD-COL-11111");
+        return assignment;
+    }
+
+    private DispatchAssignment assignedOrder(AssignmentStatus status) {
+        DispatchAssignment assignment = unassignedOrder();
+        assignment.setCourierId(oldCourierId);
+        assignment.setCourierName("Old Courier");
+        assignment.setStatus(status);
+        return assignment;
+    }
+
+    private CourierShift courier(UUID courierId, String name, int activeParcels) {
+        CourierShift courier = new CourierShift();
+        courier.setCourierId(courierId);
+        courier.setCourierName(name);
+        courier.setActiveParcelsCount(activeParcels);
+        courier.setMaxCapacity(5);
+        courier.setShiftStatus(ShiftStatus.AVAILABLE);
+        return courier;
     }
 }
