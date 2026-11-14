@@ -112,8 +112,13 @@ public class JwksKeyStore {
         if (!acquireFetchSlot()) {
             return null;
         }
+        // Clear the marker BEFORE the result reaches callers (doOnSuccess/doOnError run
+        // ahead of the downstream signal). doFinally would run after it, on the Netty
+        // thread, so a caller could start its next lookup while the marker still
+        // pointed at this finished fetch and silently reuse it.
         Mono<Map<String, RSAPublicKey>> fetch = fetchKeys()
-                .doFinally(signal -> clearInFlight())
+                .doOnSuccess(loaded -> clearInFlight())
+                .doOnError(error -> clearInFlight())
                 .cache();
         inFlight = fetch;
         return fetch;
