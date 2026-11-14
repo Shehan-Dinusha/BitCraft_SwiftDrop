@@ -11,6 +11,7 @@ import com.swiftdrop.notification.dto.RecipientContact;
 import com.swiftdrop.notification.service.email.EmailHtmlRenderer;
 import com.swiftdrop.notification.service.email.EmailSender;
 import com.swiftdrop.notification.util.PiiMasker;
+import com.swiftdrop.notification.util.SensitiveTemplates;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,7 +47,9 @@ public class MultiChannelNotificationDispatcher {
         RecipientPreference pref = prefOpt.orElse(null);
 
         String channel = request.channel().toUpperCase();
-        boolean isChannelEnabled = isChannelEnabled(pref, channel);
+        // One-time security codes are not optional mail: they ignore the email-off preference.
+        boolean sensitive = SensitiveTemplates.isSensitive(request.templateCode());
+        boolean isChannelEnabled = sensitive || isChannelEnabled(pref, channel);
 
         // Resolve destination
         String destination = resolveDestination(request.destination(), pref, channel, request.recipientId());
@@ -90,7 +93,8 @@ public class MultiChannelNotificationDispatcher {
                 .templateCode(request.templateCode())
                 .destination(destination != null ? destination : "UNRESOLVED")
                 .subject(rendered.subject())
-                .content(rendered.body())
+                // Never persist a one-time code in the audit log.
+                .content(sensitive ? SensitiveTemplates.REDACTED_CONTENT : rendered.body())
                 .status(status)
                 .failureReason(failureReason)
                 .sentAt(sentAt)
@@ -172,7 +176,8 @@ public class MultiChannelNotificationDispatcher {
                 String trackingNumber = trackingNumberOf(request);
                 emailSender.send(destination, rendered.subject(),
                         emailHtmlRenderer.renderText(rendered.body(), trackingNumber),
-                        emailHtmlRenderer.renderHtml(request.templateCode(), rendered.subject(), rendered.body(), trackingNumber));
+                        emailHtmlRenderer.renderHtml(request.templateCode(), rendered.subject(), rendered.body(), trackingNumber,
+                                request.templateParams()));
             }
             case "PUSH" -> {
                 // In-app push is delivered through the inbox; nothing to transmit here.
