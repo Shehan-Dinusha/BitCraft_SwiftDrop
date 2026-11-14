@@ -30,7 +30,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Calculate dynamic delivery fee quotation */
+        /**
+         * Calculate dynamic delivery fee quotation
+         * @description Also served under the alias prefix /api/v1/pricing-quote.
+         */
         post: operations["calculatePricingQuote"];
         delete?: never;
         options?: never;
@@ -47,7 +50,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Calculate a delivery fee estimate */
+        /**
+         * Calculate a delivery fee estimate
+         * @description Also served under the alias prefix /api/v1/pricing-quote.
+         */
         post: operations["estimateDeliveryFee"];
         delete?: never;
         options?: never;
@@ -62,8 +68,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all active pricing geofence zones */
+        /** List all pricing geofence zones */
         get: operations["listPricingZones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geofence-zone/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check geofence zone endpoint health */
+        get: operations["checkGeofenceZoneHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -233,7 +256,8 @@ export interface components {
              * @example 10
              */
             heightCm?: number;
-            speed?: components["schemas"]["OrderSpeed"];
+            /** @default STANDARD */
+            speed: components["schemas"]["OrderSpeed"];
         };
         PricingQuoteResponse: {
             pickupDistrict?: components["schemas"]["SriLankanDistrict"];
@@ -251,27 +275,32 @@ export interface components {
             actualWeightKg?: number;
             /**
              * Format: double
+             * @description Volumetric weight in kg (L*W*H / volumetric divisor of the active tariff rule)
              * @example 1
              */
             volumetricWeightKg?: number;
             /**
              * Format: double
+             * @description Chargeable billable weight in kg (the higher of actual and volumetric weight)
              * @example 1.5
              */
             chargeableWeightKg?: number;
             speed?: components["schemas"]["OrderSpeed"];
             /**
              * Format: double
+             * @description Base starting fee (first weight step included)
              * @example 550
              */
             baseFee?: number;
             /**
              * Format: double
+             * @description Additional weight fee for every started extra weight step
              * @example 60
              */
             weightFee?: number;
             /**
              * Format: double
+             * @description Speed surcharge in LKR (total fee minus the standard subtotal)
              * @example 0
              */
             speedSurcharge?: number;
@@ -308,7 +337,8 @@ export interface components {
              * @example 10
              */
             heightCm?: number;
-            speed?: components["schemas"]["OrderSpeed"];
+            /** @default STANDARD */
+            speed: components["schemas"]["OrderSpeed"];
         };
         EstimateResponse: {
             pickupDistrict?: components["schemas"]["SriLankanDistrict"];
@@ -326,6 +356,7 @@ export interface components {
             actualWeightKg?: number;
             /**
              * Format: double
+             * @description Volumetric weight in kg (L*W*H / volumetric divisor of the active tariff rule)
              * @example 0.6
              */
             volumetricWeightKg?: number;
@@ -399,6 +430,32 @@ export interface components {
             sameDayMultiplier?: number;
             /** @example ACTIVE */
             status?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /** @description Error body returned by the global exception handler for 400 responses */
+        ApiErrorResponse: {
+            /** Format: date-time */
+            timestamp?: string;
+            /** @example 400 */
+            status?: number;
+            /** @example Bad Request */
+            error?: string;
+            /** @example Validation failed */
+            message?: string;
+            /** @example /api/v1/pricing/estimate */
+            path?: string;
+            /**
+             * @description Correlation identifier for tracing the failure. Omitted when not set
+             * @example 0f5e8c4a-2c6d-4a58-9c8f-4c2c4e7b8a11
+             */
+            correlationId?: string;
+            /** @description Present for validation errors. Field name mapped to its error messages */
+            fieldErrors?: {
+                [key: string]: string[];
+            };
         };
         ApiResponseString: {
             /** @example true */
@@ -438,7 +495,10 @@ export interface components {
             timestamp?: string;
         };
         ZoneRequest: {
-            /** @example ZONE_WESTERN */
+            /**
+             * @description Unique zone code. Cannot be changed on update
+             * @example ZONE_WESTERN
+             */
             zoneCode: string;
             /** @example Western Province Metro */
             zoneName: string;
@@ -446,11 +506,13 @@ export interface components {
             tier: string;
             /**
              * Format: double
+             * @description Base fee in LKR for deliveries inside one district of this zone
              * @example 350
              */
             baseFee: number;
             /**
              * Format: double
+             * @description Fee in LKR for each extra weight step
              * @example 80
              */
             perKgFee: number;
@@ -464,7 +526,10 @@ export interface components {
              * @example 2
              */
             sameDayMultiplier: number;
-            /** @example ACTIVE */
+            /**
+             * @description Optional. Defaults to ACTIVE on create and keeps the current value on update
+             * @example ACTIVE
+             */
             status?: string;
         };
         ZoneResponse: {
@@ -486,7 +551,10 @@ export interface components {
             updatedAt?: string;
         };
         DistrictMappingRequest: {
-            /** @example ZONE_CENTRAL */
+            /**
+             * @description Code of an existing zone to map the district to
+             * @example ZONE_CENTRAL
+             */
             zoneCode: string;
         };
         DistrictMappingResponse: {
@@ -501,21 +569,25 @@ export interface components {
             ruleVersionId?: string;
             /**
              * Format: double
+             * @description Base price in LKR for different-district deliveries. Covers the first weight step
              * @example 550
              */
             basePrice: number;
             /**
              * Format: double
+             * @description Size of one weight step in kg
              * @example 1
              */
             weightStepKg: number;
             /**
              * Format: double
+             * @description Price in LKR for each extra weight step
              * @example 120
              */
             pricePerStep: number;
             /**
              * Format: double
+             * @description Divisor used to turn length x width x height (cm) into volumetric weight (kg)
              * @example 5000
              */
             volumetricDivisor: number;
@@ -524,7 +596,15 @@ export interface components {
             /** Format: int64 */
             id?: number;
             ruleVersionId?: string;
+            /**
+             * @description Origin district, or ALL for the default rule
+             * @example ALL
+             */
             fromDistrict?: string;
+            /**
+             * @description Destination district, or ALL for the default rule
+             * @example ALL
+             */
             toDistrict?: string;
             /** Format: double */
             basePrice?: number;
@@ -637,6 +717,15 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponsePricingQuoteResponse"];
                 };
             };
+            /** @description Validation failed, or no active tariff or zone mapping is configured */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
         };
     };
     estimateDeliveryFee: {
@@ -661,6 +750,15 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseEstimateResponse"];
                 };
             };
+            /** @description Validation failed, or no active tariff or zone mapping is configured */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
         };
     };
     listPricingZones: {
@@ -679,6 +777,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseListPricingZone"];
+                };
+            };
+        };
+    };
+    checkGeofenceZoneHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service health response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseString"];
                 };
             };
         };
@@ -760,6 +878,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["ApiResponseVoid"];
                 };
             };
@@ -823,6 +950,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseZoneResponse"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
                 };
             };
             /** @description Caller role is not permitted */
@@ -900,6 +1045,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseZoneResponse"];
                 };
             };
+            /** @description Validation error (ApiErrorResponse), or the zone code in the body differs from the path (ApiResponseVoid) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"] | components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Caller is not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
             /** @description Caller role is not permitted */
             403: {
                 headers: {
@@ -933,6 +1096,15 @@ export interface operations {
         responses: {
             /** @description Zone deleted */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Caller is not authenticated */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -994,6 +1166,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description District name, case-insensitive */
                 district: components["schemas"]["SriLankanDistrict"];
             };
             cookie?: never;
@@ -1013,8 +1186,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseDistrictMappingResponse"];
                 };
             };
-            /** @description Unknown district */
+            /** @description Validation error (ApiErrorResponse), or unknown district (ApiResponseVoid) */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"] | components["schemas"]["ApiResponseVoid"];
+                };
+            };
+            /** @description Caller is not authenticated */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
