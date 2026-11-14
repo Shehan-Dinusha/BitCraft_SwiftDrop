@@ -30,10 +30,9 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 **Status update (2026-11-14):** All gaps below are implemented on `dev` (PRs #25, #28, #59,
 #60) and covered by the required tests. In addition, EMAIL notifications can now be sent for real
 through Azure Communication Services (`NOTIFICATION_EMAIL_PROVIDER=azure`; default `mock`).
-Critical events (order created, out for delivery, failed) send SMS + EMAIL; SMS and push stay
-simulated. See [Azure email notifications](../design/m9/azure-email-notifications.md) and the
-[test and coverage evidence](../test-reports/m9/README.md) (87 tests, `service/` 90.6% and
-`controller/` 77.8% line coverage). The original checkboxes are kept below for reference.
+Every trigger sends EMAIL; **SMS was removed** (Azure SMS needs a purchased number the student
+subscription cannot get), and in-app push is unchanged. See [Azure email notifications](../design/m9/azure-email-notifications.md) and the
+[test and coverage evidence](../test-reports/m9/README.md) (88 tests). The original checkboxes are kept below for reference.
 
 **Broker orchestration (you own this for the whole team):**
 

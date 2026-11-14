@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-<span class="nc" id="L12">public class RabbitMQConfig {</span>
+<span class="fc" id="L12">public class RabbitMQConfig {</span>
 
     public static final String EVENTS_EXCHANGE = &quot;swiftdrop.events.exchange&quot;;
     public static final String DLX_EXCHANGE = &quot;swiftdrop.dlx.exchange&quot;;
@@ -20,62 +20,62 @@ import org.springframework.context.annotation.Configuration;
 
     @Bean
     public TopicExchange eventsExchange() {
-<span class="nc" id="L23">        return new TopicExchange(EVENTS_EXCHANGE, true, false);</span>
+<span class="fc" id="L23">        return new TopicExchange(EVENTS_EXCHANGE, true, false);</span>
     }
 
     @Bean
     public TopicExchange dlxExchange() {
-<span class="nc" id="L28">        return new TopicExchange(DLX_EXCHANGE, true, false);</span>
+<span class="fc" id="L28">        return new TopicExchange(DLX_EXCHANGE, true, false);</span>
     }
 
     @Bean
     public Queue notificationEventsQueue() {
-<span class="nc" id="L33">        return QueueBuilder.durable(NOTIFICATION_EVENTS_QUEUE)</span>
-<span class="nc" id="L34">                .quorum()</span>
-<span class="nc" id="L35">                .deadLetterExchange(DLX_EXCHANGE)</span>
-<span class="nc" id="L36">                .deadLetterRoutingKey(DLQ_ROUTING_KEY)</span>
-<span class="nc" id="L37">                .ttl(86_400_000)</span>
-<span class="nc" id="L38">                .build();</span>
+<span class="fc" id="L33">        return QueueBuilder.durable(NOTIFICATION_EVENTS_QUEUE)</span>
+<span class="fc" id="L34">                .quorum()</span>
+<span class="fc" id="L35">                .deadLetterExchange(DLX_EXCHANGE)</span>
+<span class="fc" id="L36">                .deadLetterRoutingKey(DLQ_ROUTING_KEY)</span>
+<span class="fc" id="L37">                .ttl(86_400_000)</span>
+<span class="fc" id="L38">                .build();</span>
     }
 
     @Bean
     public Queue dlqNotificationEventsQueue() {
-<span class="nc" id="L43">        return QueueBuilder.durable(DLQ_NOTIFICATION_EVENTS_QUEUE)</span>
-<span class="nc" id="L44">                .quorum()</span>
-<span class="nc" id="L45">                .ttl(604_800_000)</span>
-<span class="nc" id="L46">                .build();</span>
+<span class="fc" id="L43">        return QueueBuilder.durable(DLQ_NOTIFICATION_EVENTS_QUEUE)</span>
+<span class="fc" id="L44">                .quorum()</span>
+<span class="fc" id="L45">                .ttl(604_800_000)</span>
+<span class="fc" id="L46">                .build();</span>
     }
 
     @Bean
     public Binding bindNotificationEventsParcel(Queue notificationEventsQueue, TopicExchange eventsExchange) {
-<span class="nc" id="L51">        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with(&quot;parcel.status.changed.#&quot;);</span>
+<span class="fc" id="L51">        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with(&quot;parcel.status.changed.#&quot;);</span>
     }
 
     @Bean
     public Binding bindNotificationEventsNotification(Queue notificationEventsQueue, TopicExchange eventsExchange) {
-<span class="nc" id="L56">        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with(&quot;notification.#&quot;);</span>
+<span class="fc" id="L56">        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with(&quot;notification.#&quot;);</span>
     }
 
     @Bean
     public Binding bindNotificationEventsOrderCreated(Queue notificationEventsQueue, TopicExchange eventsExchange) {
-<span class="nc" id="L61">        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with(&quot;order.created&quot;);</span>
+<span class="fc" id="L61">        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with(&quot;order.created&quot;);</span>
     }
 
     @Bean
     public Binding bindDlqNotificationEvents(Queue dlqNotificationEventsQueue, TopicExchange dlxExchange) {
-<span class="nc" id="L66">        return BindingBuilder.bind(dlqNotificationEventsQueue).to(dlxExchange).with(DLQ_ROUTING_KEY);</span>
+<span class="fc" id="L66">        return BindingBuilder.bind(dlqNotificationEventsQueue).to(dlxExchange).with(DLQ_ROUTING_KEY);</span>
     }
 
     @Bean
     public MessageConverter jsonMessageConverter() {
-<span class="nc" id="L71">        return new Jackson2JsonMessageConverter();</span>
+<span class="fc" id="L71">        return new Jackson2JsonMessageConverter();</span>
     }
 
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter) {
-<span class="nc" id="L76">        RabbitTemplate template = new RabbitTemplate(connectionFactory);</span>
-<span class="nc" id="L77">        template.setMessageConverter(jsonMessageConverter);</span>
-<span class="nc" id="L78">        return template;</span>
+<span class="fc" id="L76">        RabbitTemplate template = new RabbitTemplate(connectionFactory);</span>
+<span class="fc" id="L77">        template.setMessageConverter(jsonMessageConverter);</span>
+<span class="fc" id="L78">        return template;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

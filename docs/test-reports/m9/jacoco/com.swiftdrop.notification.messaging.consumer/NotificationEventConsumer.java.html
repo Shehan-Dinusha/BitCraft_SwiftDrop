@@ -51,13 +51,13 @@ public class NotificationEventConsumer {
     // Two constructors exist, so Spring needs to be told which one to inject;
     // without @Autowired it looks for a no-arg constructor and startup fails.
     @Autowired
-    public NotificationEventConsumer(
+<span class="fc" id="L54">    public NotificationEventConsumer(</span>
             ObjectMapper objectMapper,
             MultiChannelNotificationDispatcher dispatcher,
             List&lt;NotificationTrigger&gt; triggers,
             ProcessedEventRepository processedEventRepository,
             InAppNotificationService inAppNotificationService
-<span class="fc" id="L60">    ) {</span>
+    ) {
 <span class="fc" id="L61">        this.objectMapper = objectMapper;</span>
 <span class="fc" id="L62">        this.dispatcher = dispatcher;</span>
 <span class="fc" id="L63">        this.triggers = triggers;</span>
@@ -86,7 +86,7 @@ public class NotificationEventConsumer {
 <span class="fc" id="L86">                envelope.routingKey(), eventId, triggers.size());</span>
 
 <span class="fc" id="L88">        boolean matchedAny = false;</span>
-        // A critical event can dispatch both SMS and EMAIL; the inbox gets one row per recipient.
+        // At most one inbox row per recipient per event, even if several requests or triggers match.
 <span class="fc" id="L90">        Set&lt;UUID&gt; inboxRecipients = new HashSet&lt;&gt;();</span>
 <span class="fc bfc" id="L91" title="All 2 branches covered.">        for (NotificationTrigger trigger : triggers) {</span>
 <span class="fc bfc" id="L92" title="All 2 branches covered.">            if (trigger.matches(envelope)) {</span>
@@ -106,7 +106,7 @@ public class NotificationEventConsumer {
 <span class="nc" id="L106">                                    ? dispatchLog.referenceId()</span>
 <span class="fc" id="L107">                                    : envelope.extractTrackingNumber();</span>
 
-<span class="pc bpc" id="L109" title="1 of 4 branches missed.">                            if (inAppNotificationService != null &amp;&amp; inboxRecipients.add(request.recipientId())) {</span>
+<span class="pc bpc" id="L109" title="2 of 4 branches missed.">                            if (inAppNotificationService != null &amp;&amp; inboxRecipients.add(request.recipientId())) {</span>
 <span class="fc" id="L110">                                inAppNotificationService.saveNotification(request.recipientId(), title, body, trackingNumber);</span>
 
                                 // For merchant orders, also write to merchant owner inbox if distinct
@@ -116,10 +116,10 @@ public class NotificationEventConsumer {
                                 }
                             }
                         }
-<span class="fc" id="L119">                    }</span>
+                    }
                 }
             }
-<span class="fc" id="L122">        }</span>
+        }
 
 <span class="pc bpc" id="L124" title="1 of 2 branches missed.">        if (!matchedAny) {</span>
 <span class="nc" id="L125">            log.debug(&quot;No notification trigger matched event with routing key: {}&quot;, envelope.routingKey());</span>
@@ -129,9 +129,9 @@ public class NotificationEventConsumer {
 <span class="fc bfc" id="L129" title="All 2 branches covered.">        if (eventId != null) {</span>
             try {
 <span class="fc" id="L131">                processedEventRepository.save(new ProcessedEvent(eventId, envelope.routingKey(), Instant.now()));</span>
-<span class="nc" id="L132">            } catch (Exception e) {</span>
+<span class="pc" id="L132">            } catch (Exception e) {</span>
 <span class="nc" id="L133">                log.warn(&quot;Could not record processed event {}: {}&quot;, eventId, e.getMessage());</span>
-<span class="fc" id="L134">            }</span>
+            }
         }
 <span class="fc" id="L136">    }</span>
 }

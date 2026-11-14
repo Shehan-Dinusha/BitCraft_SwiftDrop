@@ -46,7 +46,7 @@ sequenceDiagram
             alt User Preferences Check
                 Dispatcher->>DB: SELECT * FROM recipient_preferences WHERE recipient_id = ?
                 DB-->>Dispatcher: Preferences (emailEnabled=true, smsEnabled=true)
-                Dispatcher->>Dispatcher: Transmit to Mock SMS/Email Gateway
+                Dispatcher->>Dispatcher: Send email via provider (mock or Azure Communication Services)
                 Dispatcher->>DB: INSERT INTO notification_dispatch_logs (masked destination, SENT)
             else User Channel Suppressed
                 Dispatcher->>DB: INSERT INTO notification_dispatch_logs (status: SUPPRESSED)

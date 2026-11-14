@@ -35,12 +35,12 @@ import java.util.stream.Collectors;
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity&lt;ApiErrorResponse&gt; handleValidationErrors(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
-<span class="nc" id="L38">        String details = ex.getBindingResult().getFieldErrors().stream()</span>
-<span class="nc" id="L39">                .map(FieldError::getDefaultMessage)</span>
-<span class="nc" id="L40">                .collect(Collectors.joining(&quot;; &quot;));</span>
-<span class="nc" id="L41">        log.warn(&quot;Validation error on {}: {}&quot;, request.getRequestURI(), details);</span>
-<span class="nc" id="L42">        return ResponseEntity.badRequest()</span>
-<span class="nc" id="L43">                .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), &quot;Validation Failed&quot;, details, request.getRequestURI()));</span>
+<span class="fc" id="L38">        String details = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L39">                .map(FieldError::getDefaultMessage)</span>
+<span class="fc" id="L40">                .collect(Collectors.joining(&quot;; &quot;));</span>
+<span class="fc" id="L41">        log.warn(&quot;Validation error on {}: {}&quot;, request.getRequestURI(), details);</span>
+<span class="fc" id="L42">        return ResponseEntity.badRequest()</span>
+<span class="fc" id="L43">                .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), &quot;Validation Failed&quot;, details, request.getRequestURI()));</span>
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

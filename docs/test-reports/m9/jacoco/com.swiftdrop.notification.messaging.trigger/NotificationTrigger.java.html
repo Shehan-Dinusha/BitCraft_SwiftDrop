@@ -29,15 +29,10 @@ public interface NotificationTrigger {
      */
     List&lt;DispatchNotificationRequest&gt; build(EventEnvelope envelope);
 
-    /**
-     * Builds the SMS + EMAIL pair used for critical transitions (order confirmation,
-     * out for delivery, failed). SMS comes first; the consumer writes one in-app row per recipient.
-     */
-    static List&lt;DispatchNotificationRequest&gt; smsAndEmail(UUID recipientId, String templateCode,
-                                                         Map&lt;String, String&gt; params, String trackingNumber) {
-<span class="fc" id="L38">        return List.of(</span>
-                new DispatchNotificationRequest(recipientId, &quot;SMS&quot;, templateCode, null, params, trackingNumber),
-                new DispatchNotificationRequest(recipientId, &quot;EMAIL&quot;, templateCode, null, params, trackingNumber));
+    /** Builds the single EMAIL request every trigger sends; the consumer also writes the in-app row. */
+    static List&lt;DispatchNotificationRequest&gt; email(UUID recipientId, String templateCode,
+                                                   Map&lt;String, String&gt; params, String trackingNumber) {
+<span class="fc" id="L35">        return List.of(new DispatchNotificationRequest(recipientId, &quot;EMAIL&quot;, templateCode, null, params, trackingNumber));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

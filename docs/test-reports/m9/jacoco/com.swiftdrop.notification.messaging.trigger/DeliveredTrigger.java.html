@@ -25,7 +25,7 @@ import java.util.UUID;
 <span class="nc" id="L25">            return false;</span>
         }
 <span class="pc bpc" id="L27" title="1 of 2 branches missed.">        boolean isParcelStatusEvent = envelope.routingKey().startsWith(&quot;parcel.status.changed&quot;)</span>
-<span class="pc bnc" id="L28" title="All 2 branches missed.">                || envelope.routingKey().startsWith(&quot;notification.&quot;);</span>
+<span class="nc bnc" id="L28" title="All 2 branches missed.">                || envelope.routingKey().startsWith(&quot;notification.&quot;);</span>
 <span class="pc bpc" id="L29" title="1 of 4 branches missed.">        return isParcelStatusEvent &amp;&amp; &quot;DELIVERED&quot;.equalsIgnoreCase(envelope.extractStatus().orElse(&quot;&quot;));</span>
     }
 
@@ -42,7 +42,7 @@ import java.util.UUID;
 <span class="fc" id="L42">        JsonNode payload = envelope.payload();</span>
 <span class="pc bpc" id="L43" title="2 of 4 branches missed.">        if (payload != null &amp;&amp; payload.hasNonNull(&quot;deliveredAt&quot;)) {</span>
 <span class="fc" id="L44">            deliveredAt = payload.get(&quot;deliveredAt&quot;).asText();</span>
-<span class="nc bnc" id="L45" title="All 4 branches missed.">        } else if (payload != null &amp;&amp; payload.hasNonNull(&quot;timestamp&quot;)) {</span>
+<span class="pc bnc" id="L45" title="All 4 branches missed.">        } else if (payload != null &amp;&amp; payload.hasNonNull(&quot;timestamp&quot;)) {</span>
 <span class="nc" id="L46">            deliveredAt = payload.get(&quot;timestamp&quot;).asText();</span>
         }
 
@@ -53,11 +53,11 @@ import java.util.UUID;
 
 <span class="fc" id="L54">        return List.of(new DispatchNotificationRequest(</span>
 <span class="fc" id="L55">                recipientIdOpt.get(),</span>
-                &quot;EMAIL&quot;,
-                &quot;PARCEL_DELIVERED&quot;,
-                null,
-                params,
-                trackingNumber
+<span class="fc" id="L56">                &quot;EMAIL&quot;,</span>
+<span class="fc" id="L57">                &quot;PARCEL_DELIVERED&quot;,</span>
+<span class="fc" id="L58">                null,</span>
+<span class="fc" id="L59">                params,</span>
+<span class="fc" id="L60">                trackingNumber</span>
         ));
     }
 }

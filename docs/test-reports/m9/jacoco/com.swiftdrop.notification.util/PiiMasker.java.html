@@ -65,7 +65,7 @@ public final class PiiMasker {
 <span class="fc bfc" id="L65" title="All 2 branches covered.">        if (trimmed.contains(&quot;@&quot;)) {</span>
 <span class="fc" id="L66">            return maskEmail(trimmed);</span>
         }
-<span class="pc bpc" id="L68" title="1 of 4 branches missed.">        if (trimmed.matches(&quot;.*\\d{4,}.*&quot;) &amp;&amp; trimmed.length() &lt;= 20) {</span>
+<span class="fc bfc" id="L68" title="All 4 branches covered.">        if (trimmed.matches(&quot;.*\\d{4,}.*&quot;) &amp;&amp; trimmed.length() &lt;= 20) {</span>
 <span class="fc" id="L69">            return maskPhone(trimmed);</span>
         }
 <span class="fc" id="L71">        return &quot;***&quot;;</span>

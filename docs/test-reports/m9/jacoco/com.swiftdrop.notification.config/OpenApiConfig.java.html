@@ -10,14 +10,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-<span class="nc" id="L13">public class OpenApiConfig {</span>
+<span class="fc" id="L13">public class OpenApiConfig {</span>
     @Bean
     public OpenAPI notificationOpenAPI() {
-<span class="nc" id="L16">        return new OpenAPI().info(new Info().title(&quot;SwiftDrop Notification API&quot;)</span>
-<span class="nc" id="L17">                .description(&quot;Notification preferences and delivery log APIs.&quot;).version(&quot;v1.0.0&quot;))</span>
-<span class="nc" id="L18">                .servers(java.util.List.of(new Server().url(&quot;http://localhost:8080&quot;).description(&quot;API Gateway&quot;)))</span>
-<span class="nc" id="L19">                .components(new Components().addSecuritySchemes(OpenApiConstants.BEARER_AUTH_SCHEME,</span>
-<span class="nc" id="L20">                        new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme(&quot;bearer&quot;).bearerFormat(&quot;JWT&quot;)));</span>
+<span class="fc" id="L16">        return new OpenAPI().info(new Info().title(&quot;SwiftDrop Notification API&quot;)</span>
+<span class="fc" id="L17">                .description(&quot;Notification preferences and delivery log APIs.&quot;).version(&quot;v1.0.0&quot;))</span>
+<span class="fc" id="L18">                .servers(java.util.List.of(new Server().url(&quot;http://localhost:8080&quot;).description(&quot;API Gateway&quot;)))</span>
+<span class="fc" id="L19">                .components(new Components().addSecuritySchemes(OpenApiConstants.BEARER_AUTH_SCHEME,</span>
+<span class="fc" id="L20">                        new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme(&quot;bearer&quot;).bearerFormat(&quot;JWT&quot;)));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

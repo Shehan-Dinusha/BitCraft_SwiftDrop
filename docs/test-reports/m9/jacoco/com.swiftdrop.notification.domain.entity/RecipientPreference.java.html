@@ -30,19 +30,12 @@ public class RecipientPreference {
     @Builder.Default
     private boolean emailEnabled = true;
 
-    @Column(name = &quot;sms_enabled&quot;, nullable = false)
-    @Builder.Default
-    private boolean smsEnabled = true;
-
     @Column(name = &quot;push_enabled&quot;, nullable = false)
     @Builder.Default
     private boolean pushEnabled = true;
 
     @Column(name = &quot;email_address&quot;)
     private String emailAddress;
-
-    @Column(name = &quot;phone_number&quot;, length = 32)
-    private String phoneNumber;
 
     @Column(name = &quot;language_preference&quot;, nullable = false, length = 8)
     @Builder.Default
@@ -56,24 +49,24 @@ public class RecipientPreference {
 
     @PrePersist
     public void prePersist() {
-<span class="nc" id="L59">        Instant now = Instant.now();</span>
-<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (this.createdAt == null) {</span>
-<span class="nc" id="L61">            this.createdAt = now;</span>
+<span class="nc" id="L52">        Instant now = Instant.now();</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">        if (this.createdAt == null) {</span>
+<span class="nc" id="L54">            this.createdAt = now;</span>
         }
-<span class="nc bnc" id="L63" title="All 2 branches missed.">        if (this.updatedAt == null) {</span>
-<span class="nc" id="L64">            this.updatedAt = now;</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (this.updatedAt == null) {</span>
+<span class="nc" id="L57">            this.updatedAt = now;</span>
         }
-<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (this.recipientType == null) {</span>
-<span class="nc" id="L67">            this.recipientType = &quot;CUSTOMER&quot;;</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (this.recipientType == null) {</span>
+<span class="nc" id="L60">            this.recipientType = &quot;CUSTOMER&quot;;</span>
         }
-<span class="nc bnc" id="L69" title="All 2 branches missed.">        if (this.languagePreference == null) {</span>
-<span class="nc" id="L70">            this.languagePreference = &quot;en&quot;;</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (this.languagePreference == null) {</span>
+<span class="nc" id="L63">            this.languagePreference = &quot;en&quot;;</span>
         }
-<span class="nc" id="L72">    }</span>
+<span class="nc" id="L65">    }</span>
 
     @PreUpdate
     public void preUpdate() {
-<span class="nc" id="L76">        this.updatedAt = Instant.now();</span>
-<span class="nc" id="L77">    }</span>
+<span class="nc" id="L69">        this.updatedAt = Instant.now();</span>
+<span class="nc" id="L70">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

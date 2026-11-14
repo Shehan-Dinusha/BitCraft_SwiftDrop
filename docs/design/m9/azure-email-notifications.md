@@ -1,10 +1,12 @@
 # Member 9: Real email notifications with Azure Communication Services
 
-notification-service can now send **real email** through Azure Communication Services (ACS).
-SMS and push stay simulated. The default is still `mock`, so development, tests and CI never
-send real email.
+notification-service sends **real email** through Azure Communication Services (ACS). Email
+is the only outbound channel: **SMS has been removed** because Azure SMS needs a purchased
+phone number that the student subscription cannot get. In-app push (the notification bell)
+is unchanged. The default provider is still `mock`, so development, tests and CI never send
+real email.
 
-Status on 2026-11-14: implemented, unit/integration tested (87 tests pass), and verified live.
+Status on 2026-11-14: implemented, unit/integration tested (88 tests pass), and verified live.
 A real order created through the gateway delivered an order-confirmation email to a real inbox.
 
 ## 1. What changed
@@ -13,9 +15,11 @@ A real order created through the gateway delivered an order-confirmation email t
 |---|---|
 | Email provider | New `EmailSender` interface with `MockEmailSender` (default) and `AzureCommunicationEmailSender`. Selected by `NOTIFICATION_EMAIL_PROVIDER` in `EmailSenderConfig` |
 | Azure sender | Calls the ACS REST API `POST /emails:send?api-version=2023-03-31`, signed with HMAC-SHA256 using the resource access key. Uses the JDK HTTP client, so no new dependency. Only HTTP 202 counts as sent |
-| Dispatcher | `MultiChannelNotificationDispatcher` hands EMAIL to the configured provider after the address check. SMS and PUSH remain simulated |
-| Triggers | Critical events now send **SMS + EMAIL**: order created, out for delivery, failed. Delivered was already EMAIL. Picked up stays SMS only |
-| In-app inbox | One inbox row per recipient per event, even when two channels fire |
+| Dispatcher | `MultiChannelNotificationDispatcher` hands EMAIL to the configured provider after the address check. PUSH is recorded for the in-app inbox. Any other channel (such as `SMS`) is logged as `FAILED: Unsupported channel` |
+| Triggers | Every trigger sends one EMAIL: order created, picked up, out for delivery, delivered, failed |
+| SMS removed | Removed from triggers, dispatcher, preferences (`smsEnabled`, `phoneNumber`), contact lookup, API spec and frontend. `POST /logs/dispatch` rejects `SMS` with 400. Migration `V5__remove_sms_channel.sql` drops the two preference columns and moves the seeded templates to EMAIL; old dispatch-log rows keep `SMS` as history |
+| In-app inbox | One inbox row per recipient per event |
+| Frontend | The customer preferences card shows Email and Browser Push only; **Send Test Email** sends a real test email to the address on the card |
 | Configuration | `NOTIFICATION_EMAIL_PROVIDER`, `ACS_EMAIL_ENDPOINT`, `ACS_EMAIL_ACCESS_KEY`, `ACS_EMAIL_SENDER_ADDRESS` added to `application.yml`, `.env.example`, `docker-compose.yml` and Helm (`values.yaml`; the key is an optional Secret `notification-acs-email`) |
 
 ### Privacy and safety
@@ -112,9 +116,12 @@ docker exec swiftdrop-notify-postgres psql -U swiftdrop -d swiftdrop_notify -c `
   "select channel, template_code, status, failure_reason from notification_dispatch_logs where reference_id = 'SD-XXXX-XXXX' order by created_at"
 ```
 
-Expect `EMAIL | PARCEL_CREATED | SENT`. The SMS row shows `FAILED` with "No valid SMS
-destination" when the account has no phone number. That is expected: the sign-up form does
-not collect one, and SMS is simulated anyway.
+Expect exactly one row: `EMAIL | PARCEL_CREATED | SENT`.
+
+**Faster alternative to steps 2–3:** sign in as the customer, open the notification
+preferences card, check the **Notification Email** field, and click **Send Test Email**. The
+audit table on the same card shows the new `EMAIL | SENT` row, and an "Out for Delivery" test
+email arrives at that address.
 
 **Step 4. Check the service log** for `Azure accepted email for n***@... (operation <id>)`.
 Only the masked address appears.
@@ -134,15 +141,17 @@ Invoke-RestMethod http://localhost:8080/api/v1/notifications/me -Headers @{ Auth
 | Check | Result |
 |---|---|
 | Direct ACS send test (REST + HMAC, same scheme as the Java sender) | HTTP 202, operation status Succeeded |
-| `mvn -f backend/pom.xml -pl notification-service -am verify` | BUILD SUCCESS, 87 tests, including `BrokerNotificationIT` (Testcontainers) |
+| `mvn -f backend/pom.xml -pl notification-service -am verify` | BUILD SUCCESS, 88 tests, including `BrokerNotificationIT` (Testcontainers, applies V1–V5) |
 | Startup with `NOTIFICATION_EMAIL_PROVIDER=azure` | `Email provider: azure (...)` |
 | Order `SD-QE82-BQC3` booked through the gateway | EMAIL `SENT` to the customer's IAM address; Azure accepted it |
 | Order `SD-FBHQ-PCB4` | EMAIL `SENT`, operation id logged |
 | In-app inbox via gateway | One "SwiftDrop Order Confirmed" row per parcel |
 | Log scan for the full recipient address | Not present; only `n***@uom.lk` |
+| After SMS removal: V5 migration on the running database | Applied; `sms_enabled`/`phone_number` dropped; all 5 templates `EMAIL` |
+| After SMS removal: order `SD-LYWN-GQZ3` for a Gmail customer | One row, `EMAIL SENT` (no SMS row); Azure operation status `Succeeded` |
 
-Out for delivery, delivered and failed use the same email path. They were covered by tests,
-not run live, because the delivery-execution service was not part of this demo.
+Picked up, out for delivery, delivered and failed use the same email path. They were covered
+by tests, not run live, because the delivery-execution service was not part of this demo.
 
 ## 5. Cost and limits
 
@@ -168,4 +177,5 @@ az communication regenerate-key -n swiftdrop-notify-acs -g rg-swiftdrop-ai-dev -
 | `Azure email service unreachable` | Network or endpoint typo |
 | No dispatch row at all | Notification-service is on a different RabbitMQ virtual host from the order service |
 | EMAIL row `FAILED`, "No valid EMAIL destination" | IAM has no email for that customer, or `CONTACT_MODE` is not `iam` |
+| Row `FAILED`, "Unsupported channel SMS" | A caller still sends `SMS`; use `EMAIL` (SMS was removed) |
 | `SENT` but nothing in the inbox | Check spam/junk; check ACS **Insights** in the portal |

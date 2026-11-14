@@ -27,60 +27,51 @@ public class RecipientPreferenceService {
 <span class="fc" id="L27">                            .recipientId(recipientId)</span>
 <span class="fc" id="L28">                            .recipientType(&quot;CUSTOMER&quot;)</span>
 <span class="fc" id="L29">                            .emailEnabled(true)</span>
-<span class="fc" id="L30">                            .smsEnabled(true)</span>
-<span class="fc" id="L31">                            .pushEnabled(true)</span>
-<span class="fc" id="L32">                            .languagePreference(&quot;en&quot;)</span>
-<span class="fc" id="L33">                            .build();</span>
-<span class="fc" id="L34">                    return preferenceRepository.save(newPref);</span>
+<span class="fc" id="L30">                            .pushEnabled(true)</span>
+<span class="fc" id="L31">                            .languagePreference(&quot;en&quot;)</span>
+<span class="fc" id="L32">                            .build();</span>
+<span class="fc" id="L33">                    return preferenceRepository.save(newPref);</span>
                 });
 
-<span class="fc" id="L37">        return mapToResponse(pref);</span>
+<span class="fc" id="L36">        return mapToResponse(pref);</span>
     }
 
     @Transactional
     public RecipientPreferenceResponse updatePreferences(UUID recipientId, UpdatePreferenceRequest request) {
-<span class="fc" id="L42">        log.info(&quot;Updating notification preferences for recipient: {}&quot;, recipientId);</span>
+<span class="fc" id="L41">        log.info(&quot;Updating notification preferences for recipient: {}&quot;, recipientId);</span>
 
-<span class="fc" id="L44">        RecipientPreference pref = preferenceRepository.findByRecipientId(recipientId)</span>
-<span class="fc" id="L45">                .orElseGet(() -&gt; RecipientPreference.builder()</span>
-<span class="fc" id="L46">                        .recipientId(recipientId)</span>
-<span class="fc" id="L47">                        .recipientType(&quot;CUSTOMER&quot;)</span>
-<span class="fc" id="L48">                        .build());</span>
+<span class="fc" id="L43">        RecipientPreference pref = preferenceRepository.findByRecipientId(recipientId)</span>
+<span class="fc" id="L44">                .orElseGet(() -&gt; RecipientPreference.builder()</span>
+<span class="fc" id="L45">                        .recipientId(recipientId)</span>
+<span class="fc" id="L46">                        .recipientType(&quot;CUSTOMER&quot;)</span>
+<span class="fc" id="L47">                        .build());</span>
 
-<span class="pc bpc" id="L50" title="1 of 2 branches missed.">        if (request.emailEnabled() != null) {</span>
-<span class="fc" id="L51">            pref.setEmailEnabled(request.emailEnabled());</span>
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">        if (request.emailEnabled() != null) {</span>
+<span class="fc" id="L50">            pref.setEmailEnabled(request.emailEnabled());</span>
         }
-<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        if (request.smsEnabled() != null) {</span>
-<span class="fc" id="L54">            pref.setSmsEnabled(request.smsEnabled());</span>
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">        if (request.pushEnabled() != null) {</span>
+<span class="fc" id="L53">            pref.setPushEnabled(request.pushEnabled());</span>
         }
-<span class="pc bpc" id="L56" title="1 of 2 branches missed.">        if (request.pushEnabled() != null) {</span>
-<span class="fc" id="L57">            pref.setPushEnabled(request.pushEnabled());</span>
+<span class="pc bpc" id="L55" title="2 of 4 branches missed.">        if (request.emailAddress() != null &amp;&amp; !request.emailAddress().isBlank()) {</span>
+<span class="fc" id="L56">            pref.setEmailAddress(request.emailAddress().trim());</span>
         }
-<span class="pc bpc" id="L59" title="2 of 4 branches missed.">        if (request.emailAddress() != null &amp;&amp; !request.emailAddress().isBlank()) {</span>
-<span class="fc" id="L60">            pref.setEmailAddress(request.emailAddress().trim());</span>
-        }
-<span class="pc bpc" id="L62" title="2 of 4 branches missed.">        if (request.phoneNumber() != null &amp;&amp; !request.phoneNumber().isBlank()) {</span>
-<span class="fc" id="L63">            pref.setPhoneNumber(request.phoneNumber().trim());</span>
-        }
-<span class="pc bpc" id="L65" title="2 of 4 branches missed.">        if (request.languagePreference() != null &amp;&amp; !request.languagePreference().isBlank()) {</span>
-<span class="fc" id="L66">            pref.setLanguagePreference(request.languagePreference().trim());</span>
+<span class="pc bpc" id="L58" title="2 of 4 branches missed.">        if (request.languagePreference() != null &amp;&amp; !request.languagePreference().isBlank()) {</span>
+<span class="fc" id="L59">            pref.setLanguagePreference(request.languagePreference().trim());</span>
         }
 
-<span class="fc" id="L69">        RecipientPreference saved = preferenceRepository.save(pref);</span>
-<span class="fc" id="L70">        return mapToResponse(saved);</span>
+<span class="fc" id="L62">        RecipientPreference saved = preferenceRepository.save(pref);</span>
+<span class="fc" id="L63">        return mapToResponse(saved);</span>
     }
 
     private RecipientPreferenceResponse mapToResponse(RecipientPreference pref) {
-<span class="fc" id="L74">        return new RecipientPreferenceResponse(</span>
-<span class="fc" id="L75">                pref.getRecipientId(),</span>
-<span class="fc" id="L76">                pref.getRecipientType(),</span>
-<span class="fc" id="L77">                pref.isEmailEnabled(),</span>
-<span class="fc" id="L78">                pref.isSmsEnabled(),</span>
-<span class="fc" id="L79">                pref.isPushEnabled(),</span>
-<span class="fc" id="L80">                pref.getEmailAddress(),</span>
-<span class="fc" id="L81">                pref.getPhoneNumber(),</span>
-<span class="fc" id="L82">                pref.getLanguagePreference(),</span>
-<span class="fc" id="L83">                pref.getUpdatedAt()</span>
+<span class="fc" id="L67">        return new RecipientPreferenceResponse(</span>
+<span class="fc" id="L68">                pref.getRecipientId(),</span>
+<span class="fc" id="L69">                pref.getRecipientType(),</span>
+<span class="fc" id="L70">                pref.isEmailEnabled(),</span>
+<span class="fc" id="L71">                pref.isPushEnabled(),</span>
+<span class="fc" id="L72">                pref.getEmailAddress(),</span>
+<span class="fc" id="L73">                pref.getLanguagePreference(),</span>
+<span class="fc" id="L74">                pref.getUpdatedAt()</span>
         );
     }
 }

@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Triggers an SMS and EMAIL notification when a parcel is out for final delivery.
+ * Triggers an EMAIL notification when a parcel is out for final delivery.
  * Template: {@code PARCEL_OUT_FOR_DELIVERY}
  */
 <span class="fc" id="L18">@Slf4j</span>
@@ -25,7 +25,7 @@ import java.util.UUID;
 <span class="nc" id="L25">            return false;</span>
         }
 <span class="pc bpc" id="L27" title="1 of 2 branches missed.">        boolean isParcelStatusEvent = envelope.routingKey().startsWith(&quot;parcel.status.changed&quot;)</span>
-<span class="pc bnc" id="L28" title="All 2 branches missed.">                || envelope.routingKey().startsWith(&quot;notification.&quot;);</span>
+<span class="nc bnc" id="L28" title="All 2 branches missed.">                || envelope.routingKey().startsWith(&quot;notification.&quot;);</span>
 <span class="pc bpc" id="L29" title="1 of 4 branches missed.">        return isParcelStatusEvent &amp;&amp; &quot;OUT_FOR_DELIVERY&quot;.equalsIgnoreCase(envelope.extractStatus().orElse(&quot;&quot;));</span>
     }
 
@@ -49,7 +49,7 @@ import java.util.UUID;
 <span class="fc" id="L49">        params.put(&quot;courierName&quot;, courierName);</span>
 <span class="fc" id="L50">        params.put(&quot;status&quot;, &quot;OUT_FOR_DELIVERY&quot;);</span>
 
-<span class="fc" id="L52">        return NotificationTrigger.smsAndEmail(recipientIdOpt.get(), &quot;PARCEL_OUT_FOR_DELIVERY&quot;, params, trackingNumber);</span>
+<span class="fc" id="L52">        return NotificationTrigger.email(recipientIdOpt.get(), &quot;PARCEL_OUT_FOR_DELIVERY&quot;, params, trackingNumber);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

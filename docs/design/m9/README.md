@@ -95,7 +95,7 @@ CREATE TABLE processed_events (
 );
 ```
 - **Atomicity:** The consumer uses the incoming event's `eventId` as the primary key.
-- **Fast Rejection:** Attempting to process the same event twice triggers a primary key conflict (`DuplicateKeyException`), immediately halting downstream notifications without duplicate SMS/Email transmissions.
+- **Fast Rejection:** Attempting to process the same event twice triggers a primary key conflict (`DuplicateKeyException`), immediately halting downstream notifications without duplicate email transmissions.
 
 ---
 
