@@ -82,6 +82,9 @@ public class DeliveryExecutionService {
         DeliveryState prevState = session.getCurrentState();
         session.setCourierId(event.courierId());
         session.setCourierName(event.courierName());
+        if (event.customerId() != null) {
+            session.setCustomerId(event.customerId());
+        }
         session.setPreviousState(prevState);
         session.setCurrentState(DeliveryState.ASSIGNED);
         session = deliverySessionRepository.save(session);
@@ -103,6 +106,7 @@ public class DeliveryExecutionService {
                 session.getOrderId(),
                 session.getTrackingNumber(),
                 session.getCourierId(),
+                session.getCustomerId(),
                 prevState,
                 DeliveryState.ASSIGNED,
                 "Courier assigned",
@@ -186,6 +190,7 @@ public class DeliveryExecutionService {
                 session.getOrderId(),
                 session.getTrackingNumber(),
                 session.getCourierId(),
+                session.getCustomerId(),
                 fromState,
                 toState,
                 request.notes(),

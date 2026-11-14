@@ -117,5 +117,26 @@ class PublishStateTransitionActionTest {
         verify(eventPublisher, never()).publishStateChanged(any());
         verify(eventPublisher, never()).publishParcelStatusChanged(any());
     }
+
+    @Test
+    @DisplayName("Propagates non-null customerId to ParcelStatusChangedEvent for notification routing")
+    void testPropagatesCustomerIdToParcelStatusChangedEvent() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID courierId = UUID.randomUUID();
+        UUID customerId = UUID.randomUUID();
+
+        action.execute(deliveryId, orderId, "SD-COL-001", courierId, customerId,
+                DeliveryState.OUT_FOR_DELIVERY, DeliveryState.DELIVERED,
+                "Delivered to recipient", SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, null);
+
+        ArgumentCaptor<ParcelStatusChangedEvent> parcelCaptor = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
+        verify(eventPublisher).publishParcelStatusChanged(parcelCaptor.capture());
+
+        assertThat(parcelCaptor.getValue().customerId()).isEqualTo(customerId);
+        assertThat(parcelCaptor.getValue().orderId()).isEqualTo(orderId);
+        assertThat(parcelCaptor.getValue().trackingNumber()).isEqualTo("SD-COL-001");
+        assertThat(parcelCaptor.getValue().newPublicStatus()).isEqualTo(PublicOrderStatus.DELIVERED);
+    }
 }
 

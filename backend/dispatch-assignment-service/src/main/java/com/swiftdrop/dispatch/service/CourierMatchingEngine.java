@@ -138,7 +138,8 @@ public class CourierMatchingEngine {
                 Instant.now(),
                 Instant.now(),
                 assignment.getTrackingNumber(),
-                assignment.getMerchantId()
+                assignment.getMerchantId(),
+                event.customerId()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
 

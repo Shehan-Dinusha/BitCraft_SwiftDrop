@@ -10,8 +10,8 @@ import java.util.UUID;
  * Published when a courier is successfully assigned to an order.
  * Routing key: {@code dispatch.courier.assigned}
  *
- * <p>{@code trackingNumber} and {@code merchantId} were added as nullable,
- * additive fields requested by Members 5 and 6 for downstream correlation
+ * <p>{@code trackingNumber}, {@code merchantId}, and {@code customerId} were added as nullable,
+ * additive fields requested by Members 5, 6, and 9 for downstream correlation
  * in delivery-execution-service and notification-service.</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -45,7 +45,10 @@ public record CourierAssignedEvent(
         String trackingNumber,
 
         @JsonProperty("merchantId")
-        UUID merchantId
+        UUID merchantId,
+
+        @JsonProperty("customerId")
+        UUID customerId
 
 ) {
     public CourierAssignedEvent {
@@ -53,12 +56,12 @@ public record CourierAssignedEvent(
         if (correlationId == null) correlationId = UUID.randomUUID();
         if (timestamp == null) timestamp = Instant.now();
         if (assignedAt == null) assignedAt = Instant.now();
-        // trackingNumber and merchantId are intentionally nullable
+        // trackingNumber, merchantId and customerId are intentionally nullable
     }
 
     /**
      * Backward-compatible constructor for existing callers who do not provide
-     * {@code trackingNumber} and {@code merchantId}.
+     * {@code trackingNumber}, {@code merchantId}, and {@code customerId}.
      */
     public CourierAssignedEvent(
             UUID eventId,
@@ -70,6 +73,25 @@ public record CourierAssignedEvent(
             Instant assignedAt,
             Instant timestamp
     ) {
-        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp, null, null);
+        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp, null, null, null);
+    }
+
+    /**
+     * Backward-compatible constructor for callers who provide
+     * {@code trackingNumber} and {@code merchantId}, but not {@code customerId}.
+     */
+    public CourierAssignedEvent(
+            UUID eventId,
+            UUID correlationId,
+            UUID orderId,
+            UUID courierId,
+            String courierName,
+            int estimatedPickupMinutes,
+            Instant assignedAt,
+            Instant timestamp,
+            String trackingNumber,
+            UUID merchantId
+    ) {
+        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp, trackingNumber, merchantId, null);
     }
 }
