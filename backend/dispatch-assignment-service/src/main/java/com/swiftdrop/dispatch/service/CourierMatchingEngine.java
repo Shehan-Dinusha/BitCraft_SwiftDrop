@@ -74,6 +74,10 @@ public class CourierMatchingEngine {
         }
 
         assignment.setLastOrderCreatedEventId(event.eventId());
+        if (event.customerId() != null) {
+            // Stored so later manual (re)assignments can still name the customer.
+            assignment.setCustomerId(event.customerId());
+        }
         SriLankanDistrict pickupDistrict = event.pickupDistrict();
         List<CourierShift> availableCouriers = courierShiftRepository.findAvailableCandidates(
                 pickupDistrict,
@@ -139,7 +143,7 @@ public class CourierMatchingEngine {
                 Instant.now(),
                 assignment.getTrackingNumber(),
                 assignment.getMerchantId(),
-                event.customerId()
+                assignment.getCustomerId()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
 
