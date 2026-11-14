@@ -13,17 +13,29 @@ export async function loginUser(username: string, password: string): Promise<Aut
   return data;
 }
 
-export async function registerUser(
-  username: string,
-  email: string,
-  password: string
-): Promise<AuthTokenResponse> {
-  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/register', {
-    username,
-    email,
-    password
-  });
-  return data;
+export type RegisterUserInput = {
+  username: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  district: components['schemas']['SriLankanDistrict'];
+};
+
+export const SRI_LANKAN_DISTRICTS: components['schemas']['SriLankanDistrict'][] = [
+  'COLOMBO', 'GAMPAHA', 'KALUTARA', 'KANDY', 'MATALE', 'NUWARA_ELIYA', 'GALLE', 'MATARA',
+  'HAMBANTOTA', 'JAFFNA', 'KILINOCHCHI', 'MANNAR', 'VAVUNIYA', 'MULLAITIVU', 'BATTICALOA',
+  'AMPARA', 'TRINCOMALEE', 'KURUNEGALA', 'PUTTALAM', 'ANURADHAPURA', 'POLONNARUWA', 'BADULLA',
+  'MONARAGALA', 'RATNAPURA', 'KEGALLE'
+];
+
+/**
+ * Self-service registration always creates a CUSTOMER account. The register endpoint returns the
+ * new profile (not tokens), so sign the user in straight afterwards to obtain a session.
+ */
+export async function registerUser(input: RegisterUserInput): Promise<AuthTokenResponse> {
+  await apiClient.post('/v1/auth/register', { ...input, role: 'CUSTOMER' });
+  return loginUser(input.username, input.password);
 }
 
 export async function refreshTokens(refreshToken: string): Promise<AuthTokenResponse> {
