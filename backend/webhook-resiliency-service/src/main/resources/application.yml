@@ -42,6 +42,19 @@ webhook:
     dev-http-allowlist: ${WEBHOOK_SECURITY_DEV_HTTP_ALLOWLIST:}
     # Hostname resolution during URL validation; a slower or failed lookup rejects the URL (fail closed).
     dns-timeout: 3s
+  delivery:
+    # D1: attempt 1 is immediate; these are the delays before attempts 2, 3 and 4 (4 attempts in total), each with
+    # ±jitter-ratio random jitter. After the last failed attempt the delivery is DEAD.
+    retry-delays: 30s,2m,10m
+    jitter-ratio: 0.2
+    # D2: a Retry-After on 429/503 may lengthen (never shorten) a delay, up to this cap.
+    retry-after-cap: 10m
+    # D9: worker limits, used from Step 10 (per replica; the cluster runs 2-8 replicas).
+    max-concurrency: 4
+    max-per-endpoint: 1
+    claim-batch-size: 10
+    poll-interval: 2s
+    lease-duration: 60s
 management:
   endpoints:
     web:
