@@ -284,6 +284,12 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+      # Proof-of-delivery photos: Azure Blob when the connection string is set, else the pod_photos volume.
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_STORAGE_CONTAINER_NAME: ${AZURE_STORAGE_CONTAINER_NAME:-pod-images}
+      POD_STORAGE_DIR: /var/lib/swiftdrop/pod
+    volumes:
+      - pod_photos:/var/lib/swiftdrop/pod
     depends_on:
       delivery-postgres:
         condition: service_healthy
@@ -683,6 +689,8 @@ configs:
 # ═══════════════════════════════════════════════════════════════════════════════
 volumes:
   rabbitmq_data:
+    driver: local
+  pod_photos:
     driver: local
   redis_data:
     driver: local
