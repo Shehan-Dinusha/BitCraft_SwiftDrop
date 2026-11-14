@@ -4,22 +4,37 @@ import axios from 'axios';
 import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
 import { roleHome } from '@/app/roleHome';
-import { registerUser, googleAuthorizeUrl } from '@/services/api/authApi';
+import { registerUser, googleAuthorizeUrl, SRI_LANKAN_DISTRICTS, type RegisterUserInput } from '@/services/api/authApi';
 import { personaForRole, useAuthStore } from '@/store/useAuthStore';
 
-/** Minimum password requirements that mirror PasswordPolicy in auth-iam-service. */
+/** Mirrors PasswordPolicy in auth-iam-service: 8-72 chars with at least one letter and one digit. */
 function validatePassword(value: string): string | null {
   if (value.length < 8) return 'Password must be at least 8 characters.';
-  if (!/[A-Z]/.test(value)) return 'Password must contain at least one uppercase letter.';
-  if (!/[0-9]/.test(value)) return 'Password must contain at least one number.';
-  if (!/[^A-Za-z0-9]/.test(value)) return 'Password must contain at least one special character.';
+  if (value.length > 72) return 'Password must not exceed 72 characters.';
+  if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+    return 'Password must contain at least one letter and one digit.';
+  }
   return null;
 }
+
+function districtLabel(value: string): string {
+  return value
+    .split('_')
+    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+const selectClass =
+  'flex w-full items-center gap-2 border transition-colors rounded-lg border-border-subtle bg-card px-3 py-2.5 text-sm text-primary outline-none focus:outline focus:outline-2 focus:outline-offset-[-2px] focus:outline-border-focus';
+const inputClass = selectClass + ' placeholder:text-muted';
 
 export function SignUpPage() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const navigate = useNavigate();
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [district, setDistrict] = useState<RegisterUserInput['district']>('COLOMBO');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,15 +61,25 @@ export function SignUpPage() {
 
     setLoading(true);
     try {
-      const tokens = await registerUser(username.trim(), email.trim().toLowerCase(), password);
+      const tokens = await registerUser({
+        username: username.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        district
+      });
       setAuth(tokens);
       // New accounts are always CUSTOMER — navigate to the customer home.
       navigate(roleHome[personaForRole(tokens.role)], { replace: true });
     } catch (requestError) {
       if (axios.isAxiosError(requestError)) {
         // Show only the server message; never echo back passwords or personal data.
-        const message = (requestError.response?.data as { message?: string } | undefined)?.message;
-        setError(message ?? 'Registration failed. Please try again.');
+        const data = requestError.response?.data as
+          | { message?: string; fieldErrors?: Record<string, string[]> }
+          | undefined;
+        const details = Object.values(data?.fieldErrors ?? {}).flat().join(' ');
+        setError(details || data?.message || 'Registration failed. Please try again.');
       } else {
         setError('Unable to reach the server. Check your connection and try again.');
       }
@@ -75,6 +100,37 @@ export function SignUpPage() {
         </p>
 
         <form className="mt-8 space-y-4" onSubmit={onSubmit}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                First name
+              </span>
+              <input
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                autoComplete="given-name"
+                placeholder="John"
+                required
+                maxLength={100}
+                className={inputClass}
+              />
+            </label>
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                Last name
+              </span>
+              <input
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+                autoComplete="family-name"
+                placeholder="Doe"
+                required
+                maxLength={100}
+                className={inputClass}
+              />
+            </label>
+          </div>
+
           <label className="block space-y-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
               Username
@@ -104,8 +160,25 @@ export function SignUpPage() {
               autoComplete="email"
               placeholder="john@example.com"
               required
-              className="flex w-full items-center gap-2 border transition-colors rounded-lg border-border-subtle bg-card px-3 py-2.5 text-sm text-primary placeholder:text-muted outline-none focus:outline focus:outline-2 focus:outline-offset-[-2px] focus:outline-border-focus"
+              className={inputClass}
             />
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
+              District
+            </span>
+            <select
+              value={district}
+              onChange={(event) => setDistrict(event.target.value as RegisterUserInput['district'])}
+              className={selectClass}
+            >
+              {SRI_LANKAN_DISTRICTS.map((value) => (
+                <option key={value} value={value}>
+                  {districtLabel(value)}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="block space-y-2">
@@ -117,7 +190,7 @@ export function SignUpPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
-              placeholder="Min 8 chars, 1 uppercase, 1 number, 1 symbol"
+              placeholder="Min 8 chars, with a letter and a number"
               required
             />
           </label>
