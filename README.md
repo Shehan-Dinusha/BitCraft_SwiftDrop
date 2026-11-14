@@ -117,7 +117,7 @@ flowchart LR
     EX -- "order.created<br/>order.cancelled<br/>parcel.status.changed.#<br/>dispatch.#" --> Q2["dispatch.* queues"] --> S2["dispatch-assignment-service"]
     EX -- "delivery.#<br/>dispatch.courier.assigned" --> Q3["delivery.* queues"] --> S3["delivery-execution-service"]
     EX -- "notification.#" --> Q4["notification.events.queue"] --> S4["notification-service"]
-    EX -- "webhook.#" --> Q5["webhook.events.queue"] --> S5["webhook-resiliency-service"]
+    EX -- "order.created<br/>parcel.status.changed.#<br/>webhook.dispatch.requested" --> Q5["webhook.events.queue"] --> S5["webhook-resiliency-service"]
     EX -- "parcel.status.changed.#<br/>dispatch.#" --> Q6["analytics.events.queue"] --> S6["analytics-ai-service"]
     EX -- "parcel.status.changed.#<br/>parcel.fee.revised" --> Q7["swiftdrop.gateway.* queues"] --> S7["api-gateway<br/>tracking hub"]
 

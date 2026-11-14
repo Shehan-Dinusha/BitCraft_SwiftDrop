@@ -6,7 +6,10 @@ import { QueryProvider } from '@/app/providers/QueryProvider';
 import { AuthProvider } from '@/app/providers/AuthProvider';
 import { DensityProvider } from '@/app/providers/DensityProvider';
 import { WebSocketProvider } from '@/app/providers/WebSocketProvider';
+import { applyDevAuthBypass } from '@/app/devAuthBypass';
 import './index.css';
+
+applyDevAuthBypass();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

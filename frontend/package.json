@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:webhook": "vite --mode webhook-dev",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
