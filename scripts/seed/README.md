@@ -64,13 +64,26 @@ then `kubectl delete pvc --all -n swiftdrop-data`, `-n swiftdrop-messaging` and 
 Every event is stamped "now", so a fresh seed puts the whole history on one day and the analytics
 charts show a single spike. `timeshift.mjs` runs **once, after the last stage**, and spreads it out:
 
-- finished orders get a booking time 0–29 days ago (more in recent days, so charts show growth),
-  booked 08:00–19:00 Colombo time, with realistic durations (express 3–10 h, standard 18–60 h);
-  orders still in progress stay within the last 2–3 days;
-- every timestamp of an order, in every database (order, dispatch, delivery, notification,
-  analytics), goes through the same mapping, so all pages agree;
-- notifications move to the time of the status they announce; the analytics daily and per-courier
-  totals are rebuilt with the analytics service's own rules; seeded accounts get believable sign-up dates.
+- each order's timeline is rebuilt step by step with realistic durations:
+
+  | Step | Duration |
+  |---|---|
+  | booked → courier assigned | 10 min – 3 h (dispatchers work 07:00–21:00) |
+  | assigned → picked up | 30 min – 4 h |
+  | picked up → in transit (to the hub) | 15 – 90 min |
+  | in transit → out for delivery | express 1–4 h; same district 2–6 h; other district: overnight, out next morning 08:00–10:00 |
+  | out for delivery → delivered / failed | 30 min – 5 h / 1 – 6 h |
+  | booked → cancelled | 10 min – 4 h |
+
+  Courier steps happen 08:00–19:30 Colombo time; bookings 07:00–23:00. Finished orders are booked
+  0–29 days ago (more in recent days, so charts show growth); orders still in progress end a
+  realistic time before now (a parcel is never "out for delivery" for days);
+- rows that stand for a step take that step's new time in every database: delivery's audit
+  trail and pickup/delivered times, the proof photo (minutes before delivery), dispatch's
+  assignment time, analytics events and projection fields, and notifications; any other
+  timestamp is placed between the new step times;
+- the analytics daily and per-courier totals are rebuilt with the analytics service's own rules;
+  seeded accounts get believable sign-up dates.
 
 It only touches orders of seeded (`@example.com`) customers, refuses to run a second time, and edits
 demo data directly in the service databases through `kubectl exec` (no schema or code changes).
