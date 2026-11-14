@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EstimateResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: PricingZone</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.pricing.dto</a> &gt; <span class="el_source">EstimateResponse.java</span></div><h1>EstimateResponse.java</h1><pre class="source lang-java linenums">package com.swiftdrop.pricing.dto;
+
+import com.swiftdrop.contracts.enums.OrderSpeed;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
+
+import java.math.BigDecimal;
+
+@Builder
+@Schema(description = &quot;Calculated delivery fee estimate&quot;)
+<span class="fc" id="L12">public record EstimateResponse(</span>
+
+        @Schema(description = &quot;Pickup district&quot;, example = &quot;COLOMBO&quot;)
+        SriLankanDistrict pickupDistrict,
+
+        @Schema(description = &quot;Delivery district&quot;, example = &quot;KANDY&quot;)
+        SriLankanDistrict deliveryDistrict,
+
+        @Schema(description = &quot;Resolved pickup zone code&quot;, example = &quot;ZONE_WESTERN&quot;)
+        String pickupZone,
+
+        @Schema(description = &quot;Resolved delivery zone code&quot;, example = &quot;ZONE_CENTRAL&quot;)
+        String deliveryZone,
+
+        @Schema(description = &quot;Whether pickup and delivery are in the same district&quot;, example = &quot;false&quot;)
+        boolean intraDistrict,
+
+        @Schema(description = &quot;Actual package weight in kg&quot;, example = &quot;2.50&quot;)
+        BigDecimal actualWeightKg,
+
+        @Schema(description = &quot;Volumetric weight in kg (L*W*H / 5000)&quot;, example = &quot;0.60&quot;)
+        BigDecimal volumetricWeightKg,
+
+        @Schema(description = &quot;Chargeable billable weight in kg&quot;, example = &quot;2.50&quot;)
+        BigDecimal chargeableWeightKg,
+
+        @Schema(description = &quot;Delivery speed that was priced&quot;, example = &quot;EXPRESS&quot;)
+        OrderSpeed speed,
+
+        @Schema(description = &quot;Base starting fee in LKR&quot;, example = &quot;550.00&quot;)
+        BigDecimal baseFee,
+
+        @Schema(description = &quot;Additional weight fee in LKR&quot;, example = &quot;240.00&quot;)
+        BigDecimal weightFee,
+
+        @Schema(description = &quot;Speed surcharge in LKR&quot;, example = &quot;395.00&quot;)
+        BigDecimal speedSurcharge,
+
+        @Schema(description = &quot;Total estimated delivery fee in LKR&quot;, example = &quot;1185.00&quot;)
+        BigDecimal estimatedFee,
+
+        @Schema(description = &quot;Currency code&quot;, example = &quot;LKR&quot;)
+        String currency,
+
+        @Schema(description = &quot;Locked pricing rule version ID for order anchoring&quot;, example = &quot;PRICING-2026-V1&quot;)
+        String pricingRuleVersionId,
+
+        @Schema(description = &quot;Pricing strategy used (STANDARD, EXPRESS or SAME_DAY)&quot;, example = &quot;EXPRESS&quot;)
+        String strategy
+) {
+
+    /** Builds an estimate from the pricing engine result. */
+    public static EstimateResponse from(PricingQuoteResponse quote) {
+<span class="fc" id="L65">        return EstimateResponse.builder()</span>
+<span class="fc" id="L66">                .pickupDistrict(quote.pickupDistrict())</span>
+<span class="fc" id="L67">                .deliveryDistrict(quote.deliveryDistrict())</span>
+<span class="fc" id="L68">                .pickupZone(quote.pickupZone())</span>
+<span class="fc" id="L69">                .deliveryZone(quote.deliveryZone())</span>
+<span class="fc" id="L70">                .intraDistrict(quote.intraDistrict())</span>
+<span class="fc" id="L71">                .actualWeightKg(quote.actualWeightKg())</span>
+<span class="fc" id="L72">                .volumetricWeightKg(quote.volumetricWeightKg())</span>
+<span class="fc" id="L73">                .chargeableWeightKg(quote.chargeableWeightKg())</span>
+<span class="fc" id="L74">                .speed(quote.speed())</span>
+<span class="fc" id="L75">                .baseFee(quote.baseFee())</span>
+<span class="fc" id="L76">                .weightFee(quote.weightFee())</span>
+<span class="fc" id="L77">                .speedSurcharge(quote.speedSurcharge())</span>
+<span class="fc" id="L78">                .estimatedFee(quote.estimatedFee())</span>
+<span class="fc" id="L79">                .currency(quote.currency())</span>
+<span class="fc" id="L80">                .pricingRuleVersionId(quote.pricingRuleVersionId())</span>
+<span class="fc" id="L81">                .strategy(quote.speed().name())</span>
+<span class="fc" id="L82">                .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
