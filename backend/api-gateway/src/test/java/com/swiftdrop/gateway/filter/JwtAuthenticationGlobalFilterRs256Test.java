@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.data.redis.core.ReactiveValueOperations;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -55,8 +56,11 @@ class JwtAuthenticationGlobalFilterRs256Test {
     private ObjectMapper objectMapper;
     private KeyPair keyPair;
     private JwtAuthenticationGlobalFilter filter;
+    private ReactiveStringRedisTemplate redisTemplate;
+    private ReactiveValueOperations<String, String> valueOps;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() throws Exception {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
@@ -70,8 +74,11 @@ class JwtAuthenticationGlobalFilterRs256Test {
         JwksKeyStore jwksKeyStore = new JwksKeyStore(webClient, objectMapper,
                 mockWebServer.url("/jwks.json").toString(), 300, 5);
 
-        ReactiveStringRedisTemplate redisTemplate = mock(ReactiveStringRedisTemplate.class);
+        redisTemplate = mock(ReactiveStringRedisTemplate.class);
         when(redisTemplate.hasKey(anyString())).thenReturn(Mono.just(false));
+        valueOps = mock(ReactiveValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get(anyString())).thenReturn(Mono.empty());
 
         filter = new JwtAuthenticationGlobalFilter(
                 "RS256", SECRET, BLACKLIST_PREFIX, ISSUER, AUDIENCE,
