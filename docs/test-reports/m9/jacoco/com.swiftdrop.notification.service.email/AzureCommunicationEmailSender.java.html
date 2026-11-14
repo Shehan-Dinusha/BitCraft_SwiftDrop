@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AzureCommunicationEmailSender.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.service.email</a> &gt; <span class="el_source">AzureCommunicationEmailSender.java</span></div><h1>AzureCommunicationEmailSender.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.service.email;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.notification.util.PiiMasker;
+import lombok.extern.slf4j.Slf4j;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Sends email through Azure Communication Services using its REST API and HMAC-SHA256
+ * access-key authentication. Only HTTP 202 (accepted for delivery) counts as success.
+ *
+ * &lt;p&gt;The access key, recipient address and provider response bodies are never logged or
+ * placed in exception messages, because exception messages are stored in dispatch logs.
+ */
+<span class="fc" id="L32">@Slf4j</span>
+public class AzureCommunicationEmailSender implements EmailSender {
+
+    static final String SEND_PATH = &quot;/emails:send?api-version=2023-03-31&quot;;
+<span class="fc" id="L36">    private static final DateTimeFormatter RFC_1123 = DateTimeFormatter.RFC_1123_DATE_TIME.withZone(ZoneOffset.UTC);</span>
+
+    private final URI sendUri;
+    private final String signedHost;
+    private final byte[] accessKey;
+    private final String senderAddress;
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final Clock clock;
+    private final Duration timeout;
+
+    public AzureCommunicationEmailSender(String endpoint, String base64AccessKey, String senderAddress,
+                                         ObjectMapper objectMapper) {
+<span class="fc" id="L49">        this(endpoint, base64AccessKey, senderAddress, objectMapper,</span>
+<span class="fc" id="L50">                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build(),</span>
+<span class="fc" id="L51">                Clock.systemUTC(), Duration.ofSeconds(10));</span>
+<span class="fc" id="L52">    }</span>
+
+<span class="fc" id="L54">    AzureCommunicationEmailSender(String endpoint, String base64AccessKey, String senderAddress,</span>
+                                  ObjectMapper objectMapper, HttpClient httpClient, Clock clock, Duration timeout) {
+<span class="fc" id="L56">        URI base = URI.create(endpoint.replaceAll(&quot;/+$&quot;, &quot;&quot;));</span>
+<span class="fc" id="L57">        this.sendUri = URI.create(base + SEND_PATH);</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        this.signedHost = base.getPort() == -1 ? base.getHost() : base.getHost() + &quot;:&quot; + base.getPort();</span>
+<span class="fc" id="L59">        this.accessKey = Base64.getDecoder().decode(base64AccessKey);</span>
+<span class="fc" id="L60">        this.senderAddress = senderAddress;</span>
+<span class="fc" id="L61">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L62">        this.httpClient = httpClient;</span>
+<span class="fc" id="L63">        this.clock = clock;</span>
+<span class="fc" id="L64">        this.timeout = timeout;</span>
+<span class="fc" id="L65">    }</span>
+
+    @Override
+    public void send(String to, String subject, String plainTextBody) {
+<span class="fc" id="L69">        byte[] body = buildBody(to, subject, plainTextBody);</span>
+<span class="fc" id="L70">        String date = RFC_1123.format(clock.instant());</span>
+<span class="fc" id="L71">        String contentHash = base64(sha256(body));</span>
+<span class="fc" id="L72">        String signature = base64(hmacSha256(&quot;POST\n&quot; + SEND_PATH + &quot;\n&quot; + date + &quot;;&quot; + signedHost + &quot;;&quot; + contentHash));</span>
+
+<span class="fc" id="L74">        HttpRequest request = HttpRequest.newBuilder(sendUri)</span>
+<span class="fc" id="L75">                .timeout(timeout)</span>
+<span class="fc" id="L76">                .header(&quot;Content-Type&quot;, &quot;application/json&quot;)</span>
+<span class="fc" id="L77">                .header(&quot;x-ms-date&quot;, date)</span>
+<span class="fc" id="L78">                .header(&quot;x-ms-content-sha256&quot;, contentHash)</span>
+<span class="fc" id="L79">                .header(&quot;Authorization&quot;, &quot;HMAC-SHA256 SignedHeaders=x-ms-date;host;x-ms-content-sha256&amp;Signature=&quot; + signature)</span>
+<span class="fc" id="L80">                .POST(HttpRequest.BodyPublishers.ofByteArray(body))</span>
+<span class="fc" id="L81">                .build();</span>
+
+        HttpResponse&lt;Void&gt; response;
+        try {
+<span class="fc" id="L85">            response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());</span>
+<span class="fc" id="L86">        } catch (IOException e) {</span>
+<span class="fc" id="L87">            throw new EmailDeliveryException(&quot;Azure email service unreachable&quot;);</span>
+<span class="nc" id="L88">        } catch (InterruptedException e) {</span>
+<span class="nc" id="L89">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L90">            throw new EmailDeliveryException(&quot;Azure email request interrupted&quot;);</span>
+        }
+
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        if (response.statusCode() != 202) {</span>
+<span class="fc" id="L94">            throw new EmailDeliveryException(&quot;Azure email rejected the message (HTTP &quot; + response.statusCode() + &quot;)&quot;);</span>
+        }
+<span class="fc" id="L96">        log.info(&quot;Azure accepted email for {} (operation {})&quot;, PiiMasker.maskEmail(to), operationId(response));</span>
+<span class="fc" id="L97">    }</span>
+
+    /** ACS returns {@code Operation-Location: https://.../emails/operations/&lt;id&gt;?api-version=...}. */
+    static String operationId(HttpResponse&lt;?&gt; response) {
+<span class="fc" id="L101">        return response.headers().firstValue(&quot;Operation-Location&quot;)</span>
+<span class="fc" id="L102">                .map(location -&gt; location.replaceAll(&quot;\\?.*$&quot;, &quot;&quot;))</span>
+<span class="fc" id="L103">                .map(path -&gt; path.substring(path.lastIndexOf('/') + 1))</span>
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">                .filter(id -&gt; !id.isBlank())</span>
+<span class="fc" id="L105">                .orElse(&quot;unknown&quot;);</span>
+    }
+
+    @Override
+    public String providerName() {
+<span class="fc" id="L110">        return &quot;azure&quot;;</span>
+    }
+
+    private byte[] buildBody(String to, String subject, String plainTextBody) {
+<span class="fc" id="L114">        Map&lt;String, Object&gt; payload = Map.of(</span>
+<span class="fc" id="L115">                &quot;senderAddress&quot;, senderAddress,</span>
+<span class="fc" id="L116">                &quot;content&quot;, Map.of(</span>
+<span class="pc bpc" id="L117" title="1 of 4 branches missed.">                        &quot;subject&quot;, subject == null || subject.isBlank() ? &quot;SwiftDrop notification&quot; : subject,</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">                        &quot;plainText&quot;, plainTextBody == null ? &quot;&quot; : plainTextBody),</span>
+<span class="fc" id="L119">                &quot;recipients&quot;, Map.of(&quot;to&quot;, List.of(Map.of(&quot;address&quot;, to))));</span>
+        try {
+<span class="fc" id="L121">            return objectMapper.writeValueAsBytes(payload);</span>
+<span class="nc" id="L122">        } catch (IOException e) {</span>
+<span class="nc" id="L123">            throw new EmailDeliveryException(&quot;Could not build the email request&quot;);</span>
+        }
+    }
+
+    private byte[] hmacSha256(String value) {
+        try {
+<span class="fc" id="L129">            Mac mac = Mac.getInstance(&quot;HmacSHA256&quot;);</span>
+<span class="fc" id="L130">            mac.init(new SecretKeySpec(accessKey, &quot;HmacSHA256&quot;));</span>
+<span class="fc" id="L131">            return mac.doFinal(value.getBytes(StandardCharsets.UTF_8));</span>
+<span class="nc" id="L132">        } catch (GeneralSecurityException e) {</span>
+<span class="nc" id="L133">            throw new IllegalStateException(&quot;HmacSHA256 is unavailable&quot;, e);</span>
+        }
+    }
+
+    private static byte[] sha256(byte[] value) {
+        try {
+<span class="fc" id="L139">            return MessageDigest.getInstance(&quot;SHA-256&quot;).digest(value);</span>
+<span class="nc" id="L140">        } catch (GeneralSecurityException e) {</span>
+<span class="nc" id="L141">            throw new IllegalStateException(&quot;SHA-256 is unavailable&quot;, e);</span>
+        }
+    }
+
+    private static String base64(byte[] value) {
+<span class="fc" id="L146">        return Base64.getEncoder().encodeToString(value);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -17,6 +17,8 @@
 | **Notification System Use Case Diagram** | Mermaid (.mmd) | [notification-use-case.mmd](notification-use-case.mmd) |
 | **Domain Event Payload Schema Specification** | Markdown & Tables | [event-payload-schemas.md](event-payload-schemas.md) |
 | **Broker Topology Audit Matrix** | Markdown Reference | [docs/integration/broker-topology.md](../../integration/broker-topology.md) |
+| **Real email via Azure Communication Services** | Setup & verification guide | [azure-email-notifications.md](azure-email-notifications.md) |
+| **Test and coverage evidence** | Markdown, Surefire, JaCoCo | [docs/test-reports/m9](../../test-reports/m9/README.md) |
 
 ---
 

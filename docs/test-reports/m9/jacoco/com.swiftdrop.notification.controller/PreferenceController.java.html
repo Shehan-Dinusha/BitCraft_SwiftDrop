@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PreferenceController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.controller</a> &gt; <span class="el_source">PreferenceController.java</span></div><h1>PreferenceController.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.controller;
+
+import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.notification.dto.RecipientPreferenceResponse;
+import com.swiftdrop.notification.dto.UpdatePreferenceRequest;
+import com.swiftdrop.notification.service.RecipientPreferenceService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+<span class="fc" id="L17">@Slf4j</span>
+@RestController
+@RequestMapping({&quot;/api/v1/notifications/preferences&quot;, &quot;/api/v1/preference&quot;})
+@Tag(name = &quot;Preference&quot;, description = &quot;Recipient notification preferences management&quot;)
+@RequiredArgsConstructor
+public class PreferenceController {
+
+    private final RecipientPreferenceService preferenceService;
+
+    @GetMapping(&quot;/health&quot;)
+    @Operation(summary = &quot;Health check for preference controller&quot;)
+    public ApiResponse&lt;String&gt; health() {
+<span class="fc" id="L29">        return ApiResponse.success(&quot;PreferenceController is ready&quot;, &quot;Health check OK&quot;);</span>
+    }
+
+    @GetMapping(&quot;/{recipientId}&quot;)
+    @Operation(summary = &quot;Get notification preferences for a recipient&quot;)
+    public ApiResponse&lt;RecipientPreferenceResponse&gt; getPreferences(
+            @PathVariable @Parameter(description = &quot;Recipient UUID&quot;) UUID recipientId) {
+<span class="fc" id="L36">        RecipientPreferenceResponse response = preferenceService.getOrCreatePreferences(recipientId);</span>
+<span class="fc" id="L37">        return ApiResponse.success(response, &quot;Preferences retrieved&quot;);</span>
+    }
+
+    @GetMapping
+    @Operation(summary = &quot;Get current authenticated user notification preferences&quot;)
+    public ApiResponse&lt;RecipientPreferenceResponse&gt; getCurrentUserPreferences(
+            @RequestHeader(value = &quot;X-User-Id&quot;, required = false) String headerUserId,
+            @RequestParam(required = false) UUID recipientId) {
+
+<span class="nc" id="L46">        UUID targetRecipient = recipientId;</span>
+<span class="nc bnc" id="L47" title="All 6 branches missed.">        if (targetRecipient == null &amp;&amp; headerUserId != null &amp;&amp; !headerUserId.isBlank()) {</span>
+            try {
+<span class="nc" id="L49">                targetRecipient = UUID.fromString(headerUserId);</span>
+<span class="nc" id="L50">            } catch (IllegalArgumentException ignored) {}</span>
+        }
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (targetRecipient == null) {</span>
+<span class="nc" id="L53">            targetRecipient = UUID.fromString(&quot;00000000-0000-0000-0000-000000000000&quot;);</span>
+        }
+
+<span class="nc" id="L56">        RecipientPreferenceResponse response = preferenceService.getOrCreatePreferences(targetRecipient);</span>
+<span class="nc" id="L57">        return ApiResponse.success(response, &quot;Preferences retrieved&quot;);</span>
+    }
+
+    @PutMapping(&quot;/{recipientId}&quot;)
+    @Operation(summary = &quot;Update notification preferences for a recipient&quot;)
+    public ApiResponse&lt;RecipientPreferenceResponse&gt; updatePreferences(
+            @PathVariable UUID recipientId,
+            @Valid @RequestBody UpdatePreferenceRequest request) {
+<span class="fc" id="L65">        RecipientPreferenceResponse response = preferenceService.updatePreferences(recipientId, request);</span>
+<span class="fc" id="L66">        return ApiResponse.success(response, &quot;Notification preferences updated successfully&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

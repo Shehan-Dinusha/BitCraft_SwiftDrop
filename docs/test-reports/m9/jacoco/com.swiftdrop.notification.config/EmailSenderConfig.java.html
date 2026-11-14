@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmailSenderConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.config</a> &gt; <span class="el_source">EmailSenderConfig.java</span></div><h1>EmailSenderConfig.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.notification.service.email.AzureCommunicationEmailSender;
+import com.swiftdrop.notification.service.email.EmailSender;
+import com.swiftdrop.notification.service.email.MockEmailSender;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.net.URI;
+import java.util.Base64;
+
+/**
+ * Selects the email provider from {@code notification.email.provider}. The default is {@code mock},
+ * so development, tests and CI never send real email. {@code azure} requires all three
+ * Azure Communication Services settings and fails fast at startup when one is missing or malformed.
+ */
+<span class="fc" id="L20">@Slf4j</span>
+@Configuration
+<span class="nc" id="L22">public class EmailSenderConfig {</span>
+
+    @Bean
+    public EmailSender emailSender(
+            @Value(&quot;${notification.email.provider:mock}&quot;) String provider,
+            @Value(&quot;${notification.email.azure.endpoint:}&quot;) String endpoint,
+            @Value(&quot;${notification.email.azure.access-key:}&quot;) String accessKey,
+            @Value(&quot;${notification.email.azure.sender-address:}&quot;) String senderAddress,
+            ObjectMapper objectMapper) {
+<span class="nc" id="L31">        return create(provider, endpoint, accessKey, senderAddress, objectMapper);</span>
+    }
+
+    static EmailSender create(String provider, String endpoint, String accessKey, String senderAddress,
+                              ObjectMapper objectMapper) {
+<span class="fc bfc" id="L36" title="All 2 branches covered.">        String selected = provider == null ? &quot;mock&quot; : provider.trim().toLowerCase();</span>
+<span class="fc bfc" id="L37" title="All 3 branches covered.">        switch (selected) {</span>
+            case &quot;&quot;, &quot;mock&quot; -&gt; {
+<span class="fc" id="L39">                log.info(&quot;Email provider: mock (no real email is sent)&quot;);</span>
+<span class="fc" id="L40">                return new MockEmailSender();</span>
+            }
+            case &quot;azure&quot; -&gt; {
+<span class="fc" id="L43">                validateAzure(endpoint, accessKey, senderAddress);</span>
+<span class="fc" id="L44">                log.info(&quot;Email provider: azure ({})&quot;, URI.create(endpoint.trim()).getHost());</span>
+<span class="fc" id="L45">                return new AzureCommunicationEmailSender(endpoint.trim(), accessKey.trim(), senderAddress.trim(), objectMapper);</span>
+            }
+<span class="fc" id="L47">            default -&gt; throw new IllegalStateException(</span>
+<span class="fc" id="L48">                    &quot;Unknown NOTIFICATION_EMAIL_PROVIDER '&quot; + provider + &quot;'. Use 'mock' or 'azure'.&quot;);</span>
+        }
+    }
+
+    private static void validateAzure(String endpoint, String accessKey, String senderAddress) {
+<span class="pc bpc" id="L53" title="1 of 6 branches missed.">        if (endpoint == null || endpoint.isBlank() || !endpoint.trim().startsWith(&quot;https://&quot;)) {</span>
+<span class="fc" id="L54">            throw new IllegalStateException(&quot;ACS_EMAIL_ENDPOINT must be the https:// endpoint of the Communication Services resource.&quot;);</span>
+        }
+<span class="pc bpc" id="L56" title="1 of 4 branches missed.">        if (accessKey == null || accessKey.isBlank()) {</span>
+<span class="fc" id="L57">            throw new IllegalStateException(&quot;ACS_EMAIL_ACCESS_KEY is required when NOTIFICATION_EMAIL_PROVIDER=azure.&quot;);</span>
+        }
+        try {
+<span class="fc" id="L60">            Base64.getDecoder().decode(accessKey.trim());</span>
+<span class="fc" id="L61">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L62">            throw new IllegalStateException(&quot;ACS_EMAIL_ACCESS_KEY is not a valid Communication Services access key.&quot;);</span>
+        }
+<span class="pc bpc" id="L64" title="1 of 4 branches missed.">        if (senderAddress == null || !senderAddress.contains(&quot;@&quot;)) {</span>
+<span class="fc" id="L65">            throw new IllegalStateException(&quot;ACS_EMAIL_SENDER_ADDRESS must be a verified sender, for example DoNotReply@&lt;domain&gt;.azurecomm.net.&quot;);</span>
+        }
+<span class="fc" id="L67">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
