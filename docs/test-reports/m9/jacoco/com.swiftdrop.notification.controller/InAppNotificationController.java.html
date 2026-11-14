@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InAppNotificationController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.controller</a> &gt; <span class="el_source">InAppNotificationController.java</span></div><h1>InAppNotificationController.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.controller;
+
+import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.notification.domain.entity.InAppNotification;
+import com.swiftdrop.notification.dto.InAppNotificationResponse;
+import com.swiftdrop.notification.service.InAppNotificationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+<span class="fc" id="L20">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/api/v1/notifications/me&quot;)
+@Tag(name = &quot;InAppNotification&quot;, description = &quot;In-app notifications for authenticated users&quot;)
+@RequiredArgsConstructor
+public class InAppNotificationController {
+
+    private final InAppNotificationService notificationService;
+
+    @GetMapping
+    @Operation(summary = &quot;List all in-app notifications for the authenticated user&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;InAppNotificationResponse&gt;&gt;&gt; listMyNotifications(
+            @RequestHeader(value = &quot;X-User-Id&quot;, required = false)
+            @Parameter(description = &quot;Authenticated user UUID set by gateway&quot;, required = true)
+            String headerUserId) {
+
+<span class="fc" id="L36">        UUID userId = parseUserId(headerUserId);</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        if (userId == null) {</span>
+<span class="fc" id="L38">            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)</span>
+<span class="fc" id="L39">                    .body(ApiResponse.error(&quot;Missing or invalid X-User-Id authentication header&quot;));</span>
+        }
+
+<span class="fc" id="L42">        List&lt;InAppNotification&gt; entities = notificationService.listNotifications(userId);</span>
+<span class="fc" id="L43">        List&lt;InAppNotificationResponse&gt; responses = entities.stream()</span>
+<span class="fc" id="L44">                .map(this::mapToResponse)</span>
+<span class="fc" id="L45">                .toList();</span>
+
+<span class="fc" id="L47">        return ResponseEntity.ok(ApiResponse.success(responses, &quot;In-app notifications retrieved&quot;));</span>
+    }
+
+    @GetMapping(&quot;/unread-count&quot;)
+    @Operation(summary = &quot;Get unread in-app notification count for the authenticated user&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Long&gt;&gt; getUnreadCount(
+            @RequestHeader(value = &quot;X-User-Id&quot;, required = false)
+            @Parameter(description = &quot;Authenticated user UUID set by gateway&quot;, required = true)
+            String headerUserId) {
+
+<span class="fc" id="L57">        UUID userId = parseUserId(headerUserId);</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">        if (userId == null) {</span>
+<span class="nc" id="L59">            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)</span>
+<span class="nc" id="L60">                    .body(ApiResponse.error(&quot;Missing or invalid X-User-Id authentication header&quot;));</span>
+        }
+
+<span class="fc" id="L63">        long unreadCount = notificationService.getUnreadCount(userId);</span>
+<span class="fc" id="L64">        return ResponseEntity.ok(ApiResponse.success(unreadCount, &quot;Unread count retrieved&quot;));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/read&quot;)
+    @Operation(summary = &quot;Mark a single in-app notification as read&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;InAppNotificationResponse&gt;&gt; markAsRead(
+            @PathVariable @Parameter(description = &quot;Notification ID&quot;) Long id,
+            @RequestHeader(value = &quot;X-User-Id&quot;, required = false)
+            @Parameter(description = &quot;Authenticated user UUID set by gateway&quot;, required = true)
+            String headerUserId) {
+
+<span class="fc" id="L75">        UUID userId = parseUserId(headerUserId);</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        if (userId == null) {</span>
+<span class="nc" id="L77">            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)</span>
+<span class="nc" id="L78">                    .body(ApiResponse.error(&quot;Missing or invalid X-User-Id authentication header&quot;));</span>
+        }
+
+<span class="fc" id="L81">        Optional&lt;InAppNotification&gt; updated = notificationService.markAsRead(id, userId);</span>
+<span class="fc" id="L82">        return updated.map(inAppNotification -&gt; ResponseEntity.ok(ApiResponse.success(</span>
+<span class="fc" id="L83">                        mapToResponse(inAppNotification),</span>
+<span class="fc" id="L84">                        &quot;Notification marked as read&quot;</span>
+<span class="fc" id="L85">                )))</span>
+<span class="fc" id="L86">                .orElseGet(() -&gt; ResponseEntity.status(HttpStatus.NOT_FOUND)</span>
+<span class="fc" id="L87">                        .body(ApiResponse.error(&quot;Notification not found for ID: &quot; + id)));</span>
+    }
+
+    @PostMapping(&quot;/read-all&quot;)
+    @Operation(summary = &quot;Mark all unread in-app notifications as read for the authenticated user&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Integer&gt;&gt; markAllAsRead(
+            @RequestHeader(value = &quot;X-User-Id&quot;, required = false)
+            @Parameter(description = &quot;Authenticated user UUID set by gateway&quot;, required = true)
+            String headerUserId) {
+
+<span class="fc" id="L97">        UUID userId = parseUserId(headerUserId);</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">        if (userId == null) {</span>
+<span class="nc" id="L99">            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)</span>
+<span class="nc" id="L100">                    .body(ApiResponse.error(&quot;Missing or invalid X-User-Id authentication header&quot;));</span>
+        }
+
+<span class="fc" id="L103">        int count = notificationService.markAllAsRead(userId);</span>
+<span class="fc" id="L104">        return ResponseEntity.ok(ApiResponse.success(count, &quot;Marked &quot; + count + &quot; notifications as read&quot;));</span>
+    }
+
+    private InAppNotificationResponse mapToResponse(InAppNotification entity) {
+<span class="fc" id="L108">        return new InAppNotificationResponse(</span>
+<span class="fc" id="L109">                entity.getId(),</span>
+<span class="fc" id="L110">                entity.getUserId(),</span>
+<span class="fc" id="L111">                entity.getTitle(),</span>
+<span class="fc" id="L112">                entity.getBody(),</span>
+<span class="fc" id="L113">                entity.getTrackingNumber(),</span>
+<span class="fc" id="L114">                entity.isRead(),</span>
+<span class="fc" id="L115">                entity.getCreatedAt()</span>
+        );
+    }
+
+    private UUID parseUserId(String headerUserId) {
+<span class="pc bpc" id="L120" title="1 of 4 branches missed.">        if (headerUserId == null || headerUserId.isBlank()) {</span>
+<span class="fc" id="L121">            return null;</span>
+        }
+        try {
+<span class="fc" id="L124">            return UUID.fromString(headerUserId.trim());</span>
+<span class="fc" id="L125">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L126">            return null;</span>
+        }
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

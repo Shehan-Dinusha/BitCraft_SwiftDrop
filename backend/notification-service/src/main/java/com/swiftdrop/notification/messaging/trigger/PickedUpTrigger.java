@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Triggers an SMS notification when a parcel is picked up by a courier.
+ * Triggers an EMAIL notification when a parcel is picked up by a courier.
  * Template: {@code PARCEL_PICKED_UP}
  */
 @Slf4j
@@ -49,13 +49,6 @@ public class PickedUpTrigger implements NotificationTrigger {
         params.put("courierName", courierName);
         params.put("status", "PICKED_UP");
 
-        return List.of(new DispatchNotificationRequest(
-                recipientIdOpt.get(),
-                "SMS",
-                "PARCEL_PICKED_UP",
-                null,
-                params,
-                trackingNumber
-        ));
+        return NotificationTrigger.email(recipientIdOpt.get(), "PARCEL_PICKED_UP", params, trackingNumber);
     }
 }

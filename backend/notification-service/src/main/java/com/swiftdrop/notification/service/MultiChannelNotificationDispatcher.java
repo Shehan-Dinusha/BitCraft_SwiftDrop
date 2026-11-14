@@ -8,6 +8,8 @@ import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepositor
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.service.email.EmailHtmlRenderer;
+import com.swiftdrop.notification.service.email.EmailSender;
 import com.swiftdrop.notification.util.PiiMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,8 @@ public class MultiChannelNotificationDispatcher {
     private final NotificationDispatchLogRepository logRepository;
     private final TemplateRendererService templateRenderer;
     private final ContactClient contactClient;
+    private final EmailSender emailSender;
+    private final EmailHtmlRenderer emailHtmlRenderer;
 
     /**
      * Executes omnichannel notification dispatch, verifying recipient preferences and logging the outcome.
@@ -66,9 +70,9 @@ public class MultiChannelNotificationDispatcher {
             status = "FAILED";
             failureReason = "No valid " + channel + " destination address or phone provided";
         } else {
-            // Mock delivery execution (SMS / Email / Push adapter)
+            // EMAIL goes through the configured provider (mock or Azure); PUSH is the in-app inbox.
             try {
-                executeMockDelivery(channel, destination, rendered.subject(), rendered.body());
+                executeDelivery(channel, destination, request, rendered);
                 status = "SENT";
                 sentAt = Instant.now();
                 log.info("Notification successfully dispatched to {} via {}", PiiMasker.maskDestination(destination), channel);
@@ -125,7 +129,6 @@ public class MultiChannelNotificationDispatcher {
     private boolean isChannelEnabled(RecipientPreference pref, String channel) {
         if (pref == null) return true; // Default enabled
         return switch (channel) {
-            case "SMS" -> pref.isSmsEnabled();
             case "EMAIL" -> pref.isEmailEnabled();
             case "PUSH" -> pref.isPushEnabled();
             default -> true;
@@ -138,7 +141,6 @@ public class MultiChannelNotificationDispatcher {
         }
         if (pref != null) {
             String prefDestination = switch (channel) {
-                case "SMS" -> pref.getPhoneNumber();
                 case "EMAIL" -> pref.getEmailAddress();
                 case "PUSH" -> pref.getRecipientId().toString();
                 default -> null;
@@ -152,31 +154,41 @@ public class MultiChannelNotificationDispatcher {
         }
         if (contactClient != null && recipientId != null) {
             Optional<RecipientContact> contactOpt = contactClient.lookupContact(recipientId);
-            if (contactOpt.isPresent()) {
-                RecipientContact contact = contactOpt.get();
-                return switch (channel) {
-                    case "SMS" -> contact.phone();
-                    case "EMAIL" -> contact.email();
-                    default -> null;
-                };
+            if (contactOpt.isPresent() && "EMAIL".equals(channel)) {
+                return contactOpt.get().email();
             }
         }
         return null;
     }
 
-    private void executeMockDelivery(String channel, String destination, String subject, String body) {
-        if ("SMS".equalsIgnoreCase(channel)) {
-            // E.164 phone sanity check
-            if (!destination.matches("^\\+?[0-9]{9,15}$")) {
-                throw new IllegalArgumentException("Invalid phone number format for SMS: " + PiiMasker.maskDestination(destination));
+    private void executeDelivery(String channel, String destination, DispatchNotificationRequest request,
+                                 TemplateRendererService.RenderedNotification rendered) {
+        switch (channel) {
+            case "EMAIL" -> {
+                // Email sanity check before handing the message to the provider.
+                if (!destination.contains("@")) {
+                    throw new IllegalArgumentException("Invalid email destination format: " + PiiMasker.maskDestination(destination));
+                }
+                String trackingNumber = trackingNumberOf(request);
+                emailSender.send(destination, rendered.subject(),
+                        emailHtmlRenderer.renderText(rendered.body(), trackingNumber),
+                        emailHtmlRenderer.renderHtml(request.templateCode(), rendered.subject(), rendered.body(), trackingNumber));
             }
-        } else if ("EMAIL".equalsIgnoreCase(channel)) {
-            // Email sanity check
-            if (!destination.contains("@")) {
-                throw new IllegalArgumentException("Invalid email destination format: " + PiiMasker.maskDestination(destination));
+            case "PUSH" -> {
+                // In-app push is delivered through the inbox; nothing to transmit here.
+            }
+            default -> throw new IllegalArgumentException("Unsupported channel " + channel + "; use EMAIL or PUSH");
+        }
+    }
+
+    private static String trackingNumberOf(DispatchNotificationRequest request) {
+        if (request.templateParams() != null) {
+            String fromParams = request.templateParams().get("trackingNumber");
+            if (fromParams != null && !fromParams.isBlank()) {
+                return fromParams.trim();
             }
         }
-        // Transmission successful simulated
+        return request.referenceId();
     }
 
     private NotificationDispatchLogResponse mapToResponse(NotificationDispatchLog entity) {

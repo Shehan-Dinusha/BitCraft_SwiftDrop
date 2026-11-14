@@ -3,6 +3,8 @@ package com.swiftdrop.notification.messaging.trigger;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Observer interface for domain event notification triggers.
@@ -26,4 +28,10 @@ public interface NotificationTrigger {
      * @return list of notification dispatch requests, or empty list if no notification should be sent
      */
     List<DispatchNotificationRequest> build(EventEnvelope envelope);
+
+    /** Builds the single EMAIL request every trigger sends; the consumer also writes the in-app row. */
+    static List<DispatchNotificationRequest> email(UUID recipientId, String templateCode,
+                                                   Map<String, String> params, String trackingNumber) {
+        return List.of(new DispatchNotificationRequest(recipientId, "EMAIL", templateCode, null, params, trackingNumber));
+    }
 }

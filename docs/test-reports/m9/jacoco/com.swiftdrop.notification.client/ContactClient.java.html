@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ContactClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.client</a> &gt; <span class="el_source">ContactClient.java</span></div><h1>ContactClient.java</h1><pre class="source lang-java linenums"><span class="fc" id="L1">package com.swiftdrop.notification.client;</span>
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.util.PiiMasker;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClient;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Resolves the recipient email address from auth-iam-service
+ * ({@code GET /internal/v1/users/{id}/contact}) without carrying PII on domain events.
+ * Includes a 10-minute in-memory cache and a deterministic fake fallback when {@code CONTACT_MODE=fake}.
+ */
+<span class="fc" id="L28">@Slf4j</span>
+@Component
+public class ContactClient {
+
+<span class="fc" id="L32">    private static final String INTERNAL_CONTACT_PATH = &quot;/internal/v1/users/{id}/contact&quot;;</span>
+
+    private final RestClient restClient;
+    private final String contactMode;
+    private final Duration cacheTtl;
+    private final Clock clock;
+<span class="fc" id="L38">    private final Map&lt;UUID, CachedContact&gt; cache = new ConcurrentHashMap&lt;&gt;();</span>
+
+    @Autowired
+    public ContactClient(
+            RestClient.Builder restClientBuilder,
+            @Value(&quot;${notification.contact.mode:iam}&quot;) String contactMode,
+            @Value(&quot;${notification.contact.iam-base-url:http://localhost:8081}&quot;) String iamBaseUrl,
+            @Value(&quot;${notification.contact.cache-ttl-minutes:10}&quot;) long cacheTtlMinutes
+    ) {
+<span class="nc" id="L47">        this(</span>
+<span class="nc" id="L48">                configureBuilder(restClientBuilder, iamBaseUrl).build(),</span>
+<span class="nc" id="L49">                contactMode,</span>
+<span class="nc" id="L50">                Duration.ofMinutes(cacheTtlMinutes),</span>
+<span class="nc" id="L51">                Clock.systemUTC()</span>
+        );
+<span class="nc" id="L53">    }</span>
+
+<span class="fc" id="L55">    public ContactClient(RestClient restClient, String contactMode, Duration cacheTtl, Clock clock) {</span>
+<span class="fc" id="L56">        this.restClient = restClient;</span>
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">        this.contactMode = contactMode != null ? contactMode : &quot;iam&quot;;</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">        this.cacheTtl = cacheTtl != null ? cacheTtl : Duration.ofMinutes(10);</span>
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        this.clock = clock != null ? clock : Clock.systemUTC();</span>
+<span class="fc" id="L60">    }</span>
+
+    private static RestClient.Builder configureBuilder(RestClient.Builder builder, String baseUrl) {
+<span class="nc" id="L63">        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();</span>
+<span class="nc" id="L64">        requestFactory.setConnectTimeout(Duration.ofSeconds(2));</span>
+<span class="nc" id="L65">        requestFactory.setReadTimeout(Duration.ofSeconds(3));</span>
+<span class="nc" id="L66">        return builder.clone().baseUrl(baseUrl).requestFactory(requestFactory);</span>
+    }
+
+    /**
+     * Looks up contact coordinates for the given user UUID using cache, fake mode, or IAM HTTP lookup.
+     */
+    public Optional&lt;RecipientContact&gt; lookupContact(UUID userId) {
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">        if (userId == null) {</span>
+<span class="nc" id="L74">            return Optional.empty();</span>
+        }
+
+<span class="fc" id="L77">        Instant now = clock.instant();</span>
+<span class="fc" id="L78">        CachedContact cached = cache.get(userId);</span>
+<span class="fc bfc" id="L79" title="All 4 branches covered.">        if (cached != null &amp;&amp; cached.expiresAt().isAfter(now)) {</span>
+<span class="fc" id="L80">            log.debug(&quot;Contact cache hit for user {}: email={}&quot;, userId, PiiMasker.maskEmail(cached.contact().email()));</span>
+<span class="fc" id="L81">            return Optional.of(cached.contact());</span>
+        }
+
+<span class="fc bfc" id="L84" title="All 2 branches covered.">        Optional&lt;RecipientContact&gt; resolved = &quot;fake&quot;.equalsIgnoreCase(contactMode)</span>
+<span class="fc" id="L85">                ? Optional.of(generateFakeContact(userId))</span>
+<span class="fc" id="L86">                : fetchFromIam(userId);</span>
+
+<span class="fc" id="L88">        resolved.ifPresent(contact -&gt; {</span>
+<span class="fc" id="L89">            cache.put(userId, new CachedContact(contact, now.plus(cacheTtl)));</span>
+<span class="fc" id="L90">            log.info(&quot;Resolved recipient contact for user {} (mode={}): email={}&quot;,</span>
+<span class="fc" id="L91">                    userId, contactMode, PiiMasker.maskEmail(contact.email()));</span>
+<span class="fc" id="L92">        });</span>
+
+<span class="fc" id="L94">        return resolved;</span>
+    }
+
+    private Optional&lt;RecipientContact&gt; fetchFromIam(UUID userId) {
+        try {
+<span class="fc" id="L99">            JsonNode body = restClient.get()</span>
+<span class="fc" id="L100">                    .uri(INTERNAL_CONTACT_PATH, userId)</span>
+<span class="fc" id="L101">                    .retrieve()</span>
+<span class="fc" id="L102">                    .body(JsonNode.class);</span>
+
+<span class="pc bpc" id="L104" title="2 of 4 branches missed.">            if (body == null || body.isNull()) {</span>
+<span class="nc" id="L105">                return Optional.empty();</span>
+            }
+
+<span class="pc bpc" id="L108" title="1 of 4 branches missed.">            JsonNode payload = body.hasNonNull(&quot;data&quot;) &amp;&amp; body.get(&quot;data&quot;).isObject()</span>
+<span class="fc" id="L109">                    ? body.get(&quot;data&quot;)</span>
+<span class="fc" id="L110">                    : body;</span>
+
+<span class="fc" id="L112">            String email = readText(payload, &quot;email&quot;, &quot;emailAddress&quot;);</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">            if (email == null) {</span>
+<span class="nc" id="L114">                return Optional.empty();</span>
+            }
+<span class="fc" id="L116">            return Optional.of(new RecipientContact(email));</span>
+<span class="fc" id="L117">        } catch (HttpClientErrorException ex) {</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {</span>
+<span class="fc" id="L119">                log.debug(&quot;No IAM contact found for user {}&quot;, userId);</span>
+<span class="fc" id="L120">            } else {</span>
+<span class="nc" id="L121">                log.warn(&quot;IAM contact lookup failed for user {} with status {}&quot;, userId, ex.getStatusCode());</span>
+            }
+<span class="fc" id="L123">            return Optional.empty();</span>
+<span class="nc" id="L124">        } catch (Exception ex) {</span>
+<span class="nc" id="L125">            log.warn(&quot;IAM contact lookup failed for user {}: {}&quot;, userId, ex.getMessage());</span>
+<span class="nc" id="L126">            return Optional.empty();</span>
+        }
+    }
+
+    private RecipientContact generateFakeContact(UUID userId) {
+<span class="fc" id="L131">        String shortId = userId.toString().substring(0, 8);</span>
+<span class="fc" id="L132">        return new RecipientContact(&quot;user-&quot; + shortId + &quot;@swiftdrop.example&quot;);</span>
+    }
+
+    private static String readText(JsonNode node, String primaryField, String fallbackField) {
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">        if (node.hasNonNull(primaryField)) {</span>
+<span class="fc" id="L137">            String value = node.get(primaryField).asText();</span>
+<span class="pc bpc" id="L138" title="1 of 2 branches missed.">            if (!value.isBlank()) {</span>
+<span class="fc" id="L139">                return value;</span>
+            }
+        }
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (node.hasNonNull(fallbackField)) {</span>
+<span class="nc" id="L143">            String value = node.get(fallbackField).asText();</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">            if (!value.isBlank()) {</span>
+<span class="nc" id="L145">                return value;</span>
+            }
+        }
+<span class="nc" id="L148">        return null;</span>
+    }
+
+    private record CachedContact(RecipientContact contact, Instant expiresAt) {
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

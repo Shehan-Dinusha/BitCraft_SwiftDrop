@@ -62,14 +62,13 @@ public class TemplateRendererService {
             channel = tmpl.getChannel();
         } else {
             // Default fallbacks for operational resilience
-            channel = "SMS";
+            channel = "EMAIL";
             switch (templateCode) {
                 case "PARCEL_OUT_FOR_DELIVERY" -> {
                     subjectTmpl = "SwiftDrop Out for Delivery";
                     bodyTmpl = "Parcel {{trackingNumber}} is out for delivery with {{courierName}}. Delivery expected shortly.";
                 }
                 case "PARCEL_DELIVERED" -> {
-                    channel = "EMAIL";
                     subjectTmpl = "Parcel Delivered - SwiftDrop";
                     bodyTmpl = "Your parcel {{trackingNumber}} was successfully delivered at {{deliveredAt}}. Thank you for choosing SwiftDrop.";
                 }

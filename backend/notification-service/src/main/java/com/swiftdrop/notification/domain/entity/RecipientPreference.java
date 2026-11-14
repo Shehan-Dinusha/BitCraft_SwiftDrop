@@ -30,19 +30,12 @@ public class RecipientPreference {
     @Builder.Default
     private boolean emailEnabled = true;
 
-    @Column(name = "sms_enabled", nullable = false)
-    @Builder.Default
-    private boolean smsEnabled = true;
-
     @Column(name = "push_enabled", nullable = false)
     @Builder.Default
     private boolean pushEnabled = true;
 
     @Column(name = "email_address")
     private String emailAddress;
-
-    @Column(name = "phone_number", length = 32)
-    private String phoneNumber;
 
     @Column(name = "language_preference", nullable = false, length = 8)
     @Builder.Default

@@ -8,6 +8,9 @@ import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepositor
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.service.email.EmailDeliveryException;
+import com.swiftdrop.notification.service.email.EmailHtmlRenderer;
+import com.swiftdrop.notification.service.email.EmailSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
@@ -24,7 +28,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalMatchers.and;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +49,12 @@ class MultiChannelNotificationDispatcherTest {
     @Mock
     private ContactClient contactClient;
 
+    @Mock
+    private EmailSender emailSender;
+
+    @Spy
+    private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer("https://swiftdrop.lk");
+
     @InjectMocks
     private MultiChannelNotificationDispatcher dispatcher;
 
@@ -53,148 +66,85 @@ class MultiChannelNotificationDispatcherTest {
     }
 
     @Test
-    @DisplayName("Should successfully dispatch SMS when enabled and phone valid")
-    void testDispatchSMS_Success() {
-        RecipientPreference pref = RecipientPreference.builder()
-                .recipientId(recipientId)
-                .smsEnabled(true)
-                .phoneNumber("+94771234567")
-                .build();
-
-        when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.of(pref));
-        when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
-                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "SMS"));
-        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
-
-        DispatchNotificationRequest request = new DispatchNotificationRequest(
-                recipientId,
-                "SMS",
-                "PARCEL_PICKED_UP",
-                null,
-                Map.of("trackingNumber", "SD-001"),
-                "SD-001"
-        );
-
-        NotificationDispatchLogResponse response = dispatcher.dispatch(request);
-
-        assertThat(response.status()).isEqualTo("SENT");
-        assertThat(response.channel()).isEqualTo("SMS");
-        assertThat(response.destination()).isEqualTo("+94771234567");
-        assertThat(response.sentAt()).isNotNull();
-        assertThat(response.failureReason()).isNull();
-
-        ArgumentCaptor<NotificationDispatchLog> logCaptor = ArgumentCaptor.forClass(NotificationDispatchLog.class);
-        verify(logRepository).save(logCaptor.capture());
-        assertThat(logCaptor.getValue().getStatus()).isEqualTo("SENT");
-    }
-
-    @Test
-    @DisplayName("Should suppress notification when channel is disabled in user preferences")
+    @DisplayName("Should suppress notification when email is disabled in user preferences")
     void testDispatch_SuppressedByPreference() {
         RecipientPreference pref = RecipientPreference.builder()
                 .recipientId(recipientId)
-                .smsEnabled(false)
-                .phoneNumber("+94771234567")
+                .emailEnabled(false)
+                .emailAddress("customer@example.com")
                 .build();
 
         when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.of(pref));
         when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
-                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "SMS"));
+                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "EMAIL"));
         when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
 
-        DispatchNotificationRequest request = new DispatchNotificationRequest(
-                recipientId,
-                "SMS",
-                "PARCEL_PICKED_UP",
-                null,
-                Map.of(),
-                "SD-001"
-        );
-
-        NotificationDispatchLogResponse response = dispatcher.dispatch(request);
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
+                recipientId, "EMAIL", "PARCEL_PICKED_UP", null, Map.of(), "SD-001"));
 
         assertThat(response.status()).isEqualTo("SUPPRESSED");
         assertThat(response.failureReason()).contains("disabled in user preferences");
         assertThat(response.sentAt()).isNull();
+        verifyNoInteractions(emailSender);
     }
 
     @Test
-    @DisplayName("Should fail dispatch when destination is missing")
+    @DisplayName("Should fail dispatch when no email address can be resolved")
     void testDispatch_MissingDestination() {
         when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.empty());
         when(contactClient.lookupContact(recipientId)).thenReturn(Optional.empty());
         when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
-                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "SMS"));
+                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "EMAIL"));
         when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
 
-        DispatchNotificationRequest request = new DispatchNotificationRequest(
-                recipientId,
-                "SMS",
-                "PARCEL_PICKED_UP",
-                null, // No destination provided in request or preferences
-                Map.of(),
-                "SD-001"
-        );
-
-        NotificationDispatchLogResponse response = dispatcher.dispatch(request);
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
+                recipientId, "EMAIL", "PARCEL_PICKED_UP", null, Map.of(), "SD-001"));
 
         assertThat(response.status()).isEqualTo("FAILED");
-        assertThat(response.failureReason()).contains("No valid SMS destination address");
+        assertThat(response.failureReason()).contains("No valid EMAIL destination address");
+        verifyNoInteractions(emailSender);
     }
 
     @Test
-    @DisplayName("Should resolve contact via ContactClient when preference lacks phone/email")
+    @DisplayName("Should resolve the email address via ContactClient when preferences have none")
     void testDispatch_ResolvesFromContactClient() {
         when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.empty());
         when(contactClient.lookupContact(recipientId))
-                .thenReturn(Optional.of(new RecipientContact("iam-user@example.com", "+94779998888")));
+                .thenReturn(Optional.of(new RecipientContact("iam-user@example.com")));
         when(templateRenderer.renderTemplate(eq("PARCEL_DELIVERED"), any()))
                 .thenReturn(new TemplateRendererService.RenderedNotification("Delivered", "Your parcel was delivered", "EMAIL"));
         when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
 
-        DispatchNotificationRequest request = new DispatchNotificationRequest(
-                recipientId,
-                "EMAIL",
-                "PARCEL_DELIVERED",
-                null,
-                Map.of(),
-                "SD-IAM-001"
-        );
-
-        NotificationDispatchLogResponse response = dispatcher.dispatch(request);
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
+                recipientId, "EMAIL", "PARCEL_DELIVERED", null, Map.of(), "SD-IAM-001"));
 
         assertThat(response.status()).isEqualTo("SENT");
         assertThat(response.channel()).isEqualTo("EMAIL");
+        assertThat(response.destination()).isEqualTo("iam-user@example.com");
         verify(contactClient).lookupContact(recipientId);
+        verify(emailSender).send(eq("iam-user@example.com"), eq("Delivered"), startsWith("Your parcel was delivered"), contains("<!DOCTYPE html>"));
     }
 
     @Test
-    @DisplayName("Should fail dispatch when SMS phone number format is invalid")
-    void testDispatchSMS_InvalidPhoneNumber() {
+    @DisplayName("Should fail dispatch when the email address is malformed")
+    void testDispatch_InvalidEmailAddress() {
         RecipientPreference pref = RecipientPreference.builder()
                 .recipientId(recipientId)
-                .smsEnabled(true)
-                .phoneNumber("invalid-phone")
+                .emailEnabled(true)
+                .emailAddress("not-an-email")
                 .build();
 
         when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.of(pref));
         when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
-                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "SMS"));
+                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "EMAIL"));
         when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
 
-        DispatchNotificationRequest request = new DispatchNotificationRequest(
-                recipientId,
-                "SMS",
-                "PARCEL_PICKED_UP",
-                null,
-                Map.of(),
-                "SD-001"
-        );
-
-        NotificationDispatchLogResponse response = dispatcher.dispatch(request);
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
+                recipientId, "EMAIL", "PARCEL_PICKED_UP", null, Map.of(), "SD-001"));
 
         assertThat(response.status()).isEqualTo("FAILED");
-        assertThat(response.failureReason()).contains("Invalid phone number format");
+        assertThat(response.failureReason()).contains("Invalid email destination format");
+        verifyNoInteractions(emailSender);
     }
 
     @Test
@@ -225,6 +175,66 @@ class MultiChannelNotificationDispatcherTest {
         assertThat(response.status()).isEqualTo("SENT");
         assertThat(response.channel()).isEqualTo("EMAIL");
         assertThat(response.destination()).isEqualTo("customer@example.com");
+        verify(emailSender).send(eq("customer@example.com"), eq("Delivered"), startsWith("Delivered at your door"),
+                and(contains("Delivered at your door"), contains("https://swiftdrop.lk/track/SD-001")));
+    }
+
+    @Test
+    @DisplayName("Should log FAILED with a safe reason when the email provider rejects the message")
+    void testDispatchEMAIL_ProviderRejects() {
+        RecipientPreference pref = RecipientPreference.builder()
+                .recipientId(recipientId)
+                .emailEnabled(true)
+                .emailAddress("customer@example.com")
+                .build();
+
+        when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.of(pref));
+        when(templateRenderer.renderTemplate(eq("PARCEL_FAILED"), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("Delivery failed", "We could not deliver", "EMAIL"));
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+        doThrow(new EmailDeliveryException("Azure email rejected the message (HTTP 401)"))
+                .when(emailSender).send(any(), any(), any(), any());
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
+                recipientId, "EMAIL", "PARCEL_FAILED", null, Map.of(), "SD-002"));
+
+        assertThat(response.status()).isEqualTo("FAILED");
+        assertThat(response.sentAt()).isNull();
+        assertThat(response.failureReason())
+                .isEqualTo("Azure email rejected the message (HTTP 401)")
+                .doesNotContain("customer@example.com");
+    }
+
+    @Test
+    @DisplayName("SMS is no longer a channel: it is logged as FAILED and nothing is sent")
+    void testDispatch_SmsChannelRejected() {
+        when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.empty());
+        when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Picked up", "EMAIL"));
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
+                recipientId, "SMS", "PARCEL_PICKED_UP", "+94771234567", Map.of(), "SD-003"));
+
+        assertThat(response.status()).isEqualTo("FAILED");
+        assertThat(response.failureReason()).isEqualTo("Unsupported channel SMS; use EMAIL or PUSH");
+        verifyNoInteractions(emailSender);
+    }
+
+    @Test
+    @DisplayName("PUSH is recorded as sent without using the email provider")
+    void testDispatch_PushDoesNotUseEmailProvider() {
+        when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.empty());
+        when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Picked up", "EMAIL"));
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
+                recipientId, "PUSH", "PARCEL_PICKED_UP", null, Map.of(), "SD-004"));
+
+        assertThat(response.status()).isEqualTo("SENT");
+        assertThat(response.destination()).isEqualTo(recipientId.toString());
+        verifyNoInteractions(emailSender);
     }
 
     @Test
@@ -233,18 +243,18 @@ class MultiChannelNotificationDispatcherTest {
         NotificationDispatchLog log1 = NotificationDispatchLog.builder()
                 .logId(UUID.randomUUID())
                 .recipientId(recipientId)
-                .channel("SMS")
+                .channel("EMAIL")
                 .status("SENT")
                 .createdAt(Instant.now())
                 .build();
 
-        when(logRepository.findByRecipientIdAndChannelOrderByCreatedAtDesc(recipientId, "SMS"))
+        when(logRepository.findByRecipientIdAndChannelOrderByCreatedAtDesc(recipientId, "EMAIL"))
                 .thenReturn(List.of(log1));
 
-        List<NotificationDispatchLogResponse> logs = dispatcher.listLogs(recipientId, "SMS", null);
+        List<NotificationDispatchLogResponse> logs = dispatcher.listLogs(recipientId, "EMAIL", null);
 
         assertThat(logs).hasSize(1);
-        assertThat(logs.get(0).channel()).isEqualTo("SMS");
+        assertThat(logs.get(0).channel()).isEqualTo("EMAIL");
     }
 
     @Test

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Notification API
-  description: Recipient notification preferences management, omnichannel dispatch (SMS, Email, Push), and delivery audit log APIs.
+  description: Recipient notification preferences management, dispatch (Email via Azure Communication Services, in-app Push), and delivery audit log APIs.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
@@ -267,13 +267,9 @@ components:
       properties:
         emailEnabled:
           type: boolean
-        smsEnabled:
-          type: boolean
         pushEnabled:
           type: boolean
         emailAddress:
-          type: string
-        phoneNumber:
           type: string
         languagePreference:
           type: string
@@ -288,13 +284,9 @@ components:
           type: string
         emailEnabled:
           type: boolean
-        smsEnabled:
-          type: boolean
         pushEnabled:
           type: boolean
         emailAddress:
-          type: string
-        phoneNumber:
           type: string
         languagePreference:
           type: string
@@ -327,7 +319,7 @@ components:
           format: uuid
         channel:
           type: string
-          enum: [SMS, EMAIL, PUSH]
+          enum: [EMAIL, PUSH]
         templateCode:
           type: string
         destination:

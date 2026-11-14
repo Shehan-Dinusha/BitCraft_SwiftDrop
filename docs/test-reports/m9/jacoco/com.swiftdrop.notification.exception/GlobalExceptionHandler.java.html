@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.exception;
+
+import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
+
+<span class="fc" id="L15">@Slf4j</span>
+@RestControllerAdvice
+<span class="fc" id="L17">public class GlobalExceptionHandler {</span>
+
+    @ExceptionHandler(RecipientPreferenceNotFoundException.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handlePreferenceNotFound(
+            RecipientPreferenceNotFoundException ex, HttpServletRequest request) {
+<span class="nc" id="L22">        log.warn(&quot;Recipient preference not found: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L23">        return ResponseEntity.status(HttpStatus.NOT_FOUND)</span>
+<span class="nc" id="L24">                .body(ApiErrorResponse.of(HttpStatus.NOT_FOUND.value(), &quot;Preference Not Found&quot;, ex.getMessage(), request.getRequestURI()));</span>
+    }
+
+    @ExceptionHandler(TemplateNotFoundException.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handleTemplateNotFound(
+            TemplateNotFoundException ex, HttpServletRequest request) {
+<span class="nc" id="L30">        log.warn(&quot;Template not found: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L31">        return ResponseEntity.status(HttpStatus.NOT_FOUND)</span>
+<span class="nc" id="L32">                .body(ApiErrorResponse.of(HttpStatus.NOT_FOUND.value(), &quot;Template Not Found&quot;, ex.getMessage(), request.getRequestURI()));</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handleValidationErrors(
+            MethodArgumentNotValidException ex, HttpServletRequest request) {
+<span class="fc" id="L38">        String details = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L39">                .map(FieldError::getDefaultMessage)</span>
+<span class="fc" id="L40">                .collect(Collectors.joining(&quot;; &quot;));</span>
+<span class="fc" id="L41">        log.warn(&quot;Validation error on {}: {}&quot;, request.getRequestURI(), details);</span>
+<span class="fc" id="L42">        return ResponseEntity.badRequest()</span>
+<span class="fc" id="L43">                .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), &quot;Validation Failed&quot;, details, request.getRequestURI()));</span>
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+<span class="nc" id="L49">        log.warn(&quot;Illegal argument: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L50">        return ResponseEntity.badRequest()</span>
+<span class="nc" id="L51">                .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), &quot;Bad Request&quot;, ex.getMessage(), request.getRequestURI()));</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;ApiErrorResponse&gt; handleGeneral(
+            Exception ex, HttpServletRequest request) {
+<span class="nc" id="L57">        log.error(&quot;Unhandled notification service exception: &quot;, ex);</span>
+<span class="nc" id="L58">        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="nc" id="L59">                .body(ApiErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), &quot;Internal Server Error&quot;, ex.getMessage(), request.getRequestURI()));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

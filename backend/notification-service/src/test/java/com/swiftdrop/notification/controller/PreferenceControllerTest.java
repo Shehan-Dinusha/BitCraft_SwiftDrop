@@ -52,10 +52,8 @@ class PreferenceControllerTest {
                 recipientId,
                 "CUSTOMER",
                 true,
-                true,
                 false,
                 "user@example.com",
-                "+94771234567",
                 "en",
                 Instant.now()
         );
@@ -67,10 +65,10 @@ class PreferenceControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.recipientId").value(recipientId.toString()))
                 .andExpect(jsonPath("$.data.emailEnabled").value(true))
-                .andExpect(jsonPath("$.data.smsEnabled").value(true))
                 .andExpect(jsonPath("$.data.pushEnabled").value(false))
                 .andExpect(jsonPath("$.data.emailAddress").value("user@example.com"))
-                .andExpect(jsonPath("$.data.phoneNumber").value("+94771234567"));
+                .andExpect(jsonPath("$.data.smsEnabled").doesNotExist())
+                .andExpect(jsonPath("$.data.phoneNumber").doesNotExist());
     }
 
     @Test
@@ -78,10 +76,8 @@ class PreferenceControllerTest {
     void testUpdatePreferences() throws Exception {
         UpdatePreferenceRequest request = new UpdatePreferenceRequest(
                 true,
-                false,
                 true,
                 "updated@example.com",
-                "+94779876543",
                 "si"
         );
 
@@ -89,10 +85,8 @@ class PreferenceControllerTest {
                 recipientId,
                 "CUSTOMER",
                 true,
-                false,
                 true,
                 "updated@example.com",
-                "+94779876543",
                 "si",
                 Instant.now()
         );
@@ -105,7 +99,6 @@ class PreferenceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.emailAddress").value("updated@example.com"))
-                .andExpect(jsonPath("$.data.smsEnabled").value(false))
                 .andExpect(jsonPath("$.data.languagePreference").value("si"));
     }
 }

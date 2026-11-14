@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationTrigger.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.messaging.trigger</a> &gt; <span class="el_source">NotificationTrigger.java</span></div><h1>NotificationTrigger.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.messaging.trigger;
+
+import com.swiftdrop.notification.dto.DispatchNotificationRequest;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Observer interface for domain event notification triggers.
+ * Implementing components declare which events they observe via {@link #matches(EventEnvelope)}
+ * and construct corresponding notification dispatch requests via {@link #build(EventEnvelope)}.
+ */
+public interface NotificationTrigger {
+
+    /**
+     * Determines whether this trigger responds to the given event envelope.
+     *
+     * @param envelope the event envelope containing routing key and payload
+     * @return {@code true} if this trigger should handle the event; {@code false} otherwise
+     */
+    boolean matches(EventEnvelope envelope);
+
+    /**
+     * Builds one or more notification requests based on the domain event.
+     *
+     * @param envelope the event envelope containing routing key and payload
+     * @return list of notification dispatch requests, or empty list if no notification should be sent
+     */
+    List&lt;DispatchNotificationRequest&gt; build(EventEnvelope envelope);
+
+    /** Builds the single EMAIL request every trigger sends; the consumer also writes the in-app row. */
+    static List&lt;DispatchNotificationRequest&gt; email(UUID recipientId, String templateCode,
+                                                   Map&lt;String, String&gt; params, String trackingNumber) {
+<span class="fc" id="L35">        return List.of(new DispatchNotificationRequest(recipientId, &quot;EMAIL&quot;, templateCode, null, params, trackingNumber));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

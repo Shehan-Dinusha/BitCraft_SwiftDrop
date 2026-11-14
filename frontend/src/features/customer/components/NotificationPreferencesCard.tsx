@@ -10,7 +10,6 @@ import { useAuthStore } from '@/store/useAuthStore';
 import {
   Bell,
   Mail,
-  Smartphone,
   CheckCircle2,
   AlertCircle,
   Clock,
@@ -30,10 +29,8 @@ export function NotificationPreferencesCard() {
 
   // Form states
   const [emailEnabled, setEmailEnabled] = useState(true);
-  const [smsEnabled, setSmsEnabled] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailAddress, setEmailAddress] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [languagePreference, setLanguagePreference] = useState('en');
 
   const recipientId = user?.id;
@@ -49,10 +46,8 @@ export function NotificationPreferencesCard() {
       if (recipientId) {
         const pref = await notificationApi.getPreferences(recipientId);
         setEmailEnabled(pref.emailEnabled ?? true);
-        setSmsEnabled(pref.smsEnabled ?? true);
         setPushEnabled(pref.pushEnabled ?? true);
         setEmailAddress(pref.emailAddress ?? user?.email ?? '');
-        setPhoneNumber(pref.phoneNumber ?? '');
         setLanguagePreference(pref.languagePreference ?? 'en');
 
         // Load logs
@@ -61,10 +56,8 @@ export function NotificationPreferencesCard() {
       } else {
         const pref = await notificationApi.getCurrentPreferences();
         setEmailEnabled(pref.emailEnabled ?? true);
-        setSmsEnabled(pref.smsEnabled ?? true);
         setPushEnabled(pref.pushEnabled ?? true);
         setEmailAddress(pref.emailAddress ?? '');
-        setPhoneNumber(pref.phoneNumber ?? '');
         setLanguagePreference(pref.languagePreference ?? 'en');
       }
     } catch (err: unknown) {
@@ -85,10 +78,8 @@ export function NotificationPreferencesCard() {
     try {
       await notificationApi.updatePreferences(recipientId, {
         emailEnabled,
-        smsEnabled,
         pushEnabled,
         emailAddress,
-        phoneNumber,
         languagePreference,
       });
       setSaveSuccess(true);
@@ -108,14 +99,11 @@ export function NotificationPreferencesCard() {
     setErrorMessage(null);
 
     try {
-      const channel = smsEnabled && phoneNumber ? 'SMS' : 'EMAIL';
-      const destination = channel === 'SMS' ? phoneNumber : emailAddress;
-
       await notificationApi.dispatch({
         recipientId,
-        channel,
+        channel: 'EMAIL',
         templateCode: 'PARCEL_OUT_FOR_DELIVERY',
-        destination,
+        destination: emailAddress,
         templateParams: {
           trackingNumber: 'SD-TEST-' + Math.floor(1000 + Math.random() * 9000),
           courierName: 'SwiftDrop Express Courier',
@@ -152,7 +140,7 @@ export function NotificationPreferencesCard() {
         <div>
           <h2 className="text-lg font-bold text-primary flex items-center gap-2">
             <Bell className="size-5 text-brand-primary" />
-            Omnichannel Notification Preferences
+            Notification Preferences
           </h2>
           <p className="text-xs text-secondary mt-0.5">
             Choose how you receive real-time updates for courier pickups, transit checkpoints, and proof of delivery.
@@ -167,7 +155,7 @@ export function NotificationPreferencesCard() {
           leftIcon={<Send className="size-3.5" />}
           className="self-start sm:self-auto"
         >
-          {isDispatching ? 'Transmitting...' : 'Send Test Alert'}
+          {isDispatching ? 'Sending...' : 'Send Test Email'}
         </Button>
       </div>
 
@@ -187,42 +175,7 @@ export function NotificationPreferencesCard() {
 
       <form onSubmit={handleSavePreferences} className="space-y-6">
         {/* Channel Toggles Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* SMS Toggle */}
-          <div
-            onClick={() => setSmsEnabled(!smsEnabled)}
-            className={`cursor-pointer rounded-2xl border p-4 transition-all duration-200 ${
-              smsEnabled
-                ? 'bg-brand-primary/5 border-brand-primary shadow-sm'
-                : 'bg-elevated/40 border-border-subtle opacity-70 hover:opacity-100'
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={`p-2 rounded-xl ${
-                    smsEnabled ? 'bg-brand-primary text-brand-on' : 'bg-muted text-secondary'
-                  }`}
-                >
-                  <Smartphone className="size-4" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-primary">SMS Alerts</h4>
-                  <p className="text-[11px] text-secondary">Instant dispatch & PIN alerts</p>
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={smsEnabled}
-                onChange={() => {}} // Controlled by parent card click
-                className="size-4 rounded text-brand-primary cursor-pointer accent-brand-primary"
-              />
-            </div>
-            <p className="text-[11px] text-secondary mt-3 leading-relaxed">
-              Receive live SMS notifications with courier contact details, arrival ETAs, and verification codes.
-            </p>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Email Toggle */}
           <div
             onClick={() => setEmailEnabled(!emailEnabled)}
@@ -295,16 +248,7 @@ export function NotificationPreferencesCard() {
         </div>
 
         {/* Contact Coordinates & Language */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          <Field label="Contact Phone for SMS" hint="Format: +947XXXXXXXX or 07XXXXXXXX">
-            <Input
-              variant="phone"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+94771234567"
-            />
-          </Field>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <Field label="Notification Email" hint="For delivery receipts & attachments">
             <Input
               variant="text"

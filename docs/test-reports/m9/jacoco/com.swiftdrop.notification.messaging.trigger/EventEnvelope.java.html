@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EventEnvelope.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.messaging.trigger</a> &gt; <span class="el_source">EventEnvelope.java</span></div><h1>EventEnvelope.java</h1><pre class="source lang-java linenums"><span class="fc" id="L1">package com.swiftdrop.notification.messaging.trigger;</span>
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+
+import java.io.IOException;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * Encapsulates the AMQP message metadata and JSON payload for incoming domain events.
+ * Provides convenience helper methods to extract standard fields (recipient, tracking number, status).
+ */
+<span class="fc" id="L16">@Slf4j</span>
+public record EventEnvelope(
+        String routingKey,
+        UUID eventId,
+        UUID correlationId,
+        JsonNode payload
+) {
+
+    public static Optional&lt;EventEnvelope&gt; from(Message message, ObjectMapper objectMapper) {
+<span class="pc bpc" id="L25" title="2 of 4 branches missed.">        if (message == null || message.getBody() == null) {</span>
+<span class="nc" id="L26">            return Optional.empty();</span>
+        }
+
+<span class="pc bpc" id="L29" title="1 of 2 branches missed.">        String routingKey = message.getMessageProperties() != null</span>
+<span class="fc" id="L30">                ? message.getMessageProperties().getReceivedRoutingKey()</span>
+<span class="nc" id="L31">                : &quot;unknown&quot;;</span>
+
+        try {
+<span class="fc" id="L34">            JsonNode payload = objectMapper.readTree(message.getBody());</span>
+<span class="pc bpc" id="L35" title="2 of 4 branches missed.">            if (payload == null || payload.isNull()) {</span>
+<span class="nc" id="L36">                return Optional.empty();</span>
+            }
+
+<span class="fc" id="L39">            UUID eventId = parseUuid(payload, &quot;eventId&quot;).orElse(null);</span>
+<span class="fc" id="L40">            UUID correlationId = parseUuid(payload, &quot;correlationId&quot;).orElse(null);</span>
+
+<span class="fc" id="L42">            return Optional.of(new EventEnvelope(routingKey, eventId, correlationId, payload));</span>
+<span class="fc" id="L43">        } catch (IOException e) {</span>
+<span class="fc" id="L44">            log.error(&quot;Failed to parse event message with routing key {}: {}&quot;, routingKey, e.getMessage());</span>
+<span class="fc" id="L45">            return Optional.empty();</span>
+        }
+    }
+
+    public Optional&lt;UUID&gt; extractRecipientId() {
+<span class="fc" id="L50">        Optional&lt;UUID&gt; customerId = parseUuid(payload, &quot;customerId&quot;);</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (customerId.isPresent()) {</span>
+<span class="fc" id="L52">            return customerId;</span>
+        }
+<span class="fc" id="L54">        return parseUuid(payload, &quot;recipientId&quot;);</span>
+    }
+
+    public Optional&lt;UUID&gt; extractMerchantOwnerId() {
+<span class="fc" id="L58">        Optional&lt;UUID&gt; ownerId = parseUuid(payload, &quot;merchantOwnerId&quot;);</span>
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        if (ownerId.isPresent()) {</span>
+<span class="nc" id="L60">            return ownerId;</span>
+        }
+<span class="fc" id="L62">        Optional&lt;UUID&gt; ownerUserId = parseUuid(payload, &quot;ownerUserId&quot;);</span>
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">        if (ownerUserId.isPresent()) {</span>
+<span class="nc" id="L64">            return ownerUserId;</span>
+        }
+<span class="fc" id="L66">        return parseUuid(payload, &quot;merchantId&quot;);</span>
+    }
+
+    public String extractTrackingNumber() {
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">        if (payload.hasNonNull(&quot;trackingNumber&quot;)) {</span>
+<span class="fc" id="L71">            return payload.get(&quot;trackingNumber&quot;).asText();</span>
+        }
+<span class="nc" id="L73">        return &quot;SD-PARCEL&quot;;</span>
+    }
+
+    public Optional&lt;String&gt; extractStatus() {
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">        if (payload.hasNonNull(&quot;newPublicStatus&quot;)) {</span>
+<span class="fc" id="L78">            return Optional.of(payload.get(&quot;newPublicStatus&quot;).asText());</span>
+        }
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (payload.hasNonNull(&quot;newStatus&quot;)) {</span>
+<span class="nc" id="L81">            return Optional.of(payload.get(&quot;newStatus&quot;).asText());</span>
+        }
+<span class="nc bnc" id="L83" title="All 2 branches missed.">        if (payload.hasNonNull(&quot;status&quot;)) {</span>
+<span class="nc" id="L84">            return Optional.of(payload.get(&quot;status&quot;).asText());</span>
+        }
+<span class="nc" id="L86">        return Optional.empty();</span>
+    }
+
+    private static Optional&lt;UUID&gt; parseUuid(JsonNode node, String fieldName) {
+<span class="fc bfc" id="L90" title="All 2 branches covered.">        if (node.hasNonNull(fieldName)) {</span>
+            try {
+<span class="fc" id="L92">                return Optional.of(UUID.fromString(node.get(fieldName).asText()));</span>
+<span class="nc" id="L93">            } catch (IllegalArgumentException ignored) {</span>
+                // Return empty if not a valid UUID format
+            }
+        }
+<span class="fc" id="L97">        return Optional.empty();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

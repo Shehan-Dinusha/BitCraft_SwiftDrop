@@ -27,6 +27,13 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 
 ## 2. Gaps to close
 
+**Status update (2026-11-14):** All gaps below are implemented on `dev` (PRs #25, #28, #59,
+#60) and covered by the required tests. In addition, EMAIL notifications can now be sent for real
+through Azure Communication Services (`NOTIFICATION_EMAIL_PROVIDER=azure`; default `mock`).
+Every trigger sends EMAIL; **SMS was removed** (Azure SMS needs a purchased number the student
+subscription cannot get), and in-app push is unchanged. See [Azure email notifications](../design/m9/azure-email-notifications.md) and the
+[test and coverage evidence](../test-reports/m9/README.md) (99 tests). The original checkboxes are kept below for reference.
+
 **Broker orchestration (you own this for the whole team):**
 
 - [ ] **`definitions.json` doesn't match the Java configs.** Examples: `notification.events.queue` binds only `notification.#` in JSON but `parcel.status.changed.#` in Java; `webhook.events.queue` bindings differ; `customer-order.fee-revision.queue` and `swiftdrop.auth.events` are missing from JSON. Produce one table of every exchange/queue/binding, then make `definitions.json` and each `RabbitMQConfig` agree (send owners the exact lines for their config).

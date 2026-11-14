@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PiiMasker.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.util</a> &gt; <span class="el_source">PiiMasker.java</span></div><h1>PiiMasker.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.util;
+
+/**
+ * Utility for masking personally identifiable information (PII) such as
+ * phone numbers and email addresses before writing to application logs,
+ * error messages, or audit trails.
+ */
+public final class PiiMasker {
+
+    private PiiMasker() {
+    }
+
+    /**
+     * Masks a phone number while keeping minimal prefix/suffix context for troubleshooting,
+     * e.g. {@code 0771235678 -&gt; 07X***5678} or {@code +94771235678 -&gt; 07X***5678}.
+     */
+    public static String maskPhone(String phone) {
+<span class="fc bfc" id="L18" title="All 4 branches covered.">        if (phone == null || phone.isBlank()) {</span>
+<span class="fc" id="L19">            return &quot;&quot;;</span>
+        }
+<span class="fc" id="L21">        String digits = phone.replaceAll(&quot;\\D&quot;, &quot;&quot;);</span>
+        // International form (+94 then nine digits) is the same number as 0 then nine digits.
+<span class="pc bpc" id="L23" title="1 of 4 branches missed.">        if (digits.length() == 11 &amp;&amp; digits.startsWith(&quot;94&quot;)) {</span>
+<span class="fc" id="L24">            digits = &quot;0&quot; + digits.substring(2);</span>
+        }
+<span class="fc bfc" id="L26" title="All 2 branches covered.">        if (digits.length() == 10) {</span>
+<span class="fc" id="L27">            return digits.substring(0, 2) + &quot;X***&quot; + digits.substring(6);</span>
+        }
+<span class="pc bpc" id="L29" title="1 of 2 branches missed.">        if (digits.length() &lt;= 4) {</span>
+<span class="fc" id="L30">            return &quot;***&quot;;</span>
+        }
+<span class="nc bnc" id="L32" title="All 2 branches missed.">        if (digits.length() &lt;= 7) {</span>
+<span class="nc" id="L33">            return digits.substring(0, 2) + &quot;***&quot; + digits.substring(digits.length() - 2);</span>
+        }
+<span class="nc" id="L35">        return digits.substring(0, 3) + &quot;***&quot; + digits.substring(digits.length() - 4);</span>
+    }
+
+    /**
+     * Masks an email address preserving the first character of the local part and full domain,
+     * e.g. {@code alice@gmail.com -&gt; a***@gmail.com}.
+     */
+    public static String maskEmail(String email) {
+<span class="fc bfc" id="L43" title="All 4 branches covered.">        if (email == null || email.isBlank()) {</span>
+<span class="fc" id="L44">            return &quot;&quot;;</span>
+        }
+<span class="fc" id="L46">        String trimmed = email.trim();</span>
+<span class="fc" id="L47">        int atIndex = trimmed.indexOf('@');</span>
+<span class="pc bpc" id="L48" title="1 of 4 branches missed.">        if (atIndex &lt;= 0 || atIndex == trimmed.length() - 1) {</span>
+<span class="fc" id="L49">            return &quot;***&quot;;</span>
+        }
+<span class="fc" id="L51">        return trimmed.charAt(0) + &quot;***&quot; + trimmed.substring(atIndex);</span>
+    }
+
+    /**
+     * Automatically detects destination type (email, phone, or fallback) and masks PII.
+     */
+    public static String maskDestination(String destination) {
+<span class="fc bfc" id="L58" title="All 4 branches covered.">        if (destination == null || destination.isBlank()) {</span>
+<span class="fc" id="L59">            return &quot;&quot;;</span>
+        }
+<span class="fc" id="L61">        String trimmed = destination.trim();</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (&quot;UNRESOLVED&quot;.equalsIgnoreCase(trimmed)) {</span>
+<span class="fc" id="L63">            return trimmed;</span>
+        }
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        if (trimmed.contains(&quot;@&quot;)) {</span>
+<span class="fc" id="L66">            return maskEmail(trimmed);</span>
+        }
+<span class="fc bfc" id="L68" title="All 4 branches covered.">        if (trimmed.matches(&quot;.*\\d{4,}.*&quot;) &amp;&amp; trimmed.length() &lt;= 20) {</span>
+<span class="fc" id="L69">            return maskPhone(trimmed);</span>
+        }
+<span class="fc" id="L71">        return &quot;***&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

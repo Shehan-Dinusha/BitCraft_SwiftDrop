@@ -481,10 +481,8 @@ export interface components {
         };
         UpdatePreferenceRequest: {
             emailEnabled?: boolean;
-            smsEnabled?: boolean;
             pushEnabled?: boolean;
             emailAddress?: string;
-            phoneNumber?: string;
             languagePreference?: string;
         };
         RecipientPreferenceResponse: {
@@ -492,10 +490,8 @@ export interface components {
             recipientId?: string;
             recipientType?: string;
             emailEnabled?: boolean;
-            smsEnabled?: boolean;
             pushEnabled?: boolean;
             emailAddress?: string;
-            phoneNumber?: string;
             languagePreference?: string;
             /** Format: date-time */
             updatedAt?: string;
@@ -511,7 +507,7 @@ export interface components {
             /** Format: uuid */
             recipientId: string;
             /** @enum {string} */
-            channel: "SMS" | "EMAIL" | "PUSH";
+            channel: "EMAIL" | "PUSH";
             templateCode: string;
             destination?: string;
             templateParams?: {

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TemplateRendererService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.service</a> &gt; <span class="el_source">TemplateRendererService.java</span></div><h1>TemplateRendererService.java</h1><pre class="source lang-java linenums"><span class="fc" id="L1">package com.swiftdrop.notification.service;</span>
+
+import com.swiftdrop.notification.domain.entity.NotificationTemplate;
+import com.swiftdrop.notification.domain.repository.NotificationTemplateRepository;
+import com.swiftdrop.notification.util.PiiMasker;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+<span class="fc" id="L16">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class TemplateRendererService {
+
+<span class="fc" id="L21">    private static final Pattern UNKNOWN_PLACEHOLDER_PATTERN = Pattern.compile(&quot;\\{\\{[^}]+\\}\\}&quot;);</span>
+<span class="fc" id="L22">    private static final Pattern CREDIT_CARD_PATTERN = Pattern.compile(&quot;\\b(?:\\d[ -]*?){13,19}\\b&quot;);</span>
+<span class="fc" id="L23">    private static final Pattern SRI_LANKAN_PHONE_PATTERN = Pattern.compile(&quot;\\b(?:(?:\\+?94)|0)?7\\d{8}\\b&quot;);</span>
+
+<span class="fc" id="L25">    private static final Set&lt;String&gt; FORBIDDEN_SECRET_KEYS = Set.of(</span>
+<span class="fc" id="L26">            &quot;password&quot;, &quot;passwd&quot;, &quot;pin&quot;, &quot;cvv&quot;, &quot;cvc&quot;, &quot;secret&quot;, &quot;authtoken&quot;, &quot;auth_token&quot;, &quot;jwt&quot;, &quot;privatekey&quot;, &quot;private_key&quot;</span>
+    );
+
+<span class="fc" id="L29">    private static final Set&lt;String&gt; FORBIDDEN_CARD_KEYS = Set.of(</span>
+<span class="fc" id="L30">            &quot;cardnumber&quot;, &quot;card_number&quot;, &quot;creditcard&quot;, &quot;credit_card&quot;, &quot;debitcard&quot;, &quot;debit_card&quot;, &quot;pan&quot;</span>
+    );
+
+<span class="fc" id="L33">    private static final Set&lt;String&gt; FORBIDDEN_ADDRESS_KEYS = Set.of(</span>
+<span class="fc" id="L34">            &quot;fulladdress&quot;, &quot;full_address&quot;, &quot;streetaddress&quot;, &quot;street_address&quot;, &quot;addressline&quot;, &quot;address_line&quot;,</span>
+<span class="fc" id="L35">            &quot;addressline1&quot;, &quot;address_line1&quot;, &quot;addressline2&quot;, &quot;address_line2&quot;</span>
+    );
+
+<span class="fc" id="L38">    private static final Set&lt;String&gt; PHONE_KEYS = Set.of(</span>
+<span class="fc" id="L39">            &quot;phone&quot;, &quot;phonenumber&quot;, &quot;phone_number&quot;, &quot;mobile&quot;, &quot;mobilenumber&quot;, &quot;mobile_number&quot;,</span>
+<span class="fc" id="L40">            &quot;contact&quot;, &quot;contactnumber&quot;, &quot;contact_number&quot;, &quot;recipientphone&quot;, &quot;recipient_phone&quot;,</span>
+<span class="fc" id="L41">            &quot;senderphone&quot;, &quot;sender_phone&quot;</span>
+<span class="fc" id="L42">    );</span>
+
+    private final NotificationTemplateRepository templateRepository;
+
+    public record RenderedNotification(String subject, String body, String channel) {}
+
+    /**
+     * Resolves the template by code, then interpolates parameters into subject and body.
+     */
+    public RenderedNotification renderTemplate(String templateCode, Map&lt;String, String&gt; params) {
+<span class="fc" id="L52">        Optional&lt;NotificationTemplate&gt; templateOpt = templateRepository.findByTemplateCodeAndActiveTrue(templateCode);</span>
+
+        String subjectTmpl;
+        String bodyTmpl;
+        String channel;
+
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (templateOpt.isPresent()) {</span>
+<span class="fc" id="L59">            NotificationTemplate tmpl = templateOpt.get();</span>
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">            subjectTmpl = tmpl.getSubjectTemplate() != null ? tmpl.getSubjectTemplate() : &quot;SwiftDrop Notification&quot;;</span>
+<span class="fc" id="L61">            bodyTmpl = tmpl.getBodyTemplate();</span>
+<span class="fc" id="L62">            channel = tmpl.getChannel();</span>
+<span class="fc" id="L63">        } else {</span>
+            // Default fallbacks for operational resilience
+<span class="fc" id="L65">            channel = &quot;EMAIL&quot;;</span>
+<span class="fc bfc" id="L66" title="All 5 branches covered.">            switch (templateCode) {</span>
+                case &quot;PARCEL_OUT_FOR_DELIVERY&quot; -&gt; {
+<span class="fc" id="L68">                    subjectTmpl = &quot;SwiftDrop Out for Delivery&quot;;</span>
+<span class="fc" id="L69">                    bodyTmpl = &quot;Parcel {{trackingNumber}} is out for delivery with {{courierName}}. Delivery expected shortly.&quot;;</span>
+                }
+                case &quot;PARCEL_DELIVERED&quot; -&gt; {
+<span class="fc" id="L72">                    subjectTmpl = &quot;Parcel Delivered - SwiftDrop&quot;;</span>
+<span class="fc" id="L73">                    bodyTmpl = &quot;Your parcel {{trackingNumber}} was successfully delivered at {{deliveredAt}}. Thank you for choosing SwiftDrop.&quot;;</span>
+                }
+                case &quot;PARCEL_PICKED_UP&quot; -&gt; {
+<span class="fc" id="L76">                    subjectTmpl = &quot;SwiftDrop Parcel Picked Up&quot;;</span>
+<span class="fc" id="L77">                    bodyTmpl = &quot;Courier {{courierName}} has picked up parcel {{trackingNumber}}. In-transit to distribution hub.&quot;;</span>
+                }
+                case &quot;PARCEL_FAILED&quot; -&gt; {
+<span class="fc" id="L80">                    subjectTmpl = &quot;SwiftDrop Delivery Exception&quot;;</span>
+<span class="fc" id="L81">                    bodyTmpl = &quot;Delivery attempt failed for parcel {{trackingNumber}}: {{failureReason}}.&quot;;</span>
+                }
+                default -&gt; {
+<span class="fc" id="L84">                    subjectTmpl = &quot;SwiftDrop Notification&quot;;</span>
+<span class="fc" id="L85">                    bodyTmpl = &quot;Status update for parcel {{trackingNumber}}: {{status}}.&quot;;</span>
+                }
+            }
+        }
+
+<span class="fc" id="L90">        String renderedSubject = interpolate(subjectTmpl, params);</span>
+<span class="fc" id="L91">        String renderedBody = interpolate(bodyTmpl, params);</span>
+
+<span class="fc" id="L93">        return new RenderedNotification(renderedSubject, renderedBody, channel);</span>
+    }
+
+    /**
+     * Replaces {{paramKey}} occurrences with matching safe value from params map.
+     * Guarantees that:
+     * 1. Passwords, card numbers, and full addresses are never output.
+     * 2. Phone numbers are masked (07X***5678).
+     * 3. Unknown placeholders are replaced with empty string.
+     */
+    public String interpolate(String template, Map&lt;String, String&gt; params) {
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (template == null) return &quot;&quot;;</span>
+
+<span class="fc" id="L106">        String result = template;</span>
+<span class="fc bfc" id="L107" title="All 4 branches covered.">        if (params != null &amp;&amp; !params.isEmpty()) {</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">            for (Map.Entry&lt;String, String&gt; entry : params.entrySet()) {</span>
+<span class="fc" id="L109">                String rawKey = entry.getKey();</span>
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">                String normalizedKey = rawKey != null ? rawKey.trim().toLowerCase().replaceAll(&quot;[_-]&quot;, &quot;&quot;) : &quot;&quot;;</span>
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">                String value = entry.getValue() != null ? entry.getValue() : &quot;&quot;;</span>
+
+                // Never expose passwords or secrets
+<span class="pc bpc" id="L114" title="2 of 6 branches missed.">                if (FORBIDDEN_SECRET_KEYS.contains(normalizedKey) || normalizedKey.contains(&quot;password&quot;) || normalizedKey.contains(&quot;secret&quot;)) {</span>
+<span class="fc" id="L115">                    value = &quot;&quot;;</span>
+<span class="fc" id="L116">                }</span>
+                // Never expose payment cards
+<span class="pc bpc" id="L118" title="2 of 6 branches missed.">                else if (FORBIDDEN_CARD_KEYS.contains(normalizedKey) || normalizedKey.contains(&quot;cardnumber&quot;) || normalizedKey.contains(&quot;creditcard&quot;)) {</span>
+<span class="fc" id="L119">                    value = &quot;&quot;;</span>
+<span class="fc" id="L120">                }</span>
+                // Never expose full street address
+<span class="pc bpc" id="L122" title="2 of 6 branches missed.">                else if (FORBIDDEN_ADDRESS_KEYS.contains(normalizedKey) || normalizedKey.contains(&quot;fulladdress&quot;) || normalizedKey.contains(&quot;streetaddress&quot;)) {</span>
+<span class="fc" id="L123">                    value = &quot;&quot;;</span>
+<span class="fc" id="L124">                }</span>
+                // Always mask phone numbers
+<span class="pc bpc" id="L126" title="1 of 4 branches missed.">                else if (PHONE_KEYS.contains(normalizedKey) || normalizedKey.contains(&quot;phone&quot;)) {</span>
+<span class="fc" id="L127">                    value = PiiMasker.maskPhone(value);</span>
+                }
+
+<span class="fc" id="L130">                String placeholder = &quot;{{&quot; + rawKey + &quot;}}&quot;;</span>
+<span class="fc" id="L131">                result = result.replace(placeholder, value);</span>
+            }
+        }
+
+        // Unknown / unmapped placeholders render empty
+<span class="fc" id="L136">        result = UNKNOWN_PLACEHOLDER_PATTERN.matcher(result).replaceAll(&quot;&quot;);</span>
+
+        // Post-processing safety filter: redact leaked payment card numbers
+<span class="fc" id="L139">        result = CREDIT_CARD_PATTERN.matcher(result).replaceAll(&quot;&quot;);</span>
+
+        // Post-processing safety filter: mask any full phone numbers that may have slipped into general fields
+<span class="fc" id="L142">        result = maskFullPhonesInText(result);</span>
+
+<span class="fc" id="L144">        return result;</span>
+    }
+
+    private String maskFullPhonesInText(String text) {
+<span class="fc" id="L148">        Matcher matcher = SRI_LANKAN_PHONE_PATTERN.matcher(text);</span>
+<span class="fc" id="L149">        StringBuilder sb = new StringBuilder();</span>
+<span class="pc bpc" id="L150" title="1 of 2 branches missed.">        while (matcher.find()) {</span>
+<span class="nc" id="L151">            String match = matcher.group();</span>
+<span class="nc" id="L152">            matcher.appendReplacement(sb, Matcher.quoteReplacement(PiiMasker.maskPhone(match)));</span>
+        }
+<span class="fc" id="L154">        matcher.appendTail(sb);</span>
+<span class="fc" id="L155">        return sb.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

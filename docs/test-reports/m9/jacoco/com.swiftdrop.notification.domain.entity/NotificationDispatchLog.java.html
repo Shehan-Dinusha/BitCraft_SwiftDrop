@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationDispatchLog.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.domain.entity</a> &gt; <span class="el_source">NotificationDispatchLog.java</span></div><h1>NotificationDispatchLog.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = &quot;notification_dispatch_logs&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class NotificationDispatchLog {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;log_id&quot;, nullable = false, unique = true, updatable = false)
+    private UUID logId;
+
+    @Column(name = &quot;recipient_id&quot;, nullable = false)
+    private UUID recipientId;
+
+    @Column(name = &quot;channel&quot;, nullable = false, length = 32)
+    private String channel;
+
+    @Column(name = &quot;template_code&quot;, nullable = false, length = 64)
+    private String templateCode;
+
+    @Column(name = &quot;destination&quot;, nullable = false)
+    private String destination;
+
+    @Column(name = &quot;subject&quot;)
+    private String subject;
+
+    @Column(name = &quot;content&quot;, nullable = false, columnDefinition = &quot;TEXT&quot;)
+    private String content;
+
+    @Column(name = &quot;status&quot;, nullable = false, length = 32)
+    @Builder.Default
+    private String status = &quot;SENT&quot;;
+
+    @Column(name = &quot;failure_reason&quot;, length = 500)
+    private String failureReason;
+
+    @Column(name = &quot;sent_at&quot;)
+    private Instant sentAt;
+
+    @Column(name = &quot;reference_id&quot;, length = 64)
+    private String referenceId;
+
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = &quot;updated_at&quot;, nullable = false)
+    private Instant updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        if (this.logId == null) {</span>
+<span class="nc" id="L65">            this.logId = UUID.randomUUID();</span>
+        }
+<span class="fc" id="L67">        Instant now = Instant.now();</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        if (this.createdAt == null) {</span>
+<span class="fc" id="L69">            this.createdAt = now;</span>
+        }
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">        if (this.updatedAt == null) {</span>
+<span class="fc" id="L72">            this.updatedAt = now;</span>
+        }
+<span class="pc bpc" id="L74" title="3 of 4 branches missed.">        if (this.sentAt == null &amp;&amp; &quot;SENT&quot;.equalsIgnoreCase(this.status)) {</span>
+<span class="nc" id="L75">            this.sentAt = now;</span>
+        }
+<span class="fc" id="L77">    }</span>
+
+    @PreUpdate
+    public void preUpdate() {
+<span class="nc" id="L81">        this.updatedAt = Instant.now();</span>
+<span class="nc" id="L82">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationEventConsumer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.messaging.consumer</a> &gt; <span class="el_source">NotificationEventConsumer.java</span></div><h1>NotificationEventConsumer.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.messaging.consumer;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.notification.config.RabbitMQConfig;
+import com.swiftdrop.notification.domain.entity.ProcessedEvent;
+import com.swiftdrop.notification.domain.repository.ProcessedEventRepository;
+import com.swiftdrop.notification.dto.DispatchNotificationRequest;
+import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
+import com.swiftdrop.notification.messaging.trigger.EventEnvelope;
+import com.swiftdrop.notification.messaging.trigger.NotificationTrigger;
+import com.swiftdrop.notification.service.InAppNotificationService;
+import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Consumes domain events from {@code notification.events.queue} and delegates
+ * alert generation to registered {@link NotificationTrigger} observers.
+ * Guarantees idempotency via {@link ProcessedEventRepository}.
+ */
+<span class="fc" id="L32">@Slf4j</span>
+@Component
+public class NotificationEventConsumer {
+
+    private final ObjectMapper objectMapper;
+    private final MultiChannelNotificationDispatcher dispatcher;
+    private final List&lt;NotificationTrigger&gt; triggers;
+    private final ProcessedEventRepository processedEventRepository;
+    private final InAppNotificationService inAppNotificationService;
+
+    public NotificationEventConsumer(
+            ObjectMapper objectMapper,
+            MultiChannelNotificationDispatcher dispatcher,
+            List&lt;NotificationTrigger&gt; triggers,
+            ProcessedEventRepository processedEventRepository
+    ) {
+<span class="nc" id="L48">        this(objectMapper, dispatcher, triggers, processedEventRepository, null);</span>
+<span class="nc" id="L49">    }</span>
+
+    // Two constructors exist, so Spring needs to be told which one to inject;
+    // without @Autowired it looks for a no-arg constructor and startup fails.
+    @Autowired
+<span class="fc" id="L54">    public NotificationEventConsumer(</span>
+            ObjectMapper objectMapper,
+            MultiChannelNotificationDispatcher dispatcher,
+            List&lt;NotificationTrigger&gt; triggers,
+            ProcessedEventRepository processedEventRepository,
+            InAppNotificationService inAppNotificationService
+    ) {
+<span class="fc" id="L61">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L62">        this.dispatcher = dispatcher;</span>
+<span class="fc" id="L63">        this.triggers = triggers;</span>
+<span class="fc" id="L64">        this.processedEventRepository = processedEventRepository;</span>
+<span class="fc" id="L65">        this.inAppNotificationService = inAppNotificationService;</span>
+<span class="fc" id="L66">    }</span>
+
+    @RabbitListener(queues = RabbitMQConfig.NOTIFICATION_EVENTS_QUEUE)
+    public void onNotificationEvent(Message message) {
+<span class="fc" id="L70">        Optional&lt;EventEnvelope&gt; envelopeOpt = EventEnvelope.from(message, objectMapper);</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        if (envelopeOpt.isEmpty()) {</span>
+<span class="fc" id="L72">            log.warn(&quot;Skipping unparseable or empty event message&quot;);</span>
+<span class="fc" id="L73">            return;</span>
+        }
+
+<span class="fc" id="L76">        EventEnvelope envelope = envelopeOpt.get();</span>
+<span class="fc" id="L77">        UUID eventId = envelope.eventId();</span>
+
+        // Idempotency check: ignore duplicate events
+<span class="fc bfc" id="L80" title="All 4 branches covered.">        if (eventId != null &amp;&amp; processedEventRepository.existsById(eventId)) {</span>
+<span class="fc" id="L81">            log.info(&quot;Duplicate event detected with eventId: {}. Skipping notification dispatch.&quot;, eventId);</span>
+<span class="fc" id="L82">            return;</span>
+        }
+
+<span class="fc" id="L85">        log.info(&quot;Processing event with routing key: {} (eventId: {}) across {} registered triggers&quot;,</span>
+<span class="fc" id="L86">                envelope.routingKey(), eventId, triggers.size());</span>
+
+<span class="fc" id="L88">        boolean matchedAny = false;</span>
+        // At most one inbox row per recipient per event, even if several requests or triggers match.
+<span class="fc" id="L90">        Set&lt;UUID&gt; inboxRecipients = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        for (NotificationTrigger trigger : triggers) {</span>
+<span class="fc bfc" id="L92" title="All 2 branches covered.">            if (trigger.matches(envelope)) {</span>
+<span class="fc" id="L93">                matchedAny = true;</span>
+<span class="fc" id="L94">                List&lt;DispatchNotificationRequest&gt; requests = trigger.build(envelope);</span>
+<span class="pc bpc" id="L95" title="1 of 4 branches missed.">                if (requests != null &amp;&amp; !requests.isEmpty()) {</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">                    for (DispatchNotificationRequest request : requests) {</span>
+<span class="fc" id="L97">                        NotificationDispatchLogResponse dispatchLog = dispatcher.dispatch(request);</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">                        if (request.recipientId() != null) {</span>
+<span class="pc bpc" id="L99" title="3 of 4 branches missed.">                            String title = dispatchLog != null &amp;&amp; dispatchLog.subject() != null</span>
+<span class="nc" id="L100">                                    ? dispatchLog.subject()</span>
+<span class="fc" id="L101">                                    : &quot;SwiftDrop Notification&quot;;</span>
+<span class="pc bpc" id="L102" title="3 of 4 branches missed.">                            String body = dispatchLog != null &amp;&amp; dispatchLog.content() != null</span>
+<span class="nc" id="L103">                                    ? dispatchLog.content()</span>
+<span class="fc" id="L104">                                    : &quot;Notification received&quot;;</span>
+<span class="pc bpc" id="L105" title="3 of 4 branches missed.">                            String trackingNumber = dispatchLog != null &amp;&amp; dispatchLog.referenceId() != null</span>
+<span class="nc" id="L106">                                    ? dispatchLog.referenceId()</span>
+<span class="fc" id="L107">                                    : envelope.extractTrackingNumber();</span>
+
+<span class="pc bpc" id="L109" title="2 of 4 branches missed.">                            if (inAppNotificationService != null &amp;&amp; inboxRecipients.add(request.recipientId())) {</span>
+<span class="fc" id="L110">                                inAppNotificationService.saveNotification(request.recipientId(), title, body, trackingNumber);</span>
+
+                                // For merchant orders, also write to merchant owner inbox if distinct
+<span class="fc" id="L113">                                Optional&lt;UUID&gt; merchantOwnerId = envelope.extractMerchantOwnerId();</span>
+<span class="pc bpc" id="L114" title="3 of 4 branches missed.">                                if (merchantOwnerId.isPresent() &amp;&amp; inboxRecipients.add(merchantOwnerId.get())) {</span>
+<span class="nc" id="L115">                                    inAppNotificationService.saveNotification(merchantOwnerId.get(), title, body, trackingNumber);</span>
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">        if (!matchedAny) {</span>
+<span class="nc" id="L125">            log.debug(&quot;No notification trigger matched event with routing key: {}&quot;, envelope.routingKey());</span>
+        }
+
+        // Record processed event to prevent future duplicates
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        if (eventId != null) {</span>
+            try {
+<span class="fc" id="L131">                processedEventRepository.save(new ProcessedEvent(eventId, envelope.routingKey(), Instant.now()));</span>
+<span class="pc" id="L132">            } catch (Exception e) {</span>
+<span class="nc" id="L133">                log.warn(&quot;Could not record processed event {}: {}&quot;, eventId, e.getMessage());</span>
+            }
+        }
+<span class="fc" id="L136">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

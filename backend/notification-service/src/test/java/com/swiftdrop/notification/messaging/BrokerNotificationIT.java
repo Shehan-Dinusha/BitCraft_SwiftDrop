@@ -86,8 +86,6 @@ class BrokerNotificationIT {
                 .recipientType("CUSTOMER")
                 .emailEnabled(true)
                 .emailAddress("customer@example.com")
-                .smsEnabled(true)
-                .phoneNumber("+94771234567")
                 .languagePreference("en")
                 .build());
 
