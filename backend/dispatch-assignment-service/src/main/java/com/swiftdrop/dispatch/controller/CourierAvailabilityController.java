@@ -5,6 +5,7 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
+import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
 import com.swiftdrop.dispatch.service.CourierShiftService;
@@ -58,6 +59,15 @@ public class CourierAvailabilityController {
         return ApiResponse.success(
                 courierShiftService.getCourier(courierId),
                 "Courier retrieved"
+        );
+    }
+
+    @GetMapping("/workload")
+    @Operation(summary = "List current courier workloads")
+    public ApiResponse<List<CourierWorkloadResponse>> getWorkloads() {
+        return ApiResponse.success(
+                courierShiftService.getWorkloads(),
+                "Courier workloads retrieved"
         );
     }
 

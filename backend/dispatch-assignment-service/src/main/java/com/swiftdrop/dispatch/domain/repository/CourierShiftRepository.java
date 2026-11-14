@@ -25,4 +25,7 @@ public interface CourierShiftRepository extends JpaRepository<CourierShift, Long
 
     @Query("SELECT c FROM CourierShift c WHERE c.currentDistrict = :district AND c.shiftStatus = :status AND c.activeParcelsCount < c.maxCapacity ORDER BY c.activeParcelsCount ASC, c.lastHeartbeatAt DESC")
     List<CourierShift> findAvailableCandidates(@Param("district") SriLankanDistrict district, @Param("status") ShiftStatus status);
+
+    @Query("SELECT c FROM CourierShift c WHERE c.shiftStatus = :status AND c.activeParcelsCount < c.maxCapacity ORDER BY c.activeParcelsCount ASC, c.lastHeartbeatAt DESC")
+    List<CourierShift> findAvailableCandidates(@Param("status") ShiftStatus status);
 }

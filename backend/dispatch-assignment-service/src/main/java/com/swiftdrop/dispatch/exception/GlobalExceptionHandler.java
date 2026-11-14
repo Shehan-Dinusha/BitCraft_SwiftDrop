@@ -2,6 +2,7 @@ package com.swiftdrop.dispatch.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,20 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLocking(
+            ObjectOptimisticLockingFailureException ex,
+            HttpServletRequest request) {
+        log.warn("Concurrent dispatch update rejected for {}", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(
+                        409,
+                        "Conflict",
+                        "The dispatch record was changed by another operation. Refresh and retry.",
+                        request.getRequestURI()
+                ));
+    }
+
     @ExceptionHandler(AssignmentNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(AssignmentNotFoundException ex, HttpServletRequest request) {
         log.warn("Assignment not found: {}", ex.getMessage());
@@ -29,6 +44,20 @@ public class GlobalExceptionHandler {
         log.warn("Courier not available: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(409, "Courier Not Available", ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidAssignmentTransitionException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidAssignmentTransition(
+            InvalidAssignmentTransitionException ex,
+            HttpServletRequest request) {
+        log.warn("Invalid assignment transition on {}", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(
+                        409,
+                        "Invalid Assignment Transition",
+                        ex.getMessage(),
+                        request.getRequestURI()
+                ));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -14,6 +14,7 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
+import com.swiftdrop.dispatch.domain.state.AssignmentStateMachine;
 import com.swiftdrop.dispatch.messaging.publisher.DispatchEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,33 +48,46 @@ public class CourierMatchingEngine {
         log.info("Processing dispatch matching for order: {}, pickup district: {}",
                 event.orderId(), event.pickupDistrict());
 
-        DispatchAssignment assignment = assignmentRepository.findByOrderId(event.orderId())
-                .orElseGet(() -> {
-                    DispatchAssignment newAssignment = new DispatchAssignment();
-                    newAssignment.setAssignmentId(UUID.randomUUID());
-                    newAssignment.setOrderId(event.orderId());
-                    newAssignment.setTrackingNumber(event.trackingNumber());
-                    newAssignment.setPickupDistrict(event.pickupDistrict());
-                    newAssignment.setDeliveryDistrict(event.deliveryDistrict());
-                    newAssignment.setOrderSpeed(event.speed() != null ? event.speed() : OrderSpeed.STANDARD);
-                    newAssignment.setStatus(AssignmentStatus.UNASSIGNED);
-                    newAssignment.setAssignedBy("AUTO_ENGINE");
-                    newAssignment.setRetryCount(0);
-                    return newAssignment;
-                });
+        var existingAssignment = assignmentRepository.findByOrderId(event.orderId());
+        DispatchAssignment assignment;
+        if (existingAssignment.isPresent()) {
+            assignment = existingAssignment.get();
+            if (assignment.getCourierId() != null
+                    || assignment.getStatus() != AssignmentStatus.UNASSIGNED
+                    || (event.eventId() != null
+                    && event.eventId().equals(assignment.getLastOrderCreatedEventId()))) {
+                log.info("Ignoring duplicate order.created event for existing assignment: {}", event.orderId());
+                return assignment;
+            }
+        } else {
+            assignment = new DispatchAssignment();
+            assignment.setAssignmentId(UUID.randomUUID());
+            assignment.setOrderId(event.orderId());
+            assignment.setMerchantId(event.merchantId());
+            assignment.setTrackingNumber(event.trackingNumber());
+            assignment.setPickupDistrict(event.pickupDistrict());
+            assignment.setDeliveryDistrict(event.deliveryDistrict());
+            assignment.setOrderSpeed(event.speed() != null ? event.speed() : OrderSpeed.STANDARD);
+            assignment.setStatus(AssignmentStatus.UNASSIGNED);
+            assignment.setAssignedBy("AUTO_ENGINE");
+            assignment.setRetryCount(0);
+        }
 
+        assignment.setLastOrderCreatedEventId(event.eventId());
         SriLankanDistrict pickupDistrict = event.pickupDistrict();
         List<CourierShift> availableCouriers = courierShiftRepository.findAvailableCandidates(
                 pickupDistrict,
                 ShiftStatus.AVAILABLE
         );
+        if (availableCouriers.isEmpty()) {
+            availableCouriers = courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE);
+        }
 
         if (availableCouriers.isEmpty()) {
-            log.warn("No available couriers in district: {} for order: {}", pickupDistrict, event.orderId());
+            log.warn("No available couriers island-wide for order: {}", event.orderId());
             int newRetryCount = (assignment.getRetryCount() != null ? assignment.getRetryCount() : 0) + 1;
             assignment.setRetryCount(newRetryCount);
-            assignment.setStatus(newRetryCount >= 3 ? AssignmentStatus.FAILED : AssignmentStatus.UNASSIGNED);
-            assignment.setFailureReason("No available couriers in " + pickupDistrict);
+            assignment.setFailureReason("No available courier in Sri Lanka");
             assignmentRepository.save(assignment);
 
             DispatchFailedEvent failedEvent = new DispatchFailedEvent(
@@ -100,6 +114,7 @@ public class CourierMatchingEngine {
 
         int estimatedMinutes = calculatePickupMinutes(event.speed());
 
+        AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.ASSIGNED);
         assignment.setCourierId(selectedCourier.getCourierId());
         assignment.setCourierName(selectedCourier.getCourierName());
         assignment.setStatus(AssignmentStatus.ASSIGNED);
@@ -121,7 +136,9 @@ public class CourierMatchingEngine {
                 selectedCourier.getCourierName(),
                 estimatedMinutes,
                 Instant.now(),
-                Instant.now()
+                Instant.now(),
+                assignment.getTrackingNumber(),
+                assignment.getMerchantId()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
 

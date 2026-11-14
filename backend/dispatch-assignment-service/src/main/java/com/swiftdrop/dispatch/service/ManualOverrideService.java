@@ -10,9 +10,11 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
+import com.swiftdrop.dispatch.domain.state.AssignmentStateMachine;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
+import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
 import com.swiftdrop.dispatch.messaging.publisher.DispatchEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +51,12 @@ public class ManualOverrideService {
                 .orElseThrow(() -> new AssignmentNotFoundException(
                         "Dispatch assignment not found for order: " + request.orderId()));
 
+        if (assignment.getStatus() == AssignmentStatus.COMPLETED
+                || assignment.getStatus() == AssignmentStatus.CANCELLED) {
+            throw new InvalidAssignmentTransitionException(
+                    "Cannot assign a courier to an assignment in state " + assignment.getStatus());
+        }
+
         CourierShift newCourier = courierShiftRepository.findByCourierId(request.courierId())
                 .orElseThrow(() -> new CourierNotAvailableException(
                         "Courier not found with ID: " + request.courierId()));
@@ -57,9 +65,20 @@ public class ManualOverrideService {
             throw new CourierNotAvailableException(
                     "Courier " + newCourier.getCourierName() + " is currently OFFLINE");
         }
+        if (!newCourier.canAcceptParcel()) {
+            throw new CourierNotAvailableException(
+                    "Courier " + newCourier.getCourierName() + " is not available or has reached capacity");
+        }
 
         UUID prevCourierId = assignment.getCourierId();
-        if (prevCourierId != null && !prevCourierId.equals(request.courierId())) {
+        boolean changingCourier = prevCourierId == null || !prevCourierId.equals(request.courierId());
+        AssignmentStatus targetStatus = prevCourierId == null
+                ? AssignmentStatus.ASSIGNED
+                : changingCourier ? AssignmentStatus.REASSIGNED : assignment.getStatus();
+        if (targetStatus != assignment.getStatus()) {
+            AssignmentStateMachine.transition(assignment.getStatus(), targetStatus);
+        }
+        if (prevCourierId != null && changingCourier) {
             courierShiftRepository.findByCourierId(prevCourierId).ifPresent(prevCourier -> {
                 int count = Math.max(0, prevCourier.getActiveParcelsCount() - 1);
                 prevCourier.setActiveParcelsCount(count);
@@ -71,16 +90,18 @@ public class ManualOverrideService {
         }
 
         // Increment count for new courier
-        int newCount = newCourier.getActiveParcelsCount() + 1;
-        newCourier.setActiveParcelsCount(newCount);
-        if (newCount >= newCourier.getMaxCapacity()) {
-            newCourier.setShiftStatus(ShiftStatus.BUSY);
+        if (changingCourier) {
+            int newCount = newCourier.getActiveParcelsCount() + 1;
+            newCourier.setActiveParcelsCount(newCount);
+            if (newCount >= newCourier.getMaxCapacity()) {
+                newCourier.setShiftStatus(ShiftStatus.BUSY);
+            }
+            courierShiftRepository.save(newCourier);
         }
-        courierShiftRepository.save(newCourier);
 
         assignment.setCourierId(newCourier.getCourierId());
         assignment.setCourierName(newCourier.getCourierName());
-        assignment.setStatus(prevCourierId != null ? AssignmentStatus.REASSIGNED : AssignmentStatus.ASSIGNED);
+        assignment.setStatus(targetStatus);
         assignment.setAssignedBy(request.assignedBy() != null ? request.assignedBy() : "DISPATCHER");
         assignment.setAssignedAt(Instant.now());
         assignment.setFailureReason(null);
@@ -94,7 +115,9 @@ public class ManualOverrideService {
                 newCourier.getCourierName(),
                 assignment.getEstimatedPickupMinutes() != null ? assignment.getEstimatedPickupMinutes() : 25,
                 Instant.now(),
-                Instant.now()
+                Instant.now(),
+                assignment.getTrackingNumber(),
+                assignment.getMerchantId()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
 

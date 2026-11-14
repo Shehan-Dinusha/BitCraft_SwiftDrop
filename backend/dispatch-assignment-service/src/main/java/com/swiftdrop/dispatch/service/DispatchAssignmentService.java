@@ -8,8 +8,12 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
+import com.swiftdrop.dispatch.domain.state.AssignmentStateMachine;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
+import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
+import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
+import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -20,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Comparator;
 
 @Service
 public class DispatchAssignmentService {
@@ -79,25 +84,55 @@ public class DispatchAssignmentService {
         return list.stream().map(DispatchAssignmentResponse::fromEntity).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<CourierSuggestionResponse> getSuggestions(UUID orderId) {
+        DispatchAssignment assignment = assignmentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new AssignmentNotFoundException("Assignment not found for order: " + orderId));
+
+        var candidates = courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE);
+        Comparator<CourierShift> ranking =
+                Comparator.comparing((CourierShift courier) ->
+                                courier.getCurrentDistrict() != assignment.getPickupDistrict())
+                        .thenComparingInt(courier -> courier.getActiveParcelsCount())
+                        .thenComparing(courier -> courier.getLastHeartbeatAt(),
+                                Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(CourierShift::getCourierId);
+
+        return candidates.stream()
+                .sorted(ranking)
+                .limit(3)
+                .map(courier -> CourierSuggestionResponse.fromEntity(courier, assignment.getPickupDistrict()))
+                .toList();
+    }
+
     @Transactional
     public void handleOrderCancelled(OrderCancelledEvent event) {
         log.info("Processing order cancellation in dispatch for order: {}", event.orderId());
 
         assignmentRepository.findByOrderId(event.orderId()).ifPresent(assignment -> {
-            if (assignment.getStatus() == AssignmentStatus.ASSIGNED || assignment.getStatus() == AssignmentStatus.REASSIGNED) {
-                if (assignment.getCourierId() != null) {
-                    decrementCourierWorkload(assignment.getCourierId());
-                }
+            if (assignment.getStatus() == AssignmentStatus.CANCELLED) {
+                return;
             }
+            if (assignment.getStatus().isTerminal()) {
+                throw new InvalidAssignmentTransitionException(
+                        "Cannot cancel an assignment in state " + assignment.getStatus());
+            }
+            boolean releasedWorkload = assignment.getStatus() == AssignmentStatus.ASSIGNED
+                    || assignment.getStatus() == AssignmentStatus.REASSIGNED;
+            AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.CANCELLED);
             assignment.setStatus(AssignmentStatus.CANCELLED);
             assignment.setFailureReason("Order cancelled: " + event.reason());
             assignmentRepository.save(assignment);
+            if (releasedWorkload && assignment.getCourierId() != null) {
+                decrementCourierWorkload(assignment.getCourierId());
+            }
         });
     }
 
     @Transactional
     public void handleParcelStatusChanged(ParcelStatusChangedEvent event) {
-        if (event.newPublicStatus() == PublicOrderStatus.DELIVERED
+        if (event.newPublicStatus() == PublicOrderStatus.FAILED
+                || event.newPublicStatus() == PublicOrderStatus.DELIVERED
                 || event.newPublicStatus() == PublicOrderStatus.RETURNED_TO_SENDER
                 || event.newPublicStatus() == PublicOrderStatus.CANCELLED) {
 
@@ -109,19 +144,36 @@ public class DispatchAssignmentService {
                     : assignmentRepository.findByTrackingNumber(event.trackingNumber());
 
             assignmentOpt.ifPresent(assignment -> {
-                if (assignment.getStatus() == AssignmentStatus.ASSIGNED || assignment.getStatus() == AssignmentStatus.REASSIGNED) {
-                    if (event.newPublicStatus() == PublicOrderStatus.DELIVERED) {
-                        assignment.setStatus(AssignmentStatus.COMPLETED);
-                    } else if (event.newPublicStatus() == PublicOrderStatus.CANCELLED) {
-                        assignment.setStatus(AssignmentStatus.CANCELLED);
+                AssignmentStatus targetStatus = toTerminalAssignmentStatus(event.newPublicStatus());
+                if (assignment.getStatus().isTerminal()) {
+                    if (assignment.getStatus() == targetStatus) {
+                        return;
                     }
-                    if (assignment.getCourierId() != null) {
-                        decrementCourierWorkload(assignment.getCourierId());
-                    }
-                    assignmentRepository.save(assignment);
+                    throw new InvalidAssignmentTransitionException(
+                            "Cannot transition terminal assignment from " + assignment.getStatus()
+                                    + " to " + targetStatus);
+                }
+                boolean releasedWorkload = assignment.getStatus() == AssignmentStatus.ASSIGNED
+                        || assignment.getStatus() == AssignmentStatus.REASSIGNED;
+                AssignmentStateMachine.transition(assignment.getStatus(), targetStatus);
+                assignment.setStatus(targetStatus);
+                if (event.newPublicStatus() == PublicOrderStatus.FAILED) {
+                    assignment.setFailureReason("Parcel delivery failed");
+                }
+                assignmentRepository.save(assignment);
+                if (releasedWorkload && assignment.getCourierId() != null) {
+                    decrementCourierWorkload(assignment.getCourierId());
                 }
             });
         }
+    }
+
+    private AssignmentStatus toTerminalAssignmentStatus(PublicOrderStatus status) {
+        return switch (status) {
+            case DELIVERED -> AssignmentStatus.COMPLETED;
+            case FAILED, CANCELLED, RETURNED_TO_SENDER -> AssignmentStatus.CANCELLED;
+            default -> throw new IllegalArgumentException("Non-terminal status: " + status);
+        };
     }
 
     private void decrementCourierWorkload(UUID courierId) {
