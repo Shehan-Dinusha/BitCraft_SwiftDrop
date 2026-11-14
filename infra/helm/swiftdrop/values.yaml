@@ -284,6 +284,7 @@ services:
       AUTH_SERVICE_URL: "http://auth-iam-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       CONTACT_MODE: iam
       CONTACT_CACHE_TTL_MINUTES: "10"
+      PUBLIC_TRACKING_BASE_URL: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}"
       NOTIFICATION_EMAIL_PROVIDER: mock
       ACS_EMAIL_ENDPOINT: ""
       ACS_EMAIL_SENDER_ADDRESS: ""

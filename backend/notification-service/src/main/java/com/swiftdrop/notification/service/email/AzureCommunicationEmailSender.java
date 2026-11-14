@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -65,8 +66,8 @@ public class AzureCommunicationEmailSender implements EmailSender {
     }
 
     @Override
-    public void send(String to, String subject, String plainTextBody) {
-        byte[] body = buildBody(to, subject, plainTextBody);
+    public void send(String to, String subject, String plainTextBody, String htmlBody) {
+        byte[] body = buildBody(to, subject, plainTextBody, htmlBody);
         String date = RFC_1123.format(clock.instant());
         String contentHash = base64(sha256(body));
         String signature = base64(hmacSha256("POST\n" + SEND_PATH + "\n" + date + ";" + signedHost + ";" + contentHash));
@@ -110,12 +111,16 @@ public class AzureCommunicationEmailSender implements EmailSender {
         return "azure";
     }
 
-    private byte[] buildBody(String to, String subject, String plainTextBody) {
+    private byte[] buildBody(String to, String subject, String plainTextBody, String htmlBody) {
+        Map<String, Object> content = new LinkedHashMap<>();
+        content.put("subject", subject == null || subject.isBlank() ? "SwiftDrop notification" : subject);
+        content.put("plainText", plainTextBody == null ? "" : plainTextBody);
+        if (htmlBody != null && !htmlBody.isBlank()) {
+            content.put("html", htmlBody);
+        }
         Map<String, Object> payload = Map.of(
                 "senderAddress", senderAddress,
-                "content", Map.of(
-                        "subject", subject == null || subject.isBlank() ? "SwiftDrop notification" : subject,
-                        "plainText", plainTextBody == null ? "" : plainTextBody),
+                "content", content,
                 "recipients", Map.of("to", List.of(Map.of("address", to))));
         try {
             return objectMapper.writeValueAsBytes(payload);

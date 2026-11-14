@@ -84,7 +84,7 @@ class AzureCommunicationEmailSenderTest {
     @Test
     @DisplayName("Signs the request correctly and sends sender, recipient, subject and body")
     void sendsSignedRequest() {
-        sender(stubEndpoint()).send(RECIPIENT, "Parcel delivered", "Your parcel SD-1 was delivered.");
+        sender(stubEndpoint()).send(RECIPIENT, "Parcel delivered", "Your parcel SD-1 was delivered.", "<p>Your parcel SD-1 was delivered.</p>");
 
         assertThat(verificationFailure.get()).isNull();
         JsonNode body = receivedBody.get();
@@ -92,12 +92,13 @@ class AzureCommunicationEmailSenderTest {
         assertThat(body.path("recipients").path("to").path(0).path("address").asText()).isEqualTo(RECIPIENT);
         assertThat(body.path("content").path("subject").asText()).isEqualTo("Parcel delivered");
         assertThat(body.path("content").path("plainText").asText()).isEqualTo("Your parcel SD-1 was delivered.");
+        assertThat(body.path("content").path("html").asText()).isEqualTo("<p>Your parcel SD-1 was delivered.</p>");
     }
 
     @Test
     @DisplayName("Logs the Azure operation id from Operation-Location")
     void logsOperationId(org.springframework.boot.test.system.CapturedOutput output) {
-        sender(stubEndpoint()).send(RECIPIENT, "Subject", "Body");
+        sender(stubEndpoint()).send(RECIPIENT, "Subject", "Body", null);
 
         assertThat(output.getOut()).contains("operation op-123").doesNotContain(RECIPIENT);
     }
@@ -105,9 +106,10 @@ class AzureCommunicationEmailSenderTest {
     @Test
     @DisplayName("Uses a default subject when the template has none")
     void defaultsBlankSubject() {
-        sender(stubEndpoint()).send(RECIPIENT, " ", "Body");
+        sender(stubEndpoint()).send(RECIPIENT, " ", "Body", null);
 
         assertThat(receivedBody.get().path("content").path("subject").asText()).isEqualTo("SwiftDrop notification");
+        assertThat(receivedBody.get().path("content").has("html")).as("no html part when none is given").isFalse();
     }
 
     @Test
@@ -115,7 +117,7 @@ class AzureCommunicationEmailSenderTest {
     void rejectedRequestFailsSafely() {
         responseStatus = 401;
 
-        assertThatThrownBy(() -> sender(stubEndpoint()).send(RECIPIENT, "Subject", "Body"))
+        assertThatThrownBy(() -> sender(stubEndpoint()).send(RECIPIENT, "Subject", "Body", null))
                 .isInstanceOf(EmailDeliveryException.class)
                 .hasMessage("Azure email rejected the message (HTTP 401)")
                 .message().doesNotContain(accessKey).doesNotContain(RECIPIENT);
@@ -129,7 +131,7 @@ class AzureCommunicationEmailSenderTest {
             closedPort = socket.getLocalPort();
         }
 
-        assertThatThrownBy(() -> sender("http://127.0.0.1:" + closedPort).send(RECIPIENT, "Subject", "Body"))
+        assertThatThrownBy(() -> sender("http://127.0.0.1:" + closedPort).send(RECIPIENT, "Subject", "Body", null))
                 .isInstanceOf(EmailDeliveryException.class)
                 .hasMessage("Azure email service unreachable");
     }

@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 public class MockEmailSender implements EmailSender {
 
     @Override
-    public void send(String to, String subject, String plainTextBody) {
+    public void send(String to, String subject, String plainTextBody, String htmlBody) {
         log.debug("Mock email accepted for {}", PiiMasker.maskEmail(to));
     }
 

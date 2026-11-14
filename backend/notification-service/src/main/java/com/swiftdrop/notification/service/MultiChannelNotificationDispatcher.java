@@ -8,6 +8,7 @@ import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepositor
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.service.email.EmailHtmlRenderer;
 import com.swiftdrop.notification.service.email.EmailSender;
 import com.swiftdrop.notification.util.PiiMasker;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class MultiChannelNotificationDispatcher {
     private final TemplateRendererService templateRenderer;
     private final ContactClient contactClient;
     private final EmailSender emailSender;
+    private final EmailHtmlRenderer emailHtmlRenderer;
 
     /**
      * Executes omnichannel notification dispatch, verifying recipient preferences and logging the outcome.
@@ -70,7 +72,7 @@ public class MultiChannelNotificationDispatcher {
         } else {
             // EMAIL goes through the configured provider (mock or Azure); PUSH is the in-app inbox.
             try {
-                executeDelivery(channel, destination, rendered.subject(), rendered.body());
+                executeDelivery(channel, destination, request, rendered);
                 status = "SENT";
                 sentAt = Instant.now();
                 log.info("Notification successfully dispatched to {} via {}", PiiMasker.maskDestination(destination), channel);
@@ -159,20 +161,34 @@ public class MultiChannelNotificationDispatcher {
         return null;
     }
 
-    private void executeDelivery(String channel, String destination, String subject, String body) {
+    private void executeDelivery(String channel, String destination, DispatchNotificationRequest request,
+                                 TemplateRendererService.RenderedNotification rendered) {
         switch (channel) {
             case "EMAIL" -> {
                 // Email sanity check before handing the message to the provider.
                 if (!destination.contains("@")) {
                     throw new IllegalArgumentException("Invalid email destination format: " + PiiMasker.maskDestination(destination));
                 }
-                emailSender.send(destination, subject, body);
+                String trackingNumber = trackingNumberOf(request);
+                emailSender.send(destination, rendered.subject(),
+                        emailHtmlRenderer.renderText(rendered.body(), trackingNumber),
+                        emailHtmlRenderer.renderHtml(request.templateCode(), rendered.subject(), rendered.body(), trackingNumber));
             }
             case "PUSH" -> {
                 // In-app push is delivered through the inbox; nothing to transmit here.
             }
             default -> throw new IllegalArgumentException("Unsupported channel " + channel + "; use EMAIL or PUSH");
         }
+    }
+
+    private static String trackingNumberOf(DispatchNotificationRequest request) {
+        if (request.templateParams() != null) {
+            String fromParams = request.templateParams().get("trackingNumber");
+            if (fromParams != null && !fromParams.isBlank()) {
+                return fromParams.trim();
+            }
+        }
+        return request.referenceId();
     }
 
     private NotificationDispatchLogResponse mapToResponse(NotificationDispatchLog entity) {

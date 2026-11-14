@@ -9,6 +9,7 @@ import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.dto.RecipientContact;
 import com.swiftdrop.notification.service.email.EmailDeliveryException;
+import com.swiftdrop.notification.service.email.EmailHtmlRenderer;
 import com.swiftdrop.notification.service.email.EmailSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
@@ -26,7 +28,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalMatchers.and;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +51,9 @@ class MultiChannelNotificationDispatcherTest {
 
     @Mock
     private EmailSender emailSender;
+
+    @Spy
+    private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer("https://swiftdrop.lk");
 
     @InjectMocks
     private MultiChannelNotificationDispatcher dispatcher;
@@ -114,7 +122,7 @@ class MultiChannelNotificationDispatcherTest {
         assertThat(response.channel()).isEqualTo("EMAIL");
         assertThat(response.destination()).isEqualTo("iam-user@example.com");
         verify(contactClient).lookupContact(recipientId);
-        verify(emailSender).send("iam-user@example.com", "Delivered", "Your parcel was delivered");
+        verify(emailSender).send(eq("iam-user@example.com"), eq("Delivered"), startsWith("Your parcel was delivered"), contains("<!DOCTYPE html>"));
     }
 
     @Test
@@ -167,7 +175,8 @@ class MultiChannelNotificationDispatcherTest {
         assertThat(response.status()).isEqualTo("SENT");
         assertThat(response.channel()).isEqualTo("EMAIL");
         assertThat(response.destination()).isEqualTo("customer@example.com");
-        verify(emailSender).send("customer@example.com", "Delivered", "Delivered at your door");
+        verify(emailSender).send(eq("customer@example.com"), eq("Delivered"), startsWith("Delivered at your door"),
+                and(contains("Delivered at your door"), contains("https://swiftdrop.lk/track/SD-001")));
     }
 
     @Test
@@ -184,7 +193,7 @@ class MultiChannelNotificationDispatcherTest {
                 .thenReturn(new TemplateRendererService.RenderedNotification("Delivery failed", "We could not deliver", "EMAIL"));
         when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
         doThrow(new EmailDeliveryException("Azure email rejected the message (HTTP 401)"))
-                .when(emailSender).send(any(), any(), any());
+                .when(emailSender).send(any(), any(), any(), any());
 
         NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
                 recipientId, "EMAIL", "PARCEL_FAILED", null, Map.of(), "SD-002"));

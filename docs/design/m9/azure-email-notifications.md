@@ -19,6 +19,7 @@ A real order created through the gateway delivered an order-confirmation email t
 | Triggers | Every trigger sends one EMAIL: order created, picked up, out for delivery, delivered, failed |
 | SMS removed | Removed from triggers, dispatcher, preferences (`smsEnabled`, `phoneNumber`), contact lookup, API spec and frontend. `POST /logs/dispatch` rejects `SMS` with 400. Migration `V5__remove_sms_channel.sql` drops the two preference columns and moves the seeded templates to EMAIL; old dispatch-log rows keep `SMS` as history |
 | In-app inbox | One inbox row per recipient per event |
+| Email design | `EmailHtmlRenderer` sends a branded HTML email (SwiftDrop header, coloured status badge, tracking-number box, **Track your parcel** button, footer) plus a plain-text copy. Table layout with inline styles and no images, so Gmail and Outlook render it; all text is HTML-escaped. The button links to `PUBLIC_TRACKING_BASE_URL/track/<number>` (use `http://localhost:5173` for a local demo) |
 | Frontend | The customer preferences card shows Email and Browser Push only; **Send Test Email** sends a real test email to the address on the card |
 | Configuration | `NOTIFICATION_EMAIL_PROVIDER`, `ACS_EMAIL_ENDPOINT`, `ACS_EMAIL_ACCESS_KEY`, `ACS_EMAIL_SENDER_ADDRESS` added to `application.yml`, `.env.example`, `docker-compose.yml` and Helm (`values.yaml`; the key is an optional Secret `notification-acs-email`) |
 
@@ -149,6 +150,7 @@ Invoke-RestMethod http://localhost:8080/api/v1/notifications/me -Headers @{ Auth
 | Log scan for the full recipient address | Not present; only `n***@uom.lk` |
 | After SMS removal: V5 migration on the running database | Applied; `sms_enabled`/`phone_number` dropped; all 5 templates `EMAIL` |
 | After SMS removal: order `SD-LYWN-GQZ3` for a Gmail customer | One row, `EMAIL SENT` (no SMS row); Azure operation status `Succeeded` |
+| HTML email: order `SD-3M46-66WQ` for the same Gmail customer | `EMAIL SENT`; Azure operation status `Succeeded`; 99 tests pass |
 
 Picked up, out for delivery, delivered and failed use the same email path. They were covered
 by tests, not run live, because the delivery-execution service was not part of this demo.
