@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { exchangeOAuthCode } from '@/services/api/authApi';
+import { exchangeOAuthCode, oauthErrorMessage } from '@/services/api/authApi';
 import { personaForRole, useAuthStore } from '@/store/useAuthStore';
 import { roleHome } from '@/app/roleHome';
 import axios from 'axios';
@@ -31,8 +31,8 @@ export function OAuthCallbackPage() {
   useEffect(() => {
     // Surface a backend-reported access-denied error (user cancelled consent).
     const oauthError = searchParams.get('oauth_error');
-    if (oauthError === 'access_denied') {
-      setError('Google sign-in was cancelled. Please try again.');
+    if (oauthError) {
+      setError(oauthErrorMessage(oauthError));
       return;
     }
 

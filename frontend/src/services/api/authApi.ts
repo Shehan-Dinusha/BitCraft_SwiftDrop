@@ -107,3 +107,19 @@ export async function updateUserStatus(userId: string, status: UserStatus): Prom
   );
   return data.data ?? {};
 }
+
+/** Maps the `oauth_error` code from the backend redirect to a user-facing message. */
+export function oauthErrorMessage(code: string): string {
+  switch (code) {
+    case 'access_denied':
+      return 'Google sign-in was cancelled. Please try again.';
+    case 'invalid_state':
+      return 'Your Google sign-in session expired. Please try again.';
+    case 'account_inactive':
+      return 'Your account is not active. Contact support.';
+    case 'not_configured':
+      return 'Google sign-in is not available right now.';
+    default:
+      return 'Google sign-in failed. Please try again.';
+  }
+}
