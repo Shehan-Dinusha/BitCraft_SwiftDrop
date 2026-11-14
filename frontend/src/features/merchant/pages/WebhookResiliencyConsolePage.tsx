@@ -28,6 +28,12 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+/** "HTTP 500", or the failure class when no HTTP response was received (timeout, connection failure). */
+function attemptOutcomeLabel(attempt: WebhookDeliveryAttemptResponse): string {
+  if (attempt.httpStatusCode != null) return `HTTP ${attempt.httpStatusCode}`;
+  return attempt.errorClass ?? (attempt.success ? 'OK' : 'NO RESPONSE');
+}
+
 export function WebhookResiliencyConsolePage() {
   const [endpoints, setEndpoints] = useState<WebhookEndpointResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +52,7 @@ export function WebhookResiliencyConsolePage() {
 
   // Ping Testing State
   const [pingingId, setPingingId] = useState<string | null>(null);
-  const [pingResult, setPingResult] = useState<{ endpointId: string; status: number; success: boolean } | null>(null);
+  const [pingResult, setPingResult] = useState<{ endpointId: string; label: string; success: boolean } | null>(null);
 
   // Attempts History Modal
   const [selectedEndpoint, setSelectedEndpoint] = useState<WebhookEndpointResponse | null>(null);
@@ -133,14 +139,13 @@ export function WebhookResiliencyConsolePage() {
       setPingingId(endpointId);
       setPingResult(null);
       const res = await webhookApi.testPing(endpointId);
-      setPingResult({
-        endpointId,
-        status: res.httpStatusCode || 500,
-        success: res.success || false
-      });
+      const label = attemptOutcomeLabel(res);
+      setPingResult({ endpointId, label, success: res.success || false });
+      const latency = res.latencyMs != null ? ` in ${res.latencyMs} ms` : '';
+      const detail = res.success ? 'Success' : `Failed: ${res.errorMessage ?? 'unclassified failure'}`;
       setBanner({
         tone: res.success ? 'success' : 'danger',
-        message: `Test ping response: HTTP ${res.httpStatusCode || 500} (${res.success ? 'Success' : 'Failed'})`
+        message: `Test ping result: ${label}${latency} (${detail})`
       });
     } catch (err: unknown) {
       const msg = apiErrorMessage(err, 'Failed to execute test ping');
@@ -361,7 +366,7 @@ export function WebhookResiliencyConsolePage() {
                               : 'bg-rose-100 text-rose-800'
                           }`}
                         >
-                          HTTP {pingResult.status}
+                          {pingResult.label}
                         </span>
                       )}
 
@@ -523,9 +528,12 @@ export function WebhookResiliencyConsolePage() {
                             : 'bg-rose-100 text-rose-800'
                         }`}
                       >
-                        HTTP {att.httpStatusCode}
+                        {attemptOutcomeLabel(att)}
                       </span>
                       <span className="text-[10px] text-secondary">Attempt #{att.attemptNumber}</span>
+                      {att.latencyMs != null && (
+                        <span className="text-[10px] tabular-nums text-secondary">{att.latencyMs} ms</span>
+                      )}
                     </div>
                     {att.errorMessage && (
                       <p className="font-mono text-[10px] text-rose-600">{att.errorMessage}</p>

@@ -232,7 +232,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Dispatch a test ping to the webhook endpoint */
+        /**
+         * Dispatch a test ping to the webhook endpoint
+         * @description Connectivity check: exactly one signed POST of a fixed test payload, with no retry and no dead-letter record. Returns the HTTP status, failure classification and latency; the endpoint's response body is never returned.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -569,11 +572,23 @@ export interface components {
             /** Format: uuid */
             merchantId?: string;
             eventType?: string;
-            httpStatusCode?: number;
+            /** @description HTTP status returned by the endpoint; null when no HTTP response was received (timeout or connection failure). */
+            httpStatusCode?: number | null;
             attemptNumber?: number;
+            /** @description True only for a 2xx response. */
             success?: boolean;
-            responseBody?: string;
-            errorMessage?: string;
+            /**
+             * @description Failure classification; null on success.
+             * @enum {string|null}
+             */
+            errorClass?: "TIMEOUT" | "CONNECTION_FAILURE" | "HTTP_CLIENT_ERROR" | "HTTP_RATE_LIMITED" | "HTTP_SERVER_ERROR" | "INVALID_RESPONSE" | "BLOCKED_DESTINATION" | "UNKNOWN" | null;
+            /**
+             * @description Sanitised failure summary; never contains URLs, hosts, raw error text or the endpoint's response body.
+             * @example Endpoint returned a server error (HTTP 500)
+             */
+            errorMessage?: string | null;
+            /** @description Round-trip time in milliseconds; null for attempts recorded before it was measured. */
+            latencyMs?: number | null;
             /** Format: date-time */
             attemptedAt?: string;
         };

@@ -161,6 +161,10 @@ paths:
     post:
       tags: [WebhookSubscription]
       summary: Dispatch a test ping to the webhook endpoint
+      description: >-
+        Connectivity check: exactly one signed POST of a fixed test payload, with no retry and no
+        dead-letter record. Returns the HTTP status, failure classification and latency; the endpoint's
+        response body is never returned.
       parameters:
         - name: endpointId
           in: path
@@ -450,14 +454,27 @@ components:
           type: string
         httpStatusCode:
           type: integer
+          nullable: true
+          description: HTTP status returned by the endpoint; null when no HTTP response was received (timeout or connection failure).
         attemptNumber:
           type: integer
         success:
           type: boolean
-        responseBody:
+          description: True only for a 2xx response.
+        errorClass:
           type: string
+          nullable: true
+          description: Failure classification; null on success.
+          enum: [TIMEOUT, CONNECTION_FAILURE, HTTP_CLIENT_ERROR, HTTP_RATE_LIMITED, HTTP_SERVER_ERROR, INVALID_RESPONSE, BLOCKED_DESTINATION, UNKNOWN]
         errorMessage:
           type: string
+          nullable: true
+          description: Sanitised failure summary; never contains URLs, hosts, raw error text or the endpoint's response body.
+          example: Endpoint returned a server error (HTTP 500)
+        latencyMs:
+          type: integer
+          nullable: true
+          description: Round-trip time in milliseconds; null for attempts recorded before it was measured.
         attemptedAt:
           type: string
           format: date-time

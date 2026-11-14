@@ -132,7 +132,7 @@ public class DlqReplayService {
             record.setReplayed(true);
             record.setReplayedAt(Instant.now());
             dlqRepository.save(record);
-            log.info("DLQ record {} replayed successfully to {}", dlqId, endpoint.getTargetUrl());
+            log.info("DLQ record {} replayed successfully to endpoint {}", dlqId, endpoint.getEndpointId());
 
             return new ReplayDlqResponse(
                     dlqId,
@@ -142,7 +142,8 @@ public class DlqReplayService {
                     record.getReplayedAt()
             );
         }
-        int code = attempt != null ? attempt.httpStatusCode() : 500;
+        // Null when no HTTP response was received (timeout or connection failure). errorMessage is a sanitised summary.
+        Integer code = attempt != null ? attempt.httpStatusCode() : null;
         String errorMsg = attempt != null && attempt.errorMessage() != null ? attempt.errorMessage() : "Dispatcher failure";
         log.warn("DLQ replay failed for record {}: {}", dlqId, errorMsg);
 

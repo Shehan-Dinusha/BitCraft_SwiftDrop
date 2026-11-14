@@ -2,7 +2,6 @@ package com.swiftdrop.webhook.service;
 
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.CallerContext;
-import com.swiftdrop.webhook.domain.entity.WebhookDeliveryAttempt;
 import com.swiftdrop.webhook.domain.entity.WebhookEndpoint;
 import com.swiftdrop.webhook.domain.repository.WebhookDeliveryAttemptRepository;
 import com.swiftdrop.webhook.domain.repository.WebhookEndpointRepository;
@@ -48,7 +47,7 @@ public class WebhookSubscriptionService {
     public WebhookEndpointResponse createEndpoint(CreateWebhookEndpointRequest request, CallerContext caller) {
         MerchantAccess.requireRole(caller, MANAGERS);
         UUID merchantId = MerchantAccess.ownerForCreate(caller, request.merchantId());
-        log.info("Registering webhook endpoint for merchant: {} target: {}", merchantId, request.targetUrl());
+        log.info("Registering webhook endpoint for merchant: {}", merchantId);
 
         String subscribedEvents = EventSubscriptionPatterns.parseForRegistration(request.subscribedEvents()).canonical();
 
@@ -114,7 +113,8 @@ public class WebhookSubscriptionService {
     }
 
     /**
-     * Dispatches a test ping event to verify connectivity and HMAC signature computation.
+     * Connectivity check: one signed POST of a fixed test payload, no retry, no dead-letter record. The result
+     * carries the real HTTP status, a sanitised classification and the latency, never the endpoint's reply.
      */
     public WebhookDeliveryAttemptResponse testPing(UUID endpointId, CallerContext caller) {
         WebhookEndpoint endpoint = findAccessibleEndpoint(endpointId, caller);
@@ -127,14 +127,14 @@ public class WebhookSubscriptionService {
                 "message", "SwiftDrop Webhook Resiliency ping verification."
         );
 
-        return dispatcher.dispatch(endpoint, "webhook.test.ping", testPayload);
+        return dispatcher.ping(endpoint, "webhook.test.ping", testPayload);
     }
 
     @Transactional(readOnly = true)
     public List<WebhookDeliveryAttemptResponse> getDeliveryAttempts(UUID endpointId, CallerContext caller) {
         WebhookEndpoint endpoint = findAccessibleEndpoint(endpointId, caller);
         return attemptRepository.findByEndpointIdOrderByAttemptedAtDesc(endpoint.getEndpointId()).stream()
-                .map(this::mapAttemptToResponse)
+                .map(AttemptResponseMapper::toResponse)
                 .toList();
     }
 
@@ -160,21 +160,6 @@ public class WebhookSubscriptionService {
                 endpoint.isActive(),
                 endpoint.getDescription(),
                 endpoint.getCreatedAt()
-        );
-    }
-
-    private WebhookDeliveryAttemptResponse mapAttemptToResponse(WebhookDeliveryAttempt attempt) {
-        return new WebhookDeliveryAttemptResponse(
-                attempt.getAttemptId(),
-                attempt.getEndpointId(),
-                attempt.getMerchantId(),
-                attempt.getEventType(),
-                attempt.getHttpStatusCode(),
-                attempt.getAttemptNumber(),
-                attempt.isSuccess(),
-                attempt.getResponseBody(),
-                attempt.getErrorMessage(),
-                attempt.getAttemptedAt()
         );
     }
 }

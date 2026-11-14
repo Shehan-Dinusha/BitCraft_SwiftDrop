@@ -1,6 +1,7 @@
 package com.swiftdrop.webhook.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.webhook.domain.entity.AttemptErrorClass;
 import com.swiftdrop.webhook.domain.entity.DeadLetterWebhookRecord;
 import com.swiftdrop.webhook.domain.entity.WebhookDeliveryAttempt;
 import com.swiftdrop.webhook.domain.entity.WebhookEndpoint;
@@ -14,25 +15,36 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 
+import javax.net.ssl.SSLException;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 /**
- * Legacy synchronous dispatcher: up to three blocking attempts on the caller's thread, then a legacy
- * dead-letter row.
+ * Legacy synchronous dispatcher used by the endpoint test ping ({@link #ping}) and legacy dead-letter replay
+ * ({@link #dispatch}).
+ *
+ * <p>Every attempt is recorded with the real HTTP status (null when no response arrived), a classification
+ * and the latency. The remote response body is discarded unread, and neither logs nor stored rows contain the
+ * target URL or raw exception text.</p>
  *
  * @deprecated Event ingestion no longer calls this class; it creates persistent {@code webhook_deliveries}
- * jobs instead. It remains only for the two existing API operations that have not been migrated yet, the
- * endpoint test ping ({@link WebhookSubscriptionService#testPing}) and legacy dead-letter replay
- * ({@link DlqReplayService#replayDlqRecord}). Remove it once the delivery worker and the replay redesign
- * take over those operations. Do not add new callers.
+ * jobs instead. Remove it once the delivery worker and the replay redesign take over the two remaining
+ * operations. Do not add new callers.
  */
 @Deprecated
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OutboundWebhookDispatcher {
+
+    private static final Duration ATTEMPT_TIMEOUT = Duration.ofSeconds(3);
 
     private final WebClient webClient;
     private final HmacSignatureGenerator hmacSignatureGenerator;
@@ -42,134 +54,138 @@ public class OutboundWebhookDispatcher {
     private final ObjectMapper objectMapper;
 
     /**
-     * Dispatches a webhook payload with HMAC-SHA256 signing and exponential retries.
+     * Connectivity check: exactly one signed attempt, no retry, and never a dead-letter record.
      */
-    public WebhookDeliveryAttemptResponse dispatch(WebhookEndpoint endpoint, String eventType, Object payloadObj) {
-        String payloadJson;
-        if (payloadObj instanceof String str) {
-            payloadJson = str;
-        } else {
-            try {
-                payloadJson = objectMapper.writeValueAsString(payloadObj);
-            } catch (Exception e) {
-                payloadJson = "{}";
-            }
-        }
-
-        int attemptNumber = 1;
-        WebhookDeliveryAttempt lastAttempt = null;
-        boolean delivered = false;
-
-        while (attemptNumber <= ExponentialBackoffScheduler.MAX_ATTEMPTS && !delivered) {
-            UUID attemptId = UUID.randomUUID();
-            long timestampMs = System.currentTimeMillis();
-            String signature = hmacSignatureGenerator.calculateSignature(payloadJson, endpoint.getSecretKey());
-
-            log.info("Executing webhook dispatch attempt {}/{} to URL: {} for event: {}",
-                    attemptNumber, ExponentialBackoffScheduler.MAX_ATTEMPTS, endpoint.getTargetUrl(), eventType);
-
-            try {
-                var responseSpec = webClient.post()
-                        .uri(endpoint.getTargetUrl())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-SwiftDrop-Signature", signature)
-                        .header("X-SwiftDrop-Event", eventType)
-                        .header("X-SwiftDrop-Delivery-Id", attemptId.toString())
-                        .header("X-SwiftDrop-Timestamp", String.valueOf(timestampMs))
-                        .bodyValue(payloadJson)
-                        .retrieve()
-                        .toEntity(String.class)
-                        .timeout(Duration.ofSeconds(3))
-                        .block();
-
-                int statusCode = responseSpec != null ? responseSpec.getStatusCode().value() : 200;
-                String body = responseSpec != null && responseSpec.getBody() != null
-                        ? responseSpec.getBody().substring(0, Math.min(250, responseSpec.getBody().length()))
-                        : "OK";
-
-                lastAttempt = WebhookDeliveryAttempt.builder()
-                        .attemptId(attemptId)
-                        .endpointId(endpoint.getEndpointId())
-                        .merchantId(endpoint.getMerchantId())
-                        .eventType(eventType)
-                        .payload(payloadJson)
-                        .httpStatusCode(statusCode)
-                        .attemptNumber(attemptNumber)
-                        .success(true)
-                        .responseBody(body)
-                        .build();
-
-                attemptRepository.save(lastAttempt);
-                delivered = true;
-                log.info("Webhook successfully delivered to {} on attempt {}", endpoint.getTargetUrl(), attemptNumber);
-
-            } catch (Exception e) {
-                String errorMsg = e.getMessage() != null ? e.getMessage() : "Connection failed";
-                log.warn("Webhook attempt {} failed for endpoint {}: {}", attemptNumber, endpoint.getEndpointId(), errorMsg);
-
-                lastAttempt = WebhookDeliveryAttempt.builder()
-                        .attemptId(attemptId)
-                        .endpointId(endpoint.getEndpointId())
-                        .merchantId(endpoint.getMerchantId())
-                        .eventType(eventType)
-                        .payload(payloadJson)
-                        .httpStatusCode(500)
-                        .attemptNumber(attemptNumber)
-                        .success(false)
-                        .errorMessage(errorMsg.length() > 490 ? errorMsg.substring(0, 490) : errorMsg)
-                        .build();
-
-                attemptRepository.save(lastAttempt);
-
-                if (backoffScheduler.canRetry(attemptNumber)) {
-                    long delay = backoffScheduler.getBackoffDelayMs(attemptNumber + 1);
-                    log.info("Scheduling backoff delay {} ms before retry...", delay);
-                    // In synchronous loop, minor sleep or proceed
-                    try {
-                        Thread.sleep(Math.min(delay, 500L));
-                    } catch (InterruptedException ignored) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-                attemptNumber++;
-            }
-        }
-
-        // If all attempts failed, send to Dead Letter Queue (DLQ)
-        if (!delivered && lastAttempt != null) {
-            log.error("All {} attempts failed for webhook endpoint {}. Routing to Dead-Letter Queue.",
-                    ExponentialBackoffScheduler.MAX_ATTEMPTS, endpoint.getEndpointId());
-
-            DeadLetterWebhookRecord dlqRecord = DeadLetterWebhookRecord.builder()
-                    .dlqId(UUID.randomUUID())
-                    .endpointId(endpoint.getEndpointId())
-                    .merchantId(endpoint.getMerchantId())
-                    .eventType(eventType)
-                    .payload(payloadJson)
-                    .failureReason(lastAttempt.getErrorMessage())
-                    .totalAttempts(ExponentialBackoffScheduler.MAX_ATTEMPTS)
-                    .replayed(false)
-                    .build();
-
-            dlqRepository.save(dlqRecord);
-        }
-
-        return mapToAttemptResponse(lastAttempt);
+    public WebhookDeliveryAttemptResponse ping(WebhookEndpoint endpoint, String eventType, Object payloadObj) {
+        WebhookDeliveryAttempt attempt = sendOnce(endpoint, eventType, toJson(payloadObj), 1);
+        return AttemptResponseMapper.toResponse(attempt);
     }
 
-    private WebhookDeliveryAttemptResponse mapToAttemptResponse(WebhookDeliveryAttempt attempt) {
-        if (attempt == null) return null;
-        return new WebhookDeliveryAttemptResponse(
-                attempt.getAttemptId(),
-                attempt.getEndpointId(),
-                attempt.getMerchantId(),
-                attempt.getEventType(),
-                attempt.getHttpStatusCode(),
-                attempt.getAttemptNumber(),
-                attempt.isSuccess(),
-                attempt.getResponseBody(),
-                attempt.getErrorMessage(),
-                attempt.getAttemptedAt()
-        );
+    /**
+     * Legacy replay: up to {@link ExponentialBackoffScheduler#MAX_ATTEMPTS} attempts, then a legacy dead-letter
+     * row with a sanitised failure reason.
+     */
+    public WebhookDeliveryAttemptResponse dispatch(WebhookEndpoint endpoint, String eventType, Object payloadObj) {
+        String payloadJson = toJson(payloadObj);
+        WebhookDeliveryAttempt lastAttempt = null;
+
+        for (int attemptNumber = 1; attemptNumber <= ExponentialBackoffScheduler.MAX_ATTEMPTS; attemptNumber++) {
+            lastAttempt = sendOnce(endpoint, eventType, payloadJson, attemptNumber);
+            if (lastAttempt.isSuccess()) {
+                return AttemptResponseMapper.toResponse(lastAttempt);
+            }
+            if (backoffScheduler.canRetry(attemptNumber)) {
+                // Synchronous legacy path: a short pause only. Real scheduled backoff belongs to the delivery worker.
+                try {
+                    Thread.sleep(Math.min(backoffScheduler.getBackoffDelayMs(attemptNumber + 1), 500L));
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+
+        log.error("All attempts failed for webhook endpoint {} (event {}, last errorClass {}). Writing legacy dead-letter record.",
+                endpoint.getEndpointId(), eventType, lastAttempt.getErrorClass());
+        dlqRepository.save(DeadLetterWebhookRecord.builder()
+                .dlqId(UUID.randomUUID())
+                .endpointId(endpoint.getEndpointId())
+                .merchantId(endpoint.getMerchantId())
+                .eventType(eventType)
+                .payload(payloadJson)
+                .failureReason(DlqFailureClassifier.storedReason(lastAttempt.getErrorClass(), lastAttempt.getHttpStatusCode()))
+                .totalAttempts(lastAttempt.getAttemptNumber())
+                .replayed(false)
+                .build());
+
+        return AttemptResponseMapper.toResponse(lastAttempt);
+    }
+
+    /** One signed POST. Never throws for HTTP or network failures; the outcome is recorded and returned. */
+    private WebhookDeliveryAttempt sendOnce(WebhookEndpoint endpoint, String eventType, String payloadJson, int attemptNumber) {
+        UUID attemptId = UUID.randomUUID();
+        String signature = hmacSignatureGenerator.calculateSignature(payloadJson, endpoint.getSecretKey());
+
+        Integer statusCode = null;
+        AttemptErrorClass errorClass;
+        long started = System.nanoTime();
+        try {
+            statusCode = webClient.post()
+                    .uri(endpoint.getTargetUrl())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-SwiftDrop-Signature", signature)
+                    .header("X-SwiftDrop-Event", eventType)
+                    .header("X-SwiftDrop-Delivery-Id", attemptId.toString())
+                    .header("X-SwiftDrop-Timestamp", String.valueOf(System.currentTimeMillis()))
+                    .bodyValue(payloadJson)
+                    // exchangeToMono: any status is a normal result, and the body is released without being read.
+                    .exchangeToMono(response -> response.releaseBody().thenReturn(response.statusCode().value()))
+                    .timeout(ATTEMPT_TIMEOUT)
+                    .block();
+            errorClass = statusCode == null ? AttemptErrorClass.INVALID_RESPONSE : classifyStatus(statusCode);
+        } catch (Exception failure) {
+            errorClass = classifyException(failure);
+        }
+        int latencyMs = (int) Math.min(Integer.MAX_VALUE, Duration.ofNanos(System.nanoTime() - started).toMillis());
+        boolean success = errorClass == null;
+
+        WebhookDeliveryAttempt attempt = attemptRepository.save(WebhookDeliveryAttempt.builder()
+                .attemptId(attemptId)
+                .endpointId(endpoint.getEndpointId())
+                .merchantId(endpoint.getMerchantId())
+                .eventType(eventType)
+                .payload(payloadJson)
+                .httpStatusCode(statusCode)
+                .attemptNumber(attemptNumber)
+                .success(success)
+                .errorClass(errorClass)
+                .errorMessage(success ? null : DlqFailureClassifier.describe(errorClass, statusCode).summary())
+                .latencyMs(latencyMs)
+                .build());
+
+        if (success) {
+            log.info("Webhook attempt {} for endpoint {} (event {}) succeeded: status={} latencyMs={}",
+                    attemptNumber, endpoint.getEndpointId(), eventType, statusCode, latencyMs);
+        } else {
+            log.warn("Webhook attempt {} for endpoint {} (event {}) failed: errorClass={} status={} latencyMs={}",
+                    attemptNumber, endpoint.getEndpointId(), eventType, errorClass, statusCode, latencyMs);
+        }
+        return attempt;
+    }
+
+    /** Null means success (2xx). */
+    private static AttemptErrorClass classifyStatus(int status) {
+        if (status >= 200 && status < 300) return null;
+        if (status == 429) return AttemptErrorClass.HTTP_RATE_LIMITED;
+        if (status >= 400 && status < 500) return AttemptErrorClass.HTTP_CLIENT_ERROR;
+        if (status >= 500 && status < 600) return AttemptErrorClass.HTTP_SERVER_ERROR;
+        return AttemptErrorClass.INVALID_RESPONSE;
+    }
+
+    /** Uses exception types only; exception messages (which contain URLs and hosts) are never read. */
+    private static AttemptErrorClass classifyException(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof TimeoutException || cause instanceof SocketTimeoutException
+                    || cause instanceof io.netty.handler.timeout.TimeoutException) {
+                return AttemptErrorClass.TIMEOUT;
+            }
+            if (cause instanceof ConnectException || cause instanceof UnknownHostException
+                    || cause instanceof NoRouteToHostException || cause instanceof SSLException) {
+                return AttemptErrorClass.CONNECTION_FAILURE;
+            }
+            if (cause.getCause() == cause) break;
+        }
+        return failure instanceof WebClientRequestException ? AttemptErrorClass.CONNECTION_FAILURE : AttemptErrorClass.UNKNOWN;
+    }
+
+    private String toJson(Object payloadObj) {
+        if (payloadObj instanceof String str) {
+            return str;
+        }
+        try {
+            return objectMapper.writeValueAsString(payloadObj);
+        } catch (Exception serialisationFailure) {
+            return "{}";
+        }
     }
 }

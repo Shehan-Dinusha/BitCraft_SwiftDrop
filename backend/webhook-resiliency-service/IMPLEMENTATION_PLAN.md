@@ -173,7 +173,24 @@ These are proposed defaults. Steps 5–10 assume them. Change them here, not sil
   - Register an endpoint pointing at the mock receiver's `/boom` (500) and ping it.
   - `SELECT count(*) FROM dead_letter_webhook_records;` is unchanged.
   - The ping response and `GET …/attempts` contain no body text.
-- **Status:** NOT STARTED
+- **Status:** ✅ DONE (2026-11-15). As implemented:
+  - **Ping.** `OutboundWebhookDispatcher.ping()` makes one attempt, no retry, no DLQ.
+  - **Single attempt path.** `dispatch()`, used only by legacy replay, keeps 3 attempts plus a DLQ row. Both use one `sendOnce()`:
+    - `exchangeToMono`: the real status code is recorded, and the body is released unread.
+    - The status is `null` when no HTTP response arrived.
+    - Classification uses exception *types* only.
+    - Each attempt stores its latency.
+  - **Errors.**
+    - Stored `error_message` is a fixed sentence from `DlqFailureClassifier.describe()`.
+    - New DLQ `failure_reason` uses the strict token format `DlqFailureClassifier.storedReason()` (e.g. `HTTP_SERVER_ERROR HTTP 500`).
+  - **API.**
+    - `WebhookDeliveryAttemptResponse` lost `responseBody` and gained `errorClass` and `latencyMs`.
+    - `AttemptResponseMapper` regenerates `errorMessage` from the classification, so older rows with raw text or bodies are sanitised on read.
+    - The OpenAPI spec and generated types are updated.
+  - **Frontend.** The ping badge and attempts modal show the status or the error class, plus latency.
+  - **Logs.** Target URLs were removed from the `createEndpoint` and `DlqReplayService` logs.
+  - **Side effect on legacy replay.** A 3xx response now counts as a failure (`INVALID_RESPONSE`) instead of a success.
+  - **Not changed.** The `response_body` DB column and old rows were left as they are (no migration). Nothing reads them any more.
 
 ### Step 2 — Stop returning signing secrets (small, security)
 - **Objective:** show the secret only in the create response.
@@ -653,3 +670,4 @@ Append one entry per completed task. Never mark a step done unless its "Done whe
 | Date | Step | Result | Notes |
 |---|---|---|---|
 | 2026-11-14 | 0 | Done | Plan created. Deleted 11 test files in `src/test`. Frontend dev mode added (`frontend/.env.webhook-dev`, `vite.config.ts`, `src/app/devAuthBypass.ts`, `src/main.tsx`, `package.json` script `dev:webhook`). Fixed the README broker diagram. Backend compiled in the JDK 25 Maven container; frontend lint and build passed. No backend production code changed. |
+| 2026-11-15 | 1 | Done | **Changed:** `OutboundWebhookDispatcher`, `WebhookSubscriptionService`, `DlqReplayService`, `DlqFailureClassifier`, `WebhookSubscriptionController` (operation docs), `WebhookDeliveryAttemptResponse`; new `service/AttemptResponseMapper`; spec `docs/api-specs/webhook-resiliency-service.yaml`; regenerated `frontend/src/types/generated/webhook-resiliency-service.ts` only; `WebhookResiliencyConsolePage.tsx`. **Build:** compiled (container), frontend lint and build passed, no automated tests. **Manually verified** against the rebuilt container and a host Python mock via `host.docker.internal:9090`: `/ok` returns 200, success, latency recorded; `/boom` returns 500, `HTTP_SERVER_ERROR`; a closed port gives a null status and `CONNECTION_FAILURE`. Exactly one POST per ping reached the mock. DLQ row count stayed 0. The API and new rows contain no response body. A scan of service logs for the host, ports and body text found 0 hits. **Not performed:** browser UI check, webhook.site check. **Left behind:** three dev endpoints named "step1-verify …" for merchant `…a1`. |
