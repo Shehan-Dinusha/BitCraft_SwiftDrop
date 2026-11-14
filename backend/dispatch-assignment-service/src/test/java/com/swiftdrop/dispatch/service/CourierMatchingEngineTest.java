@@ -109,6 +109,8 @@ class CourierMatchingEngineTest {
         assertThat(assignedCaptor.getValue().courierId()).isEqualTo(courierId);
         assertThat(assignedCaptor.getValue().trackingNumber()).isEqualTo("SD-COL-12345");
         assertThat(assignedCaptor.getValue().merchantId()).isNotNull();
+        assertThat(assignedCaptor.getValue().customerId()).isEqualTo(customerId);
+        assertThat(result.getCustomerId()).isEqualTo(customerId);
 
         ArgumentCaptor<ParcelStatusChangedEvent> statusCaptor = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
         verify(eventPublisher).publishParcelStatusChanged(statusCaptor.capture());
@@ -149,6 +151,8 @@ class CourierMatchingEngineTest {
         assertThat(result.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
         assertThat(result.getRetryCount()).isEqualTo(1);
         assertThat(result.getFailureReason()).contains("No available courier in Sri Lanka");
+        // Kept for the dispatcher who assigns this order by hand later.
+        assertThat(result.getCustomerId()).isEqualTo(customerId);
 
         verify(eventPublisher).publishDispatchFailed(argThat(e ->
                 e.orderId().equals(orderId) && e.attemptCount() == 1 && e.retryable()
