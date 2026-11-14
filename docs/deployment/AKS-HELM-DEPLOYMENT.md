@@ -5,6 +5,9 @@ This guide deploys the **whole system**: the frontend, the API gateway, the nine
 - Web app: `https://swiftdrop.bitcraft.biz`
 - Public API and Swagger: `https://api.swiftdrop.bitcraft.biz`
 
+> [!TIP]
+> AKS costs money for every hour it runs. To learn and test for free first, run the same chart on Docker Desktop: see [LOCAL-KUBERNETES.md](LOCAL-KUBERNETES.md).
+
 ## Contents
 
 1. [What gets deployed](#1-what-gets-deployed)
@@ -117,7 +120,7 @@ You also need:
 Run in **Git Bash**. Change the values in the first block if needed.
 
 ```bash
-LOCATION=southeastasia          # Singapore; pick another region if your subscription policy blocks it
+LOCATION=indiasouthcentral      # Hyderabad; must be in your subscription's allowed list (see below)
 RG=rg-swiftdrop-prod
 AKS=swiftdrop-aks
 ACR=swiftdropacr$RANDOM         # must be globally unique, lowercase letters/digits only
@@ -125,6 +128,11 @@ echo "ACR name: $ACR"           # write this down
 
 az login
 az account show --query "{name:name, id:id}" -o table
+
+# Azure for Students only allows a few regions. List them:
+az policy assignment list --query "[?contains(to_string(parameters), 'ocation')].parameters" -o json
+# (Checked Nov 2026: uaenorth, indonesiacentral, indiasouthcentral, malaysiawest, eastasia.
+#  indiasouthcentral offers AKS and Standard_B4ms with a 4-vCPU B-series quota.)
 
 # New subscriptions must register the resource providers once.
 az provider register --namespace Microsoft.ContainerService --wait

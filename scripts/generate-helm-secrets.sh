@@ -4,7 +4,8 @@
 # and a fresh RS256 key pair (PKCS#8 private key, as auth-iam-service requires).
 #
 # Usage (Git Bash on Windows, or any Linux/macOS shell with openssl):
-#   bash scripts/generate-helm-secrets.sh <letsencrypt-email> [admin-email]
+#   bash scripts/generate-helm-secrets.sh [letsencrypt-email] [admin-email]
+# The e-mail is only needed for AKS (Let's Encrypt); the local profile skips it.
 #
 # The output file is git-ignored. Back it up somewhere safe (password manager):
 # the database passwords inside it are baked into the PostgreSQL volumes on first
@@ -13,10 +14,10 @@
 set -euo pipefail
 
 ACME_EMAIL="${1:-}"
-ADMIN_EMAIL="${2:-${ACME_EMAIL}}"
+ADMIN_EMAIL="${2:-${ACME_EMAIL:-admin@swiftdrop.local}}"
 if [ -z "$ACME_EMAIL" ]; then
-  echo "usage: bash scripts/generate-helm-secrets.sh <letsencrypt-email> [admin-email]" >&2
-  exit 1
+  echo "Note: no Let's Encrypt e-mail given. Fine for the local profile; set" >&2
+  echo "      certManager.clusterIssuer.email in the file before deploying to AKS." >&2
 fi
 command -v openssl >/dev/null || { echo "openssl not found (it ships with Git for Windows)" >&2; exit 1; }
 

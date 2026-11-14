@@ -1,0 +1,95 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop — LOCAL profile (Docker Desktop's built-in Kubernetes, free)
+#
+#   helm upgrade --install swiftdrop infra/helm/swiftdrop -n default \
+#     -f infra/helm/swiftdrop/values-local.yaml \
+#     -f infra/helm/swiftdrop/values-secrets.yaml
+#
+# Sized for a laptop where Docker Desktop has ~6 GB of RAM:
+#   * a CORE set of services runs by default (gateway, auth, order, pricing +
+#     frontend, their 3 databases, RabbitMQ, Redis) — measured ~1.2 GB in total;
+#   * each other service is one `enabled: true` away (≈ +250 MB each, +60 MB for its DB).
+#     A database is only created when a service that uses it is enabled.
+#   * images are built locally (scripts/k8s-local-build.sh) and never pulled;
+#   * plain HTTP on http://swiftdrop.localhost — no certificate, no DNS needed.
+# See docs/deployment/LOCAL-KUBERNETES.md.
+# ──────────────────────────────────────────────────────────────────────────────
+
+global:
+  imageRegistry: ""          # images are named e.g. "api-gateway:local"
+  imageTag: local
+  imagePullPolicy: Never     # use the image Docker Desktop already has; never pull
+  # Smaller JIT footprint and thread stacks: noticeably less RAM per JVM.
+  javaToolOptions: "-XX:MaxRAMPercentage=70 -XX:TieredStopAtLevel=1 -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+# Docker Desktop ships its own StorageClass ("hostpath"); create none.
+storageClasses: []
+
+services:
+  api-gateway:                 { enabled: true }
+  auth-iam-service:            { enabled: true }
+  customer-order-service:      { enabled: true }
+  pricing-zone-service:        { enabled: true }
+  dispatch-assignment-service: { enabled: false }
+  delivery-execution-service:  { enabled: false }
+  merchant-b2b-service:        { enabled: false }
+  webhook-resiliency-service:  { enabled: false }
+  notification-service:        { enabled: false }
+  analytics-ai-service:        { enabled: false }
+
+serviceOverrides:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 384Mi }
+    limits: { cpu: "1", memory: 640Mi }
+  # Docker Desktop has no metrics-server, so the HPAs exist (for the demo) but
+  # cannot measure load and stay at their minimum.
+  hpa:
+    minReplicas: 1
+    maxReplicas: 2
+    scaleUpPods: 1
+  probes:
+    startupFailureThreshold: 60   # JVMs share 4 CPUs locally — allow 5 minutes
+
+frontend:
+  replicas: 1
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+postgres:
+  overrides:
+    storageClassName: hostpath
+    storage: 1Gi
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+
+rabbitmq:
+  storageClassName: hostpath
+  storage: 1Gi
+  resources:
+    # 512Mi was OOMKilled when all ten services reconnected at once.
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { cpu: "1", memory: 768Mi }
+
+redis:
+  storageClassName: hostpath
+  storage: 512Mi
+  maxMemory: 64mb
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 250m, memory: 128Mi }
+
+ingress:
+  className: traefik
+  hosts:
+    # *.localhost resolves to 127.0.0.1 in Chrome/Edge/Firefox and curl — no hosts-file edit.
+    app: swiftdrop.localhost
+    api: api.swiftdrop.localhost
+  tls:
+    enabled: false
+
+certManager:
+  clusterIssuer:
+    create: false

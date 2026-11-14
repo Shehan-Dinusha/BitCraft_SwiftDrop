@@ -3,7 +3,9 @@
   per entry in .Values.postgres.databases (namespace: data). No database is shared.
 */ -}}
 {{- $data := .Values.namespaces.data }}
+{{- $enabledDbs := include "swiftdrop.enabledDatabases" . | splitList "," }}
 {{- range $key := keys .Values.postgres.databases | sortAlpha }}
+{{- if has $key $enabledDbs }}
 {{- $raw := index $.Values.postgres.databases $key }}
 {{- $db := include "swiftdrop.postgresConfig" (dict "root" $ "db" $raw) | fromYaml }}
 {{- $name := printf "%s-postgres" $key }}
@@ -89,18 +91,26 @@ spec:
           volumeMounts:
             - name: {{ $key }}-pgdata
               mountPath: /var/lib/postgresql/data
+          # First boot runs initdb, which can take minutes on a busy node. The startup
+          # probe holds off liveness until Postgres has answered once, so a slow
+          # initdb is never killed half-way (that can leave the database uncreated).
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
-            initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
-            initialDelaySeconds: 30
             periodSeconds: 30
-            timeoutSeconds: 5
+            timeoutSeconds: 10
+            failureThreshold: 3
   volumeClaimTemplates:
     - metadata:
         name: {{ $key }}-pgdata
@@ -113,4 +123,5 @@ spec:
         resources:
           requests:
             storage: {{ $db.storage }}
+{{- end }}
 {{- end }}

@@ -152,7 +152,7 @@ services:
     config:
       REDIS_HOST: "redis.{{ .Values.namespaces.messaging }}.svc.cluster.local"
       REDIS_PORT: "6379"
-      CORS_ALLOWED_ORIGINS: "https://{{ .Values.ingress.hosts.app }}"
+      CORS_ALLOWED_ORIGINS: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}"
       AUTH_SERVICE_URL: "http://auth-iam-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       ORDER_SERVICE_URL: "http://customer-order-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       PRICING_SERVICE_URL: "http://pricing-zone-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
@@ -196,7 +196,7 @@ services:
       JWT_ACCESS_TOKEN_EXPIRATION_MS: "3600000"
       JWT_REFRESH_TOKEN_EXPIRATION_DAYS: "30"
       JWT_BLACKLIST_PREFIX: "jwt:blacklist:"
-      GOOGLE_REDIRECT_URI: "https://{{ .Values.ingress.hosts.app }}/api/v1/auth/oauth2/google/callback"
+      GOOGLE_REDIRECT_URI: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}/api/v1/auth/oauth2/google/callback"
     secretEnv:
       - { name: JWT_SECRET, secretName: swiftdrop-jwt-credentials, key: secret }
       - { name: JWT_PRIVATE_KEY, secretName: swiftdrop-jwt-credentials, key: private-key }
@@ -219,7 +219,7 @@ services:
       PRICING_SERVICE_URL: "http://pricing-zone-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       PRICING_CONNECT_TIMEOUT_MS: "1000"
       PRICING_READ_TIMEOUT_MS: "5000"
-      PUBLIC_TRACKING_BASE_URL: "https://{{ .Values.ingress.hosts.app }}"
+      PUBLIC_TRACKING_BASE_URL: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}"
 
   pricing-zone-service:
     enabled: true
