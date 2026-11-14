@@ -1,0 +1,112 @@
+{{- /* React frontend served by nginx (namespace: apps). */ -}}
+{{- if .Values.frontend.enabled }}
+{{- $apps := .Values.namespaces.apps }}
+{{- $f := .Values.frontend }}
+{{- $nginx := tpl $f.nginxConfig . }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend-sa
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: frontend
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-nginx-config
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: frontend
+data:
+  default.conf: |
+    {{- $nginx | trim | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ $f.replicas }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.commonLabels" . | nindent 8 }}
+        app.kubernetes.io/name: frontend
+        app.kubernetes.io/component: frontend
+      annotations:
+        checksum/config: {{ $nginx | sha256sum }}
+    spec:
+      serviceAccountName: frontend-sa
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend
+          image: {{ include "swiftdrop.image" (dict "root" . "image" $f.image) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            {{- toYaml $f.resources | nindent 12 }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: frontend-nginx-config
+{{- end }}

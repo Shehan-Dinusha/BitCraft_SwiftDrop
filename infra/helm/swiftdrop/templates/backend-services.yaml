@@ -1,0 +1,286 @@
+{{- /*
+  Backend microservices (namespace: apps). For every enabled entry in .Values.services:
+    ServiceAccount · ConfigMap · Service · Deployment · HorizontalPodAutoscaler · NetworkPolicy (optional)
+*/ -}}
+{{- $apps := .Values.namespaces.apps }}
+{{- $commonData := include "swiftdrop.commonConfigData" . | trim }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-common-config
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+data:
+  {{- $commonData | nindent 2 }}
+
+{{- range $name := keys .Values.services | sortAlpha }}
+{{- $raw := index $.Values.services $name }}
+{{- if $raw.enabled }}
+{{- $s := include "swiftdrop.serviceConfig" (dict "root" $ "svc" $raw) | fromYaml }}
+{{- $hpa := eq (include "swiftdrop.hpaEnabled" (dict "root" $ "svc" $raw)) "true" }}
+{{- $cmData := include "swiftdrop.serviceConfigData" (dict "root" $ "name" $name "s" $s) | trim }}
+{{- $port := int $s.port }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}-sa
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-config
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+{{- if $cmData }}
+data:
+  {{- $cmData | nindent 2 }}
+{{- else }}
+data: {}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/component: {{ $s.component }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - name: http
+      port: {{ $port }}
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/component: {{ $s.component }}
+    {{- with $s.boundedContext }}
+    swiftdrop.io/bounded-context: {{ . }}
+    {{- end }}
+spec:
+  {{- if not $hpa }}
+  replicas: {{ $s.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.commonLabels" $ | nindent 8 }}
+        app.kubernetes.io/name: {{ $name }}
+        app.kubernetes.io/component: {{ $s.component }}
+        {{- with $s.boundedContext }}
+        swiftdrop.io/bounded-context: {{ . }}
+        {{- end }}
+      annotations:
+        # Roll pods whenever their ConfigMaps or Secrets change.
+        checksum/common-config: {{ $commonData | sha256sum }}
+        checksum/config: {{ $cmData | sha256sum }}
+        checksum/secrets: {{ toYaml $.Values.secrets | sha256sum }}
+    spec:
+      serviceAccountName: {{ $name }}-sa
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.waitForDependencies.enabled }}
+      {{- $targets := list (printf "rabbitmq.%s.svc.cluster.local:5672" $.Values.namespaces.messaging) }}
+      {{- if $s.database }}
+      {{- $targets = append $targets (printf "%s:5432" (include "swiftdrop.postgresHost" (dict "root" $ "key" $s.database))) }}
+      {{- end }}
+      {{- if $s.usesRedis }}
+      {{- $targets = append $targets (printf "redis.%s.svc.cluster.local:6379" $.Values.namespaces.messaging) }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-dependencies
+          image: {{ $.Values.waitForDependencies.image }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              for target in {{ join " " $targets }}; do
+                host="${target%:*}"; port="${target##*:}"
+                until nc -z -w 2 "$host" "$port"; do
+                  echo "waiting for $host:$port"; sleep 3
+                done
+                echo "$host:$port is reachable"
+              done
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 50m, memory: 32Mi }
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "swiftdrop.image" (dict "root" $ "image" $s.image) }}
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $port }}
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-common-config
+            - configMapRef:
+                name: {{ $name }}-config
+          env:
+            {{- if $s.database }}
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "swiftdrop.postgresSecretName" $s.database }}
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "swiftdrop.postgresSecretName" $s.database }}
+                  key: password
+            {{- end }}
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: password
+            {{- range $s.secretEnv }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .key }}
+                  {{- if get . "optional" }}
+                  optional: true
+                  {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml $s.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: {{ $s.probes.startupFailureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: {{ $s.probes.readinessInitialDelaySeconds }}
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: {{ $s.probes.livenessInitialDelaySeconds }}
+            periodSeconds: 30
+            timeoutSeconds: 5
+{{- if $hpa }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name }}-hpa
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $name }}
+  minReplicas: {{ $s.hpa.minReplicas }}
+  maxReplicas: {{ $s.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $s.hpa.cpuUtilization }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $s.hpa.memoryUtilization }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: {{ $s.hpa.scaleUpPods }}
+          periodSeconds: 60
+{{- end }}
+{{- with $s.networkPolicy.allowFromServices }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}-ingress
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        {{- range . }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ $port }}
+{{- end }}
+{{- end }}
+{{- end }}

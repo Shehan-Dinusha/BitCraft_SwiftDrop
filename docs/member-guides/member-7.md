@@ -76,7 +76,7 @@ git checkout -b feature/m7-setup
 Copy-Item .env.example .env
 ```
 
-Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `infra/k8s/services/merchant-b2b-service.yml` (rule from `AGENTS.md`).
+Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `services.merchant-b2b-service` in `infra/helm/swiftdrop/values.yaml` (rule from `AGENTS.md`).
 
 > **Known setup traps (skip this box once `repo-fix-plan.md` is merged on `dev`):**
 > 1. `docker-compose.yml` starts Postgres with password `changeme_pg`, but services default to `swiftdrop`.
@@ -427,7 +427,7 @@ Every test below is written and committed inside a stage in Part B. Use this tab
 - [ ] DB and RabbitMQ credentials in `application.yml` come from env variables (no hard-coded values).
 - [ ] No secrets in code, no personal data (phone, address, names) in logs or error messages.
 - [ ] Your service block in `docker-compose.yml` starts and is healthy (`docker compose up -d merchant-b2b-service`).
-- [ ] `infra/k8s/services/merchant-b2b-service.yml` has every env variable your `application.yml` reads (bonus marks).
+- [ ] `services.merchant-b2b-service` in `infra/helm/swiftdrop/values.yaml` has every env variable your `application.yml` reads (bonus marks).
 - [ ] Documentation deliverable exported (PNG/PDF + source) to `docs/design/m7/` and sent to whoever compiles the final design PDF.
 
 **E2. Test evidence for the submission.** Save `backend/merchant-b2b-service/target/surefire-reports/` and the JaCoCo `index.html` (as a screenshot or PDF) into `docs/test-reports/m7/`.

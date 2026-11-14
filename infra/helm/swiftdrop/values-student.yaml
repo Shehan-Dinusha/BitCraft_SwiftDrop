@@ -1,0 +1,60 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop — STUDENT profile (Azure for Students: ~4 vCPU regional quota)
+#
+# Target: ONE node, Standard_B4ms (4 vCPU / 16 GiB).
+#   Requests ≈ 1.7 vCPU / 6 GiB for all 22 SwiftDrop pods, leaving headroom for
+#   kube-system, Traefik and cert-manager.
+#
+# Storage: a 4-vCPU VM can attach at most 8 Azure managed disks, but SwiftDrop
+# needs 11 volumes (9 PostgreSQL + RabbitMQ + Redis). This profile therefore uses
+# the "local-path" StorageClass (rancher/local-path-provisioner, installed by the
+# deployment guide): still PersistentVolumeClaims + StatefulSets, but backed by
+# the node's own disk. Data survives pod restarts and node reboots, and is LOST
+# if AKS replaces the node — keep node auto-upgrades disabled (see the guide).
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Do not create Azure Disk StorageClasses; local-path is installed separately.
+storageClasses: []
+
+serviceOverrides:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 448Mi }
+    limits: { cpu: "1", memory: 768Mi }
+  # HPA stays on (it is part of the assignment demo) but scales 1 → 2.
+  hpa:
+    minReplicas: 1
+    maxReplicas: 2
+    scaleUpPods: 1
+  probes:
+    # Ten JVMs boot at once on four vCPUs — allow up to 5 minutes to start.
+    startupFailureThreshold: 60
+
+frontend:
+  replicas: 1
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+postgres:
+  overrides:
+    storageClassName: local-path
+    storage: 2Gi
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+
+rabbitmq:
+  storageClassName: local-path
+  storage: 2Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 768Mi }
+
+redis:
+  storageClassName: local-path
+  storage: 1Gi
+  maxMemory: 128mb
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 256Mi }

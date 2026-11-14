@@ -23,7 +23,7 @@ You wrote most of the current scaffold, so this is mainly a checklist against yo
 - `backend/api-gateway`: Spring Cloud Gateway (reactive). `GatewayRoutesConfig` routes all nine services, `CorsGlobalConfiguration`, `CorrelationIdFilter`, `JwtAuthenticationGlobalFilter` (strips client-sent `X-User-*` headers, verifies JWT, injects identity headers), `MerchantApiKeyGlobalFilter`, `PublicTrackingRateLimitFilter` (Redis).
 - Tracking hub: `ParcelStatusEventConsumer` (queue `swiftdrop.gateway.tracking.queue`, binding `parcel.status.changed.#`), `TrackingDataSanitizerProxy`, `TrackingBroadcastHubService`, SSE (`LiveTrackingStreamController`), raw WebSocket + STOMP handlers, `PublicTrackingController` at `/api/v1/tracking/{trackingNumber}`.
 - Tests: `TrackingDataSanitizerProxyTest`, `TrackingTokenVerifierTest` only.
-- Root infra: `docker-compose.yml` (RabbitMQ, Redis, 9 Postgres, and only **two** app containers: `auth-iam-service`, `api-gateway`), `.env.example`, 10 Dockerfiles, `infra/k8s/*`, GitHub workflows.
+- Root infra: `docker-compose.yml` (RabbitMQ, Redis, 9 Postgres, and only **two** app containers: `auth-iam-service`, `api-gateway`), `.env.example`, 10 Dockerfiles, `infra/helm/swiftdrop/` (Helm chart), GitHub workflows.
 - Frontend shell: `App.tsx`, `AppShell.tsx`, `routes.tsx`, providers, Velocity design system and catalog.
 
 ## 2. Gaps to close (your checklist)
@@ -51,7 +51,7 @@ Your own feature gaps:
 
 ## 3. Boundaries
 
-**You own:** everything in `backend/api-gateway/`; root `docker-compose.yml`, `.env.example`, `README.md`, `docs/LOCAL-DEVELOPMENT.md`, `.github/workflows/*`, `backend/pom.xml` (parent), `infra/k8s/base/` and ingress; `common-contracts/dto/*` (`ApiResponse`, `ApiErrorResponse`, `PagedResult`); the frontend shell, routes table, design system and the folders listed above.
+**You own:** everything in `backend/api-gateway/`; root `docker-compose.yml`, `.env.example`, `README.md`, `docs/LOCAL-DEVELOPMENT.md`, `.github/workflows/*`, `backend/pom.xml` (parent), `infra/helm/swiftdrop/` (chart, namespaces, ingress); `common-contracts/dto/*` (`ApiResponse`, `ApiErrorResponse`, `PagedResult`); the frontend shell, routes table, design system and the folders listed above.
 
 **You do not touch:** other services' code; `common-contracts/events/*` and `infra/local/rabbitmq/definitions.json` (Member 9); `AuthProvider`, `useAuthStore`, `apiClient.ts`, `RoleGuard` (Member 2); any persona feature folder except the tracking files above.
 
@@ -92,7 +92,7 @@ git checkout -b feature/m1-setup
 Copy-Item .env.example .env
 ```
 
-Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `infra/k8s/services/api-gateway.yml` (rule from `AGENTS.md`).
+Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `services.api-gateway` in `infra/helm/swiftdrop/values.yaml` (rule from `AGENTS.md`).
 
 **A4. Install the shared contracts jar** (repeat whenever `backend/common-contracts` changes on `dev`):
 
@@ -201,7 +201,7 @@ Rules:
 
 1. Read `CORS_ALLOWED_ORIGINS` (comma list, default `http://localhost:5173`) in `CorsGlobalConfiguration`.
 2. Allow credentials; allow methods GET/POST/PUT/PATCH/DELETE/OPTIONS.
-3. Add the variable to `.env.example`, compose and `infra/k8s/services/api-gateway.yml`.
+3. Add the variable to `.env.example`, compose and `services.api-gateway` in `infra/helm/swiftdrop/values.yaml`.
 
 **Commit:** `feat(gateway): configure CORS origins from environment`
 
@@ -541,7 +541,7 @@ Run: `mvn -f backend\pom.xml -pl api-gateway -am verify`.
 - [ ] DB and RabbitMQ credentials in `application.yml` come from env variables (no hard-coded values).
 - [ ] No secrets in code, no personal data (phone, address, names) in logs or error messages.
 - [ ] Your service block in `docker-compose.yml` starts and is healthy (`docker compose up -d api-gateway`).
-- [ ] `infra/k8s/services/api-gateway.yml` has every env variable your `application.yml` reads (bonus marks).
+- [ ] `services.api-gateway` in `infra/helm/swiftdrop/values.yaml` has every env variable your `application.yml` reads (bonus marks).
 - [ ] Documentation deliverable exported (PNG/PDF + source) to `docs/design/m1/` and sent to whoever compiles the final design PDF.
 
 **E2. Test evidence for the submission.** Save `backend/api-gateway/target/surefire-reports/` and the JaCoCo `index.html` (as a screenshot or PDF) into `docs/test-reports/m1/`.

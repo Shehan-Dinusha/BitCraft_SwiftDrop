@@ -46,7 +46,7 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 
 ## 3. Boundaries
 
-**You own:** `backend/notification-service/`; `common-contracts/events/**` and `EventRoutingKeys` (record files); `infra/local/rabbitmq/definitions.json`; `infra/k8s/messaging/`; the frontend notification files above.
+**You own:** `backend/notification-service/`; `common-contracts/events/**` and `EventRoutingKeys` (record files); `infra/local/rabbitmq/definitions.json`; `infra/helm/swiftdrop/templates/rabbitmq.yaml` and `redis.yaml`; the frontend notification files above.
 
 **You do not touch:** other services' publishers/consumers. You send them the exact change for their `RabbitMQConfig`; they make it.
 
@@ -85,7 +85,7 @@ git checkout -b feature/m9-setup
 Copy-Item .env.example .env
 ```
 
-Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `infra/k8s/services/notification-service.yml` (rule from `AGENTS.md`).
+Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `services.notification-service` in `infra/helm/swiftdrop/values.yaml` (rule from `AGENTS.md`).
 
 > **Known setup traps (skip this box once `repo-fix-plan.md` is merged on `dev`):**
 > 1. `docker-compose.yml` starts Postgres with password `changeme_pg`, but services default to `swiftdrop`.
@@ -461,7 +461,7 @@ Every test below is written and committed inside a stage in Part B. Use this tab
 - [ ] DB and RabbitMQ credentials in `application.yml` come from env variables (no hard-coded values).
 - [ ] No secrets in code, no personal data (phone, address, names) in logs or error messages.
 - [ ] Your service block in `docker-compose.yml` starts and is healthy (`docker compose up -d notification-service`).
-- [ ] `infra/k8s/services/notification-service.yml` has every env variable your `application.yml` reads (bonus marks).
+- [ ] `services.notification-service` in `infra/helm/swiftdrop/values.yaml` has every env variable your `application.yml` reads (bonus marks).
 - [ ] Documentation deliverable exported (PNG/PDF + source) to `docs/design/m9/` and sent to whoever compiles the final design PDF.
 
 **E2. Test evidence for the submission.** Save `backend/notification-service/target/surefire-reports/` and the JaCoCo `index.html` (as a screenshot or PDF) into `docs/test-reports/m9/`.

@@ -166,12 +166,7 @@ $env:BOOTSTRAP_ADMIN_EMAIL = 'root@example.com'
 $env:BOOTSTRAP_ADMIN_DISTRICT = 'COLOMBO'
 ```
 
-The bootstrap runner only creates the account when no active `SYSTEM_ADMIN` exists and the username is unused. Leave the variables unset to skip it. The API gateway must use the same `JWT_SECRET` as Auth/IAM; local development defaults are aligned. AKS deployments read the shared secret from `swiftdrop-jwt-credentials` in `swiftdrop-apps`:
-
-```powershell
-kubectl -n swiftdrop-apps create secret generic swiftdrop-jwt-credentials `
-  --from-literal=secret='<at-least-32-byte-random-value>'
-```
+The bootstrap runner only creates the account when no active `SYSTEM_ADMIN` exists and the username is unused. Leave the variables unset to skip it. The API gateway must use the same `JWT_SECRET` as Auth/IAM; local development defaults are aligned. AKS deployments read the shared secret and the RS256 key pair from the `swiftdrop-jwt-credentials` Secret in `swiftdrop-apps`. The Helm chart creates that Secret from `values-secrets.yaml`, which `scripts/generate-helm-secrets.sh` generates; don't create it with `kubectl`. See the [AKS Helm deployment guide](deployment/AKS-HELM-DEPLOYMENT.md).
 
 Redis backs the login failure limiter and JWT blacklist. If Redis is unavailable, both checks fail open so local UI work can continue; do not rely on that behavior in production.
 
