@@ -30,6 +30,15 @@ serviceOverrides:
     # Ten JVMs boot at once on four vCPUs — allow up to 5 minutes to start.
     startupFailureThreshold: 60
 
+services:
+  # Single node, so a ReadWriteOnce volume is safe. Photos land here only when
+  # secrets.podStorage.azureConnectionString is empty; with it set they go to Azure Blob.
+  delivery-execution-service:
+    persistence:
+      enabled: true
+      storageClassName: local-path
+      size: 2Gi
+
 frontend:
   replicas: 1
   resources:

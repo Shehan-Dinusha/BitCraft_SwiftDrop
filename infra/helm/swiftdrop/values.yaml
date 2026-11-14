@@ -127,6 +127,8 @@ serviceDefaults:
   probes:
     readinessInitialDelaySeconds: 20
     livenessInitialDelaySeconds: 40
+    livenessTimeoutSeconds: 5
+    livenessFailureThreshold: 3     # restart after ~90 s without a liveness answer
     startupFailureThreshold: 30
   networkPolicy:
     # When non-empty, only pods of these services (same namespace) may call this service.
@@ -247,6 +249,20 @@ services:
     image:
       repository: delivery-execution-service
     hpa: { minReplicas: 2, maxReplicas: 12, scaleUpPods: 3 }
+    config:
+      # Proof-of-delivery photos go to Azure Blob when secrets.podStorage.azureConnectionString
+      # is set; otherwise to POD_STORAGE_DIR (mount a volume there with `persistence`).
+      AZURE_STORAGE_CONTAINER_NAME: pod-images
+      POD_STORAGE_DIR: /var/lib/swiftdrop/pod
+    secretEnv:
+      - { name: AZURE_STORAGE_CONNECTION_STRING, secretName: delivery-pod-storage, key: azure-connection-string, optional: true }
+    # Disabled here: production runs several replicas across nodes, so photos must live in
+    # Azure Blob. Single-node profiles (student, local) enable it.
+    persistence:
+      enabled: false
+      mountPath: /var/lib/swiftdrop/pod
+      size: 2Gi
+      storageClassName: ""
 
   merchant-b2b-service:
     enabled: true

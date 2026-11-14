@@ -60,6 +60,7 @@ umask 077
   echo "    email: \"${ADMIN_EMAIL}\""
   echo "    district: COLOMBO"
   echo "  googleOAuth: { clientId: \"\", clientSecret: \"\" }"
+  echo "  podStorage: { azureConnectionString: \"\" }"
   echo "  aiProvider: { apiKey: \"\" }"
   echo "certManager:"
   echo "  clusterIssuer:"
