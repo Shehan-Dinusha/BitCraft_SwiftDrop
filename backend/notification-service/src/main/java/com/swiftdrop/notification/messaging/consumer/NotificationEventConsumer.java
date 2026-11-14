@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -45,6 +46,9 @@ public class NotificationEventConsumer {
         this(objectMapper, dispatcher, triggers, processedEventRepository, null);
     }
 
+    // Two constructors exist, so Spring needs to be told which one to inject;
+    // without @Autowired it looks for a no-arg constructor and startup fails.
+    @Autowired
     public NotificationEventConsumer(
             ObjectMapper objectMapper,
             MultiChannelNotificationDispatcher dispatcher,
