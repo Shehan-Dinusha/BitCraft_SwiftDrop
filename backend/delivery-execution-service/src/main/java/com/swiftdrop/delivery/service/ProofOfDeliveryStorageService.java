@@ -1,9 +1,15 @@
 package com.swiftdrop.delivery.service;
 
+import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobContainerClientBuilder;
+import com.azure.storage.blob.models.BlobHttpHeaders;
 import com.swiftdrop.delivery.domain.entity.ProofOfDelivery;
 import com.swiftdrop.delivery.domain.repository.ProofOfDeliveryRepository;
 import com.swiftdrop.delivery.dto.ProofOfDeliveryResponse;
 import com.swiftdrop.delivery.dto.ProofOfDeliveryUploadRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -11,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,23 +27,38 @@ import java.util.UUID;
 
 @Service
 public class ProofOfDeliveryStorageService {
+    private static final Logger log = LoggerFactory.getLogger(ProofOfDeliveryStorageService.class);
+
     private final ProofOfDeliveryRepository repository;
     private final String storageDir;
+    private final String azureConnectionString;
+    private final String azureContainerName;
 
     public ProofOfDeliveryStorageService() {
-        this(null, "/tmp/swiftdrop/pod");
+        this(null, "/tmp/swiftdrop/pod", null, "pod-images");
     }
 
     public ProofOfDeliveryStorageService(ProofOfDeliveryRepository repository) {
-        this(repository, System.getenv("POD_STORAGE_DIR") != null ? System.getenv("POD_STORAGE_DIR") : "/tmp/swiftdrop/pod");
+        this(repository,
+                System.getenv("POD_STORAGE_DIR") != null ? System.getenv("POD_STORAGE_DIR") : "/tmp/swiftdrop/pod",
+                System.getenv("AZURE_STORAGE_CONNECTION_STRING"),
+                System.getenv("AZURE_STORAGE_CONTAINER_NAME") != null ? System.getenv("AZURE_STORAGE_CONTAINER_NAME") : "pod-images");
+    }
+
+    public ProofOfDeliveryStorageService(ProofOfDeliveryRepository repository, String storageDir) {
+        this(repository, storageDir, null, "pod-images");
     }
 
     @Autowired
     public ProofOfDeliveryStorageService(
             ProofOfDeliveryRepository repository,
-            @Value("${swiftdrop.delivery.pod-storage-dir:${POD_STORAGE_DIR:/tmp/swiftdrop/pod}}") String storageDir) {
+            @Value("${swiftdrop.delivery.pod-storage-dir:${POD_STORAGE_DIR:/tmp/swiftdrop/pod}}") String storageDir,
+            @Value("${azure.storage.connection-string:${AZURE_STORAGE_CONNECTION_STRING:}}") String azureConnectionString,
+            @Value("${azure.storage.container-name:${AZURE_STORAGE_CONTAINER_NAME:pod-images}}") String azureContainerName) {
         this.repository = repository;
         this.storageDir = storageDir != null && !storageDir.isBlank() ? storageDir : "/tmp/swiftdrop/pod";
+        this.azureConnectionString = azureConnectionString != null ? azureConnectionString.trim() : "";
+        this.azureContainerName = azureContainerName != null && !azureContainerName.isBlank() ? azureContainerName.trim() : "pod-images";
     }
 
     @Transactional
@@ -70,6 +92,36 @@ public class ProofOfDeliveryStorageService {
         }
 
         String fileName = UUID.randomUUID() + extension;
+
+        // 1. Upload to Azure Blob Storage if connection string is configured
+        if (azureConnectionString != null && !azureConnectionString.isBlank()) {
+            try {
+                BlobContainerClient containerClient = new BlobContainerClientBuilder()
+                        .connectionString(azureConnectionString)
+                        .containerName(azureContainerName)
+                        .buildClient();
+
+                containerClient.createIfNotExists();
+
+                BlobClient blobClient = containerClient.getBlobClient(fileName);
+                BlobHttpHeaders headers = new BlobHttpHeaders()
+                        .setContentType(contentType != null ? contentType : "image/jpeg");
+
+                try (InputStream inputStream = photo.getInputStream()) {
+                    blobClient.upload(inputStream, photo.getSize(), true);
+                    blobClient.setHttpHeaders(headers);
+                }
+
+                String blobUrl = blobClient.getBlobUrl();
+                log.info("Proof-of-delivery photo successfully uploaded to Azure Blob: {}", blobUrl);
+                pod.setPhotoUrl(blobUrl);
+                return toResponse(repository.save(pod));
+            } catch (Exception ex) {
+                log.warn("Azure Blob upload failed, falling back to local filesystem storage: {}", ex.getMessage());
+            }
+        }
+
+        // 2. Fallback to local filesystem storage
         Path directoryPath = Paths.get(storageDir).toAbsolutePath().normalize();
         try {
             Files.createDirectories(directoryPath);

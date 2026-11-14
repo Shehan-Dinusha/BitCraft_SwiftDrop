@@ -68,3 +68,7 @@ coverage/
 
 # Local Codex/Maven validation cache
 .codex/maven-repository/
+
+# Secret local application config (never commit to git)
+**/application-secret.yml
+**/application-secret.properties
