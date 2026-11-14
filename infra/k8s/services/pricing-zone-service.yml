@@ -87,6 +87,8 @@ spec:
                   key: password
             - name: RABBITMQ_HOST
               value: rabbitmq.swiftdrop-messaging.svc.cluster.local
+            - name: RABBITMQ_PORT
+              value: "5672"
           resources:
             requests:
               cpu: 250m
