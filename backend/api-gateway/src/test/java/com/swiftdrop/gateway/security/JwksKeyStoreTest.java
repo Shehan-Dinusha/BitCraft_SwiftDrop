@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -18,6 +19,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -63,6 +65,22 @@ class JwksKeyStoreTest {
         assertThat(store.resolve("missing").block()).isNull();
         assertThat(store.resolve("missing").block()).isNull();
 
+        assertThat(mockWebServer.getRequestCount()).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentCallersShareTheInFlightFetch() {
+        // Empty cache (e.g. right after a restart) and a slow IAM: every caller that
+        // arrives during the fetch must get the key, not just the one that started it.
+        enqueueJwks("kid-1", keyPair, 300);
+        JwksKeyStore store = newStore(300, 5);
+
+        var keys = Mono.zip(store.resolve("kid-1"), store.resolve("kid-1"), store.resolve("kid-1")).block();
+
+        assertThat(keys).isNotNull();
+        assertThat(keys.getT1()).isEqualTo(keyPair.getPublic());
+        assertThat(keys.getT2()).isEqualTo(keyPair.getPublic());
+        assertThat(keys.getT3()).isEqualTo(keyPair.getPublic());
         assertThat(mockWebServer.getRequestCount()).isEqualTo(1);
     }
 
@@ -122,6 +140,10 @@ class JwksKeyStoreTest {
     }
 
     private void enqueueJwks(String kid, KeyPair pair) {
+        enqueueJwks(kid, pair, 0);
+    }
+
+    private void enqueueJwks(String kid, KeyPair pair, long delayMillis) {
         RSAPublicKey publicKey = (RSAPublicKey) pair.getPublic();
         try {
             String body = objectMapper.writeValueAsString(Map.of("keys", List.of(Map.of(
@@ -135,7 +157,8 @@ class JwksKeyStoreTest {
             mockWebServer.enqueue(new MockResponse()
                     .setResponseCode(200)
                     .setHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                    .setBody(body));
+                    .setBody(body)
+                    .setBodyDelay(delayMillis, TimeUnit.MILLISECONDS));
         } catch (Exception exception) {
             throw new IllegalStateException(exception);
         }
