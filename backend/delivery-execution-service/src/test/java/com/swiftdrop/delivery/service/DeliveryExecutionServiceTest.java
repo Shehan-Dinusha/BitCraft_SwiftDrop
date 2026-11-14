@@ -102,7 +102,7 @@ class DeliveryExecutionServiceTest {
         verify(auditTransitionAction).execute(any(), eq(orderId), eq(DeliveryState.CREATED),
                 eq(DeliveryState.ASSIGNED), any(), any(), any(), any(), any());
         verify(publishStateTransitionAction).execute(any(), eq(orderId), any(), eq(courierId),
-                eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any());
+                any(), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any());
     }
 
     @Test
@@ -161,7 +161,7 @@ class DeliveryExecutionServiceTest {
         assertThat(result.getDeliveredAt()).isNotNull();
 
         verify(publishStateTransitionAction).execute(eq(deliveryId), eq(orderId), eq("SD-COL-12345"),
-                any(), eq(DeliveryState.OUT_FOR_DELIVERY), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
+                any(), any(), eq(DeliveryState.OUT_FOR_DELIVERY), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
     }
 
     @Test

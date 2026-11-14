@@ -28,12 +28,12 @@ public class PublishStateTransitionAction {
         this.eventPublisher = eventPublisher;
     }
 
-    public void execute(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId,
+    public void execute(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, UUID customerId,
                         DeliveryState previousState, DeliveryState newState, String notes,
                         SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
                         DeliveryFailureReason failureReason) {
 
-        Runnable publishTask = () -> doPublish(deliveryId, orderId, trackingNumber, courierId,
+        Runnable publishTask = () -> doPublish(deliveryId, orderId, trackingNumber, courierId, customerId,
                 previousState, newState, notes, pickupDistrict, deliveryDistrict, failureReason);
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -48,7 +48,18 @@ public class PublishStateTransitionAction {
         }
     }
 
-    private void doPublish(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId,
+    /**
+     * Backward-compatible overload for callers without customerId.
+     */
+    public void execute(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId,
+                        DeliveryState previousState, DeliveryState newState, String notes,
+                        SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
+                        DeliveryFailureReason failureReason) {
+        execute(deliveryId, orderId, trackingNumber, courierId, null,
+                previousState, newState, notes, pickupDistrict, deliveryDistrict, failureReason);
+    }
+
+    private void doPublish(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, UUID customerId,
                            DeliveryState previousState, DeliveryState newState, String notes,
                            SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
                            DeliveryFailureReason failureReason) {
@@ -76,7 +87,7 @@ public class PublishStateTransitionAction {
                 UUID.randomUUID(),
                 trackingNumber,
                 orderId,
-                null,
+                customerId,
                 prevPublicStatus,
                 publicStatus,
                 internalSubStatus,
