@@ -5,6 +5,10 @@ import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { SignUpPage } from '@/features/auth/pages/SignUpPage';
 import { OAuthCallbackPage } from '@/features/auth/pages/OAuthCallbackPage';
+import { VerifyEmailPage } from '@/features/auth/pages/VerifyEmailPage';
+import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
+import { RegistrationSuccessPage } from '@/features/auth/pages/RegistrationSuccessPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
 import { OrderHistoryPage } from '@/features/customer/pages/OrderHistoryPage';
@@ -27,6 +31,10 @@ export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <SignUpPage /> },
   { path: '/auth/callback', element: <OAuthCallbackPage /> },
+  { path: '/verify-email', element: <VerifyEmailPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
+  { path: '/registered', element: <RegistrationSuccessPage /> },
   {
     element: <AppShell />,
     children: [
