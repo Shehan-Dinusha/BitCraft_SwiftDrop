@@ -23,6 +23,12 @@ public class GoogleOAuthConfig {
      */
     private String redirectUri = "http://localhost:8080/api/v1/auth/oauth2/google/callback";
 
+    /**
+     * Base URL of the frontend application where the user is redirected after OAuth callback.
+     * Default: {@code http://localhost:5173}.
+     */
+    private String frontendUrl = "http://localhost:5173";
+
     /** TTL in seconds for the CSRF state token stored in Redis. Default: 300 (5 minutes). */
     private int stateTtlSeconds = 300;
 
@@ -35,6 +41,9 @@ public class GoogleOAuthConfig {
     public String getRedirectUri() { return redirectUri; }
     public void setRedirectUri(String redirectUri) { this.redirectUri = redirectUri; }
 
+    public String getFrontendUrl() { return frontendUrl; }
+    public void setFrontendUrl(String frontendUrl) { this.frontendUrl = frontendUrl; }
+
     public int getStateTtlSeconds() { return stateTtlSeconds; }
     public void setStateTtlSeconds(int stateTtlSeconds) { this.stateTtlSeconds = stateTtlSeconds; }
 
@@ -44,4 +53,3 @@ public class GoogleOAuthConfig {
                 && clientSecret != null && !clientSecret.isBlank();
     }
 }
-

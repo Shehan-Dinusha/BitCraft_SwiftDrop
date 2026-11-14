@@ -58,6 +58,7 @@ swiftdrop:
       # Redirect URI must be registered in Google Cloud Console.
       # In production route this through the gateway; locally point directly at IAM.
       redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/auth/oauth2/google/callback}
+      frontend-url: ${FRONTEND_URL:http://localhost:5173}
       # TTL (seconds) for the CSRF state token stored in Redis (5 minutes).
       state-ttl-seconds: 300
 
