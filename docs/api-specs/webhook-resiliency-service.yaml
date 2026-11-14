@@ -17,6 +17,40 @@ info:
     - Other roles: 403.
 
     Another merchant's endpoint or dead-letter record returns 404, indistinguishable from an unknown ID.
+
+    ## Verifying outbound webhook requests (signature contract)
+
+    Every webhook SwiftDrop sends to a merchant endpoint is an HTTPS POST with a JSON body, signed with the
+    endpoint's signing secret. The secret is shown once, when the endpoint is registered. Requests carry:
+
+    - `X-SwiftDrop-Signature: sha256=<64 lowercase hex characters>`
+    - `X-SwiftDrop-Timestamp: <Unix time in whole seconds>`
+    - `X-SwiftDrop-Event-Id` (stable per event; use it to ignore duplicates), `X-SwiftDrop-Delivery-Id` (stable
+      across retries of one delivery), `X-SwiftDrop-Event` (event type), `X-SwiftDrop-Attempt`, and
+      `User-Agent: SwiftDrop-Webhooks/1`.
+
+    Signature: `HMAC-SHA256(key, signedBytes)`, hex-encoded in lowercase, where
+    - `key` = the UTF-8 bytes of the whole secret string exactly as shown at registration (including its `whsec_` prefix);
+    - `signedBytes` = the ASCII bytes of the timestamp header value, then one `.` byte, then the **raw request body
+      bytes exactly as received**. Do not parse and re-serialise the JSON before verifying: any change in spacing,
+      field order or number formatting invalidates the signature.
+
+    To verify a request:
+    1. Read `X-SwiftDrop-Timestamp`. Reject the request if it is missing, not an integer, or more than 5 minutes
+       away from your current time (older or in the future).
+    2. Build `timestamp + "." + rawBody` as bytes.
+    3. Compute HMAC-SHA256 over those bytes with your endpoint secret as the key, and hex-encode it in lowercase.
+    4. Remove the `sha256=` prefix from `X-SwiftDrop-Signature` (reject other prefixes) and compare the two hex
+       strings with a constant-time comparison function.
+    5. Reject the request (for example with 401) on any mismatch; otherwise process it, de-duplicating by
+       `X-SwiftDrop-Event-Id`.
+
+    Pseudocode (placeholder values; never commit a real secret):
+
+        expected = hex(hmac_sha256(utf8(SECRET), ascii(timestampHeader + ".") + rawBodyBytes))
+        valid    = abs(now_unix_seconds - int(timestampHeader)) <= 300
+                   and signatureHeader starts with "sha256="
+                   and constant_time_equals(expected, signatureHeader without "sha256=")
   version: v1.0.0
 servers:
   - url: http://localhost:8080

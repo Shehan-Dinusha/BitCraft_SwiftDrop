@@ -312,7 +312,18 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
 - **Depends on:** Step 4.
 - **Done when:** compiled; verification uses `MessageDigest.isEqual`.
 - **Manual check:** in Step 10, recompute the signature from a received request in PowerShell or Python with the endpoint secret and compare (a script is in Section 7.6).
-- **Status:** NOT STARTED
+- **Status:** ✅ DONE (2026-11-15).
+  - **Contract (D4):** `X-SwiftDrop-Signature: sha256=<64 lowercase hex>` = HMAC-SHA256 with key = **UTF-8 bytes of the whole stored secret string, including `whsec_`** (unchanged from the existing signer, so stored secrets keep working), over `ASCII("<timestamp>.") || raw body bytes`. `X-SwiftDrop-Timestamp` = Unix seconds. Verification window: ±5 min, symmetric (accepts |now − ts| ≤ 300 s; this is the only clock-skew allowance).
+  - **Files:**
+    - `WH/delivery/WebhookHeaders`: the D5 header names, `sha256=` prefix and `User-Agent` value `SwiftDrop-Webhooks/1`.
+    - `WH/delivery/WebhookSigner` (`@Component`): `sign(secret, timestampSeconds, bodyBytes)`, `currentTimestampSeconds()`, and `verify(secret, timestampHeader, signatureHeader, bodyBytes)`.
+      - `verify` returns a single boolean. It checks strict formats (`^sha256=[0-9a-f]{64}$`, `^[0-9]{1,12}$`), then the window, then compares with `MessageDigest.isEqual`.
+      - It uses an injectable `Clock`; the default is system UTC.
+      - It has no logging.
+      - It is a reference/manual-verification utility only: the service sends webhooks and exposes **no** verification endpoint.
+  - **Docs:** merchant verification guide added to the `info.description` of `docs/api-specs/webhook-resiliency-service.yaml`. The generated frontend types are unaffected.
+  - **Unwired:** nothing calls the signer yet. It is wired in Step 7 (sender) and Step 10 (worker).
+  - **Limitation:** Test Ping still uses the **legacy** scheme (body-only HMAC, millisecond timestamp, random Delivery-Id, via `HmacSignatureGenerator`) until **Step 11**. A merchant verifying a test ping with the documented contract will fail until then.
 
 ### Step 7 — HTTP sender with classification and connect-time address guard
 - **Objective:** one outbound attempt returns an `AttemptOutcome(httpStatus, errorClass, latencyMs, retryAfter)`.
@@ -722,11 +733,14 @@ class H(http.server.BaseHTTPRequestHandler):
 http.server.ThreadingHTTPServer(('0.0.0.0', 9090), H).serve_forever()
 ```
 
-**Signature check, after Step 6.** Recompute the HMAC with the endpoint secret and compare it with the received header:
+**Signature check (contract from Step 6; real deliveries from Step 10, test pings from Step 11).** Recompute the HMAC with the endpoint secret, exactly as shown at creation including `whsec_`, and compare it with the received `X-SwiftDrop-Signature`:
 
 ```python
-import hmac, hashlib
-expected = hmac.new(SECRET.encode(), (TIMESTAMP + '.').encode() + BODY_BYTES, hashlib.sha256).hexdigest()
+import hmac, hashlib, time
+# SECRET: endpoint secret; TIMESTAMP: X-SwiftDrop-Timestamp header (string); BODY_BYTES: raw request body bytes
+expected = 'sha256=' + hmac.new(SECRET.encode('utf-8'), TIMESTAMP.encode('ascii') + b'.' + BODY_BYTES, hashlib.sha256).hexdigest()
+fresh = abs(time.time() - int(TIMESTAMP)) <= 300
+valid = fresh and hmac.compare_digest(expected, SIGNATURE_HEADER)
 ```
 
 ---
@@ -746,3 +760,4 @@ Append one entry per completed task. Never mark a step done unless its "Done whe
 | 2026-11-15 | UI-1 | Done (browser-verified) | Owner browser checks: **(A)** `http://example.com/webhook` shows the real error inside the still-open dialog; **(B)** correcting it to a webhook.site HTTPS URL succeeds and opens the one-time secret dialog; **(C)** listing, Pause/Activate and Test Ping still work. |
 | 2026-11-15 | 4 | Complete (D6 provisional) | Owner decisions recorded in Section 4: D1–D5, D7–D11 and D13 **APPROVED**; D6 **PROVISIONAL** (all money fields excluded; Member 7 question kept under Step 4); D12 **IMPLEMENTED**. Conflicts with the guide resolved: D4 `sha256=`; D1/D10 `DEAD` only, no legacy table or broker DLQ for outbound failures. D9 set to 4 per replica, 1 per endpoint, batch 10, 2 s poll, 60 s lease. D8 requires a fan-out change, now recorded under Step 9. Member 9's `WEBHOOK_SECRET_KEY` remains a Step 15 dependency. |
 | 2026-11-15 | 5 | Done | **New:** `delivery/WebhookPayloadFactory`, `delivery/PayloadSource`, `dto/outbound/WebhookPayloadV1`, `dto/outbound/ParcelStatusChangedWebhookData`, `dto/outbound/OrderCreatedWebhookData`. **No existing file changed**; no migration, topology, contract or frontend change. **Build:** Maven (JDK 25 container, `-DskipTests compile`) exit 0; frontend unchanged, so no lint or build needed; no automated tests. **Manual runtime check (throwaway jshell script in the JDK 25 container, against the compiled classes; not a project test):** the real dev rows `order.created` 8956add4… and `parcel.status.changed` c9e31eb7… produced the correct envelope, the event's own id, `occurredAt` = stored `occurred_at`, and `trackingNumber` `SD-DEV-0001` from the map (the status event's own value was null). Synthetic rows full of customer id, correlation id, districts, internal sub-status, money and `LKR`, with `traceId`/`newStatus` aliases and an unknown field, produced 0 forbidden-field hits. The map tracking number overrode the event's (`SD-FROM-EVENT`, `SD-6A1B2C3D`). Nanosecond timestamps were truncated to microseconds. Rebuilding gave byte-identical output in every case. An unsupported type and a missing new status were refused. The factory is not wired to anything yet (Step 10). |
+| 2026-11-15 | 6 | Done | **New:** `delivery/WebhookSigner`, `delivery/WebhookHeaders`. **Changed:** `docs/api-specs/webhook-resiliency-service.yaml` (`info.description`: merchant signature-verification guide); `IMPLEMENTATION_PLAN.md` (Step 6, the §7.6 snippet). No other Java, no frontend (regenerated types showed only line-ending noise and were restored), no migration, topology or contract change. **Build:** Maven (JDK 25 container, `-DskipTests compile`) exit 0; no automated tests. **Manual runtime check (throwaway jshell in the JDK 25 container; not a project test): 34/34 checks passed.** The known vector equals an independent Python `hmac` result. Repeat is identical. One changed body byte, a changed timestamp, a wrong secret, a tampered body and a modified signature all fail. `v1=`, missing prefix, uppercase, short and non-hex digests are rejected. Null, blank, padded, negative, decimal, suffixed and over-long timestamps are rejected. Exactly ±300 s is accepted and ±301 s rejected. Odd-spaced and non-UTF-8 raw bytes match Python, re-serialised JSON gives a different signature, and the body array is unmutated. The Step 5 payload bytes are unchanged, and their signature verifies end to end and matches Python. **D6** stays provisional (no money fields). **Member 9** (`WEBHOOK_SECRET_KEY`) stays a Step 15 dependency. |
