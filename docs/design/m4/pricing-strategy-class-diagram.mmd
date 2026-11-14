@@ -1,0 +1,174 @@
+classDiagram
+    direction TB
+
+    class PricingQuoteController {
+        <<rest controller>>
+        +health() ApiResponse~String~
+        +calculateQuote(PricingQuoteRequest request) ApiResponse~PricingQuoteResponse~
+        +estimate(EstimateRequest request) ApiResponse~EstimateResponse~
+        +listZones() ApiResponse~List~PricingZone~~
+    }
+
+    class EstimateRequest {
+        <<record>>
+        +toQuoteRequest() PricingQuoteRequest
+    }
+    class EstimateResponse {
+        <<record>>
+        +from(PricingQuoteResponse quote) EstimateResponse$
+    }
+
+    class PricingQuoteRequest {
+        <<record>>
+        +SriLankanDistrict pickupDistrict
+        +SriLankanDistrict deliveryDistrict
+        +BigDecimal actualWeightKg
+        +BigDecimal lengthCm
+        +BigDecimal widthCm
+        +BigDecimal heightCm
+        +OrderSpeed speed
+    }
+    class PricingQuoteResponse {
+        <<record>>
+        +String pickupZone
+        +String deliveryZone
+        +boolean intraDistrict
+        +BigDecimal actualWeightKg
+        +BigDecimal volumetricWeightKg
+        +BigDecimal chargeableWeightKg
+        +OrderSpeed speed
+        +BigDecimal baseFee
+        +BigDecimal weightFee
+        +BigDecimal speedSurcharge
+        +BigDecimal estimatedFee
+        +String currency
+        +String pricingRuleVersionId
+    }
+
+    class DynamicPricingEngine {
+        <<service>>
+        -List~PricingStrategy~ pricingStrategies
+        +calculateQuote(PricingQuoteRequest request) PricingQuoteResponse
+        -resolveZoneCode(SriLankanDistrict district) String
+    }
+
+    class PricingStrategy {
+        <<interface>>
+        +supports(OrderSpeed speed) boolean
+        +apply(BigDecimal subtotal, PricingZone zone) BigDecimal
+    }
+    class StandardPricingStrategy {
+        <<component>>
+        +supports(OrderSpeed speed) boolean
+        +apply(BigDecimal subtotal, PricingZone zone) BigDecimal
+    }
+    class ExpressPricingStrategy {
+        <<component>>
+        +supports(OrderSpeed speed) boolean
+        +apply(BigDecimal subtotal, PricingZone zone) BigDecimal
+    }
+    class SameDayPricingStrategy {
+        <<component>>
+        +supports(OrderSpeed speed) boolean
+        +apply(BigDecimal subtotal, PricingZone zone) BigDecimal
+    }
+
+    class UnsupportedPricingSpeedException {
+        +UnsupportedPricingSpeedException(OrderSpeed speed)
+    }
+
+    class OrderSpeed {
+        <<enumeration>>
+        STANDARD
+        EXPRESS
+        SAME_DAY
+    }
+    class SriLankanDistrict {
+        <<enumeration>>
+        COLOMBO
+        KANDY
+        ...
+    }
+
+    class PricingZoneRepository {
+        <<interface>>
+        +findByZoneCode(String zoneCode) Optional~PricingZone~
+    }
+    class DistrictZoneMappingRepository {
+        <<interface>>
+        +findByDistrict(String district) Optional~DistrictZoneMapping~
+    }
+    class TariffRuleRepository {
+        <<interface>>
+        +findActiveRules(String from, String to) List~TariffRule~
+    }
+
+    class PricingZone {
+        <<entity>>
+        -Long id
+        -String zoneCode
+        -String zoneName
+        -String tier
+        -BigDecimal baseFee
+        -BigDecimal perKgFee
+        -BigDecimal expressMultiplier
+        -BigDecimal sameDayMultiplier
+        -String status
+    }
+    class DistrictZoneMapping {
+        <<entity>>
+        -String district
+        -String zoneCode
+    }
+    class TariffRule {
+        <<entity>>
+        -Long id
+        -String ruleVersionId
+        -String fromDistrict
+        -String toDistrict
+        -BigDecimal basePrice
+        -BigDecimal weightStepKg
+        -BigDecimal pricePerStep
+        -BigDecimal volumetricDivisor
+        -Boolean isActive
+    }
+    class SurgeMultiplier {
+        <<entity>>
+        -Long id
+    }
+
+    PricingQuoteController --> DynamicPricingEngine : calculateQuote
+    PricingQuoteController --> PricingZoneRepository : listZones
+    PricingQuoteController ..> PricingQuoteRequest
+    PricingQuoteController ..> PricingQuoteResponse
+    PricingQuoteController ..> EstimateRequest
+    PricingQuoteController ..> EstimateResponse
+    EstimateRequest ..> PricingQuoteRequest : toQuoteRequest
+    EstimateResponse ..> PricingQuoteResponse : from
+
+    DynamicPricingEngine o-- "1..*" PricingStrategy : picks the one that supports the speed
+    DynamicPricingEngine ..> UnsupportedPricingSpeedException : throws if none supports
+    DynamicPricingEngine ..> PricingQuoteRequest
+    DynamicPricingEngine ..> PricingQuoteResponse
+    DynamicPricingEngine --> PricingZoneRepository
+    DynamicPricingEngine --> DistrictZoneMappingRepository
+    DynamicPricingEngine --> TariffRuleRepository
+
+    PricingStrategy <|.. StandardPricingStrategy
+    PricingStrategy <|.. ExpressPricingStrategy
+    PricingStrategy <|.. SameDayPricingStrategy
+    PricingStrategy ..> PricingZone
+    PricingStrategy ..> OrderSpeed
+
+    PricingQuoteRequest --> OrderSpeed
+    PricingQuoteRequest --> SriLankanDistrict
+
+    PricingZoneRepository ..> PricingZone
+    DistrictZoneMappingRepository ..> DistrictZoneMapping
+    TariffRuleRepository ..> TariffRule
+    DistrictZoneMapping ..> PricingZone : zoneCode (logical)
+
+    note for DynamicPricingEngine "1. resolve pickup zone from the district mapping<br/>2. chargeable weight = max(actual weight, L x W x H / volumetric divisor)<br/>3. base fee + weight fee: same district uses the zone fees, different districts use the active default tariff rule<br/>4. the selected strategy applies the speed pricing to the subtotal"
+    note for StandardPricingStrategy "supports STANDARD, returns the subtotal unchanged"
+    note for ExpressPricingStrategy "supports EXPRESS, subtotal x zone.expressMultiplier"
+    note for SameDayPricingStrategy "supports SAME_DAY, subtotal x zone.sameDayMultiplier"
