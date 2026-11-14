@@ -6,7 +6,7 @@ phone number that the student subscription cannot get. In-app push (the notifica
 is unchanged. The default provider is still `mock`, so development, tests and CI never send
 real email.
 
-Status on 2026-11-14: implemented, unit/integration tested (88 tests pass), and verified live.
+Status on 2026-11-14: implemented, unit/integration tested (99 tests pass), and verified live.
 A real order created through the gateway delivered an order-confirmation email to a real inbox.
 
 ## 1. What changed
@@ -142,7 +142,7 @@ Invoke-RestMethod http://localhost:8080/api/v1/notifications/me -Headers @{ Auth
 | Check | Result |
 |---|---|
 | Direct ACS send test (REST + HMAC, same scheme as the Java sender) | HTTP 202, operation status Succeeded |
-| `mvn -f backend/pom.xml -pl notification-service -am verify` | BUILD SUCCESS, 88 tests, including `BrokerNotificationIT` (Testcontainers, applies V1–V5) |
+| `mvn -f backend/pom.xml -pl notification-service -am verify` | BUILD SUCCESS, 99 tests, including `BrokerNotificationIT` (Testcontainers, applies V1–V5) |
 | Startup with `NOTIFICATION_EMAIL_PROVIDER=azure` | `Email provider: azure (...)` |
 | Order `SD-QE82-BQC3` booked through the gateway | EMAIL `SENT` to the customer's IAM address; Azure accepted it |
 | Order `SD-FBHQ-PCB4` | EMAIL `SENT`, operation id logged |

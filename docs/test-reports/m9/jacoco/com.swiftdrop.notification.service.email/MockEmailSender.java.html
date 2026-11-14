@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 <span class="fc" id="L8">public class MockEmailSender implements EmailSender {</span>
 
     @Override
-    public void send(String to, String subject, String plainTextBody) {
+    public void send(String to, String subject, String plainTextBody, String htmlBody) {
 <span class="fc" id="L12">        log.debug(&quot;Mock email accepted for {}&quot;, PiiMasker.maskEmail(to));</span>
 <span class="fc" id="L13">    }</span>
 

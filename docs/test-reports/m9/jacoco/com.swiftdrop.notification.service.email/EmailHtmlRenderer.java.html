@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmailHtmlRenderer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.service.email</a> &gt; <span class="el_source">EmailHtmlRenderer.java</span></div><h1>EmailHtmlRenderer.java</h1><pre class="source lang-java linenums"><span class="fc" id="L1">package com.swiftdrop.notification.service.email;</span>
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.util.HtmlUtils;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Year;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+/**
+ * Wraps a rendered notification in the branded SwiftDrop email layout.
+ *
+ * &lt;p&gt;Email clients ignore most modern CSS, so the layout uses nested tables, inline styles,
+ * web-safe fonts and no external images. Every dynamic value is HTML-escaped. Colours come
+ * from the Velocity design tokens (brand {@code #2563eb} and the per-status FSM colours).
+ */
+@Component
+public class EmailHtmlRenderer {
+
+<span class="fc" id="L23">    private static final Pattern SAFE_TRACKING_NUMBER = Pattern.compile(&quot;[A-Za-z0-9-]{4,40}&quot;);</span>
+
+    /** Badge label, headline and colours (background, foreground, border) per template. */
+    record StatusStyle(String badge, String headline, String bg, String fg, String border) {}
+
+<span class="fc" id="L28">    private static final StatusStyle DEFAULT_STYLE =</span>
+<span class="fc" id="L29">            new StatusStyle(&quot;Update&quot;, &quot;There is an update on your parcel&quot;, &quot;#f1f5f9&quot;, &quot;#334155&quot;, &quot;#cbd5e1&quot;);</span>
+
+<span class="fc" id="L31">    private static final Map&lt;String, StatusStyle&gt; STYLES = Map.of(</span>
+<span class="fc" id="L32">            &quot;PARCEL_CREATED&quot;, new StatusStyle(&quot;Order confirmed&quot;, &quot;Your order is confirmed&quot;, &quot;#eef2ff&quot;, &quot;#3730a3&quot;, &quot;#c7d2fe&quot;),</span>
+<span class="fc" id="L33">            &quot;PARCEL_PICKED_UP&quot;, new StatusStyle(&quot;Picked up&quot;, &quot;Your parcel has been picked up&quot;, &quot;#e0f2fe&quot;, &quot;#075985&quot;, &quot;#bae6fd&quot;),</span>
+<span class="fc" id="L34">            &quot;PARCEL_OUT_FOR_DELIVERY&quot;, new StatusStyle(&quot;Out for delivery&quot;, &quot;Your parcel is out for delivery&quot;, &quot;#f3e8ff&quot;, &quot;#5b21b6&quot;, &quot;#e9d5ff&quot;),</span>
+<span class="fc" id="L35">            &quot;PARCEL_DELIVERED&quot;, new StatusStyle(&quot;Delivered&quot;, &quot;Your parcel has been delivered&quot;, &quot;#d1fae5&quot;, &quot;#065f46&quot;, &quot;#a7f3d0&quot;),</span>
+<span class="fc" id="L36">            &quot;PARCEL_FAILED&quot;, new StatusStyle(&quot;Delivery attempt failed&quot;, &quot;We could not deliver your parcel&quot;, &quot;#fee2e2&quot;, &quot;#991b1b&quot;, &quot;#fecaca&quot;));</span>
+
+    private final String trackingUrlPrefix;
+
+<span class="fc" id="L40">    public EmailHtmlRenderer(@Value(&quot;${swiftdrop.public-tracking-base-url:https://swiftdrop.lk}&quot;) String publicTrackingBaseUrl) {</span>
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        String base = publicTrackingBaseUrl == null ? &quot;&quot; : publicTrackingBaseUrl.trim().replaceAll(&quot;/+$&quot;, &quot;&quot;);</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">        this.trackingUrlPrefix = base.matches(&quot;(?i)https?://\\S+&quot;) ? base + &quot;/track/&quot; : null;</span>
+<span class="fc" id="L43">    }</span>
+
+    /** Public tracking link for the parcel, or {@code null} when it cannot be built safely. */
+    public String trackingUrl(String trackingNumber) {
+<span class="fc bfc" id="L47" title="All 6 branches covered.">        if (trackingUrlPrefix == null || trackingNumber == null || !SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches()) {</span>
+<span class="fc" id="L48">            return null;</span>
+        }
+<span class="fc" id="L50">        return trackingUrlPrefix + URLEncoder.encode(trackingNumber, StandardCharsets.UTF_8);</span>
+    }
+
+    /** Plain-text alternative: the message, the tracking link and the automated-message notice. */
+    public String renderText(String body, String trackingNumber) {
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        StringBuilder text = new StringBuilder(body == null ? &quot;&quot; : body.trim());</span>
+<span class="fc" id="L56">        String url = trackingUrl(trackingNumber);</span>
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">        if (url != null) {</span>
+<span class="fc" id="L58">            text.append(&quot;\n\nTrack your parcel: &quot;).append(url);</span>
+        }
+<span class="fc" id="L60">        text.append(&quot;\n\n--\nSwiftDrop. This is an automated message; please do not reply.&quot;);</span>
+<span class="fc" id="L61">        return text.toString();</span>
+    }
+
+    public String renderHtml(String templateCode, String subject, String body, String trackingNumber) {
+<span class="pc bpc" id="L65" title="1 of 2 branches missed.">        StatusStyle style = STYLES.getOrDefault(templateCode == null ? &quot;&quot; : templateCode, DEFAULT_STYLE);</span>
+<span class="pc bpc" id="L66" title="2 of 4 branches missed.">        String safeSubject = esc(subject == null || subject.isBlank() ? &quot;SwiftDrop notification&quot; : subject);</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">        String safeBody = esc(body == null ? &quot;&quot; : body.trim()).replace(&quot;\n&quot;, &quot;&lt;br&gt;&quot;);</span>
+<span class="fc" id="L68">        String url = trackingUrl(trackingNumber);</span>
+<span class="fc bfc" id="L69" title="All 4 branches covered.">        boolean showTracking = trackingNumber != null &amp;&amp; SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches();</span>
+
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        String trackingBlock = !showTracking ? &quot;&quot; : &quot;&quot;&quot;</span>
+                &lt;tr&gt;&lt;td style=&quot;padding:0 40px 8px 40px;&quot;&gt;
+                  &lt;table role=&quot;presentation&quot; width=&quot;100%%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;&quot;&gt;
+                    &lt;tr&gt;&lt;td style=&quot;padding:16px 20px;&quot;&gt;
+                      &lt;div style=&quot;font-size:12px;line-height:16px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;&quot;&gt;Tracking number&lt;/div&gt;
+                      &lt;div style=&quot;font-family:Consolas,'Courier New',monospace;font-size:20px;line-height:28px;color:#0f172a;font-weight:700;letter-spacing:0.04em;padding-top:4px;&quot;&gt;%s&lt;/div&gt;
+                    &lt;/td&gt;&lt;/tr&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;&lt;/tr&gt;
+<span class="fc" id="L80">                &quot;&quot;&quot;.formatted(esc(trackingNumber));</span>
+
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        String buttonBlock = url == null ? &quot;&quot; : &quot;&quot;&quot;</span>
+                &lt;tr&gt;&lt;td style=&quot;padding:24px 40px 8px 40px;&quot;&gt;
+                  &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
+                    &lt;td style=&quot;border-radius:8px;background:#2563eb;&quot;&gt;
+                      &lt;a href=&quot;%s&quot; target=&quot;_blank&quot; style=&quot;display:inline-block;padding:13px 28px;font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;&quot;&gt;Track your parcel &amp;rarr;&lt;/a&gt;
+                    &lt;/td&gt;
+                  &lt;/tr&gt;&lt;/table&gt;
+                &lt;/td&gt;&lt;/tr&gt;
+<span class="fc" id="L90">                &quot;&quot;&quot;.formatted(esc(url));</span>
+
+<span class="fc" id="L92">        return &quot;&quot;&quot;</span>
+                &lt;!DOCTYPE html&gt;
+                &lt;html lang=&quot;en&quot;&gt;
+                &lt;head&gt;
+                &lt;meta charset=&quot;UTF-8&quot;&gt;
+                &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+                &lt;meta name=&quot;color-scheme&quot; content=&quot;light&quot;&gt;
+                &lt;title&gt;%1$s&lt;/title&gt;
+                &lt;/head&gt;
+                &lt;body style=&quot;margin:0;padding:0;background:#f1f5f9;-webkit-text-size-adjust:100%%;&quot;&gt;
+                &lt;div style=&quot;display:none;max-height:0;overflow:hidden;opacity:0;&quot;&gt;%2$s&lt;/div&gt;
+                &lt;table role=&quot;presentation&quot; width=&quot;100%%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;background:#f1f5f9;&quot;&gt;
+                  &lt;tr&gt;&lt;td align=&quot;center&quot; style=&quot;padding:32px 12px;&quot;&gt;
+                    &lt;table role=&quot;presentation&quot; width=&quot;100%%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;max-width:600px;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;font-family:'Segoe UI',Helvetica,Arial,sans-serif;&quot;&gt;
+                      &lt;tr&gt;&lt;td style=&quot;background:#2563eb;padding:22px 40px;&quot;&gt;
+                        &lt;span style=&quot;font-size:22px;line-height:28px;font-weight:800;color:#ffffff;letter-spacing:-0.01em;&quot;&gt;Swift&lt;span style=&quot;color:#bfdbfe;&quot;&gt;Drop&lt;/span&gt;&lt;/span&gt;
+                        &lt;span style=&quot;font-size:12px;line-height:28px;color:#dbeafe;padding-left:10px;&quot;&gt;Courier &amp;amp; Logistics&lt;/span&gt;
+                      &lt;/td&gt;&lt;/tr&gt;
+                      &lt;tr&gt;&lt;td style=&quot;padding:32px 40px 0 40px;&quot;&gt;
+                        &lt;span style=&quot;display:inline-block;padding:5px 12px;border-radius:999px;background:%3$s;color:%4$s;border:1px solid %5$s;font-size:12px;line-height:16px;font-weight:700;&quot;&gt;%6$s&lt;/span&gt;
+                      &lt;/td&gt;&lt;/tr&gt;
+                      &lt;tr&gt;&lt;td style=&quot;padding:16px 40px 0 40px;font-size:24px;line-height:32px;font-weight:800;color:#0f172a;&quot;&gt;%7$s&lt;/td&gt;&lt;/tr&gt;
+                      &lt;tr&gt;&lt;td style=&quot;padding:12px 40px 24px 40px;font-size:15px;line-height:24px;color:#334155;&quot;&gt;%2$s&lt;/td&gt;&lt;/tr&gt;
+                      %8$s%9$s
+                      &lt;tr&gt;&lt;td style=&quot;padding:32px 40px 0 40px;&quot;&gt;&lt;div style=&quot;border-top:1px solid #e2e8f0;&quot;&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;
+                      &lt;tr&gt;&lt;td style=&quot;padding:20px 40px 32px 40px;font-size:12px;line-height:18px;color:#64748b;&quot;&gt;
+                        You are receiving this email because you have a parcel with SwiftDrop. You can change
+                        email notifications in your SwiftDrop notification preferences.&lt;br&gt;&lt;br&gt;
+                        This is an automated message. Please do not reply.&lt;br&gt;
+                        &amp;copy; %10$s SwiftDrop &amp;middot; Sri Lanka
+                      &lt;/td&gt;&lt;/tr&gt;
+                    &lt;/table&gt;
+                  &lt;/td&gt;&lt;/tr&gt;
+                &lt;/table&gt;
+                &lt;/body&gt;
+                &lt;/html&gt;
+<span class="fc" id="L128">                &quot;&quot;&quot;.formatted(safeSubject, safeBody, style.bg(), style.fg(), style.border(), esc(style.badge()),</span>
+<span class="fc" id="L129">                esc(style.headline()), trackingBlock, buttonBlock, Year.now().getValue());</span>
+    }
+
+    private static String esc(String value) {
+<span class="fc" id="L133">        return HtmlUtils.htmlEscape(value, StandardCharsets.UTF_8.name());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
