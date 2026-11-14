@@ -3,6 +3,9 @@ server:
 spring:
   application:
     name: delivery-execution-service
+  config:
+    import:
+      - "optional:classpath:application-secret.yml"
   threads:
     virtual:
       enabled: true
@@ -37,3 +40,7 @@ springdoc:
 swiftdrop:
   delivery:
     pod-storage-dir: ${POD_STORAGE_DIR:/tmp/swiftdrop/pod}
+azure:
+  storage:
+    connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
+    container-name: ${AZURE_STORAGE_CONTAINER_NAME:pod-images}
