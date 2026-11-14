@@ -5,7 +5,11 @@ import com.swiftdrop.contracts.enums.UserStatus;
 import com.swiftdrop.iam.domain.entity.UserAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,4 +33,9 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long>,
     long countByRole(UserRole role);
 
     long countByRoleAndStatus(UserRole role, UserStatus status);
+
+    /** Removes abandoned self-service sign-ups that never confirmed their email address. */
+    @Modifying
+    @Query("delete from UserAccount u where u.emailVerified = false and u.createdAt < :cutoff")
+    int deleteUnverifiedCreatedBefore(@Param("cutoff") Instant cutoff);
 }

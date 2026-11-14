@@ -143,8 +143,15 @@ public class GoogleOAuthService {
      * @throws AuthException on CSRF violation, Google API error, or inactive
      *                       account.
      */
+    /**
+     * Outcome of the Google callback. A {@code newAccount} gets no session (it is shown the
+     * "registered" page and signs in afterwards), so {@code exchangeCode} is then {@code null}.
+     */
+    public record CallbackResult(String exchangeCode, boolean newAccount) {
+    }
+
     @Transactional
-    public String handleCallback(String code, String state, String userAgent) {
+    public CallbackResult handleCallback(String code, String state, String userAgent) {
         requireConfigured();
         validateState(state);
 
@@ -156,11 +163,16 @@ public class GoogleOAuthService {
         GoogleUserInfo userInfo = fetchGoogleUserInfo(googleAccessToken);
 
         // Upsert the user account.
-        UserAccount user = upsertGoogleUser(userInfo);
+        UpsertResult upsert = upsertGoogleUser(userInfo);
+        UserAccount user = upsert.user();
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new AuthException(HttpStatus.FORBIDDEN,
                     "Your account is not active. Contact support.");
+        }
+        if (upsert.created()) {
+            // Sign-up, not sign-in: no session yet. The user confirms on the "registered" page.
+            return new CallbackResult(null, true);
         }
 
         // Update last login timestamp.
@@ -176,7 +188,7 @@ public class GoogleOAuthService {
         redis.opsForValue().set(CODE_PREFIX + exchangeCode,
                 user.getPublicId().toString(), CODE_TTL);
 
-        return exchangeCode;
+        return new CallbackResult(exchangeCode, false);
     }
 
     // ─── Stage 13: Code exchange ────────────────────────────────────────────────
@@ -233,6 +245,11 @@ public class GoogleOAuthService {
     /** Frontend callback URI carrying the one-time exchange code. */
     public URI buildFrontendRedirect(String exchangeCode) {
         return URI.create(frontendBase() + "/auth/callback?code=" + encode(exchangeCode));
+    }
+
+    /** Frontend "account created" page shown after a first-time Google sign-up. */
+    public URI buildFrontendRegisteredRedirect() {
+        return URI.create(frontendBase() + "/registered?method=google");
     }
 
     /** Frontend login URI carrying an OAuth error code (consent denied, invalid state, ...). */
@@ -315,7 +332,14 @@ public class GoogleOAuthService {
                 throw new AuthException(HttpStatus.BAD_GATEWAY,
                         "Google did not return an email address");
             }
-            return new GoogleUserInfo(sub, email, name, givenName, familyName);
+            Object verifiedClaim = body.get("email_verified");
+            boolean emailVerified = Boolean.TRUE.equals(verifiedClaim)
+                    || "true".equalsIgnoreCase(String.valueOf(verifiedClaim));
+            if (!emailVerified) {
+                throw new AuthException(HttpStatus.FORBIDDEN,
+                        "Your Google email address is not verified", "email_unverified");
+            }
+            return new GoogleUserInfo(sub, email, name, givenName, familyName, true);
         } catch (RestClientException ex) {
             log.warn("Google userinfo fetch failed: {}", ex.getMessage());
             throw new AuthException(HttpStatus.BAD_GATEWAY,
@@ -328,12 +352,26 @@ public class GoogleOAuthService {
      * Existing non-OAuth accounts are accepted as-is (allows linking Google sign-in
      * to a password account with the same email).
      */
-    private UserAccount upsertGoogleUser(GoogleUserInfo userInfo) {
+    /** {@code created} is true when this sign-in produced a new account (a sign-up). */
+    private record UpsertResult(UserAccount user, boolean created) {
+    }
+
+    private UpsertResult upsertGoogleUser(GoogleUserInfo userInfo) {
         String normalizedEmail = userInfo.email().trim().toLowerCase(Locale.ROOT);
 
         Optional<UserAccount> existing = userAccountRepository.findByEmailIgnoreCase(normalizedEmail);
         if (existing.isPresent()) {
-            return existing.get();
+            UserAccount account = existing.get();
+            if (!account.isEmailVerified()) {
+                // Google just proved ownership of this mailbox. Whoever created the pending password
+                // sign-up may not be the owner, so discard that password and any sessions.
+                account.setPasswordHash(OAUTH_PLACEHOLDER_PREFIX + UUID.randomUUID());
+                account.setEmailVerified(true);
+                refreshTokenService.revokeAll(account);
+                // The pending sign-up only now becomes a usable account, so treat it as a registration.
+                return new UpsertResult(userAccountRepository.save(account), true);
+            }
+            return new UpsertResult(account, false);
         }
 
         // Derive a unique username from the email local-part; append a suffix if taken.
@@ -355,8 +393,9 @@ public class GoogleOAuthService {
         user.setPasswordHash(OAUTH_PLACEHOLDER_PREFIX + UUID.randomUUID());
         user.setRole(UserRole.CUSTOMER);
         user.setStatus(UserStatus.ACTIVE);
+        user.setEmailVerified(true);
 
-        return userAccountRepository.save(user);
+        return new UpsertResult(userAccountRepository.save(user), true);
     }
 
     private String findAvailableUsername(String base) {
@@ -377,6 +416,6 @@ public class GoogleOAuthService {
 
     /** Value object for the Google user-info response fields we care about. */
     record GoogleUserInfo(String sub, String email, String name,
-            String givenName, String familyName) {
+            String givenName, String familyName, boolean emailVerified) {
     }
 }

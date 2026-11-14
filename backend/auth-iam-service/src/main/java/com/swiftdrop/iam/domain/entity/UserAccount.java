@@ -61,6 +61,10 @@ public class UserAccount {
     @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
 
+    /** True once the owner proved control of {@link #email}. Defaults to true for non-self-service paths. */
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = true;
+
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
@@ -187,6 +191,14 @@ public class UserAccount {
 
     public void setStatus(UserStatus status) {
         this.status = status;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 
     public Instant getLastLoginAt() {

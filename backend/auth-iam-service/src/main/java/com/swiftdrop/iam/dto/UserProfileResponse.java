@@ -20,6 +20,7 @@ public record UserProfileResponse(
         SriLankanDistrict district,
         UUID merchantId,
         UserStatus status,
+        @Schema(description = "True once the email address has been verified.") boolean emailVerified,
         Instant lastLoginAt,
         Instant createdAt
 ) {
