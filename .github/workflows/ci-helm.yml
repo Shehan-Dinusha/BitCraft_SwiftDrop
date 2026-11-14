@@ -1,0 +1,82 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# CI – Helm chart: lint, render both profiles, and validate the rendered
+# manifests against the Kubernetes API schemas.
+# ──────────────────────────────────────────────────────────────────────────────
+name: CI – Helm
+
+on:
+  pull_request:
+    paths:
+      - "infra/helm/**"
+      - ".github/workflows/ci-helm.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-helm-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CHART_PATH: infra/helm/swiftdrop
+  HELM_VERSION: v3.17.0
+  KUBECONFORM_IMAGE: ghcr.io/yannh/kubeconform:v0.6.7
+  KUBERNETES_VERSION: "1.31.0"
+
+jobs:
+  helm:
+    name: Lint & Validate (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [production, student]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Select values files
+        id: values
+        run: |
+          args="-f $CHART_PATH/values-secrets.example.yaml"
+          if [ "${{ matrix.profile }}" != "production" ]; then
+            args="-f $CHART_PATH/values-${{ matrix.profile }}.yaml $args"
+          fi
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      - name: Helm lint
+        run: helm lint "$CHART_PATH" ${{ steps.values.outputs.args }}
+
+      - name: Helm template
+        run: |
+          helm template swiftdrop "$CHART_PATH" --namespace default \
+            ${{ steps.values.outputs.args }} \
+            --set global.imageTag=ci > rendered.yaml
+          echo "Rendered $(grep -c '^kind:' rendered.yaml) objects:"
+          grep '^kind:' rendered.yaml | sort | uniq -c
+
+      - name: Validate against Kubernetes schemas
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work "$KUBECONFORM_IMAGE" \
+            -strict -summary \
+            -kubernetes-version "$KUBERNETES_VERSION" \
+            -skip ClusterIssuer \
+            rendered.yaml
+
+      - name: Check required objects are present
+        run: |
+          set -euo pipefail
+          for kind in Namespace ConfigMap Secret Service Deployment StatefulSet Ingress HorizontalPodAutoscaler ServiceAccount; do
+            grep -q "^kind: ${kind}$" rendered.yaml || { echo "::error::No ${kind} rendered"; exit 1; }
+          done
+          test "$(grep -c '^kind: StatefulSet$' rendered.yaml)" -eq 11 \
+            || { echo "::error::Expected 11 StatefulSets (9 PostgreSQL + RabbitMQ + Redis)"; exit 1; }
+          test "$(grep -c '^kind: Deployment$' rendered.yaml)" -eq 11 \
+            || { echo "::error::Expected 11 Deployments (10 services + frontend)"; exit 1; }

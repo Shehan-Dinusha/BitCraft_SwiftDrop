@@ -1,0 +1,38 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Traefik (Ingress controller) values for AKS — one-time cluster add-on.
+#
+#   helm repo add traefik https://traefik.github.io/charts
+#   helm upgrade --install traefik traefik/traefik -n traefik --create-namespace \
+#     -f infra/cluster/traefik-values.yaml
+#
+# Why Traefik: the community ingress-nginx project stopped receiving releases in
+# March 2026, and Azure's managed NGINX (application routing add-on) loses support
+# on 30 Nov 2026. Traefik implements the standard Kubernetes Ingress API used by
+# infra/helm/swiftdrop/templates/ingress.yaml (and also supports Gateway API).
+# ──────────────────────────────────────────────────────────────────────────────
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+providers:
+  kubernetesIngress:
+    # Copy the LoadBalancer IP into each Ingress status (kubectl get ingress shows it).
+    publishedService:
+      enabled: true
+
+service:
+  type: LoadBalancer
+  annotations:
+    # Plain TCP health probe: Traefik answers 404 on "/" for unknown hosts, which
+    # would make an HTTP probe mark the node unhealthy.
+    service.beta.kubernetes.io/azure-load-balancer-health-probe-protocol: tcp
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

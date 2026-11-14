@@ -1,0 +1,23 @@
+{{- /*
+  Let's Encrypt ClusterIssuer (HTTP-01 through the Ingress controller).
+  Requires cert-manager and its CRDs to be installed in the cluster first.
+*/ -}}
+{{- $issuer := .Values.certManager.clusterIssuer }}
+{{- if and .Values.ingress.enabled .Values.ingress.tls.enabled $issuer.create }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $issuer.name }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+spec:
+  acme:
+    server: {{ $issuer.server }}
+    email: {{ required "certManager.clusterIssuer.email is required (Let's Encrypt account e-mail)" $issuer.email | quote }}
+    privateKeySecretRef:
+      name: {{ $issuer.name }}-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: {{ .Values.ingress.className }}
+{{- end }}
