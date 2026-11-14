@@ -77,7 +77,7 @@ export interface paths {
         put?: never;
         /**
          * Register a new webhook subscription endpoint
-         * @description A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403.
+         * @description A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403. The response is the only place the generated signing secret is ever returned; GET and list never include it.
          */
         post: {
             parameters: {
@@ -98,7 +98,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiResponseWebhookEndpointResponse"];
+                        "application/json": components["schemas"]["ApiResponseWebhookEndpointCreatedResponse"];
                     };
                 };
                 400: components["responses"]["BadRequest"];
@@ -551,13 +551,13 @@ export interface components {
             /** @example Main Production ERP Webhook */
             description?: string;
         };
+        /** @description Endpoint details for GET, list and status responses. Never contains the signing secret. */
         WebhookEndpointResponse: {
             /** Format: uuid */
             endpointId?: string;
             /** Format: uuid */
             merchantId?: string;
             targetUrl?: string;
-            secretKey?: string;
             subscribedEvents?: string;
             active?: boolean;
             description?: string;
@@ -635,6 +635,17 @@ export interface components {
             message?: string;
             /** Format: date-time */
             replayedAt?: string;
+        };
+        /** @description Newly registered endpoint plus its signing secret. The secret is returned only here, once; it cannot be retrieved again through GET or list. */
+        WebhookEndpointCreatedResponse: {
+            endpoint?: components["schemas"]["WebhookEndpointResponse"];
+            /** @description HMAC-SHA256 signing secret used to verify X-SwiftDrop-Signature. Shown once; store it securely. */
+            signingSecret?: string;
+        };
+        ApiResponseWebhookEndpointCreatedResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["WebhookEndpointCreatedResponse"];
         };
         ApiResponseWebhookEndpointResponse: {
             success?: boolean;

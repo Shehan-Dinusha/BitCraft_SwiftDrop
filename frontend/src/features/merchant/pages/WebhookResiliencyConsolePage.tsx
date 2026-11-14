@@ -17,8 +17,6 @@ import {
   Play,
   Copy,
   Check,
-  Eye,
-  EyeOff,
   Trash2,
   Power,
   Activity,
@@ -46,8 +44,9 @@ export function WebhookResiliencyConsolePage() {
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
 
-  // Secret Key Visibility & Copied State
-  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, boolean>>({});
+  // One-time signing secret from the create response. Held only in component memory (never persisted) and
+  // cleared when the dialog closes; GET/list responses no longer contain secrets, so it cannot reappear.
+  const [oneTimeSecret, setOneTimeSecret] = useState<{ endpointId: string; secret: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Ping Testing State
@@ -92,8 +91,15 @@ export function WebhookResiliencyConsolePage() {
       };
 
       const created = await webhookApi.createEndpoint(request);
-      setEndpoints((prev) => [created, ...prev]);
-      setBanner({ tone: 'success', message: 'Webhook endpoint registered with generated HMAC-SHA256 secret.' });
+      const endpoint = created.endpoint;
+      if (endpoint) setEndpoints((prev) => [endpoint, ...prev]);
+      if (endpoint?.endpointId && created.signingSecret) {
+        setOneTimeSecret({ endpointId: endpoint.endpointId, secret: created.signingSecret });
+      }
+      setBanner({
+        tone: 'success',
+        message: 'Webhook endpoint registered. Copy its signing secret now: it is shown only once.'
+      });
       setIsCreateModalOpen(false);
       setTargetUrl('');
       setDescription('');
@@ -175,10 +181,6 @@ export function WebhookResiliencyConsolePage() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const toggleRevealSecret = (id: string) => {
-    setRevealedSecrets((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const activeCount = endpoints.filter((e) => e.active).length;
@@ -283,8 +285,6 @@ export function WebhookResiliencyConsolePage() {
         ) : (
           <div className="space-y-3">
             {endpoints.map((ep) => {
-              const isRevealed = ep.endpointId ? revealedSecrets[ep.endpointId] : false;
-              const isCopied = ep.endpointId ? copiedId === ep.endpointId : false;
               const isPinging = ep.endpointId ? pingingId === ep.endpointId : false;
 
               return (
@@ -320,39 +320,12 @@ export function WebhookResiliencyConsolePage() {
                         ))}
                       </div>
 
-                      {/* Secret Key Display */}
+                      {/* Signing secret: never returned after creation, so only a note is shown here. */}
                       <div className="flex items-center gap-2 pt-1">
-                        <span className="text-[11px] text-secondary flex items-center gap-1">
+                        <span className="flex items-center gap-1 text-[11px] text-secondary">
                           <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                          HMAC Secret:
+                          HMAC signing secret: shown once at registration and not retrievable afterwards.
                         </span>
-                        <code className="rounded bg-surface-subtle px-2 py-0.5 font-mono text-[11px] text-primary">
-                          {isRevealed
-                            ? ep.secretKey
-                            : ep.secretKey?.slice(0, 10) + '????????????????????'}
-                        </code>
-
-                        {ep.endpointId && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => ep.endpointId && toggleRevealSecret(ep.endpointId)}
-                              className="text-secondary hover:text-primary"
-                              title={isRevealed ? 'Hide secret' : 'Reveal secret'}
-                            >
-                              {isRevealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => ep.secretKey && ep.endpointId && copyToClipboard(ep.secretKey, ep.endpointId)}
-                              className="text-secondary hover:text-primary"
-                              title="Copy signing secret"
-                            >
-                              {isCopied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
-                          </>
-                        )}
                       </div>
                     </div>
 
@@ -432,6 +405,48 @@ export function WebhookResiliencyConsolePage() {
 
         <WebhookDlqReplayTable />
       </section>
+
+      {/* One-time signing secret (create response only) */}
+      <Modal
+        open={oneTimeSecret !== null}
+        onClose={() => setOneTimeSecret(null)}
+        title="Copy your signing secret"
+        description="This secret is shown only once. SwiftDrop will not display it again."
+        size="md"
+      >
+        {oneTimeSecret && (
+          <div className="space-y-4 p-4 text-xs">
+            <StatusBanner tone="warning" title="Shown only once">
+              Copy this secret now and store it securely (for example in your server&apos;s secret store). After you
+              close this dialog it cannot be viewed again, including after a page refresh.
+            </StatusBanner>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 break-all rounded bg-surface-subtle px-2 py-1.5 font-mono text-[11px] text-primary">
+                {oneTimeSecret.secret}
+              </code>
+              <Button
+                variant="outline"
+                className="h-7 shrink-0 px-2.5 text-xs"
+                onClick={() => copyToClipboard(oneTimeSecret.secret, oneTimeSecret.endpointId)}
+              >
+                {copiedId === oneTimeSecret.endpointId ? (
+                  <Check className="mr-1 h-3 w-3 text-emerald-500" />
+                ) : (
+                  <Copy className="mr-1 h-3 w-3" />
+                )}
+                {copiedId === oneTimeSecret.endpointId ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+            <p className="text-[11px] text-secondary">
+              Use it to verify the <span className="font-mono">X-SwiftDrop-Signature</span> header on every webhook
+              request you receive.
+            </p>
+            <div className="flex justify-end">
+              <Button onClick={() => setOneTimeSecret(null)}>I have stored the secret</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Registration Modal */}
       <Modal

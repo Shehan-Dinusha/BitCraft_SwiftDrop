@@ -63,6 +63,8 @@ paths:
       description: >-
         A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is
         refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403.
+        The response is the only place the generated signing secret is ever returned; GET and list never
+        include it.
       requestBody:
         required: true
         content:
@@ -75,7 +77,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiResponseWebhookEndpointResponse"
+                $ref: "#/components/schemas/ApiResponseWebhookEndpointCreatedResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -418,6 +420,7 @@ components:
           example: "Main Production ERP Webhook"
     WebhookEndpointResponse:
       type: object
+      description: Endpoint details for GET, list and status responses. Never contains the signing secret.
       properties:
         endpointId:
           type: string
@@ -426,8 +429,6 @@ components:
           type: string
           format: uuid
         targetUrl:
-          type: string
-        secretKey:
           type: string
         subscribedEvents:
           type: string
@@ -535,6 +536,26 @@ components:
         replayedAt:
           type: string
           format: date-time
+    WebhookEndpointCreatedResponse:
+      type: object
+      description: >-
+        Newly registered endpoint plus its signing secret. The secret is returned only here, once; it cannot
+        be retrieved again through GET or list.
+      properties:
+        endpoint:
+          $ref: "#/components/schemas/WebhookEndpointResponse"
+        signingSecret:
+          type: string
+          description: HMAC-SHA256 signing secret used to verify X-SwiftDrop-Signature. Shown once; store it securely.
+    ApiResponseWebhookEndpointCreatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/WebhookEndpointCreatedResponse"
     ApiResponseWebhookEndpointResponse:
       type: object
       properties:

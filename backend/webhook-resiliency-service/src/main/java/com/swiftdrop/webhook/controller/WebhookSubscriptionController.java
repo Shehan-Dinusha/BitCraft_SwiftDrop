@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.webhook.dto.CreateWebhookEndpointRequest;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
+import com.swiftdrop.webhook.dto.WebhookEndpointCreatedResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
 import com.swiftdrop.webhook.service.WebhookSubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,10 +38,11 @@ public class WebhookSubscriptionController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Register a new webhook subscription endpoint",
             description = "A MERCHANT registers under the merchant identity of its token; merchantId may be omitted and "
-                    + "any other value is refused (403). A SYSTEM_ADMIN must supply merchantId. Other roles: 403.")
-    public ApiResponse<WebhookEndpointResponse> createEndpoint(
+                    + "any other value is refused (403). A SYSTEM_ADMIN must supply merchantId. Other roles: 403. "
+                    + "The response is the only place the generated signing secret is ever returned.")
+    public ApiResponse<WebhookEndpointCreatedResponse> createEndpoint(
             @Valid @RequestBody CreateWebhookEndpointRequest request, CallerContext caller) {
-        WebhookEndpointResponse response = subscriptionService.createEndpoint(request, caller);
+        WebhookEndpointCreatedResponse response = subscriptionService.createEndpoint(request, caller);
         return ApiResponse.success(response, "Webhook endpoint created successfully");
     }
 

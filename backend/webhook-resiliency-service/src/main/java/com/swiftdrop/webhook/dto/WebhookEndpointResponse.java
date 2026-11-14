@@ -5,7 +5,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
 
-@Schema(description = "Webhook subscription endpoint details")
+/**
+ * Endpoint details for GET, list and status responses. Deliberately has no signing-secret field: the secret is
+ * returned once, at creation, by {@link WebhookEndpointCreatedResponse}.
+ */
+@Schema(description = "Webhook subscription endpoint details. Never contains the signing secret.")
 public record WebhookEndpointResponse(
         @Schema(description = "Endpoint UUID")
         UUID endpointId,
@@ -15,9 +19,6 @@ public record WebhookEndpointResponse(
 
         @Schema(description = "Target HTTPS endpoint URL")
         String targetUrl,
-
-        @Schema(description = "HMAC-SHA256 signing secret for payload integrity verification")
-        String secretKey,
 
         @Schema(description = "Subscribed event pattern list")
         String subscribedEvents,

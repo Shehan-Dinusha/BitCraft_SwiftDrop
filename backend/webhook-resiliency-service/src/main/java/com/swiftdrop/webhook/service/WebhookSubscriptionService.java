@@ -7,6 +7,7 @@ import com.swiftdrop.webhook.domain.repository.WebhookDeliveryAttemptRepository;
 import com.swiftdrop.webhook.domain.repository.WebhookEndpointRepository;
 import com.swiftdrop.webhook.dto.CreateWebhookEndpointRequest;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
+import com.swiftdrop.webhook.dto.WebhookEndpointCreatedResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
 import com.swiftdrop.webhook.exception.WebhookEndpointNotFoundException;
 import com.swiftdrop.webhook.service.access.MerchantAccess;
@@ -41,10 +42,11 @@ public class WebhookSubscriptionService {
 
     /**
      * Subscribes a new webhook endpoint, generating a cryptographically secure HMAC secret. A merchant always
-     * registers under its own merchant identity; an administrator must name the merchant.
+     * registers under its own merchant identity; an administrator must name the merchant. The secret is returned
+     * in this response only.
      */
     @Transactional
-    public WebhookEndpointResponse createEndpoint(CreateWebhookEndpointRequest request, CallerContext caller) {
+    public WebhookEndpointCreatedResponse createEndpoint(CreateWebhookEndpointRequest request, CallerContext caller) {
         MerchantAccess.requireRole(caller, MANAGERS);
         UUID merchantId = MerchantAccess.ownerForCreate(caller, request.merchantId());
         log.info("Registering webhook endpoint for merchant: {}", merchantId);
@@ -68,7 +70,8 @@ public class WebhookSubscriptionService {
         WebhookEndpoint saved = endpointRepository.save(endpoint);
         log.info("Webhook endpoint {} created successfully for merchant {}", saved.getEndpointId(), saved.getMerchantId());
 
-        return mapToResponse(saved);
+        // The only response that carries the secret; GET, list and status responses never do.
+        return new WebhookEndpointCreatedResponse(mapToResponse(saved), generatedSecret);
     }
 
     @Transactional(readOnly = true)
@@ -155,7 +158,6 @@ public class WebhookSubscriptionService {
                 endpoint.getEndpointId(),
                 endpoint.getMerchantId(),
                 endpoint.getTargetUrl(),
-                endpoint.getSecretKey(),
                 endpoint.getSubscribedEvents(),
                 endpoint.isActive(),
                 endpoint.getDescription(),

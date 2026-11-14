@@ -209,7 +209,16 @@ These are proposed defaults. Steps 5–10 assume them. Change them here, not sil
   - `npm run lint && npm run build` pass.
   - GET and list responses contain no secret. The create response still does.
 - **Manual check:** create an endpoint in the dev UI and see the secret once. Reload the page: the secret is no longer visible. `GET /api/v1/webhooks/subscriptions` has no `secretKey`.
-- **Status:** NOT STARTED
+- **Status:** ✅ DONE (2026-11-15). As implemented:
+  - **Shared response.** `secretKey` was removed from `WebhookEndpointResponse`, which create's `endpoint`, GET, list and both status toggles all use.
+  - **Create response.** New `dto/WebhookEndpointCreatedResponse { endpoint, signingSecret }`. `POST /api/v1/webhooks/subscriptions` returns it, and it is the only response carrying the secret.
+  - **Spec and types.** The OpenAPI spec adds `WebhookEndpointCreatedResponse` and `ApiResponseWebhookEndpointCreatedResponse`, and the webhook generated types were regenerated.
+  - **Frontend.**
+    - The per-row reveal and copy controls are gone.
+    - After creation, a one-time "Copy your signing secret" dialog appears, with a warning and a Copy button.
+    - The secret is held only in React state and cleared when the dialog closes; it is not persisted.
+  - **Unchanged.** Storage stays as is: plaintext `webhook_endpoints.secret_key`, same `whsec_` format, same HMAC use. Encryption and rotation remain Step 15.
+  - **Compatibility.** Existing endpoints keep their secrets for signing, but they can no longer be viewed. A merchant who lost theirs needs rotation (Step 15) or must re-create the endpoint.
 
 ### Step 3 — SSRF URL policy at registration (security)
 - **Objective:** reject unsafe target URLs when an endpoint is created. Apply the same check before any legacy outbound call (ping or replay), so old stored URLs are covered too.
@@ -671,3 +680,4 @@ Append one entry per completed task. Never mark a step done unless its "Done whe
 |---|---|---|---|
 | 2026-11-14 | 0 | Done | Plan created. Deleted 11 test files in `src/test`. Frontend dev mode added (`frontend/.env.webhook-dev`, `vite.config.ts`, `src/app/devAuthBypass.ts`, `src/main.tsx`, `package.json` script `dev:webhook`). Fixed the README broker diagram. Backend compiled in the JDK 25 Maven container; frontend lint and build passed. No backend production code changed. |
 | 2026-11-15 | 1 | Done | **Changed:** `OutboundWebhookDispatcher`, `WebhookSubscriptionService`, `DlqReplayService`, `DlqFailureClassifier`, `WebhookSubscriptionController` (operation docs), `WebhookDeliveryAttemptResponse`; new `service/AttemptResponseMapper`; spec `docs/api-specs/webhook-resiliency-service.yaml`; regenerated `frontend/src/types/generated/webhook-resiliency-service.ts` only; `WebhookResiliencyConsolePage.tsx`. **Build:** compiled (container), frontend lint and build passed, no automated tests. **Manually verified** against the rebuilt container and a host Python mock via `host.docker.internal:9090`: `/ok` returns 200, success, latency recorded; `/boom` returns 500, `HTTP_SERVER_ERROR`; a closed port gives a null status and `CONNECTION_FAILURE`. Exactly one POST per ping reached the mock. DLQ row count stayed 0. The API and new rows contain no response body. A scan of service logs for the host, ports and body text found 0 hits. **Not performed:** browser UI check, webhook.site check. **Left behind:** three dev endpoints named "step1-verify …" for merchant `…a1`. |
+| 2026-11-15 | 2 | Done | **Changed:** `dto/WebhookEndpointResponse` (secret removed), new `dto/WebhookEndpointCreatedResponse`, `WebhookSubscriptionService.createEndpoint`/`mapToResponse`, `WebhookSubscriptionController.createEndpoint`; spec; regenerated webhook types only; `frontend/src/services/api/webhookApi.ts`; `WebhookResiliencyConsolePage.tsx` (one-time dialog, row reveal removed). **Build:** compiled (container), frontend lint and build passed, no automated tests. **Manually verified** against the rebuilt container: create returns `{endpoint, signingSecret}`. GET, merchant list, admin list-all, status toggle, attempts and DLQ list contain no `secretKey`, `signingSecret`, `whsec_` or the secret value. Toggle off/on still works. A ping to the host mock was signed with a signature that verifies against the one-time secret. The DB value equals the returned secret. No `whsec_` in logs. **Not performed:** the browser UI flow (dialog, copy, refresh). **Left behind:** dev endpoint "step2-verify". |
