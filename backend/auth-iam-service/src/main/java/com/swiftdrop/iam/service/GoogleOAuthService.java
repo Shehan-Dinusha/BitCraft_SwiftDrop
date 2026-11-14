@@ -33,31 +33,34 @@ import java.util.UUID;
 /**
  * Implements the Google OAuth 2.0 Authorization Code flow for SwiftDrop.
  *
- * <p>Flow summary:
+ * <p>
+ * Flow summary:
  * <ol>
- *   <li>{@link #buildAuthorizeRedirectUri()} – create a random state, store it in Redis
- *       with a short TTL, and return the Google consent-screen URI.</li>
- *   <li>{@link #handleCallback(String, String, String)} – validate state, exchange the
- *       authorization code for a Google ID token + access token, fetch the Google
- *       user-info profile, upsert a {@code CUSTOMER} {@link UserAccount}, and issue
- *       a one-time exchange code stored in Redis.</li>
- *   <li>{@link #exchangeCode(String)} – swap the one-time code for a {@link TokenResponse}
- *       (access token + refresh token).</li>
+ * <li>{@link #buildAuthorizeRedirectUri()} – create a random state, store it in
+ * Redis
+ * with a short TTL, and return the Google consent-screen URI.</li>
+ * <li>{@link #handleCallback(String, String, String)} – validate state,
+ * exchange the
+ * authorization code for a Google ID token + access token, fetch the Google
+ * user-info profile, upsert a {@code CUSTOMER} {@link UserAccount}, and issue
+ * a one-time exchange code stored in Redis.</li>
+ * <li>{@link #exchangeCode(String)} – swap the one-time code for a
+ * {@link TokenResponse}
+ * (access token + refresh token).</li>
  * </ol>
  *
- * <p>No passwords are set on OAuth-sourced accounts; password login is blocked for them
+ * <p>
+ * No passwords are set on OAuth-sourced accounts; password login is blocked for
+ * them
  * via a randomly generated placeholder hash that cannot be reproduced.
  */
 @Slf4j
 @Service
 public class GoogleOAuthService {
 
-    private static final String GOOGLE_AUTH_ENDPOINT =
-            "https://accounts.google.com/o/oauth2/v2/auth";
-    private static final String GOOGLE_TOKEN_ENDPOINT =
-            "https://oauth2.googleapis.com/token";
-    private static final String GOOGLE_USERINFO_ENDPOINT =
-            "https://www.googleapis.com/oauth2/v3/userinfo";
+    private static final String GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
+    private static final String GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+    private static final String GOOGLE_USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v3/userinfo";
 
     /** Redis key prefix for CSRF state tokens (5-minute TTL). */
     private static final String STATE_PREFIX = "oauth2:google:state:";
@@ -78,11 +81,11 @@ public class GoogleOAuthService {
     private final RestTemplate restTemplate;
 
     public GoogleOAuthService(GoogleOAuthConfig oauthConfig,
-                              StringRedisTemplate redis,
-                              UserAccountRepository userAccountRepository,
-                              TokenIssuanceService tokenIssuanceService,
-                              RefreshTokenService refreshTokenService,
-                              RestTemplate restTemplate) {
+            StringRedisTemplate redis,
+            UserAccountRepository userAccountRepository,
+            TokenIssuanceService tokenIssuanceService,
+            RefreshTokenService refreshTokenService,
+            RestTemplate restTemplate) {
         this.oauthConfig = oauthConfig;
         this.redis = redis;
         this.userAccountRepository = userAccountRepository;
@@ -95,7 +98,8 @@ public class GoogleOAuthService {
 
     /**
      * Builds and returns the Google consent-screen URI.
-     * A random CSRF state token is generated, stored in Redis, and embedded in the URI.
+     * A random CSRF state token is generated, stored in Redis, and embedded in the
+     * URI.
      *
      * @return the URI to redirect the browser to.
      * @throws AuthException (503) if Google OAuth is not configured.
@@ -103,7 +107,8 @@ public class GoogleOAuthService {
     public URI buildAuthorizeRedirectUri() {
         requireConfigured();
 
-        // Generate a 24-byte random state token (URL-safe Base64, no padding = 32 chars).
+        // Generate a 24-byte random state token (URL-safe Base64, no padding = 32
+        // chars).
         byte[] stateBytes = new byte[24];
         SECURE_RANDOM.nextBytes(stateBytes);
         String state = Base64.getUrlEncoder().withoutPadding().encodeToString(stateBytes);
@@ -127,14 +132,16 @@ public class GoogleOAuthService {
     // ─── Stage 13: Callback + user upsert ──────────────────────────────────────
 
     /**
-     * Handles the Google callback: validates the state, exchanges the code, upserts the
+     * Handles the Google callback: validates the state, exchanges the code, upserts
+     * the
      * user, and returns a one-time exchange code the frontend can swap for tokens.
      *
-     * @param code    the authorization code from Google.
-     * @param state   the CSRF state token from Google.
+     * @param code      the authorization code from Google.
+     * @param state     the CSRF state token from Google.
      * @param userAgent the User-Agent header of the original browser request.
      * @return a one-time exchange code (opaque string, 2-minute TTL).
-     * @throws AuthException on CSRF violation, Google API error, or inactive account.
+     * @throws AuthException on CSRF violation, Google API error, or inactive
+     *                       account.
      */
     @Transactional
     public String handleCallback(String code, String state, String userAgent) {
@@ -175,13 +182,15 @@ public class GoogleOAuthService {
     // ─── Stage 13: Code exchange ────────────────────────────────────────────────
 
     /**
-     * Swaps the one-time exchange code (issued in {@link #handleCallback}) for a full
+     * Swaps the one-time exchange code (issued in {@link #handleCallback}) for a
+     * full
      * {@link TokenResponse} containing a SwiftDrop access token and refresh token.
      *
      * @param exchangeCode the one-time code.
      * @param ipAddress    the caller's IP (for refresh-token audit).
      * @param userAgent    the caller's User-Agent (for refresh-token audit).
-     * @return a {@link TokenResponse} identical in structure to the password-login response.
+     * @return a {@link TokenResponse} identical in structure to the password-login
+     *         response.
      * @throws AuthException (400) if the code is missing, expired, or already used.
      */
     @Transactional
@@ -215,12 +224,29 @@ public class GoogleOAuthService {
             throw new AuthException(HttpStatus.FORBIDDEN, "Account is not active");
         }
 
-        TokenIssuanceService.IssuedAccessToken accessToken =
-                tokenIssuanceService.issueAccessToken(user);
-        RefreshTokenService.IssuedRefreshToken refreshToken =
-                refreshTokenService.create(user, userAgent, ipAddress);
+        TokenIssuanceService.IssuedAccessToken accessToken = tokenIssuanceService.issueAccessToken(user);
+        RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.create(user, userAgent, ipAddress);
 
         return AuthMapper.toTokenResponse(user, accessToken, refreshToken.rawToken());
+    }
+
+    /** Frontend callback URI carrying the one-time exchange code. */
+    public URI buildFrontendRedirect(String exchangeCode) {
+        return URI.create(frontendBase() + "/auth/callback?code=" + encode(exchangeCode));
+    }
+
+    /** Frontend login URI carrying an OAuth error code (consent denied, invalid state, ...). */
+    public URI buildFrontendErrorRedirect(String error) {
+        String value = (error == null || error.isBlank()) ? "unknown" : error;
+        return URI.create(frontendBase() + "/login?oauth_error=" + encode(value));
+    }
+
+    private String frontendBase() {
+        String base = oauthConfig.getFrontendUrl();
+        if (base == null || base.isBlank()) {
+            base = "http://localhost:5173";
+        }
+        return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -256,8 +282,7 @@ public class GoogleOAuthService {
         body.add("grant_type", "authorization_code");
 
         try {
-            ResponseEntity<Map> response =
-                    restTemplate.postForEntity(GOOGLE_TOKEN_ENDPOINT, body, Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(GOOGLE_TOKEN_ENDPOINT, body, Map.class);
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 throw new AuthException(HttpStatus.BAD_GATEWAY,
                         "Failed to exchange authorization code with Google");
@@ -281,7 +306,7 @@ public class GoogleOAuthService {
                         "Failed to fetch user info from Google");
             }
             Map<String, Object> body = response.getBody();
-            String sub = (String) body.get("sub");        // unique Google user ID
+            String sub = (String) body.get("sub"); // unique Google user ID
             String email = (String) body.get("email");
             String name = (String) body.getOrDefault("name", "");
             String givenName = (String) body.getOrDefault("given_name", "");
@@ -306,8 +331,7 @@ public class GoogleOAuthService {
     private UserAccount upsertGoogleUser(GoogleUserInfo userInfo) {
         String normalizedEmail = userInfo.email().trim().toLowerCase(Locale.ROOT);
 
-        Optional<UserAccount> existing =
-                userAccountRepository.findByEmailIgnoreCase(normalizedEmail);
+        Optional<UserAccount> existing = userAccountRepository.findByEmailIgnoreCase(normalizedEmail);
         if (existing.isPresent()) {
             return existing.get();
         }
@@ -316,7 +340,8 @@ public class GoogleOAuthService {
         String base = normalizedEmail.split("@")[0]
                 .replaceAll("[^a-z0-9._-]", "")
                 .toLowerCase(Locale.ROOT);
-        if (base.isBlank()) base = "user";
+        if (base.isBlank())
+            base = "user";
         String username = findAvailableUsername(base);
 
         UserAccount user = new UserAccount();
@@ -325,7 +350,8 @@ public class GoogleOAuthService {
         // Derive first/last name from Google profile; fall back to email local-part.
         user.setFirstName(userInfo.givenName().isBlank() ? base : userInfo.givenName());
         user.setLastName(userInfo.familyName().isBlank() ? "" : userInfo.familyName());
-        // OAuth accounts cannot log in with a password.  Store an unreproducible placeholder.
+        // OAuth accounts cannot log in with a password. Store an unreproducible
+        // placeholder.
         user.setPasswordHash(OAUTH_PLACEHOLDER_PREFIX + UUID.randomUUID());
         user.setRole(UserRole.CUSTOMER);
         user.setStatus(UserStatus.ACTIVE);
@@ -334,10 +360,12 @@ public class GoogleOAuthService {
     }
 
     private String findAvailableUsername(String base) {
-        if (!userAccountRepository.existsByUsernameIgnoreCase(base)) return base;
+        if (!userAccountRepository.existsByUsernameIgnoreCase(base))
+            return base;
         for (int i = 2; i <= 999; i++) {
             String candidate = base + i;
-            if (!userAccountRepository.existsByUsernameIgnoreCase(candidate)) return candidate;
+            if (!userAccountRepository.existsByUsernameIgnoreCase(candidate))
+                return candidate;
         }
         // Extremely unlikely; fall back to a UUID suffix.
         return base + UUID.randomUUID().toString().replace("-", "").substring(0, 6);
@@ -349,7 +377,6 @@ public class GoogleOAuthService {
 
     /** Value object for the Google user-info response fields we care about. */
     record GoogleUserInfo(String sub, String email, String name,
-                          String givenName, String familyName) {
+            String givenName, String familyName) {
     }
 }
-

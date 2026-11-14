@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
 import { roleHome } from '@/app/roleHome';
-import { loginUser, googleAuthorizeUrl } from '@/services/api/authApi';
+import { loginUser, googleAuthorizeUrl, oauthErrorMessage } from '@/services/api/authApi';
 import { personaForRole, useAuthStore } from '@/store/useAuthStore';
 
 export function LoginPage() {
@@ -17,7 +17,11 @@ export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const oauthError = searchParams.get('oauth_error');
+  const [error, setError] = useState<string | null>(
+    oauthError ? oauthErrorMessage(oauthError) : null
+  );
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

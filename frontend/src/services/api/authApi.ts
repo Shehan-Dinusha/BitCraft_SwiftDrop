@@ -13,17 +13,29 @@ export async function loginUser(username: string, password: string): Promise<Aut
   return data;
 }
 
-export async function registerUser(
-  username: string,
-  email: string,
-  password: string
-): Promise<AuthTokenResponse> {
-  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/register', {
-    username,
-    email,
-    password
-  });
-  return data;
+export type RegisterUserInput = {
+  username: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  district: components['schemas']['SriLankanDistrict'];
+};
+
+export const SRI_LANKAN_DISTRICTS: components['schemas']['SriLankanDistrict'][] = [
+  'COLOMBO', 'GAMPAHA', 'KALUTARA', 'KANDY', 'MATALE', 'NUWARA_ELIYA', 'GALLE', 'MATARA',
+  'HAMBANTOTA', 'JAFFNA', 'KILINOCHCHI', 'MANNAR', 'VAVUNIYA', 'MULLAITIVU', 'BATTICALOA',
+  'AMPARA', 'TRINCOMALEE', 'KURUNEGALA', 'PUTTALAM', 'ANURADHAPURA', 'POLONNARUWA', 'BADULLA',
+  'MONARAGALA', 'RATNAPURA', 'KEGALLE'
+];
+
+/**
+ * Self-service registration always creates a CUSTOMER account. The register endpoint returns the
+ * new profile (not tokens), so sign the user in straight afterwards to obtain a session.
+ */
+export async function registerUser(input: RegisterUserInput): Promise<AuthTokenResponse> {
+  await apiClient.post('/v1/auth/register', { ...input, role: 'CUSTOMER' });
+  return loginUser(input.username, input.password);
 }
 
 export async function refreshTokens(refreshToken: string): Promise<AuthTokenResponse> {
@@ -106,4 +118,20 @@ export async function updateUserStatus(userId: string, status: UserStatus): Prom
     { status }
   );
   return data.data ?? {};
+}
+
+/** Maps the `oauth_error` code from the backend redirect to a user-facing message. */
+export function oauthErrorMessage(code: string): string {
+  switch (code) {
+    case 'access_denied':
+      return 'Google sign-in was cancelled. Please try again.';
+    case 'invalid_state':
+      return 'Your Google sign-in session expired. Please try again.';
+    case 'account_inactive':
+      return 'Your account is not active. Contact support.';
+    case 'not_configured':
+      return 'Google sign-in is not available right now.';
+    default:
+      return 'Google sign-in failed. Please try again.';
+  }
 }
