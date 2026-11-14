@@ -9,7 +9,7 @@
 #   SEED_PASSWORD='Demo-pass-2026' scripts/seed/run-local.sh            # all stages
 #   SEED_PASSWORD='Demo-pass-2026' scripts/seed/run-local.sh deliver    # one stage again
 #
-# Stages: install warmup users orders assign deliver catchup
+# Stages: install warmup users orders assign deliver catchup timeshift
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -141,12 +141,19 @@ stage_catchup() {
   down notification-service analytics-ai-service
 }
 
+stage_timeshift() {
+  # Runs once, last: spreads the seeded history over the past month in every database
+  # (only needs the PostgreSQL pods, which the seeding profile keeps running).
+  log "Time-shift: spread the seeded history over the past 30 days"
+  node "$ROOT/scripts/seed/timeshift.mjs" | grep -v "#"
+}
+
 STAGES=("$@")
-[ ${#STAGES[@]} -eq 0 ] && STAGES=(install warmup users orders assign deliver catchup)
+[ ${#STAGES[@]} -eq 0 ] && STAGES=(install warmup users orders assign deliver catchup timeshift)
 for s in "${STAGES[@]}"; do
   case "$s" in
-    install|warmup|users|orders|assign|deliver|catchup) "stage_$s" ;;
-    *) echo "Unknown stage: $s (install warmup users orders assign deliver catchup)"; exit 2 ;;
+    install|warmup|users|orders|assign|deliver|catchup|timeshift) "stage_$s" ;;
+    *) echo "Unknown stage: $s (install warmup users orders assign deliver catchup timeshift)"; exit 2 ;;
   esac
 done
 
