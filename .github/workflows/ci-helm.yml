@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [production, student]
+        profile: [production, student, local]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,6 +76,8 @@ jobs:
           for kind in Namespace ConfigMap Secret Service Deployment StatefulSet Ingress HorizontalPodAutoscaler ServiceAccount; do
             grep -q "^kind: ${kind}$" rendered.yaml || { echo "::error::No ${kind} rendered"; exit 1; }
           done
+          # The local profile deliberately runs a core subset of services.
+          if [ "${{ matrix.profile }}" = "local" ]; then exit 0; fi
           test "$(grep -c '^kind: StatefulSet$' rendered.yaml)" -eq 11 \
             || { echo "::error::Expected 11 StatefulSets (9 PostgreSQL + RabbitMQ + Redis)"; exit 1; }
           test "$(grep -c '^kind: Deployment$' rendered.yaml)" -eq 11 \

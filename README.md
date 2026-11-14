@@ -297,6 +297,7 @@ Workflows are in [`.github/workflows`](.github/workflows). Deployment is increme
 |---|---|
 | [Local Development Guide](docs/LOCAL-DEVELOPMENT.md) | Run one service, its database and the frontend |
 | [AKS Helm Deployment Guide](docs/deployment/AKS-HELM-DEPLOYMENT.md) | Deploy the full system to Azure Kubernetes Service with the Helm chart |
+| [Local Kubernetes Guide](docs/deployment/LOCAL-KUBERNETES.md) | Run the same chart for free on Docker Desktop's Kubernetes |
 | [API contracts](docs/api-specs/README.md) | OpenAPI documents, gateway routes, generating frontend types |
 | [ADR-001](docs/architecture/ADR-001-physical-db-statefulsets.md) | Why every database is a separate StatefulSet |
 | [Component guide](frontend/COMPONENTS.md) | Design system rules, components, catalog routes |

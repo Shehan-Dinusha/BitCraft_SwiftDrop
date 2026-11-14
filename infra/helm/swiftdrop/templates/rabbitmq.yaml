@@ -111,18 +111,23 @@ spec:
               mountPath: /etc/rabbitmq/conf.d/20-swiftdrop.conf
               subPath: 20-swiftdrop.conf
               readOnly: true
+          # rabbitmq-diagnostics boots a short-lived Erlang VM, which can take >10s
+          # on a CPU-starved node. Liveness (restart decision) therefore uses a cheap
+          # TCP check; readiness keeps the thorough check with a generous timeout.
           readinessProbe:
             exec:
               command: ["rabbitmq-diagnostics", "-q", "check_running"]
-            initialDelaySeconds: 30
-            periodSeconds: 15
-            timeoutSeconds: 10
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 20
+            failureThreshold: 3
           livenessProbe:
-            exec:
-              command: ["rabbitmq-diagnostics", "-q", "check_running"]
+            tcpSocket:
+              port: amqp
             initialDelaySeconds: 60
             periodSeconds: 30
-            timeoutSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
       volumes:
         - name: rabbitmq-config
           configMap:

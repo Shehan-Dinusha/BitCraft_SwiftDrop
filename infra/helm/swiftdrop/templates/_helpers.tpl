@@ -53,6 +53,19 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- toYaml $merged -}}
 {{- end }}
 
+{{/* Comma-separated, sorted keys of the databases used by ENABLED services.
+     Only these databases (and their Secrets) are rendered, so turning a service
+     off also removes its PostgreSQL StatefulSet. Use with splitList ",". */}}
+{{- define "swiftdrop.enabledDatabases" -}}
+{{- $used := list -}}
+{{- range $name, $svc := .Values.services -}}
+{{- if and (get $svc "enabled") (get $svc "database") -}}
+{{- $used = append $used (get $svc "database") -}}
+{{- end -}}
+{{- end -}}
+{{- $used | uniq | sortAlpha | join "," -}}
+{{- end }}
+
 {{/* Secret names (kept identical to the pre-Helm manifests). */}}
 {{- define "swiftdrop.postgresSecretName" -}}
 {{- printf "%s-postgres-credentials" . -}}
