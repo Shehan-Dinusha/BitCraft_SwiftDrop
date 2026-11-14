@@ -106,6 +106,29 @@ class DeliveryExecutionServiceTest {
     }
 
     @Test
+    @DisplayName("Courier assigned: keeps the real tracking number, customer and districts from the event")
+    void testHandleCourierAssigned_KeepsOrderDetailsFromEvent() {
+        UUID customerId = UUID.randomUUID();
+        CourierAssignedEvent event = new CourierAssignedEvent(
+                UUID.randomUUID(), UUID.randomUUID(), orderId, courierId, "Sunil Perera", 25,
+                Instant.now(), Instant.now(), "SD-7K2P-Q9XM", null, customerId,
+                SriLankanDistrict.KANDY, SriLankanDistrict.COLOMBO);
+
+        when(deliverySessionRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(deliverySessionRepository.save(any(DeliverySession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DeliverySession session = deliveryService.handleCourierAssigned(event);
+
+        assertThat(session.getTrackingNumber()).isEqualTo("SD-7K2P-Q9XM");
+        assertThat(session.getCustomerId()).isEqualTo(customerId);
+        assertThat(session.getPickupDistrict()).isEqualTo(SriLankanDistrict.KANDY);
+        assertThat(session.getDeliveryDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+        verify(publishStateTransitionAction).execute(any(), eq(orderId), eq("SD-7K2P-Q9XM"), eq(courierId),
+                eq(customerId), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(),
+                eq(SriLankanDistrict.KANDY), eq(SriLankanDistrict.COLOMBO), any());
+    }
+
+    @Test
     @DisplayName("transition to DELIVERED: throws InvalidStateTransitionException if PoD not verified")
     void testTransitionToDelivered_PoDNotVerified_ThrowsException() {
         DeliverySession session = new DeliverySession();

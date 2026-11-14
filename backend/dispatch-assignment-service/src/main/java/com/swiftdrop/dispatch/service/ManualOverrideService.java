@@ -120,7 +120,9 @@ public class ManualOverrideService {
                 assignment.getMerchantId(),
                 // Delivery copies this onto its parcel-status events; without it the
                 // customer gets no picked-up / delivered / failed notifications.
-                assignment.getCustomerId()
+                assignment.getCustomerId(),
+                assignment.getPickupDistrict(),
+                assignment.getDeliveryDistrict()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
 

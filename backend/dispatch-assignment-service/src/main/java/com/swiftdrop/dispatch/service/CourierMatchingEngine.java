@@ -143,7 +143,9 @@ public class CourierMatchingEngine {
                 Instant.now(),
                 assignment.getTrackingNumber(),
                 assignment.getMerchantId(),
-                assignment.getCustomerId()
+                assignment.getCustomerId(),
+                assignment.getPickupDistrict(),
+                assignment.getDeliveryDistrict()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
 

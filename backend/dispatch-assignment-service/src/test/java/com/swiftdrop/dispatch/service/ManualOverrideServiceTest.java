@@ -88,6 +88,8 @@ class ManualOverrideServiceTest {
         verify(eventPublisher).publishCourierAssigned(assigned.capture());
         assertThat(assigned.getValue().customerId()).isEqualTo(customerId);
         assertThat(assigned.getValue().trackingNumber()).isEqualTo("SD-KAN-22222");
+        assertThat(assigned.getValue().pickupDistrict()).isEqualTo(SriLankanDistrict.KANDY);
+        assertThat(assigned.getValue().deliveryDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
 
         ArgumentCaptor<ParcelStatusChangedEvent> status = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
         verify(eventPublisher).publishParcelStatusChanged(status.capture());
