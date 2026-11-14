@@ -13,13 +13,13 @@ public record NotificationDispatchLogResponse(
         @Schema(description = "Recipient UUID")
         UUID recipientId,
 
-        @Schema(description = "Dispatch channel: EMAIL, SMS, or PUSH")
+        @Schema(description = "Dispatch channel: EMAIL or PUSH")
         String channel,
 
         @Schema(description = "Triggering template identifier", example = "PARCEL_OUT_FOR_DELIVERY")
         String templateCode,
 
-        @Schema(description = "Destination address/phone", example = "+94771234567")
+        @Schema(description = "Destination email address or user id for PUSH", example = "customer@example.com")
         String destination,
 
         @Schema(description = "Notification subject line")

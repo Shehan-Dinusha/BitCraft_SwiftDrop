@@ -163,16 +163,16 @@ class MaskingTest {
 
             when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.empty());
             when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
-                    .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "SMS"));
+                    .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Your parcel is picked up", "EMAIL"));
             when(templateRenderer.renderTemplate(eq("PARCEL_DELIVERED"), any()))
                     .thenReturn(new TemplateRendererService.RenderedNotification("Delivered", "Your parcel was delivered", "EMAIL"));
             when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
 
-            // Dispatch SMS
-            DispatchNotificationRequest smsRequest = new DispatchNotificationRequest(
-                    recipientId, "SMS", "PARCEL_PICKED_UP", rawPhone, Map.of(), "REF-SMS"
+            // A phone number mistakenly given as the email destination must still be masked in the error log
+            DispatchNotificationRequest misaddressedRequest = new DispatchNotificationRequest(
+                    recipientId, "EMAIL", "PARCEL_PICKED_UP", rawPhone, Map.of(), "REF-PHONE"
             );
-            dispatcher.dispatch(smsRequest);
+            dispatcher.dispatch(misaddressedRequest);
 
             // Dispatch EMAIL
             DispatchNotificationRequest emailRequest = new DispatchNotificationRequest(

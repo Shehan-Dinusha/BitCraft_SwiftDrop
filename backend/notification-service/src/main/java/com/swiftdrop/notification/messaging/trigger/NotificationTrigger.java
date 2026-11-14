@@ -29,14 +29,9 @@ public interface NotificationTrigger {
      */
     List<DispatchNotificationRequest> build(EventEnvelope envelope);
 
-    /**
-     * Builds the SMS + EMAIL pair used for critical transitions (order confirmation,
-     * out for delivery, failed). SMS comes first; the consumer writes one in-app row per recipient.
-     */
-    static List<DispatchNotificationRequest> smsAndEmail(UUID recipientId, String templateCode,
-                                                         Map<String, String> params, String trackingNumber) {
-        return List.of(
-                new DispatchNotificationRequest(recipientId, "SMS", templateCode, null, params, trackingNumber),
-                new DispatchNotificationRequest(recipientId, "EMAIL", templateCode, null, params, trackingNumber));
+    /** Builds the single EMAIL request every trigger sends; the consumer also writes the in-app row. */
+    static List<DispatchNotificationRequest> email(UUID recipientId, String templateCode,
+                                                   Map<String, String> params, String trackingNumber) {
+        return List.of(new DispatchNotificationRequest(recipientId, "EMAIL", templateCode, null, params, trackingNumber));
     }
 }

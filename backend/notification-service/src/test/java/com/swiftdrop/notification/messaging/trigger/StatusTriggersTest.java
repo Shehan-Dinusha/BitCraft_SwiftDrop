@@ -33,7 +33,7 @@ class StatusTriggersTest {
     }
 
     @Test
-    @DisplayName("PickedUpTrigger should match PICKED_UP and build SMS request")
+    @DisplayName("PickedUpTrigger should match PICKED_UP and build an EMAIL request")
     void testPickedUpTrigger() {
         UUID customerId = UUID.randomUUID();
         String json = """
@@ -56,13 +56,13 @@ class StatusTriggersTest {
         assertThat(requests).hasSize(1);
         DispatchNotificationRequest req = requests.getFirst();
         assertThat(req.recipientId()).isEqualTo(customerId);
-        assertThat(req.channel()).isEqualTo("SMS");
+        assertThat(req.channel()).isEqualTo("EMAIL");
         assertThat(req.templateCode()).isEqualTo("PARCEL_PICKED_UP");
         assertThat(req.templateParams()).containsEntry("courierName", "Amila");
     }
 
     @Test
-    @DisplayName("OutForDeliveryTrigger should match OUT_FOR_DELIVERY and build SMS + EMAIL requests")
+    @DisplayName("OutForDeliveryTrigger should match OUT_FOR_DELIVERY and build an EMAIL request")
     void testOutForDeliveryTrigger() {
         UUID customerId = UUID.randomUUID();
         String json = """
@@ -80,7 +80,7 @@ class StatusTriggersTest {
         assertThat(deliveredTrigger.matches(envelope)).isFalse();
 
         List<DispatchNotificationRequest> requests = outForDeliveryTrigger.build(envelope);
-        assertThat(requests).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(requests).extracting(DispatchNotificationRequest::channel).containsExactly("EMAIL");
         assertThat(requests).allSatisfy(req -> {
             assertThat(req.recipientId()).isEqualTo(customerId);
             assertThat(req.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
@@ -131,7 +131,7 @@ class StatusTriggersTest {
         assertThat(failedTrigger.matches(envelope)).isTrue();
 
         List<DispatchNotificationRequest> requests = failedTrigger.build(envelope);
-        assertThat(requests).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(requests).extracting(DispatchNotificationRequest::channel).containsExactly("EMAIL");
         assertThat(requests).allSatisfy(req -> {
             assertThat(req.templateCode()).isEqualTo("PARCEL_FAILED");
             assertThat(req.templateParams()).containsEntry("failureReason", "Premises locked");

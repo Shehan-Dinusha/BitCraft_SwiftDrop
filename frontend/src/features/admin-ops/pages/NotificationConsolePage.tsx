@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Filter,
   Mail,
-  MessageSquare,
   RefreshCw,
   Search,
   Smartphone,
@@ -93,8 +92,6 @@ export function NotificationConsolePage() {
 
   const getChannelIcon = (channel?: string) => {
     switch (channel?.toUpperCase()) {
-      case 'SMS':
-        return <MessageSquare className="size-3.5 text-blue-600" />;
       case 'EMAIL':
         return <Mail className="size-3.5 text-purple-600" />;
       default:
@@ -204,7 +201,6 @@ export function NotificationConsolePage() {
               className="rounded-lg border border-border-subtle bg-canvas px-2.5 py-1 text-caption text-primary focus:outline-none focus:ring-1 focus:ring-border-focus"
             >
               <option value="ALL">All Channels</option>
-              <option value="SMS">SMS</option>
               <option value="EMAIL">Email</option>
               <option value="PUSH">Push</option>
             </select>

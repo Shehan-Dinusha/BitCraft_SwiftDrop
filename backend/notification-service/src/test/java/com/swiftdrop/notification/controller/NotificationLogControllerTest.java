@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -55,9 +56,9 @@ class NotificationLogControllerTest {
         NotificationDispatchLogResponse log1 = new NotificationDispatchLogResponse(
                 logId,
                 recipientId,
-                "SMS",
+                "EMAIL",
                 "PARCEL_PICKED_UP",
-                "+94771234567",
+                "customer@example.com",
                 "Picked Up",
                 "Your parcel was picked up",
                 "SENT",
@@ -67,15 +68,15 @@ class NotificationLogControllerTest {
                 Instant.now()
         );
 
-        when(dispatcher.listLogs(eq(recipientId), eq("SMS"), any())).thenReturn(List.of(log1));
+        when(dispatcher.listLogs(eq(recipientId), eq("EMAIL"), any())).thenReturn(List.of(log1));
 
         mockMvc.perform(get("/api/v1/notifications/logs")
                         .param("recipientId", recipientId.toString())
-                        .param("channel", "SMS"))
+                        .param("channel", "EMAIL"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].logId").value(logId.toString()))
-                .andExpect(jsonPath("$.data[0].channel").value("SMS"))
+                .andExpect(jsonPath("$.data[0].channel").value("EMAIL"))
                 .andExpect(jsonPath("$.data[0].status").value("SENT"));
     }
 
@@ -111,9 +112,9 @@ class NotificationLogControllerTest {
     void testDispatchNotification() throws Exception {
         DispatchNotificationRequest request = new DispatchNotificationRequest(
                 recipientId,
-                "SMS",
+                "EMAIL",
                 "PARCEL_PICKED_UP",
-                "+94771234567",
+                "customer@example.com",
                 Map.of("trackingNumber", "SD-300"),
                 "SD-300"
         );
@@ -121,9 +122,9 @@ class NotificationLogControllerTest {
         NotificationDispatchLogResponse logResp = new NotificationDispatchLogResponse(
                 logId,
                 recipientId,
-                "SMS",
+                "EMAIL",
                 "PARCEL_PICKED_UP",
-                "+94771234567",
+                "customer@example.com",
                 "Picked Up",
                 "Parcel SD-300 picked up",
                 "SENT",
@@ -142,5 +143,19 @@ class NotificationLogControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.logId").value(logId.toString()))
                 .andExpect(jsonPath("$.data.status").value("SENT"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/notifications/logs/dispatch rejects the removed SMS channel with 400")
+    void testDispatchRejectsSmsChannel() throws Exception {
+        DispatchNotificationRequest request = new DispatchNotificationRequest(
+                recipientId, "SMS", "PARCEL_PICKED_UP", "+94771234567", Map.of(), "SD-301");
+
+        mockMvc.perform(post("/api/v1/notifications/logs/dispatch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(dispatcher);
     }
 }

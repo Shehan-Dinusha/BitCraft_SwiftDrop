@@ -6,7 +6,6 @@ import {
   Clock,
   Filter,
   Mail,
-  MessageSquare,
   RefreshCw,
   Smartphone,
   XCircle,
@@ -80,8 +79,6 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
 
   const getChannelIcon = (channel?: string) => {
     switch (channel?.toUpperCase()) {
-      case 'SMS':
-        return <MessageSquare className="size-3.5 text-blue-600" />;
       case 'EMAIL':
         return <Mail className="size-3.5 text-purple-600" />;
       default:
@@ -96,7 +93,7 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
       open={open}
       onClose={onClose}
       title="Notification Dispatch Audit Logs"
-      description="Inspect real-time dispatch events, masked recipients, and template output across SMS, Email, and Push channels."
+      description="Inspect real-time dispatch events, masked recipients, and template output across Email and Push channels."
       footer={
         <div className="flex w-full items-center justify-between">
           <span className="text-caption text-muted">
@@ -122,7 +119,6 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
               className="rounded-lg border border-border-subtle bg-card px-2.5 py-1 text-caption text-primary focus:outline-none focus:ring-1 focus:ring-border-focus"
             >
               <option value="ALL">All Channels</option>
-              <option value="SMS">SMS</option>
               <option value="EMAIL">Email</option>
               <option value="PUSH">Push</option>
             </select>

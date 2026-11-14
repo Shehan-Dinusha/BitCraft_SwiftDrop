@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Triggers an SMS and EMAIL alert when a delivery attempt fails.
+ * Triggers an EMAIL alert when a delivery attempt fails.
  * Template: {@code PARCEL_FAILED}
  */
 @Slf4j
@@ -49,6 +49,6 @@ public class FailedTrigger implements NotificationTrigger {
         params.put("failureReason", failureReason);
         params.put("status", "FAILED");
 
-        return NotificationTrigger.smsAndEmail(recipientIdOpt.get(), "PARCEL_FAILED", params, trackingNumber);
+        return NotificationTrigger.email(recipientIdOpt.get(), "PARCEL_FAILED", params, trackingNumber);
     }
 }

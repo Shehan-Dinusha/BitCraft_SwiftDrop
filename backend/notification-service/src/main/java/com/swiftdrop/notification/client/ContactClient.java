@@ -21,7 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Resolves recipient contact details (email and phone) from auth-iam-service
+ * Resolves the recipient email address from auth-iam-service
  * ({@code GET /internal/v1/users/{id}/contact}) without carrying PII on domain events.
  * Includes a 10-minute in-memory cache and a deterministic fake fallback when {@code CONTACT_MODE=fake}.
  */
@@ -77,8 +77,7 @@ public class ContactClient {
         Instant now = clock.instant();
         CachedContact cached = cache.get(userId);
         if (cached != null && cached.expiresAt().isAfter(now)) {
-            log.debug("Contact cache hit for user {}: email={}, phone={}",
-                    userId, PiiMasker.maskEmail(cached.contact().email()), PiiMasker.maskPhone(cached.contact().phone()));
+            log.debug("Contact cache hit for user {}: email={}", userId, PiiMasker.maskEmail(cached.contact().email()));
             return Optional.of(cached.contact());
         }
 
@@ -88,8 +87,8 @@ public class ContactClient {
 
         resolved.ifPresent(contact -> {
             cache.put(userId, new CachedContact(contact, now.plus(cacheTtl)));
-            log.info("Resolved recipient contact for user {} (mode={}): email={}, phone={}",
-                    userId, contactMode, PiiMasker.maskEmail(contact.email()), PiiMasker.maskPhone(contact.phone()));
+            log.info("Resolved recipient contact for user {} (mode={}): email={}",
+                    userId, contactMode, PiiMasker.maskEmail(contact.email()));
         });
 
         return resolved;
@@ -111,12 +110,10 @@ public class ContactClient {
                     : body;
 
             String email = readText(payload, "email", "emailAddress");
-            String phone = readText(payload, "phone", "phoneNumber");
-
-            if (email == null && phone == null) {
+            if (email == null) {
                 return Optional.empty();
             }
-            return Optional.of(new RecipientContact(email, phone));
+            return Optional.of(new RecipientContact(email));
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
                 log.debug("No IAM contact found for user {}", userId);
@@ -132,10 +129,7 @@ public class ContactClient {
 
     private RecipientContact generateFakeContact(UUID userId) {
         String shortId = userId.toString().substring(0, 8);
-        long numericTail = Math.abs(userId.getLeastSignificantBits() % 10_000_000L);
-        String phone = String.format("+9477%07d", numericTail);
-        String email = "user-" + shortId + "@swiftdrop.example";
-        return new RecipientContact(email, phone);
+        return new RecipientContact("user-" + shortId + "@swiftdrop.example");
     }
 
     private static String readText(JsonNode node, String primaryField, String fallbackField) {

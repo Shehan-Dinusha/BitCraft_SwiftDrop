@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Triggers an SMS and EMAIL notification when a parcel is out for final delivery.
+ * Triggers an EMAIL notification when a parcel is out for final delivery.
  * Template: {@code PARCEL_OUT_FOR_DELIVERY}
  */
 @Slf4j
@@ -49,6 +49,6 @@ public class OutForDeliveryTrigger implements NotificationTrigger {
         params.put("courierName", courierName);
         params.put("status", "OUT_FOR_DELIVERY");
 
-        return NotificationTrigger.smsAndEmail(recipientIdOpt.get(), "PARCEL_OUT_FOR_DELIVERY", params, trackingNumber);
+        return NotificationTrigger.email(recipientIdOpt.get(), "PARCEL_OUT_FOR_DELIVERY", params, trackingNumber);
     }
 }

@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Triggers an SMS and EMAIL confirmation when a new customer order is placed.
+ * Triggers an EMAIL confirmation when a new customer order is placed.
  * Routing key: {@code order.created}
  * Template: {@code PARCEL_CREATED}
  */
@@ -60,6 +60,6 @@ public class OrderCreatedTrigger implements NotificationTrigger {
             }
         }
 
-        return NotificationTrigger.smsAndEmail(recipientIdOpt.get(), TEMPLATE_CODE, params, trackingNumber);
+        return NotificationTrigger.email(recipientIdOpt.get(), TEMPLATE_CODE, params, trackingNumber);
     }
 }

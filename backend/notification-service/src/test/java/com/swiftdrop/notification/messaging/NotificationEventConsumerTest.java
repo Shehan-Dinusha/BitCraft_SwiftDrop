@@ -54,7 +54,7 @@ class NotificationEventConsumerTest {
     }
 
     @Test
-    @DisplayName("Should consume parcel status changed event and dispatch SMS notification for PICKED_UP")
+    @DisplayName("Should consume parcel status changed event and dispatch EMAIL notification for PICKED_UP")
     void testConsumePickedUpEvent() {
         UUID customerId = UUID.randomUUID();
         String json = """
@@ -78,14 +78,14 @@ class NotificationEventConsumerTest {
         DispatchNotificationRequest request = captor.getValue();
         assertThat(request.recipientId()).isEqualTo(customerId);
         assertThat(request.templateCode()).isEqualTo("PARCEL_PICKED_UP");
-        assertThat(request.channel()).isEqualTo("SMS");
+        assertThat(request.channel()).isEqualTo("EMAIL");
         assertThat(request.referenceId()).isEqualTo("SD-1111");
         assertThat(request.templateParams()).containsEntry("courierName", "Kamal Perera");
         verify(inAppNotificationService).saveNotification(eq(customerId), any(), any(), eq("SD-1111"));
     }
 
     @Test
-    @DisplayName("Should dispatch SMS notification for OUT_FOR_DELIVERY status")
+    @DisplayName("Should dispatch EMAIL notification for OUT_FOR_DELIVERY status")
     void testConsumeOutForDeliveryEvent() {
         UUID customerId = UUID.randomUUID();
         String json = """
@@ -104,15 +104,14 @@ class NotificationEventConsumerTest {
         consumer.onNotificationEvent(message);
 
         ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
-        verify(dispatcher, times(2)).dispatch(captor.capture());
+        verify(dispatcher).dispatch(captor.capture());
 
-        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("EMAIL");
         assertThat(captor.getAllValues()).allSatisfy(request -> {
             assertThat(request.recipientId()).isEqualTo(customerId);
             assertThat(request.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
             assertThat(request.templateParams()).containsEntry("courierName", "Sunil Shantha");
         });
-        // Two channels, but the customer's inbox gets exactly one row.
         verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), any(), any(), eq("SD-3333"));
     }
 
@@ -146,7 +145,7 @@ class NotificationEventConsumerTest {
     }
 
     @Test
-    @DisplayName("Should dispatch SMS notification for FAILED delivery status")
+    @DisplayName("Should dispatch EMAIL notification for FAILED delivery status")
     void testConsumeFailedEvent() {
         UUID customerId = UUID.randomUUID();
         String json = """
@@ -165,9 +164,9 @@ class NotificationEventConsumerTest {
         consumer.onNotificationEvent(message);
 
         ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
-        verify(dispatcher, times(2)).dispatch(captor.capture());
+        verify(dispatcher).dispatch(captor.capture());
 
-        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("EMAIL");
         assertThat(captor.getAllValues()).allSatisfy(request -> {
             assertThat(request.recipientId()).isEqualTo(customerId);
             assertThat(request.templateCode()).isEqualTo("PARCEL_FAILED");

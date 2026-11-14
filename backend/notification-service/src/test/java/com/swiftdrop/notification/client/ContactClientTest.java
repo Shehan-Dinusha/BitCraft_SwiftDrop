@@ -76,7 +76,6 @@ class ContactClientTest {
         Optional<RecipientContact> first = client.lookupContact(userId);
         assertThat(first).isPresent();
         assertThat(first.get().email()).isEqualTo("alice@gmail.com");
-        assertThat(first.get().phone()).isEqualTo("+94771234567");
 
         // 5 minutes later -> served from cache (no second HTTP call)
         clock.advanceBy(Duration.ofMinutes(5));
@@ -98,7 +97,6 @@ class ContactClientTest {
         Optional<RecipientContact> refreshed = client.lookupContact(userId);
         assertThat(refreshed).isPresent();
         assertThat(refreshed.get().email()).isEqualTo("alice.new@gmail.com");
-        assertThat(refreshed.get().phone()).isEqualTo("0779998888");
         server.verify();
     }
 
@@ -131,7 +129,6 @@ class ContactClientTest {
         Optional<RecipientContact> result = client.lookupContact(userId);
         assertThat(result).isPresent();
         assertThat(result.get().email()).isEqualTo("user-12345678@swiftdrop.example");
-        assertThat(result.get().phone()).startsWith("+9477");
 
         // Ensure zero HTTP calls were made
         server.verify();

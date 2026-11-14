@@ -86,7 +86,7 @@ public class NotificationEventConsumer {
                 envelope.routingKey(), eventId, triggers.size());
 
         boolean matchedAny = false;
-        // A critical event can dispatch both SMS and EMAIL; the inbox gets one row per recipient.
+        // At most one inbox row per recipient per event, even if several requests or triggers match.
         Set<UUID> inboxRecipients = new HashSet<>();
         for (NotificationTrigger trigger : triggers) {
             if (trigger.matches(envelope)) {

@@ -46,8 +46,8 @@ class OrderCreatedNotificationIT {
     }
 
     @Test
-    @DisplayName("order.created event should trigger customer SMS and EMAIL order confirmation")
-    void testOrderCreatedDispatchesSmsNotification() {
+    @DisplayName("order.created event should trigger the customer EMAIL order confirmation")
+    void testOrderCreatedDispatchesEmailNotification() {
         UUID customerId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         String trackingNumber = "SD-2026-COL-999";
@@ -72,10 +72,10 @@ class OrderCreatedNotificationIT {
         consumer.onNotificationEvent(message);
 
         ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
-        verify(dispatcher, times(2)).dispatch(captor.capture());
+        verify(dispatcher, times(1)).dispatch(captor.capture());
 
-        // Order confirmation goes out by SMS (simulated) and EMAIL (mock or Azure provider).
-        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        // Order confirmation goes out by EMAIL (mock or Azure provider).
+        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("EMAIL");
         assertThat(captor.getAllValues()).allSatisfy(request -> {
             assertThat(request.recipientId()).isEqualTo(customerId);
             assertThat(request.templateCode()).isEqualTo("PARCEL_CREATED");
