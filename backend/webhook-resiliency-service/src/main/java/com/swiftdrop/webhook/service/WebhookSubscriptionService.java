@@ -10,6 +10,8 @@ import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointCreatedResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
 import com.swiftdrop.webhook.exception.WebhookEndpointNotFoundException;
+import com.swiftdrop.webhook.security.UnsafeWebhookUrlException;
+import com.swiftdrop.webhook.security.WebhookUrlPolicy;
 import com.swiftdrop.webhook.service.access.MerchantAccess;
 import com.swiftdrop.webhook.service.subscription.EventSubscriptionPatterns;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ public class WebhookSubscriptionService {
     private final WebhookEndpointRepository endpointRepository;
     private final WebhookDeliveryAttemptRepository attemptRepository;
     private final OutboundWebhookDispatcher dispatcher;
+    private final WebhookUrlPolicy urlPolicy;
     private final SecureRandom secureRandom = new SecureRandom();
 
     /**
@@ -52,6 +55,13 @@ public class WebhookSubscriptionService {
         log.info("Registering webhook endpoint for merchant: {}", merchantId);
 
         String subscribedEvents = EventSubscriptionPatterns.parseForRegistration(request.subscribedEvents()).canonical();
+        try {
+            urlPolicy.validate(request.targetUrl());
+        } catch (UnsafeWebhookUrlException refused) {
+            // Reason code only: the URL itself is never logged.
+            log.info("Rejected webhook endpoint registration for merchant {}: {}", merchantId, refused.reason());
+            throw refused;
+        }
 
         byte[] secretBytes = new byte[32];
         secureRandom.nextBytes(secretBytes);

@@ -77,7 +77,7 @@ export interface paths {
         put?: never;
         /**
          * Register a new webhook subscription endpoint
-         * @description A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403. The response is the only place the generated signing secret is ever returned; GET and list never include it.
+         * @description A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403. The response is the only place the generated signing secret is ever returned; GET and list never include it. The target URL must pass the destination (SSRF) policy described on targetUrl; otherwise 400 "Invalid Webhook URL" with a fixed, non-revealing message.
          */
         post: {
             parameters: {
@@ -541,7 +541,10 @@ export interface components {
              * @description Owning merchant. Omit as a merchant (the merchantId of the caller's token is used; any other value is refused). Required for SYSTEM_ADMIN.
              */
             merchantId?: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Must be a public HTTPS URL. Refused with 400 "Invalid Webhook URL": other schemes or plain HTTP, username/password in the URL, invalid ports, IP literals or hostnames that are loopback, private, link-local, multicast or otherwise non-public, numeric/hex IP notations, single-label and internal names (localhost, *.local, *.internal, *.svc, ...), and hostnames that cannot be resolved or resolve to any non-public address. The same policy is re-checked before every test ping and legacy replay.
+             */
             targetUrl: string;
             /**
              * @description Comma-delimited event subscriptions. Each token is an event type (order.created, parcel.status.changed), a prefix wildcard of whole segments such as parcel.*, or * for all events. Empty, malformed or unknown tokens are rejected with 400.

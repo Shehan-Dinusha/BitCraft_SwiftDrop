@@ -53,7 +53,8 @@ public final class DlqFailureClassifier {
             case HTTP_SERVER_ERROR -> new Classification(errorClass, "Endpoint returned a server error" + status);
             case INVALID_RESPONSE -> new Classification(errorClass,
                     "Endpoint returned a non-2xx, non-error status such as a redirect" + status);
-            case BLOCKED_DESTINATION -> new Classification(errorClass, "Destination is not allowed");
+            case BLOCKED_DESTINATION -> new Classification(errorClass,
+                    "Destination refused by the URL policy (public HTTPS endpoints only); nothing was sent");
             case UNKNOWN -> unknown();
         };
     }

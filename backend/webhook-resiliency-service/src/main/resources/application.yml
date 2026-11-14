@@ -35,6 +35,13 @@ webhook:
       initial-interval: 1s
       multiplier: 2.0
       max-interval: 10s
+  security:
+    # LOCAL DEVELOPMENT ONLY: exact host:port entries (comma-separated, no wildcards) that may be used over plain
+    # HTTP and may resolve to private addresses, e.g. host.docker.internal:9090 for a mock receiver on the host.
+    # Empty by default. Startup fails if it is non-empty while the 'aks' profile is active.
+    dev-http-allowlist: ${WEBHOOK_SECURITY_DEV_HTTP_ALLOWLIST:}
+    # Hostname resolution during URL validation; a slower or failed lookup rejects the URL (fail closed).
+    dns-timeout: 3s
 management:
   endpoints:
     web:

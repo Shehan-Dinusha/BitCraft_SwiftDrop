@@ -64,7 +64,8 @@ paths:
         A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is
         refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403.
         The response is the only place the generated signing secret is ever returned; GET and list never
-        include it.
+        include it. The target URL must pass the destination (SSRF) policy described on targetUrl; otherwise
+        400 "Invalid Webhook URL" with a fixed, non-revealing message.
       requestBody:
         required: true
         content:
@@ -408,6 +409,13 @@ components:
         targetUrl:
           type: string
           format: uri
+          maxLength: 500
+          description: >-
+            Must be a public HTTPS URL. Refused with 400 "Invalid Webhook URL": other schemes or plain HTTP,
+            username/password in the URL, invalid ports, IP literals or hostnames that are loopback, private,
+            link-local, multicast or otherwise non-public, numeric/hex IP notations, single-label and internal
+            names (localhost, *.local, *.internal, *.svc, ...), and hostnames that cannot be resolved or resolve to
+            any non-public address. The same policy is re-checked before every test ping and legacy replay.
         subscribedEvents:
           type: string
           description: >-

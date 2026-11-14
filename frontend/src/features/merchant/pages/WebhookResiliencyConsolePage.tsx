@@ -467,7 +467,8 @@ export function WebhookResiliencyConsolePage() {
               className="mt-1 w-full rounded-lg border border-border-subtle bg-canvas px-3 py-2 text-xs text-primary focus:border-brand-primary focus:outline-none"
             />
             <p className="mt-1 text-[11px] text-secondary">
-              Must be a valid HTTP or HTTPS endpoint accessible from the SwiftDrop cluster.
+              Must be a public HTTPS URL. Private, loopback and internal addresses, and URLs containing a
+              username or password, are rejected.
             </p>
           </div>
 

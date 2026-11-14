@@ -248,7 +248,17 @@ These are proposed defaults. Steps 5–10 assume them. Change them here, not sil
   - Bad URLs get a 400 at creation.
   - A ping to a stored internal URL is refused with `BLOCKED_DESTINATION` and makes no request.
 - **Manual check:** try creating endpoints for `http://auth-iam-service:8081/x`, `https://127.0.0.1/x`, `https://169.254.169.254/x`, `https://10.0.0.5/x` and `ftp://x`. All should return 400. `https://example.com/hook` should succeed. A dev-allowlisted `http://host.docker.internal:9090/ok` should succeed.
-- **Status:** NOT STARTED
+- **Status:** ✅ DONE (2026-11-15). As implemented:
+  - **Policy.** New package `WH/security/` with `WebhookUrlPolicy`, `WebhookSecurityProperties` and `UnsafeWebhookUrlException` (a fixed-message `Reason` enum). `GlobalExceptionHandler` maps it to 400 "Invalid Webhook URL".
+  - **Where it is applied:**
+    - **Registration:** `WebhookSubscriptionService.createEndpoint`.
+    - **Every attempt:** `OutboundWebhookDispatcher.sendOnce` re-checks the stored URL. If refused, it records `BLOCKED_DESTINATION`, sends nothing, does not retry and writes no DLQ row. This covers both test ping and legacy replay.
+    - **Legacy replay:** `DlqReplayService.replay` also pre-checks, returning FAILED/400 with the policy message and writing no attempt rows. The record stays unreplayed.
+    - **Updates:** no endpoint-URL update operation exists (only the status toggle), so there was nothing else to protect.
+  - **Dev exception.** `webhook.security.dev-http-allowlist` takes exact `host:port` entries (env `WEBHOOK_SECURITY_DEV_HTTP_ALLOWLIST`). It is empty by default, wildcards are refused, and **startup fails** if it is non-empty under the `aks` profile (verified).
+    - **Decision (D12):** it is enabled locally with a personal, **gitignored** `docker-compose.override.yml` (see §7.2a). No shared compose, `.env` or Helm change was made.
+  - **Existing rows** are not modified. Non-compliant ones are refused at ping and replay time.
+  - **Deferred to Step 7:** the connect-time address check (DNS rebinding / TOCTOU). The HTTP client still resolves the name again when sending.
 
 ### Step 4 — Confirm delivery decisions (no code)
 - **Objective:** the owner confirms or edits the table in [Section 4](#4-decisions-to-confirm-before-the-delivery-pipeline-step-4) and marks it **AGREED**.
@@ -473,7 +483,7 @@ The webhook service must **not** try to solve upstream ownership problems by tru
 | `MerchantEventPublisher.publishOrderCreated` (merchant-b2b) has no callers | **Member 7** | If it is wired up, a second ownership claim appears: a disagreement goes to the DLQ, an agreement is harmless | Remove it or document that it must not be used | None |
 | `merchantId` JWT claim for approved merchants | **Member 2 / Member 7** | `MerchantAccess` needs `X-Merchant-Id` for MERCHANT callers | Confirm the claim is issued after approval | Real (non-dev) merchant use |
 | `WEBHOOK_SECRET_KEY` in compose, `.env.example`, Helm and secret scripts | **Infra owner (Member 9)** | Required for Step 15 | Agree on a name and add mirrored config | Step 15 |
-| The dev SSRF allowlist reaching the container | **Infra owner** (if compose changes) | Local ping and delivery to the host mock | Choose an env line or an untracked override | Step 3 local verification |
+| The dev SSRF allowlist reaching the container | Nobody (resolved) | Local ping and delivery to the host mock | **Decided in Step 3:** a personal, gitignored `docker-compose.override.yml`. No shared infrastructure change, so no coordination is needed. | — |
 | `definitions.json` | **Member 9** | Topology parity | No change needed. The member guide's "broker config drift" item (`docs/member-guides/member-8.md`) is **outdated**: the files match. | — |
 
 ---
@@ -582,7 +592,28 @@ Invoke-RestMethod -Method Post http://localhost:8087/api/v1/webhooks/subscriptio
 
 - **Health:** `http://localhost:8087/actuator/health`.
 - **OpenAPI:** `http://localhost:8087/v3/api-docs` (springdoc default). Swagger UI is at `http://localhost:8087/swagger-ui.html`. The gateway exposes the same docs as `/api/v1/webhooks/v3/api-docs`. Swagger "try it out" does not send identity headers, so use PowerShell or curl.
-- **Target URL:** the service runs in Docker, so a mock on the host is reached through `host.docker.internal`, not `localhost`. After Step 3, that host must be on the dev allowlist.
+- **Target URL:** the service runs in Docker, so a mock on the host is reached through `host.docker.internal`, not `localhost`. Since Step 3, plain-HTTP and private destinations are refused unless the exact `host:port` is on the dev allowlist (§7.2a). Public HTTPS receivers such as webhook.site need no exception.
+
+### 7.2a Dev exception for the local mock receiver (SSRF allowlist)
+
+Create `docker-compose.override.yml` in the repo root. It is already listed in `.gitignore`, so it stays local, and Docker Compose merges it automatically:
+
+```yaml
+services:
+  webhook-resiliency-service:
+    environment:
+      WEBHOOK_SECURITY_DEV_HTTP_ALLOWLIST: host.docker.internal:9090
+```
+
+Then recreate the container: `docker compose --profile apps up -d --no-deps webhook-resiliency-service`. Add `--build` after code changes.
+
+- **Confirm it is on:** `docker logs swiftdrop-webhook-resiliency-service 2>&1 | Select-String "DEVELOPMENT ONLY"`.
+- **What it allows:** only `host.docker.internal:9090`, over HTTP or HTTPS. Every other URL, including `host.docker.internal` on any other port, `localhost` and private IPs, is still refused.
+- **Turn it off:** delete the file and recreate the container. The startup warning then disappears.
+- **Production safety:**
+  - The property defaults to empty.
+  - Helm sets `SPRING_PROFILES_ACTIVE=aks`, and `WebhookUrlPolicy` refuses to start when the allowlist is non-empty under `aks`.
+  - Neither compose nor Helm sets the variable.
 
 ### 7.4 Publishing synthetic events (RabbitMQ)
 
@@ -680,4 +711,5 @@ Append one entry per completed task. Never mark a step done unless its "Done whe
 |---|---|---|---|
 | 2026-11-14 | 0 | Done | Plan created. Deleted 11 test files in `src/test`. Frontend dev mode added (`frontend/.env.webhook-dev`, `vite.config.ts`, `src/app/devAuthBypass.ts`, `src/main.tsx`, `package.json` script `dev:webhook`). Fixed the README broker diagram. Backend compiled in the JDK 25 Maven container; frontend lint and build passed. No backend production code changed. |
 | 2026-11-15 | 1 | Done | **Changed:** `OutboundWebhookDispatcher`, `WebhookSubscriptionService`, `DlqReplayService`, `DlqFailureClassifier`, `WebhookSubscriptionController` (operation docs), `WebhookDeliveryAttemptResponse`; new `service/AttemptResponseMapper`; spec `docs/api-specs/webhook-resiliency-service.yaml`; regenerated `frontend/src/types/generated/webhook-resiliency-service.ts` only; `WebhookResiliencyConsolePage.tsx`. **Build:** compiled (container), frontend lint and build passed, no automated tests. **Manually verified** against the rebuilt container and a host Python mock via `host.docker.internal:9090`: `/ok` returns 200, success, latency recorded; `/boom` returns 500, `HTTP_SERVER_ERROR`; a closed port gives a null status and `CONNECTION_FAILURE`. Exactly one POST per ping reached the mock. DLQ row count stayed 0. The API and new rows contain no response body. A scan of service logs for the host, ports and body text found 0 hits. **Not performed:** browser UI check, webhook.site check. **Left behind:** three dev endpoints named "step1-verify …" for merchant `…a1`. |
-| 2026-11-15 | 2 | Done | **Changed:** `dto/WebhookEndpointResponse` (secret removed), new `dto/WebhookEndpointCreatedResponse`, `WebhookSubscriptionService.createEndpoint`/`mapToResponse`, `WebhookSubscriptionController.createEndpoint`; spec; regenerated webhook types only; `frontend/src/services/api/webhookApi.ts`; `WebhookResiliencyConsolePage.tsx` (one-time dialog, row reveal removed). **Build:** compiled (container), frontend lint and build passed, no automated tests. **Manually verified** against the rebuilt container: create returns `{endpoint, signingSecret}`. GET, merchant list, admin list-all, status toggle, attempts and DLQ list contain no `secretKey`, `signingSecret`, `whsec_` or the secret value. Toggle off/on still works. A ping to the host mock was signed with a signature that verifies against the one-time secret. The DB value equals the returned secret. No `whsec_` in logs. **Not performed:** the browser UI flow (dialog, copy, refresh). **Left behind:** dev endpoint "step2-verify". |
+| 2026-11-15 | 2 | Done | **Changed:** `dto/WebhookEndpointResponse` (secret removed), new `dto/WebhookEndpointCreatedResponse`, `WebhookSubscriptionService.createEndpoint`/`mapToResponse`, `WebhookSubscriptionController.createEndpoint`; spec; regenerated webhook types only; `frontend/src/services/api/webhookApi.ts`; `WebhookResiliencyConsolePage.tsx` (one-time dialog, row reveal removed). **Build:** compiled (container), frontend lint and build passed, no automated tests. **Manually verified** against the rebuilt container: create returns `{endpoint, signingSecret}`. GET, merchant list, admin list-all, status toggle, attempts and DLQ list contain no `secretKey`, `signingSecret`, `whsec_` or the secret value. Toggle off/on still works. A ping to the host mock was signed with a signature that verifies against the one-time secret. The DB value equals the returned secret. No `whsec_` in logs. **Not performed:** the browser UI flow (dialog, copy, refresh). **Left behind:** dev endpoint "step2-verify". **Later, by the owner (in the browser, with webhook.site):** the row shows no secret and no reveal button, and webhook.site received the ping. |
+| 2026-11-15 | 3 | Done | **New:** `security/WebhookUrlPolicy`, `security/WebhookSecurityProperties`, `security/UnsafeWebhookUrlException`. **Changed:** `GlobalExceptionHandler` (400 "Invalid Webhook URL"), `WebhookSubscriptionService.createEndpoint` (validate; logs the reason only), `OutboundWebhookDispatcher` (per-attempt policy check → `BLOCKED_DESTINATION`, no retry, no DLQ), `DlqReplayService.replay` (pre-check), `DlqFailureClassifier` (BLOCKED text), `CreateWebhookEndpointRequest` (docs), `application.yml` (`webhook.security.*`), spec + webhook types, console help text. **Local only:** gitignored `docker-compose.override.yml` with the allowlist `host.docker.internal:9090`. **Build:** compiled (container), frontend lint and build passed, no automated tests. **Manually verified** against the rebuilt container: 38 unsafe or invalid URLs all returned 400 with fixed messages. These covered HTTP, loopback, private, CGNAT, metadata, `0.0.0.0`, multicast, IPv6 `::1`/mapped/`fe80`/`fd00`/`ff02`, numeric/octal/hex IP forms, user-info, single-label and `.svc`/`.internal`/`.local` names, public names resolving to loopback (`localtest.me`, `127.0.0.1.nip.io`), an unresolvable host, port 99999, `ftp:`/`javascript:`, underscore hosts, and `host.docker.internal` on non-allowlisted ports. Accepted: `https://webhook.site/…` and `https://example.com/hook` (registration only), and the allowlisted `http://host.docker.internal:9090/ok`, whose ping returned 200. A stored pre-policy raw-IP endpoint (reachable, and created temporarily by SQL) gave a ping result of `BLOCKED_DESTINATION`, with 0 requests reaching the mock. Legacy replay of a DLQ record for it returned FAILED/400: attempts, DLQ and mock counts were unchanged and the record stayed unreplayed. Toggle and the Step 2 secret behaviour are unchanged. The log scan for URLs, IPs and resolver errors found 0 hits. The `aks` profile plus the allowlist makes startup fail (exit 1). The temporary SQL rows were deleted. **Not performed:** a webhook.site ping by me, and the browser UI. **Left behind:** dev endpoints "step3-verify …". |

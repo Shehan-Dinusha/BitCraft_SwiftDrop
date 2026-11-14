@@ -10,6 +10,8 @@ import com.swiftdrop.webhook.domain.repository.WebhookDeliveryAttemptRepository;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
 import com.swiftdrop.webhook.resiliency.ExponentialBackoffScheduler;
 import com.swiftdrop.webhook.resiliency.HmacSignatureGenerator;
+import com.swiftdrop.webhook.security.UnsafeWebhookUrlException;
+import com.swiftdrop.webhook.security.WebhookUrlPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -23,6 +25,7 @@ import java.net.NoRouteToHostException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
@@ -33,6 +36,9 @@ import java.util.concurrent.TimeoutException;
  * <p>Every attempt is recorded with the real HTTP status (null when no response arrived), a classification
  * and the latency. The remote response body is discarded unread, and neither logs nor stored rows contain the
  * target URL or raw exception text.</p>
+ *
+ * <p>Before every attempt the stored target URL is re-checked with {@link WebhookUrlPolicy}; a refused destination
+ * is recorded as {@link AttemptErrorClass#BLOCKED_DESTINATION} without any request being made.</p>
  *
  * @deprecated Event ingestion no longer calls this class; it creates persistent {@code webhook_deliveries}
  * jobs instead. Remove it once the delivery worker and the replay redesign take over the two remaining
@@ -52,6 +58,7 @@ public class OutboundWebhookDispatcher {
     private final WebhookDeliveryAttemptRepository attemptRepository;
     private final DeadLetterWebhookRecordRepository dlqRepository;
     private final ObjectMapper objectMapper;
+    private final WebhookUrlPolicy urlPolicy;
 
     /**
      * Connectivity check: exactly one signed attempt, no retry, and never a dead-letter record.
@@ -72,6 +79,10 @@ public class OutboundWebhookDispatcher {
         for (int attemptNumber = 1; attemptNumber <= ExponentialBackoffScheduler.MAX_ATTEMPTS; attemptNumber++) {
             lastAttempt = sendOnce(endpoint, eventType, payloadJson, attemptNumber);
             if (lastAttempt.isSuccess()) {
+                return AttemptResponseMapper.toResponse(lastAttempt);
+            }
+            if (lastAttempt.getErrorClass() == AttemptErrorClass.BLOCKED_DESTINATION) {
+                // A policy refusal is permanent and nothing was sent: no retry and no new dead-letter record.
                 return AttemptResponseMapper.toResponse(lastAttempt);
             }
             if (backoffScheduler.canRetry(attemptNumber)) {
@@ -104,11 +115,21 @@ public class OutboundWebhookDispatcher {
     /** One signed POST. Never throws for HTTP or network failures; the outcome is recorded and returned. */
     private WebhookDeliveryAttempt sendOnce(WebhookEndpoint endpoint, String eventType, String payloadJson, int attemptNumber) {
         UUID attemptId = UUID.randomUUID();
-        String signature = hmacSignatureGenerator.calculateSignature(payloadJson, endpoint.getSecretKey());
+        long started = System.nanoTime();
 
+        // Re-checked on every attempt: stored URLs may predate the policy. Nothing is sent when it is refused.
+        Optional<UnsafeWebhookUrlException.Reason> refused = urlPolicy.check(endpoint.getTargetUrl());
+        if (refused.isPresent()) {
+            log.warn("Webhook attempt {} for endpoint {} (event {}) refused before sending: errorClass={} reason={}",
+                    attemptNumber, endpoint.getEndpointId(), eventType, AttemptErrorClass.BLOCKED_DESTINATION,
+                    refused.get());
+            return recordAttempt(endpoint, eventType, payloadJson, attemptNumber, attemptId, null,
+                    AttemptErrorClass.BLOCKED_DESTINATION, elapsedMs(started));
+        }
+
+        String signature = hmacSignatureGenerator.calculateSignature(payloadJson, endpoint.getSecretKey());
         Integer statusCode = null;
         AttemptErrorClass errorClass;
-        long started = System.nanoTime();
         try {
             statusCode = webClient.post()
                     .uri(endpoint.getTargetUrl())
@@ -126,10 +147,24 @@ public class OutboundWebhookDispatcher {
         } catch (Exception failure) {
             errorClass = classifyException(failure);
         }
-        int latencyMs = (int) Math.min(Integer.MAX_VALUE, Duration.ofNanos(System.nanoTime() - started).toMillis());
-        boolean success = errorClass == null;
+        int latencyMs = elapsedMs(started);
+        WebhookDeliveryAttempt attempt = recordAttempt(endpoint, eventType, payloadJson, attemptNumber, attemptId,
+                statusCode, errorClass, latencyMs);
+        if (attempt.isSuccess()) {
+            log.info("Webhook attempt {} for endpoint {} (event {}) succeeded: status={} latencyMs={}",
+                    attemptNumber, endpoint.getEndpointId(), eventType, statusCode, latencyMs);
+        } else {
+            log.warn("Webhook attempt {} for endpoint {} (event {}) failed: errorClass={} status={} latencyMs={}",
+                    attemptNumber, endpoint.getEndpointId(), eventType, errorClass, statusCode, latencyMs);
+        }
+        return attempt;
+    }
 
-        WebhookDeliveryAttempt attempt = attemptRepository.save(WebhookDeliveryAttempt.builder()
+    private WebhookDeliveryAttempt recordAttempt(WebhookEndpoint endpoint, String eventType, String payloadJson,
+                                                 int attemptNumber, UUID attemptId, Integer statusCode,
+                                                 AttemptErrorClass errorClass, int latencyMs) {
+        boolean success = errorClass == null;
+        return attemptRepository.save(WebhookDeliveryAttempt.builder()
                 .attemptId(attemptId)
                 .endpointId(endpoint.getEndpointId())
                 .merchantId(endpoint.getMerchantId())
@@ -142,15 +177,10 @@ public class OutboundWebhookDispatcher {
                 .errorMessage(success ? null : DlqFailureClassifier.describe(errorClass, statusCode).summary())
                 .latencyMs(latencyMs)
                 .build());
+    }
 
-        if (success) {
-            log.info("Webhook attempt {} for endpoint {} (event {}) succeeded: status={} latencyMs={}",
-                    attemptNumber, endpoint.getEndpointId(), eventType, statusCode, latencyMs);
-        } else {
-            log.warn("Webhook attempt {} for endpoint {} (event {}) failed: errorClass={} status={} latencyMs={}",
-                    attemptNumber, endpoint.getEndpointId(), eventType, errorClass, statusCode, latencyMs);
-        }
-        return attempt;
+    private static int elapsedMs(long startedNanos) {
+        return (int) Math.min(Integer.MAX_VALUE, Duration.ofNanos(System.nanoTime() - startedNanos).toMillis());
     }
 
     /** Null means success (2xx). */

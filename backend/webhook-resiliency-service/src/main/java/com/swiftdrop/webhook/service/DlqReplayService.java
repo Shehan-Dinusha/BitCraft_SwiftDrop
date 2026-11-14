@@ -10,6 +10,8 @@ import com.swiftdrop.webhook.dto.DeadLetterWebhookResponse;
 import com.swiftdrop.webhook.dto.ReplayDlqResponse;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
 import com.swiftdrop.webhook.exception.DlqRecordNotFoundException;
+import com.swiftdrop.webhook.security.UnsafeWebhookUrlException;
+import com.swiftdrop.webhook.security.WebhookUrlPolicy;
 import com.swiftdrop.webhook.service.access.MerchantAccess;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +46,7 @@ public class DlqReplayService {
     private final DeadLetterWebhookRecordRepository dlqRepository;
     private final WebhookEndpointRepository endpointRepository;
     private final OutboundWebhookDispatcher dispatcher;
+    private final WebhookUrlPolicy urlPolicy;
 
     @Transactional(readOnly = true)
     public List<DeadLetterWebhookResponse> listDlqRecords(UUID requestedMerchantId, Boolean unreplayedOnly,
@@ -124,6 +127,14 @@ public class DlqReplayService {
         if (!endpoint.isActive()) {
             log.warn("Cannot replay DLQ record {}: Target endpoint {} is deactivated", dlqId, record.getEndpointId());
             return new ReplayDlqResponse(dlqId, "FAILED", 400, "Target webhook endpoint is currently deactivated", Instant.now());
+        }
+        // Stored URLs may predate the destination policy. Refuse before any attempt, so nothing is sent, no attempt
+        // row is written and no further dead-letter record is created. The record stays unreplayed.
+        Optional<UnsafeWebhookUrlException.Reason> refused = urlPolicy.check(endpoint.getTargetUrl());
+        if (refused.isPresent()) {
+            log.warn("Refusing DLQ replay {}: endpoint {} target URL violates the destination policy ({})",
+                    dlqId, record.getEndpointId(), refused.get());
+            return new ReplayDlqResponse(dlqId, "FAILED", 400, refused.get().message(), Instant.now());
         }
 
         WebhookDeliveryAttemptResponse attempt = dispatcher.dispatch(endpoint, record.getEventType(), record.getPayload());
