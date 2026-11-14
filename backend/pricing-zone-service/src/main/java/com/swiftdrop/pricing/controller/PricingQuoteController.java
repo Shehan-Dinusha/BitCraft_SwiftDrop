@@ -49,7 +49,7 @@ public class PricingQuoteController {
     }
 
     @GetMapping("/zones")
-    @Operation(summary = "List all active pricing geofence zones")
+    @Operation(summary = "List all pricing geofence zones")
     public ApiResponse<List<PricingZone>> listZones() {
         return ApiResponse.success(pricingZoneRepository.findAll(), "Pricing zones retrieved successfully");
     }
