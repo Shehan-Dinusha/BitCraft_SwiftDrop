@@ -61,6 +61,7 @@ umask 077
   echo "    district: COLOMBO"
   echo "  googleOAuth: { clientId: \"\", clientSecret: \"\" }"
   echo "  aiProvider: { apiKey: \"\" }"
+  echo "  acsEmail: { accessKey: \"\" }"
   echo "certManager:"
   echo "  clusterIssuer:"
   echo "    email: \"${ACME_EMAIL}\""

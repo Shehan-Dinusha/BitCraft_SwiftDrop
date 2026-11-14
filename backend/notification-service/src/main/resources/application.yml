@@ -35,3 +35,10 @@ notification:
     mode: ${CONTACT_MODE:iam}
     iam-base-url: ${AUTH_SERVICE_URL:http://localhost:8081}
     cache-ttl-minutes: ${CONTACT_CACHE_TTL_MINUTES:10}
+  email:
+    # mock (default, sends nothing) or azure (Azure Communication Services Email)
+    provider: ${NOTIFICATION_EMAIL_PROVIDER:mock}
+    azure:
+      endpoint: ${ACS_EMAIL_ENDPOINT:}
+      access-key: ${ACS_EMAIL_ACCESS_KEY:}
+      sender-address: ${ACS_EMAIL_SENDER_ADDRESS:}

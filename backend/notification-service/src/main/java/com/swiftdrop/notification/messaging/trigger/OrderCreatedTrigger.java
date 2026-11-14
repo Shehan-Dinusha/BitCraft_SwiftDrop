@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Triggers an SMS confirmation notification when a new customer order is placed.
+ * Triggers an SMS and EMAIL confirmation when a new customer order is placed.
  * Routing key: {@code order.created}
  * Template: {@code PARCEL_CREATED}
  */
@@ -22,7 +22,6 @@ public class OrderCreatedTrigger implements NotificationTrigger {
 
     public static final String ROUTING_KEY = "order.created";
     public static final String TEMPLATE_CODE = "PARCEL_CREATED";
-    public static final String DEFAULT_CHANNEL = "SMS";
 
     @Override
     public boolean matches(EventEnvelope envelope) {
@@ -61,15 +60,6 @@ public class OrderCreatedTrigger implements NotificationTrigger {
             }
         }
 
-        DispatchNotificationRequest request = new DispatchNotificationRequest(
-                recipientIdOpt.get(),
-                DEFAULT_CHANNEL,
-                TEMPLATE_CODE,
-                null,
-                params,
-                trackingNumber
-        );
-
-        return List.of(request);
+        return NotificationTrigger.smsAndEmail(recipientIdOpt.get(), TEMPLATE_CODE, params, trackingNumber);
     }
 }

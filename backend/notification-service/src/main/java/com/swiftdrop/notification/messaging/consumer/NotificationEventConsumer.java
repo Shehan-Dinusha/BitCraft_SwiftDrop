@@ -18,8 +18,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -84,6 +86,8 @@ public class NotificationEventConsumer {
                 envelope.routingKey(), eventId, triggers.size());
 
         boolean matchedAny = false;
+        // A critical event can dispatch both SMS and EMAIL; the inbox gets one row per recipient.
+        Set<UUID> inboxRecipients = new HashSet<>();
         for (NotificationTrigger trigger : triggers) {
             if (trigger.matches(envelope)) {
                 matchedAny = true;
@@ -102,12 +106,12 @@ public class NotificationEventConsumer {
                                     ? dispatchLog.referenceId()
                                     : envelope.extractTrackingNumber();
 
-                            if (inAppNotificationService != null) {
+                            if (inAppNotificationService != null && inboxRecipients.add(request.recipientId())) {
                                 inAppNotificationService.saveNotification(request.recipientId(), title, body, trackingNumber);
 
                                 // For merchant orders, also write to merchant owner inbox if distinct
                                 Optional<UUID> merchantOwnerId = envelope.extractMerchantOwnerId();
-                                if (merchantOwnerId.isPresent() && !merchantOwnerId.get().equals(request.recipientId())) {
+                                if (merchantOwnerId.isPresent() && inboxRecipients.add(merchantOwnerId.get())) {
                                     inAppNotificationService.saveNotification(merchantOwnerId.get(), title, body, trackingNumber);
                                 }
                             }

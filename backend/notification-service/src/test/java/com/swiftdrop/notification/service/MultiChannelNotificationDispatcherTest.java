@@ -8,6 +8,8 @@ import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepositor
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.service.email.EmailDeliveryException;
+import com.swiftdrop.notification.service.email.EmailSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,9 @@ class MultiChannelNotificationDispatcherTest {
 
     @Mock
     private ContactClient contactClient;
+
+    @Mock
+    private EmailSender emailSender;
 
     @InjectMocks
     private MultiChannelNotificationDispatcher dispatcher;
@@ -225,6 +230,52 @@ class MultiChannelNotificationDispatcherTest {
         assertThat(response.status()).isEqualTo("SENT");
         assertThat(response.channel()).isEqualTo("EMAIL");
         assertThat(response.destination()).isEqualTo("customer@example.com");
+        verify(emailSender).send("customer@example.com", "Delivered", "Delivered at your door");
+    }
+
+    @Test
+    @DisplayName("Should log FAILED with a safe reason when the email provider rejects the message")
+    void testDispatchEMAIL_ProviderRejects() {
+        RecipientPreference pref = RecipientPreference.builder()
+                .recipientId(recipientId)
+                .emailEnabled(true)
+                .emailAddress("customer@example.com")
+                .build();
+
+        when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.of(pref));
+        when(templateRenderer.renderTemplate(eq("PARCEL_FAILED"), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("Delivery failed", "We could not deliver", "EMAIL"));
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+        doThrow(new EmailDeliveryException("Azure email rejected the message (HTTP 401)"))
+                .when(emailSender).send(any(), any(), any());
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(
+                recipientId, "EMAIL", "PARCEL_FAILED", null, Map.of(), "SD-002"));
+
+        assertThat(response.status()).isEqualTo("FAILED");
+        assertThat(response.sentAt()).isNull();
+        assertThat(response.failureReason())
+                .isEqualTo("Azure email rejected the message (HTTP 401)")
+                .doesNotContain("customer@example.com");
+    }
+
+    @Test
+    @DisplayName("SMS is simulated and never reaches the email provider")
+    void testDispatchSMS_DoesNotUseEmailProvider() {
+        RecipientPreference pref = RecipientPreference.builder()
+                .recipientId(recipientId)
+                .smsEnabled(true)
+                .phoneNumber("+94771234567")
+                .build();
+
+        when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.of(pref));
+        when(templateRenderer.renderTemplate(eq("PARCEL_PICKED_UP"), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("Picked Up", "Picked up", "SMS"));
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        dispatcher.dispatch(new DispatchNotificationRequest(recipientId, "SMS", "PARCEL_PICKED_UP", null, Map.of(), "SD-003"));
+
+        verifyNoInteractions(emailSender);
     }
 
     @Test

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +46,7 @@ class OrderCreatedNotificationIT {
     }
 
     @Test
-    @DisplayName("order.created event should trigger customer SMS order confirmation")
+    @DisplayName("order.created event should trigger customer SMS and EMAIL order confirmation")
     void testOrderCreatedDispatchesSmsNotification() {
         UUID customerId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
@@ -71,17 +72,19 @@ class OrderCreatedNotificationIT {
         consumer.onNotificationEvent(message);
 
         ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
-        verify(dispatcher).dispatch(captor.capture());
+        verify(dispatcher, times(2)).dispatch(captor.capture());
 
-        DispatchNotificationRequest request = captor.getValue();
-        assertThat(request.recipientId()).isEqualTo(customerId);
-        assertThat(request.channel()).isEqualTo("SMS");
-        assertThat(request.templateCode()).isEqualTo("PARCEL_CREATED");
-        assertThat(request.referenceId()).isEqualTo(trackingNumber);
-        assertThat(request.templateParams()).containsEntry("trackingNumber", trackingNumber);
-        assertThat(request.templateParams()).containsEntry("pickupDistrict", "COLOMBO");
-        assertThat(request.templateParams()).containsEntry("deliveryDistrict", "GAMPAHA");
-        assertThat(request.templateParams()).containsEntry("speed", "EXPRESS");
-        assertThat(request.templateParams()).containsEntry("orderId", orderId.toString());
+        // Order confirmation goes out by SMS (simulated) and EMAIL (mock or Azure provider).
+        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(captor.getAllValues()).allSatisfy(request -> {
+            assertThat(request.recipientId()).isEqualTo(customerId);
+            assertThat(request.templateCode()).isEqualTo("PARCEL_CREATED");
+            assertThat(request.referenceId()).isEqualTo(trackingNumber);
+            assertThat(request.templateParams()).containsEntry("trackingNumber", trackingNumber);
+            assertThat(request.templateParams()).containsEntry("pickupDistrict", "COLOMBO");
+            assertThat(request.templateParams()).containsEntry("deliveryDistrict", "GAMPAHA");
+            assertThat(request.templateParams()).containsEntry("speed", "EXPRESS");
+            assertThat(request.templateParams()).containsEntry("orderId", orderId.toString());
+        });
     }
 }

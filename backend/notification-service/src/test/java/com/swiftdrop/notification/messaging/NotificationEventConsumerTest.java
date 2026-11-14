@@ -104,13 +104,16 @@ class NotificationEventConsumerTest {
         consumer.onNotificationEvent(message);
 
         ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
-        verify(dispatcher).dispatch(captor.capture());
+        verify(dispatcher, times(2)).dispatch(captor.capture());
 
-        DispatchNotificationRequest request = captor.getValue();
-        assertThat(request.recipientId()).isEqualTo(customerId);
-        assertThat(request.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
-        assertThat(request.channel()).isEqualTo("SMS");
-        assertThat(request.templateParams()).containsEntry("courierName", "Sunil Shantha");
+        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(captor.getAllValues()).allSatisfy(request -> {
+            assertThat(request.recipientId()).isEqualTo(customerId);
+            assertThat(request.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
+            assertThat(request.templateParams()).containsEntry("courierName", "Sunil Shantha");
+        });
+        // Two channels, but the customer's inbox gets exactly one row.
+        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), any(), any(), eq("SD-3333"));
     }
 
     @Test
@@ -162,13 +165,15 @@ class NotificationEventConsumerTest {
         consumer.onNotificationEvent(message);
 
         ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
-        verify(dispatcher).dispatch(captor.capture());
+        verify(dispatcher, times(2)).dispatch(captor.capture());
 
-        DispatchNotificationRequest request = captor.getValue();
-        assertThat(request.recipientId()).isEqualTo(customerId);
-        assertThat(request.templateCode()).isEqualTo("PARCEL_FAILED");
-        assertThat(request.channel()).isEqualTo("SMS");
-        assertThat(request.templateParams()).containsEntry("failureReason", "Customer unavailable at delivery address");
+        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(captor.getAllValues()).allSatisfy(request -> {
+            assertThat(request.recipientId()).isEqualTo(customerId);
+            assertThat(request.templateCode()).isEqualTo("PARCEL_FAILED");
+            assertThat(request.templateParams()).containsEntry("failureReason", "Customer unavailable at delivery address");
+        });
+        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), any(), any(), eq("SD-4444"));
     }
 
     @Test

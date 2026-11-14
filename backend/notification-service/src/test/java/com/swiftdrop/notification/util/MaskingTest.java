@@ -12,8 +12,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.swiftdrop.notification.service.email.EmailSender;
+import com.swiftdrop.notification.service.email.MockEmailSender;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -143,6 +146,10 @@ class MaskingTest {
 
         @Mock
         private ContactClient contactClient;
+
+        // Real mock provider, so its own log line is covered by the PII assertions below.
+        @Spy
+        private EmailSender emailSender = new MockEmailSender();
 
         @InjectMocks
         private MultiChannelNotificationDispatcher dispatcher;

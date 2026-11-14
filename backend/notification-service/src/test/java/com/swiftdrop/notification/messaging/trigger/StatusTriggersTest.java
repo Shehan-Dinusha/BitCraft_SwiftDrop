@@ -62,7 +62,7 @@ class StatusTriggersTest {
     }
 
     @Test
-    @DisplayName("OutForDeliveryTrigger should match OUT_FOR_DELIVERY and build SMS request")
+    @DisplayName("OutForDeliveryTrigger should match OUT_FOR_DELIVERY and build SMS + EMAIL requests")
     void testOutForDeliveryTrigger() {
         UUID customerId = UUID.randomUUID();
         String json = """
@@ -80,11 +80,12 @@ class StatusTriggersTest {
         assertThat(deliveredTrigger.matches(envelope)).isFalse();
 
         List<DispatchNotificationRequest> requests = outForDeliveryTrigger.build(envelope);
-        assertThat(requests).hasSize(1);
-        DispatchNotificationRequest req = requests.getFirst();
-        assertThat(req.channel()).isEqualTo("SMS");
-        assertThat(req.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
-        assertThat(req.templateParams()).containsEntry("courierName", "Nimal");
+        assertThat(requests).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(requests).allSatisfy(req -> {
+            assertThat(req.recipientId()).isEqualTo(customerId);
+            assertThat(req.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
+            assertThat(req.templateParams()).containsEntry("courierName", "Nimal");
+        });
     }
 
     @Test
@@ -130,10 +131,10 @@ class StatusTriggersTest {
         assertThat(failedTrigger.matches(envelope)).isTrue();
 
         List<DispatchNotificationRequest> requests = failedTrigger.build(envelope);
-        assertThat(requests).hasSize(1);
-        DispatchNotificationRequest req = requests.getFirst();
-        assertThat(req.channel()).isEqualTo("SMS");
-        assertThat(req.templateCode()).isEqualTo("PARCEL_FAILED");
-        assertThat(req.templateParams()).containsEntry("failureReason", "Premises locked");
+        assertThat(requests).extracting(DispatchNotificationRequest::channel).containsExactly("SMS", "EMAIL");
+        assertThat(requests).allSatisfy(req -> {
+            assertThat(req.templateCode()).isEqualTo("PARCEL_FAILED");
+            assertThat(req.templateParams()).containsEntry("failureReason", "Premises locked");
+        });
     }
 }

@@ -373,6 +373,10 @@ services:
       AUTH_SERVICE_URL: http://auth-iam-service:8081
       CONTACT_MODE: ${CONTACT_MODE:-fake}
       CONTACT_CACHE_TTL_MINUTES: ${CONTACT_CACHE_TTL_MINUTES:-10}
+      NOTIFICATION_EMAIL_PROVIDER: ${NOTIFICATION_EMAIL_PROVIDER:-mock}
+      ACS_EMAIL_ENDPOINT: ${ACS_EMAIL_ENDPOINT:-}
+      ACS_EMAIL_ACCESS_KEY: ${ACS_EMAIL_ACCESS_KEY:-}
+      ACS_EMAIL_SENDER_ADDRESS: ${ACS_EMAIL_SENDER_ADDRESS:-}
     depends_on:
       notify-postgres:
         condition: service_healthy

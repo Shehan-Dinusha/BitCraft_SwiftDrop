@@ -8,6 +8,7 @@ import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepositor
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.service.email.EmailSender;
 import com.swiftdrop.notification.util.PiiMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class MultiChannelNotificationDispatcher {
     private final NotificationDispatchLogRepository logRepository;
     private final TemplateRendererService templateRenderer;
     private final ContactClient contactClient;
+    private final EmailSender emailSender;
 
     /**
      * Executes omnichannel notification dispatch, verifying recipient preferences and logging the outcome.
@@ -66,9 +68,9 @@ public class MultiChannelNotificationDispatcher {
             status = "FAILED";
             failureReason = "No valid " + channel + " destination address or phone provided";
         } else {
-            // Mock delivery execution (SMS / Email / Push adapter)
+            // EMAIL goes through the configured provider (mock or Azure); SMS and PUSH are simulated.
             try {
-                executeMockDelivery(channel, destination, rendered.subject(), rendered.body());
+                executeDelivery(channel, destination, rendered.subject(), rendered.body());
                 status = "SENT";
                 sentAt = Instant.now();
                 log.info("Notification successfully dispatched to {} via {}", PiiMasker.maskDestination(destination), channel);
@@ -164,19 +166,20 @@ public class MultiChannelNotificationDispatcher {
         return null;
     }
 
-    private void executeMockDelivery(String channel, String destination, String subject, String body) {
+    private void executeDelivery(String channel, String destination, String subject, String body) {
         if ("SMS".equalsIgnoreCase(channel)) {
-            // E.164 phone sanity check
+            // E.164 phone sanity check; SMS transmission is simulated.
             if (!destination.matches("^\\+?[0-9]{9,15}$")) {
                 throw new IllegalArgumentException("Invalid phone number format for SMS: " + PiiMasker.maskDestination(destination));
             }
         } else if ("EMAIL".equalsIgnoreCase(channel)) {
-            // Email sanity check
+            // Email sanity check before handing the message to the provider.
             if (!destination.contains("@")) {
                 throw new IllegalArgumentException("Invalid email destination format: " + PiiMasker.maskDestination(destination));
             }
+            emailSender.send(destination, subject, body);
         }
-        // Transmission successful simulated
+        // PUSH transmission is simulated.
     }
 
     private NotificationDispatchLogResponse mapToResponse(NotificationDispatchLog entity) {

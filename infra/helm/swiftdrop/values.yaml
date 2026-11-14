@@ -80,6 +80,8 @@ secrets:
     clientSecret: ""
   aiProvider:
     apiKey: ""
+  acsEmail:
+    accessKey: ""
 
 # ── Shared config (ConfigMap "swiftdrop-common-config", mounted into every backend service) ──
 commonConfig:
@@ -282,6 +284,11 @@ services:
       AUTH_SERVICE_URL: "http://auth-iam-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       CONTACT_MODE: iam
       CONTACT_CACHE_TTL_MINUTES: "10"
+      NOTIFICATION_EMAIL_PROVIDER: mock
+      ACS_EMAIL_ENDPOINT: ""
+      ACS_EMAIL_SENDER_ADDRESS: ""
+    secretEnv:
+      - { name: ACS_EMAIL_ACCESS_KEY, secretName: notification-acs-email, key: access-key, optional: true }
 
   analytics-ai-service:
     enabled: true
