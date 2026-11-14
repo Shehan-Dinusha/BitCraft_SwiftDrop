@@ -30,12 +30,45 @@ export const SRI_LANKAN_DISTRICTS: components['schemas']['SriLankanDistrict'][] 
 ];
 
 /**
- * Self-service registration always creates a CUSTOMER account. The register endpoint returns the
- * new profile (not tokens), so sign the user in straight afterwards to obtain a session.
+ * Self-service registration always creates a CUSTOMER account. The account starts unverified: the
+ * API emails a 6-digit code that {@link verifyEmail} confirms. Registration never signs the user in.
  */
-export async function registerUser(input: RegisterUserInput): Promise<AuthTokenResponse> {
+export async function registerUser(input: RegisterUserInput): Promise<void> {
   await apiClient.post('/v1/auth/register', { ...input, role: 'CUSTOMER' });
-  return loginUser(input.username, input.password);
+}
+
+export type UsernameAvailability = components['schemas']['UsernameAvailabilityResponse'];
+
+/** Live check for the sign-up form. The server's unique index stays the authority (register answers 409). */
+export async function checkUsernameAvailability(
+  username: string,
+  signal?: AbortSignal
+): Promise<UsernameAvailability> {
+  const { data } = await apiClient.get<components['schemas']['ApiResponseUsernameAvailability']>(
+    '/v1/auth/username-availability',
+    { params: { username }, signal }
+  );
+  return data.data ?? { username, available: false, reason: null };
+}
+
+/** Confirms the emailed code. No session is created: the user signs in afterwards. */
+export async function verifyEmail(identifier: string, code: string): Promise<void> {
+  await apiClient.post('/v1/auth/verify-email', { identifier, code });
+}
+
+/** Asks for a new verification code. The API answers 200 whether or not the account exists. */
+export async function resendVerification(identifier: string): Promise<void> {
+  await apiClient.post('/v1/auth/resend-verification', { identifier });
+}
+
+/** Asks for a password-reset code. The API answers 200 whether or not the account exists. */
+export async function forgotPassword(identifier: string): Promise<void> {
+  await apiClient.post('/v1/auth/forgot-password', { identifier });
+}
+
+/** Sets a new password using the emailed reset code. */
+export async function resetPassword(identifier: string, code: string, newPassword: string): Promise<void> {
+  await apiClient.post('/v1/auth/reset-password', { identifier, code, newPassword });
 }
 
 export async function refreshTokens(refreshToken: string): Promise<AuthTokenResponse> {
@@ -127,6 +160,8 @@ export function oauthErrorMessage(code: string): string {
       return 'Google sign-in was cancelled. Please try again.';
     case 'invalid_state':
       return 'Your Google sign-in session expired. Please try again.';
+    case 'email_unverified':
+      return 'Your Google email address is not verified, so it cannot be used to sign in.';
     case 'account_inactive':
       return 'Your account is not active. Contact support.';
     case 'not_configured':

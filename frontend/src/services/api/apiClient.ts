@@ -6,6 +6,24 @@ type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
 export const apiClient = axios.create({ baseURL: '/api' });
 
+// Refresh tokens are single use, and the API treats a reused one as theft (it revokes every session of
+// the user). A page fires several requests at once, so when the access token is stale they all get a
+// 401 together. They must share ONE refresh instead of each spending the same refresh token.
+let inFlightRefresh: Promise<string> | null = null;
+
+function refreshSession(refreshToken: string): Promise<string> {
+  inFlightRefresh ??= axios
+    .post<AuthTokenResponse>('/api/v1/auth/refresh', { refreshToken })
+    .then(({ data }) => {
+      useAuthStore.getState().setAuth(data);
+      return data.accessToken ?? '';
+    })
+    .finally(() => {
+      inFlightRefresh = null;
+    });
+  return inFlightRefresh;
+}
+
 // ─── Request interceptor ────────────────────────────────────────────────────
 // Attach the in-memory Bearer token to every outgoing request.
 apiClient.interceptors.request.use((config) => {
@@ -51,21 +69,27 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Another request may have refreshed the session while this one was in flight. Retry once with the
+    // newer token instead of spending the single-use refresh token a second time.
+    const sentWith = String(request.headers.Authorization ?? '').replace(/^Bearer\s+/i, '');
+    const currentToken = useAuthStore.getState().token;
+    request._retry = true; // never retry the same request twice
+    if (currentToken && sentWith !== currentToken) {
+      request.headers.Authorization = `Bearer ${currentToken}`;
+      withCurrentRefreshTokenForLogout(request);
+      return apiClient(request);
+    }
+
     const refreshToken = useAuthStore.getState().refreshToken;
     if (!refreshToken) {
       useAuthStore.getState().signOut();
       return Promise.reject(error);
     }
 
-    // Mark so we don't retry again if the refresh itself fails.
-    request._retry = true;
     try {
-      // Use plain axios (not apiClient) to avoid the interceptor re-triggering.
-      const { data } = await axios.post<AuthTokenResponse>('/api/v1/auth/refresh', {
-        refreshToken
-      });
-      useAuthStore.getState().setAuth(data);
-      request.headers.Authorization = `Bearer ${data.accessToken ?? ''}`;
+      const accessToken = await refreshSession(refreshToken);
+      request.headers.Authorization = `Bearer ${accessToken}`;
+      withCurrentRefreshTokenForLogout(request);
       return apiClient(request);
     } catch {
       // Refresh token is expired or revoked — force a clean sign-out.
@@ -74,6 +98,17 @@ apiClient.interceptors.response.use(
     }
   }
 );
+
+/**
+ * A refresh rotates the refresh token. A logout being retried after one still carries the old token in
+ * its body, which is already revoked, so the new one would stay valid on the server after the user
+ * signed out. Send the current one instead.
+ */
+function withCurrentRefreshTokenForLogout(request: RetryableRequest) {
+  if (!request.url?.includes('/v1/auth/logout')) return;
+  const refreshToken = useAuthStore.getState().refreshToken;
+  request.data = refreshToken ? { refreshToken } : {};
+}
 
 // ─── Forbidden toast helper ─────────────────────────────────────────────────
 // A lightweight, dependency-free toast.  Replace with your design-system
