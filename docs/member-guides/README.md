@@ -17,7 +17,7 @@ Written from the `dev` branch of [Shehan-Dinusha/BitCraft_SwiftDrop](https://git
 
 \* compose says 5431, the service config and local guide say 5432. Member 1 and Member 2 align it.
 
-**Stack (from the repo):** Java 25, Spring Boot 3.5.16, Spring Cloud Gateway 2025.0.0, Maven multi-module (`backend/pom.xml`), PostgreSQL 16 per service with Flyway, RabbitMQ 3.13 topic exchange `swiftdrop.events.exchange` + DLX, Redis 7, React 18 + TypeScript + Vite + Tailwind + React Query + Zustand (one app in `frontend/`), OpenAPI types generated with `npm run api:sync:specs`, AKS manifests in `infra/k8s/`.
+**Stack (from the repo):** Java 25, Spring Boot 3.5.16, Spring Cloud Gateway 2025.0.0, Maven multi-module (`backend/pom.xml`), PostgreSQL 16 per service with Flyway, RabbitMQ 3.13 topic exchange `swiftdrop.events.exchange` + DLX, Redis 7, React 18 + TypeScript + Vite + Tailwind + React Query + Zustand (one app in `frontend/`), OpenAPI types generated with `npm run api:sync:specs`, AKS Helm chart in `infra/helm/swiftdrop/`.
 
 ## Important: most code already exists
 
@@ -33,12 +33,12 @@ The commit "Comprehensive implementation of SwiftDrop SRS across 8 microservice 
 | `frontend/src/app/*` (shell, `routes.tsx`, providers), `src/design-system/*` | Member 1 | Member 1 pre-creates every route + placeholder page in week 1; afterwards you only edit your own page files |
 | `src/app/RoleGuard.tsx`, `AuthProvider`, `useAuthStore`, `apiClient.ts` | Member 2 | Ask Member 2 |
 | `common-contracts/security/*`, enums `UserRole`, `PersonaRole`, `UserStatus` | Member 2 | Ask Member 2 |
-| `common-contracts/events/**`, `EventRoutingKeys`, `infra/local/rabbitmq/definitions.json`, `infra/k8s/messaging/` | Member 9 | Request an additive change; Member 9 ships it and announces |
+| `common-contracts/events/**`, `EventRoutingKeys`, `infra/local/rabbitmq/definitions.json`, `infra/helm/swiftdrop/templates/rabbitmq.yaml` | Member 9 | Request an additive change; Member 9 ships it and announces |
 | Enums `DeliveryState`, `PublicOrderStatus`, `InternalQueueStatus`, `DeliveryFailureReason` | Member 6 | Ask Member 6 |
 | Enums `OrderSpeed`, `ZoneTier`, `SriLankanDistrict` | Member 4 | Ask Member 4 |
 | `common-contracts/dto/*` (`ApiResponse`, `ApiErrorResponse`, `PagedResult`) | Member 1 | Ask Member 1 |
 | `frontend/package.json` | Member 1 | Add a dependency in its own tiny PR |
-| `infra/k8s/services/<service>.yml`, `docs/api-specs/<service>`, `src/types/generated/<service>.ts` | That service's owner | Commit only your own generated file |
+| `services.<service>` in `infra/helm/swiftdrop/values.yaml`, `docs/api-specs/<service>`, `src/types/generated/<service>.ts` | That service's owner | Commit only your own generated file |
 
 ## Cross-member contracts (the only places members truly need each other)
 

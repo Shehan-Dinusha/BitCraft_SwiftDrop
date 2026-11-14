@@ -94,12 +94,7 @@ export const deliveryApi = {
 
     const { data } = await apiClient.post<{ success: boolean; data: ProofOfDeliveryResponse }>(
       `/v1/deliveries/${deliveryId}/proof-of-delivery`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      }
+      formData
     );
     return data.data;
   },

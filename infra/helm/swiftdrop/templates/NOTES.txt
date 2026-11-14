@@ -1,0 +1,26 @@
+SwiftDrop {{ .Chart.AppVersion }} — release "{{ .Release.Name }}" (chart {{ .Chart.Version }})
+
+Namespaces: {{ .Values.namespaces.apps }} (apps) · {{ .Values.namespaces.data }} (data) · {{ .Values.namespaces.messaging }} (messaging)
+
+Check the rollout:
+  kubectl get pods -n {{ .Values.namespaces.data }}
+  kubectl get pods -n {{ .Values.namespaces.messaging }}
+  kubectl get pods,hpa -n {{ .Values.namespaces.apps }}
+{{- if .Values.ingress.enabled }}
+  kubectl get ingress -n {{ .Values.namespaces.apps }}
+{{- if .Values.ingress.tls.enabled }}
+  kubectl get certificate -n {{ .Values.namespaces.apps }}
+{{- end }}
+
+URLs (once DNS points at the Ingress controller's external IP):
+  Web app : http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.hosts.app }}
+  API     : http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.hosts.api }}/api/v1/...
+  Swagger : http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.hosts.api }}/swagger-ui.html
+{{- end }}
+
+Gateway health (not exposed publicly):
+  kubectl port-forward -n {{ .Values.namespaces.apps }} svc/api-gateway 8080:8080
+  curl http://localhost:8080/actuator/health
+
+RabbitMQ management UI:
+  kubectl port-forward -n {{ .Values.namespaces.messaging }} svc/rabbitmq 15672:15672

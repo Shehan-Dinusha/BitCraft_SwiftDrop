@@ -1,0 +1,18 @@
+{{- /* Cluster-scoped StorageClasses (empty list in the student profile). */ -}}
+{{- range .Values.storageClasses }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+provisioner: {{ .provisioner }}
+parameters:
+  {{- toYaml .parameters | nindent 2 }}
+reclaimPolicy: {{ get . "reclaimPolicy" | default "Retain" }}
+volumeBindingMode: {{ get . "volumeBindingMode" | default "WaitForFirstConsumer" }}
+allowVolumeExpansion: {{ ternary (get . "allowVolumeExpansion") true (hasKey . "allowVolumeExpansion") }}
+{{- end }}

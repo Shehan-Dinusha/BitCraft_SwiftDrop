@@ -1,0 +1,93 @@
+{{- /* Redis: JWT blacklist + public tracking rate limits (namespace: messaging). */ -}}
+{{- $ns := .Values.namespaces.messaging }}
+{{- $r := .Values.redis }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: {{ $ns }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: {{ $ns }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.commonLabels" . | nindent 8 }}
+        app.kubernetes.io/name: redis
+        app.kubernetes.io/component: cache
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containers:
+        - name: redis
+          image: {{ $r.image }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - {{ $r.maxMemory | quote }}
+            - --maxmemory-policy
+            - allkeys-lru
+          ports:
+            - name: redis
+              containerPort: 6379
+          resources:
+            {{- toYaml $r.resources | nindent 12 }}
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+        labels:
+          app.kubernetes.io/name: redis
+          app.kubernetes.io/part-of: swiftdrop
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ $r.storageClassName }}
+        resources:
+          requests:
+            storage: {{ $r.storage }}

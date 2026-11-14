@@ -125,4 +125,35 @@ class ProofOfDeliveryStorageServiceTest {
             return true;
         }));
     }
+
+    @Test
+    @DisplayName("Store multipart PoD: falls back to local storage when Azure connection fails")
+    void testStoreMultipart_AzureFallback(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tempDir) {
+        ProofOfDeliveryStorageService azureStorage = new ProofOfDeliveryStorageService(
+                repository,
+                tempDir.toString(),
+                "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=dummykey==;EndpointSuffix=core.windows.net",
+                "pod-images"
+        );
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "photo",
+                "package.png",
+                "image/png",
+                "sample-png-bytes".getBytes()
+        );
+
+        when(repository.save(any(ProofOfDelivery.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ProofOfDeliveryResponse response = azureStorage.storeMultipart(deliveryId, file, "Kamal Silva", "sig-456", "112233");
+
+        assertThat(response).isNotNull();
+        verify(repository).save(argThat(pod -> {
+            assertThat(pod.getRecipientName()).isEqualTo("Kamal Silva");
+            assertThat(pod.getPhotoUrl()).startsWith(tempDir.toString());
+            assertThat(pod.getPhotoUrl()).endsWith(".png");
+            assertThat(java.nio.file.Files.exists(java.nio.file.Paths.get(pod.getPhotoUrl()))).isTrue();
+            return true;
+        }));
+    }
 }

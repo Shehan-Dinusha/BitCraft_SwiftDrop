@@ -1,0 +1,6 @@
+# Local-only frontend image: serves a dist/ already built on the host by
+# scripts/k8s-local-build.sh (npm run build). The Helm chart mounts the nginx
+# config from a ConfigMap. CD keeps using frontend/Dockerfile.
+FROM nginx:1.27-alpine
+COPY dist /usr/share/nginx/html
+EXPOSE 80

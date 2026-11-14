@@ -1,0 +1,127 @@
+{{- /*
+  Database-per-service: one PostgreSQL StatefulSet + headless Service + PVC template
+  per entry in .Values.postgres.databases (namespace: data). No database is shared.
+*/ -}}
+{{- $data := .Values.namespaces.data }}
+{{- $enabledDbs := include "swiftdrop.enabledDatabases" . | splitList "," }}
+{{- range $key := keys .Values.postgres.databases | sortAlpha }}
+{{- if has $key $enabledDbs }}
+{{- $raw := index $.Values.postgres.databases $key }}
+{{- $db := include "swiftdrop.postgresConfig" (dict "root" $ "db" $raw) | fromYaml }}
+{{- $name := printf "%s-postgres" $key }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-headless
+  namespace: {{ $data }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/component: database
+    swiftdrop.io/bounded-context: {{ $db.boundedContext }}
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  namespace: {{ $data }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/component: database
+    swiftdrop.io/bounded-context: {{ $db.boundedContext }}
+spec:
+  serviceName: {{ $name }}-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.commonLabels" $ | nindent 8 }}
+        app.kubernetes.io/name: {{ $name }}
+        app.kubernetes.io/component: database
+        swiftdrop.io/bounded-context: {{ $db.boundedContext }}
+      annotations:
+        checksum/secrets: {{ toYaml (index ($.Values.secrets.postgres | default dict) $key | default dict) | sha256sum }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        fsGroup: 70
+      containers:
+        - name: postgres
+          image: {{ $.Values.postgres.image }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgresql
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ $db.dbName | quote }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "swiftdrop.postgresSecretName" $key }}
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "swiftdrop.postgresSecretName" $key }}
+                  key: password
+            # Sub-directory so initdb never collides with lost+found on a fresh volume.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            {{- toYaml $db.resources | nindent 12 }}
+          volumeMounts:
+            - name: {{ $key }}-pgdata
+              mountPath: /var/lib/postgresql/data
+          # First boot runs initdb, which can take minutes on a busy node. The startup
+          # probe holds off liveness until Postgres has answered once, so a slow
+          # initdb is never killed half-way (that can leave the database uncreated).
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ $key }}-pgdata
+        labels:
+          app.kubernetes.io/name: {{ $name }}
+          app.kubernetes.io/part-of: swiftdrop
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ $db.storageClassName }}
+        resources:
+          requests:
+            storage: {{ $db.storage }}
+{{- end }}
+{{- end }}
