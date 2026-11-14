@@ -41,10 +41,12 @@ const CONCURRENCY = Math.max(1, Number(process.env.SEED_CONCURRENCY || 3));
 
 // ── Outcome mix (by a stable hash of the order id) ──────────────────────────
 //   0– 9  cancelled by the customer before dispatch
-//  10–24  left unassigned, so the dispatcher board has work waiting
-//  25–99  assigned; the courier then takes it to a deliveryPlan() outcome
+//  10–19  left unassigned, so the dispatcher board has work waiting
+//  20–99  assigned; the courier then takes it to a deliveryPlan() outcome
+// (Mostly finished orders: after timeshift.mjs spreads them over a month, a large
+// in-progress share would pile up on the last two days.)
 const CANCEL_BELOW = 10;
-const ASSIGN_FROM = 25;
+const ASSIGN_FROM = 20;
 
 // ── Small utilities ─────────────────────────────────────────────────────────
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -440,15 +442,15 @@ async function stageAssign() {
 }
 
 // ── Stage: deliver ──────────────────────────────────────────────────────────
-// Share of ASSIGNED parcels (75% of all) → overall: ~50% delivered, ~10% out for
+// Share of ASSIGNED parcels (80% of all) → overall: ~58% delivered, ~7% out for
 // delivery, ~5% picked up / in transit, ~10% failed.
 function deliveryPlan(orderId) {
   const x = hash(`${orderId}:delivery`) % 100;
-  if (x < 67) return { target: 'DELIVERED' };
-  if (x < 80) return { target: 'OUT_FOR_DELIVERY' };
-  if (x < 84) return { target: 'IN_TRANSIT' };
-  if (x < 87) return { target: 'PICKED_UP' };
-  const leg = x < 96 ? 'OUT_FOR_DELIVERY' : x < 98 ? 'IN_TRANSIT' : 'PICKED_UP';
+  if (x < 72) return { target: 'DELIVERED' };
+  if (x < 81) return { target: 'OUT_FOR_DELIVERY' };
+  if (x < 85) return { target: 'IN_TRANSIT' };
+  if (x < 88) return { target: 'PICKED_UP' };
+  const leg = x < 97 ? 'OUT_FOR_DELIVERY' : x < 99 ? 'IN_TRANSIT' : 'PICKED_UP';
   return { target: 'FAILED', leg };
 }
 
