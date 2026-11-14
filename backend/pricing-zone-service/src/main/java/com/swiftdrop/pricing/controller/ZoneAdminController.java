@@ -8,6 +8,7 @@ import com.swiftdrop.pricing.dto.ZoneResponse;
 import com.swiftdrop.pricing.security.AdminAccessGuard;
 import com.swiftdrop.pricing.service.ZoneAdminService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -42,7 +43,7 @@ public class ZoneAdminController {
 
     @GetMapping("/{zoneCode}")
     @Operation(summary = "Get a pricing zone")
-    public ApiResponse<ZoneResponse> getZone(@PathVariable String zoneCode) {
+    public ApiResponse<ZoneResponse> getZone(@PathVariable @Parameter(description = "Zone code", example = "ZONE_WESTERN") String zoneCode) {
         return ApiResponse.success(zoneAdminService.getZone(zoneCode), "Zone retrieved successfully");
     }
 
@@ -57,7 +58,7 @@ public class ZoneAdminController {
 
     @PutMapping("/{zoneCode}")
     @Operation(summary = "Update a pricing zone (dispatcher or system admin only)")
-    public ApiResponse<ZoneResponse> updateZone(@PathVariable String zoneCode,
+    public ApiResponse<ZoneResponse> updateZone(@PathVariable @Parameter(description = "Zone code", example = "ZONE_WESTERN") String zoneCode,
                                                 @Valid @RequestBody ZoneRequest request,
                                                 HttpServletRequest httpRequest) {
         adminAccessGuard.requireAdmin(httpRequest);
@@ -66,7 +67,7 @@ public class ZoneAdminController {
 
     @DeleteMapping("/{zoneCode}")
     @Operation(summary = "Delete a pricing zone that has no districts mapped (dispatcher or system admin only)")
-    public ApiResponse<Void> deleteZone(@PathVariable String zoneCode, HttpServletRequest httpRequest) {
+    public ApiResponse<Void> deleteZone(@PathVariable @Parameter(description = "Zone code", example = "ZONE_WESTERN") String zoneCode, HttpServletRequest httpRequest) {
         adminAccessGuard.requireAdmin(httpRequest);
         zoneAdminService.deleteZone(zoneCode);
         return ApiResponse.success(null, "Zone deleted successfully");
@@ -80,7 +81,7 @@ public class ZoneAdminController {
 
     @PutMapping("/districts/{district}")
     @Operation(summary = "Assign a district to a zone (dispatcher or system admin only)")
-    public ApiResponse<DistrictMappingResponse> assignDistrict(@PathVariable String district,
+    public ApiResponse<DistrictMappingResponse> assignDistrict(@PathVariable @Parameter(description = "District name, case-insensitive", example = "COLOMBO") String district,
                                                                @Valid @RequestBody DistrictMappingRequest request,
                                                                HttpServletRequest httpRequest) {
         adminAccessGuard.requireAdmin(httpRequest);
