@@ -12,9 +12,12 @@ import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.domain.state.AssignmentStateMachine;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
+import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
+import com.swiftdrop.dispatch.exception.AssignmentConflictException;
 import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
+import com.swiftdrop.dispatch.exception.ReassignmentNotAllowedException;
 import com.swiftdrop.dispatch.messaging.publisher.DispatchEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +27,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Dispatcher-driven courier allocation.
+ *
+ * <p>Assigning and reassigning are deliberately separate operations. A normal
+ * assignment only succeeds while the order is still unassigned, so a second
+ * dispatcher can never silently replace a courier that was assigned moments
+ * earlier. Optimistic locking covers requests that overlap in time; these state
+ * checks cover requests that arrive after the first assignment has committed.</p>
+ */
 @Service
 public class ManualOverrideService {
 
@@ -42,97 +54,190 @@ public class ManualOverrideService {
         this.eventPublisher = eventPublisher;
     }
 
+    /**
+     * Assigns a courier to an order that is still waiting in the unassigned queue.
+     *
+     * @throws AssignmentConflictException if the order already has a courier
+     */
     @Transactional
     public DispatchAssignment manualAssign(ManualAssignRequest request) {
-        log.info("Dispatcher manual override assignment for order: {} to courier: {}",
-                request.orderId(), request.courierId());
+        return manualAssign(request, null);
+    }
 
-        DispatchAssignment assignment = assignmentRepository.findByOrderId(request.orderId())
+    /**
+     * @param correlationId request correlation ID to carry on the published events;
+     *                      a new one is generated when {@code null}
+     */
+    @Transactional
+    public DispatchAssignment manualAssign(ManualAssignRequest request, UUID correlationId) {
+        log.info("Dispatcher assignment for order: {} to courier: {}", request.orderId(), request.courierId());
+
+        DispatchAssignment assignment = findActiveAssignment(request.orderId());
+        if (assignment.getStatus() != AssignmentStatus.UNASSIGNED || assignment.getCourierId() != null) {
+            throw new AssignmentConflictException("Order " + request.orderId()
+                    + " is already assigned to a courier. Refresh the queue, or use reassignment to change the courier.");
+        }
+        PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
+
+        CourierShift courier = findAcceptingCourier(request.courierId());
+        AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.ASSIGNED);
+        incrementWorkload(courier);
+
+        assignment = applyCourier(assignment, courier, AssignmentStatus.ASSIGNED, request.assignedBy());
+        publishAssignmentEvents(assignment, courier, previousPublicStatus, correlationId);
+        return assignment;
+    }
+
+    /**
+     * Moves an assigned order to a different courier before pickup. The caller must
+     * name the courier it expects to be replacing, so a reassignment based on a
+     * stale view is rejected instead of overwriting another dispatcher's decision.
+     *
+     * <p>Only {@code dispatch.courier.assigned} is published: the public status stays
+     * PICKUP_ASSIGNED, so a {@code parcel.status.changed} event would carry no
+     * change and could regress a downstream status during the pickup-event race.</p>
+     *
+     * <p>Pickup is known only once delivery-execution's status event has been
+     * processed. A reassignment made between the physical pickup and that event
+     * cannot be detected here; closing that window needs coordination with
+     * delivery-execution-service.</p>
+     *
+     * @throws AssignmentConflictException     if the order is unassigned or its courier has changed
+     * @throws ReassignmentNotAllowedException if dispatch has recorded the parcel as picked up
+     */
+    @Transactional
+    public DispatchAssignment reassign(ReassignCourierRequest request) {
+        return reassign(request, null);
+    }
+
+    /**
+     * @param correlationId request correlation ID to carry on the published events;
+     *                      a new one is generated when {@code null}
+     */
+    @Transactional
+    public DispatchAssignment reassign(ReassignCourierRequest request, UUID correlationId) {
+        log.info("Dispatcher reassignment for order: {} from courier: {} to courier: {}",
+                request.orderId(), request.expectedCurrentCourierId(), request.newCourierId());
+
+        DispatchAssignment assignment = findActiveAssignment(request.orderId());
+        UUID currentCourierId = assignment.getCourierId();
+        if (assignment.getStatus() == AssignmentStatus.UNASSIGNED || currentCourierId == null) {
+            throw new AssignmentConflictException("Order " + request.orderId()
+                    + " has no assigned courier to replace. Use the assign operation instead.");
+        }
+        if (assignment.getPickedUpAt() != null) {
+            throw new ReassignmentNotAllowedException("Order " + request.orderId() + " was picked up at "
+                    + assignment.getPickedUpAt() + "; reassignment is not allowed after pickup.");
+        }
+        if (!currentCourierId.equals(request.expectedCurrentCourierId())) {
+            throw new AssignmentConflictException("Order " + request.orderId()
+                    + " is no longer assigned to the expected courier. Refresh and retry.");
+        }
+        if (currentCourierId.equals(request.newCourierId())) {
+            throw new IllegalArgumentException("The new courier must differ from the currently assigned courier");
+        }
+
+        CourierShift newCourier = findAcceptingCourier(request.newCourierId());
+        AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.REASSIGNED);
+        courierShiftRepository.findByCourierId(currentCourierId).ifPresent(this::decrementWorkload);
+        incrementWorkload(newCourier);
+
+        assignment = applyCourier(assignment, newCourier, AssignmentStatus.REASSIGNED, request.assignedBy());
+        log.info("Order {} reassigned from courier {} to courier {}",
+                assignment.getOrderId(), currentCourierId, newCourier.getCourierId());
+        publishCourierAssigned(assignment, newCourier, eventCorrelationId(correlationId));
+        return assignment;
+    }
+
+    /**
+     * Public status implied by the assignment state before this operation. Dispatch
+     * only tracks allocation, so an assigned order is reported as PICKUP_ASSIGNED.
+     */
+    private PublicOrderStatus publicStatusOf(AssignmentStatus status) {
+        return switch (status) {
+            case UNASSIGNED -> PublicOrderStatus.CREATED;
+            case ASSIGNED, REASSIGNED -> PublicOrderStatus.PICKUP_ASSIGNED;
+            case COMPLETED -> PublicOrderStatus.DELIVERED;
+            case CANCELLED -> PublicOrderStatus.CANCELLED;
+        };
+    }
+
+    private DispatchAssignment findActiveAssignment(UUID orderId) {
+        DispatchAssignment assignment = assignmentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new AssignmentNotFoundException(
-                        "Dispatch assignment not found for order: " + request.orderId()));
-
-        if (assignment.getStatus() == AssignmentStatus.COMPLETED
-                || assignment.getStatus() == AssignmentStatus.CANCELLED) {
+                        "Dispatch assignment not found for order: " + orderId));
+        if (assignment.getStatus().isTerminal()) {
             throw new InvalidAssignmentTransitionException(
                     "Cannot assign a courier to an assignment in state " + assignment.getStatus());
         }
+        return assignment;
+    }
 
-        CourierShift newCourier = courierShiftRepository.findByCourierId(request.courierId())
-                .orElseThrow(() -> new CourierNotAvailableException(
-                        "Courier not found with ID: " + request.courierId()));
-
-        if (newCourier.getShiftStatus() == ShiftStatus.OFFLINE) {
+    private CourierShift findAcceptingCourier(UUID courierId) {
+        CourierShift courier = courierShiftRepository.findByCourierId(courierId)
+                .orElseThrow(() -> new CourierNotAvailableException("Courier not found with ID: " + courierId));
+        if (courier.getShiftStatus() == ShiftStatus.OFFLINE) {
             throw new CourierNotAvailableException(
-                    "Courier " + newCourier.getCourierName() + " is currently OFFLINE");
+                    "Courier " + courier.getCourierName() + " is currently OFFLINE");
         }
-        if (!newCourier.canAcceptParcel()) {
+        if (!courier.canAcceptParcel()) {
             throw new CourierNotAvailableException(
-                    "Courier " + newCourier.getCourierName() + " is not available or has reached capacity");
+                    "Courier " + courier.getCourierName() + " is not available or has reached capacity");
         }
+        return courier;
+    }
 
-        UUID prevCourierId = assignment.getCourierId();
-        boolean changingCourier = prevCourierId == null || !prevCourierId.equals(request.courierId());
-        AssignmentStatus targetStatus = prevCourierId == null
-                ? AssignmentStatus.ASSIGNED
-                : changingCourier ? AssignmentStatus.REASSIGNED : assignment.getStatus();
-        if (targetStatus != assignment.getStatus()) {
-            AssignmentStateMachine.transition(assignment.getStatus(), targetStatus);
+    private void incrementWorkload(CourierShift courier) {
+        int newCount = courier.getActiveParcelsCount() + 1;
+        courier.setActiveParcelsCount(newCount);
+        if (newCount >= courier.getMaxCapacity()) {
+            courier.setShiftStatus(ShiftStatus.BUSY);
         }
-        if (prevCourierId != null && changingCourier) {
-            courierShiftRepository.findByCourierId(prevCourierId).ifPresent(prevCourier -> {
-                int count = Math.max(0, prevCourier.getActiveParcelsCount() - 1);
-                prevCourier.setActiveParcelsCount(count);
-                if (prevCourier.getShiftStatus() == ShiftStatus.BUSY && count < prevCourier.getMaxCapacity()) {
-                    prevCourier.setShiftStatus(ShiftStatus.AVAILABLE);
-                }
-                courierShiftRepository.save(prevCourier);
-            });
-        }
+        courierShiftRepository.save(courier);
+    }
 
-        // Increment count for new courier
-        if (changingCourier) {
-            int newCount = newCourier.getActiveParcelsCount() + 1;
-            newCourier.setActiveParcelsCount(newCount);
-            if (newCount >= newCourier.getMaxCapacity()) {
-                newCourier.setShiftStatus(ShiftStatus.BUSY);
-            }
-            courierShiftRepository.save(newCourier);
+    private void decrementWorkload(CourierShift courier) {
+        int count = Math.max(0, courier.getActiveParcelsCount() - 1);
+        courier.setActiveParcelsCount(count);
+        if (courier.getShiftStatus() == ShiftStatus.BUSY && count < courier.getMaxCapacity()) {
+            courier.setShiftStatus(ShiftStatus.AVAILABLE);
         }
+        courierShiftRepository.save(courier);
+    }
 
-        assignment.setCourierId(newCourier.getCourierId());
-        assignment.setCourierName(newCourier.getCourierName());
-        assignment.setStatus(targetStatus);
-        assignment.setAssignedBy(request.assignedBy() != null ? request.assignedBy() : "DISPATCHER");
+    private DispatchAssignment applyCourier(DispatchAssignment assignment, CourierShift courier,
+                                            AssignmentStatus status, String assignedBy) {
+        assignment.setCourierId(courier.getCourierId());
+        assignment.setCourierName(courier.getCourierName());
+        assignment.setStatus(status);
+        assignment.setAssignedBy(assignedBy != null ? assignedBy : "DISPATCHER");
         assignment.setAssignedAt(Instant.now());
         assignment.setFailureReason(null);
-        assignment = assignmentRepository.save(assignment);
+        return assignmentRepository.save(assignment);
+    }
 
-        CourierAssignedEvent assignedEvent = new CourierAssignedEvent(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                assignment.getOrderId(),
-                newCourier.getCourierId(),
-                newCourier.getCourierName(),
-                assignment.getEstimatedPickupMinutes() != null ? assignment.getEstimatedPickupMinutes() : 25,
-                Instant.now(),
-                Instant.now(),
-                assignment.getTrackingNumber(),
-                assignment.getMerchantId(),
-                // Delivery copies this onto its parcel-status events; without it the
-                // customer gets no picked-up / delivered / failed notifications.
-                assignment.getCustomerId(),
-                assignment.getPickupDistrict(),
-                assignment.getDeliveryDistrict()
-        );
-        eventPublisher.publishCourierAssigned(assignedEvent);
+    /** The caller's correlation ID when supplied, otherwise a newly generated one. */
+    private UUID eventCorrelationId(UUID correlationId) {
+        return correlationId != null ? correlationId : UUID.randomUUID();
+    }
+
+    /**
+     * First-time assignment: records courier.assigned and the CREATED to
+     * PICKUP_ASSIGNED status change for after-commit publication, sharing one
+     * correlation ID.
+     */
+    private void publishAssignmentEvents(DispatchAssignment assignment, CourierShift courier,
+                                         PublicOrderStatus previousPublicStatus, UUID correlationId) {
+        UUID eventCorrelationId = eventCorrelationId(correlationId);
+        publishCourierAssigned(assignment, courier, eventCorrelationId);
 
         ParcelStatusChangedEvent statusEvent = new ParcelStatusChangedEvent(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
+                eventCorrelationId,
                 assignment.getTrackingNumber(),
                 assignment.getOrderId(),
                 assignment.getCustomerId(),
-                PublicOrderStatus.CREATED,
+                previousPublicStatus,
                 PublicOrderStatus.PICKUP_ASSIGNED,
                 InternalQueueStatus.PICKUP_ASSIGNED,
                 assignment.getPickupDistrict(),
@@ -141,7 +246,27 @@ public class ManualOverrideService {
                 Instant.now()
         );
         eventPublisher.publishParcelStatusChanged(statusEvent);
+    }
 
-        return assignment;
+    private void publishCourierAssigned(DispatchAssignment assignment, CourierShift courier, UUID eventCorrelationId) {
+        CourierAssignedEvent assignedEvent = new CourierAssignedEvent(
+                UUID.randomUUID(),
+                eventCorrelationId,
+                assignment.getOrderId(),
+                courier.getCourierId(),
+                courier.getCourierName(),
+                assignment.getEstimatedPickupMinutes() != null ? assignment.getEstimatedPickupMinutes() : 25,
+                assignment.getAssignedAt(),
+                Instant.now(),
+                assignment.getTrackingNumber(),
+                assignment.getMerchantId(),
+                // From dev (#75): delivery-execution copies these onto its parcel-status
+                // events; without them the customer gets no picked-up / delivered / failed
+                // notifications and analytics rejects status events without a district.
+                assignment.getCustomerId(),
+                assignment.getPickupDistrict(),
+                assignment.getDeliveryDistrict()
+        );
+        eventPublisher.publishCourierAssigned(assignedEvent);
     }
 }

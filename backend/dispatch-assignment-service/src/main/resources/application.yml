@@ -20,6 +20,20 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:swiftdrop}
     password: ${RABBITMQ_PASSWORD:changeme_rabbit}
+    listener:
+      simple:
+        # Never requeue a failed message for an immediate redelivery loop.
+        # Rejected messages are dead-lettered to dlq.dispatch.events by the
+        # x-dead-letter-exchange argument on every dispatch queue.
+        default-requeue-rejected: false
+        retry:
+          # Bounded in-process retry for transient failures; permanent failures
+          # skip retries (see ListenerRetryPolicyConfig).
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 5s
 management:
   endpoints:
     web:
