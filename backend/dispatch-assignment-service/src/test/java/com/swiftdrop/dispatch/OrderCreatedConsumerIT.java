@@ -207,10 +207,16 @@ class OrderCreatedConsumerIT {
         OrderCreatedEvent original = newEvent();
         OrderCreatedEvent republished = newEvent(UUID.randomUUID(), original.orderId());
 
+        // Publish the second event only after the first has been processed: consecutive
+        // sends may go out on different channels, and RabbitMQ does not order messages
+        // across channels, so publishing both up front made "which event wins" random.
         publish(original);
-        publish(republished);
-        assertQueueContainsMessageCount(2);
+        assertQueueContainsOneMessage();
         startListeners();
+        await().atMost(Duration.ofSeconds(15))
+                .untilAsserted(() -> assertThat(recordsFor(original.orderId())).hasSize(1));
+
+        publish(republished);
 
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             assertThat(queueInfo().getMessageCount()).isZero();
