@@ -154,8 +154,8 @@ export function FleetControlTowerPage() {
 
       {/* SLA Breach Alert Ticker */}
       <SlaBreachAlertTicker
-        breachCount={kpiSummary?.breachedSla ?? 0}
-        onTimeRate={Number(kpiSummary?.systemOnTimeRate ?? 96.5)}
+        breachCount={kpiSummary?.breachedSla}
+        onTimeRate={kpiSummary?.systemOnTimeRate}
         criticalDistricts={
           kpiSummary?.districtBreakdowns
             ?.filter((d) => (d.breachedSla ?? 0) > 0)

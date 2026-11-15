@@ -1,4 +1,13 @@
-import { Bell, ChevronDown, ChevronRight, Package, Pencil, Search, Sparkles, X } from 'lucide-react';
+import {
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  Package,
+  Pencil,
+  Search,
+  Sparkles,
+  X
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/utils/cn';
@@ -34,6 +43,8 @@ export interface TopBarProps {
   /** Content before the breadcrumb, e.g. the brand mark where there is no sidebar. */
   leading?: ReactNode;
   className?: string;
+  /** Hide utility actions on operational screens that provide their own controls. */
+  showUtilities?: boolean;
 }
 
 /** Figma TopBar (app): 56px bar with breadcrumb, global search, language, assistant and notifications. Role changes the extras. */
@@ -52,7 +63,8 @@ export function TopBar({
   notificationSlot,
   children,
   leading,
-  className
+  className,
+  showUtilities = true
 }: TopBarProps) {
   const placeholder = searchPlaceholder ?? roleShellSpec[role].searchPlaceholder;
   const iconButton =
@@ -92,52 +104,56 @@ export function TopBar({
           </button>
         ) : null}
         {children}
-        <button
-          type="button"
-          onClick={onSearchClick}
-          className="hidden h-9 w-[340px] max-w-[30vw] items-center gap-2 rounded-lg border border-border-subtle bg-canvas pl-3 pr-1.5 text-left text-body text-muted transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus lg:flex"
-        >
-          <Search aria-hidden="true" className="size-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate">{placeholder}</span>
-          <kbd className="rounded border border-border-subtle bg-card px-1.5 py-px text-caption text-secondary">
-            ⌘K
-          </kbd>
-        </button>
-        <button
-          type="button"
-          onClick={onSearchClick}
-          aria-label="Search"
-          className={cn(iconButton, 'lg:hidden')}
-        >
-          <Search aria-hidden="true" className="size-[18px]" />
-        </button>
-        <span className="hidden items-center gap-1 px-2 text-label text-secondary md:inline-flex">
-          EN
-          <ChevronDown aria-hidden="true" className="size-3" />
-        </span>
-        <button
-          type="button"
-          onClick={onAssistantClick}
-          aria-label="Assistant"
-          className={iconButton}
-        >
-          <Sparkles aria-hidden="true" className="size-[18px]" />
-        </button>
-        {notificationSlot ?? (
-          <button
-            type="button"
-            onClick={onNotificationsClick}
-            aria-label={hasUnread ? 'Notifications, unread' : 'Notifications'}
-            className={iconButton}
-          >
-            <Bell aria-hidden="true" className="size-[18px]" />
-            {hasUnread ? (
-              <span
-                aria-hidden="true"
-                className="absolute right-2 top-2 size-2 rounded-full border-2 border-card bg-status-danger"
-              />
-            ) : null}
-          </button>
+        {showUtilities && (
+          <>
+            <button
+              type="button"
+              onClick={onSearchClick}
+              className="hidden h-9 w-[340px] max-w-[30vw] items-center gap-2 rounded-lg border border-border-subtle bg-canvas pl-3 pr-1.5 text-left text-body text-muted transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus lg:flex"
+            >
+              <Search aria-hidden="true" className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{placeholder}</span>
+              <kbd className="rounded border border-border-subtle bg-card px-1.5 py-px text-caption text-secondary">
+                ⌘K
+              </kbd>
+            </button>
+            <button
+              type="button"
+              onClick={onSearchClick}
+              aria-label="Search"
+              className={cn(iconButton, 'lg:hidden')}
+            >
+              <Search aria-hidden="true" className="size-[18px]" />
+            </button>
+            <span className="hidden items-center gap-1 px-2 text-label text-secondary md:inline-flex">
+              EN
+              <ChevronDown aria-hidden="true" className="size-3" />
+            </span>
+            <button
+              type="button"
+              onClick={onAssistantClick}
+              aria-label="Assistant"
+              className={iconButton}
+            >
+              <Sparkles aria-hidden="true" className="size-[18px]" />
+            </button>
+            {notificationSlot ?? (
+              <button
+                type="button"
+                onClick={onNotificationsClick}
+                aria-label={hasUnread ? 'Notifications, unread' : 'Notifications'}
+                className={iconButton}
+              >
+                <Bell aria-hidden="true" className="size-[18px]" />
+                {hasUnread ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-2 top-2 size-2 rounded-full border-2 border-card bg-status-danger"
+                  />
+                ) : null}
+              </button>
+            )}
+          </>
         )}
       </div>
     </header>
@@ -245,7 +261,10 @@ export function PublicHeader({
             </span>
             <span className="text-h3 text-primary">SwiftDrop</span>
           </span>
-          <nav aria-label="Primary" className="hidden gap-7 text-label text-primary md:flex shrink-0">
+          <nav
+            aria-label="Primary"
+            className="hidden gap-7 text-label text-primary md:flex shrink-0"
+          >
             <a href="#ship">Ship</a>
             <a href="#track">Track</a>
             <a href="#pricing">Pricing</a>

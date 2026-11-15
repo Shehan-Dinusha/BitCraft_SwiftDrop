@@ -80,10 +80,10 @@ public class UserRoleController {
 
     @PatchMapping("/{userId}/role")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    @Operation(summary = "Change a user's role")
+    @Operation(summary = "Verify an existing account role", description = "Roles are fixed at account creation. Requests for a different role return 409; the current role is an idempotent no-op.")
     public ApiResponse<UserProfileResponse> updateRole(@PathVariable UUID userId,
                                                        @Valid @RequestBody UpdateUserRoleRequest request) {
-        return ApiResponse.success(userAccountService.updateRole(userId, request.role()), "User role updated");
+        return ApiResponse.success(userAccountService.updateRole(userId, request.role()), "Account role unchanged");
     }
 
     @PatchMapping("/{userId}/status")

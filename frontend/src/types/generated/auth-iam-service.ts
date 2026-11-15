@@ -813,8 +813,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Change a user's role
-         * @description Requires SYSTEM_ADMIN. Revokes the target user's active sessions.
+         * Verify an existing account role
+         * @description Requires SYSTEM_ADMIN. Roles are fixed at account creation. Requests for a different role return 409; the current role is an idempotent no-op.
          */
         patch: {
             parameters: {
@@ -831,7 +831,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Role updated */
+                /** @description Account role unchanged */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -867,7 +867,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiErrorResponse"];
                     };
                 };
-                /** @description Cannot remove the last active SYSTEM_ADMIN */
+                /** @description Account roles cannot be changed after creation */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1065,6 +1065,7 @@ export interface components {
             /** Format: password */
             newPassword: string;
         };
+        /** @description Compatibility request to verify an existing role. Account roles cannot be changed after creation. */
         UpdateUserRoleRequest: {
             role: components["schemas"]["UserRole"];
         };
