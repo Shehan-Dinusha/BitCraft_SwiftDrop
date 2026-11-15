@@ -158,6 +158,34 @@ public class DeliveryJobRepository {
     }
 
     /**
+     * Undoes a claim when <b>no HTTP request was made</b> (endpoint paused after the claim, or no local per-endpoint
+     * capacity): back to PENDING (if this would have been attempt 1) or RETRY, {@code attempt_count - 1}, lease
+     * cleared, {@code next_attempt_at} unchanged (still non-null from before the claim). Same fence as
+     * {@link #completeAttempt}, so a recovered or re-claimed job is never touched. No attempt row is written.
+     *
+     * @return true if the claim was released
+     */
+    public boolean releaseClaim(UUID deliveryId, String owner, int attemptNumber) {
+        var params = new MapSqlParameterSource()
+                .addValue("deliveryId", deliveryId, Types.OTHER)
+                .addValue("owner", owner, Types.VARCHAR)
+                .addValue("attempt", attemptNumber, Types.INTEGER);
+        return jdbc.update("""
+                UPDATE webhook_deliveries
+                SET status = CASE WHEN attempt_count = 1 THEN 'PENDING' ELSE 'RETRY' END,
+                    attempt_count = attempt_count - 1,
+                    lease_owner = NULL,
+                    lease_expires_at = NULL,
+                    version = version + 1,
+                    updated_at = now()
+                WHERE delivery_id = :deliveryId
+                  AND status = 'IN_FLIGHT'
+                  AND lease_owner = :owner
+                  AND attempt_count = :attempt
+                """, params) == 1;
+    }
+
+    /**
      * One {@code webhook_delivery_attempts} row for a job attempt (no payload copy, no response body). The unique
      * index on {@code (delivery_id, attempt_number)} makes a second row for the same attempt fail, which rolls back
      * the caller's transaction including the job transition.

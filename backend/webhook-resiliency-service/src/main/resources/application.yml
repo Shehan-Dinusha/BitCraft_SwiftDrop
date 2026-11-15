@@ -49,7 +49,11 @@ webhook:
     jitter-ratio: 0.2
     # D2: a Retry-After on 429/503 may lengthen (never shorten) a delay, up to this cap.
     retry-after-cap: 10m
-    # D9: worker limits, used from Step 10 (per replica; the cluster runs 2-8 replicas).
+    # Delivery worker on/off (Step 10). Set WEBHOOK_DELIVERY_WORKER_ENABLED=false to stop outbound sends locally.
+    worker-enabled: ${WEBHOOK_DELIVERY_WORKER_ENABLED:true}
+    # How often expired leases (crashed/stalled attempts) are closed as UNKNOWN and rescheduled.
+    lease-recovery-interval: 30s
+    # D9: worker limits per replica (the cluster runs 2-8 replicas, so cluster-wide totals multiply).
     max-concurrency: 4
     max-per-endpoint: 1
     claim-batch-size: 10

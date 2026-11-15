@@ -88,6 +88,17 @@ public class DeliveryAttemptRecorder {
     }
 
     /**
+     * Gives a claimed job back without an attempt, for the cases where nothing was sent (endpoint paused or gone
+     * after the claim, or no local capacity for its endpoint). Fenced like {@link #record}.
+     *
+     * @return false if the lease no longer matches (nothing changed)
+     */
+    @Transactional
+    public boolean release(ClaimedDelivery job) {
+        return repository.releaseClaim(job.deliveryId(), job.leaseOwner(), job.attemptNumber());
+    }
+
+    /**
      * Closes attempts whose worker vanished (lease expired): each gets an {@code UNKNOWN} attempt row with no status
      * or latency (the real outcome is unknown; the merchant may have received the request) and the normal retry
      * decision for that attempt number: RETRY on schedule, or DEAD if it was the last attempt. Expired rows are locked
