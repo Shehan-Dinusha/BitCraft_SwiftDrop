@@ -5,13 +5,18 @@
  *
  *   npm run seed:demo
  *
- * Customer and merchant accounts are self-service. Courier, dispatcher and system admin accounts
- * can only be created by an admin, so they are added when you pass an admin login:
+ * Courier, dispatcher and system admin accounts can only be created by an admin, so they are added
+ * when you pass an admin login. With an admin login, every account (customer and merchant too) is
+ * created through the admin API, which marks the email as verified so you can sign in straight away:
  *
  *   SEED_ADMIN_USER=admin SEED_ADMIN_PASSWORD=... npm run seed:demo
  *
  * (An admin exists when the auth service starts with BOOTSTRAP_ADMIN_USERNAME and
  * BOOTSTRAP_ADMIN_PASSWORD set, see .env.example.) For local development only.
+ *
+ * Without an admin login, customer and merchant accounts use self-service sign-up, which leaves them
+ * unverified: confirm each one on /verify-email (with AUTH_OTP_LOG_CODE=true the code is in the
+ * swiftdrop-auth-iam log) before signing in.
  */
 const GATEWAY = process.env.GATEWAY_URL ?? 'http://localhost:8080';
 const PASSWORD = process.env.SEED_PASSWORD ?? 'Demo@12345';
@@ -78,7 +83,9 @@ for (const [index, account] of accounts.entries()) {
   if (!account.selfService && !token) {
     outcome = 'skipped (needs SEED_ADMIN_USER and SEED_ADMIN_PASSWORD)';
   } else {
-    const result = account.selfService
+    // Prefer the admin API: it creates verified accounts. Self-service sign-up needs an email code.
+    const viaSignUp = account.selfService && !token;
+    const result = viaSignUp
       ? await call('/api/v1/auth/register', {
           method: 'POST',
           body: JSON.stringify(body(account, index))
@@ -90,7 +97,9 @@ for (const [index, account] of accounts.entries()) {
         });
     outcome =
       result.status === 201 || result.status === 200
-        ? 'created'
+        ? viaSignUp
+          ? 'created (unverified: confirm the code on /verify-email)'
+          : 'created'
         : alreadyThere(result)
           ? 'already exists'
           : `failed (HTTP ${result.status}: ${result.json?.message ?? result.text.slice(0, 80)})`;

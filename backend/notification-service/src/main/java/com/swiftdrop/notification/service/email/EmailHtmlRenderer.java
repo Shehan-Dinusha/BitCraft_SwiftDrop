@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 
+import com.swiftdrop.notification.util.SensitiveTemplates;
+
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Year;
@@ -33,7 +35,17 @@ public class EmailHtmlRenderer {
             "PARCEL_PICKED_UP", new StatusStyle("Picked up", "Your parcel has been picked up", "#e0f2fe", "#075985", "#bae6fd"),
             "PARCEL_OUT_FOR_DELIVERY", new StatusStyle("Out for delivery", "Your parcel is out for delivery", "#f3e8ff", "#5b21b6", "#e9d5ff"),
             "PARCEL_DELIVERED", new StatusStyle("Delivered", "Your parcel has been delivered", "#d1fae5", "#065f46", "#a7f3d0"),
-            "PARCEL_FAILED", new StatusStyle("Delivery attempt failed", "We could not deliver your parcel", "#fee2e2", "#991b1b", "#fecaca"));
+            "PARCEL_FAILED", new StatusStyle("Delivery attempt failed", "We could not deliver your parcel", "#fee2e2", "#991b1b", "#fecaca"),
+            SensitiveTemplates.EMAIL_VERIFICATION, new StatusStyle("Verify your email", "Confirm your email address", "#eef2ff", "#3730a3", "#c7d2fe"),
+            SensitiveTemplates.PASSWORD_RESET, new StatusStyle("Password reset", "Reset your password", "#fef3c7", "#92400e", "#fde68a"));
+
+    private static final Pattern SAFE_CODE = Pattern.compile("[0-9]{4,10}");
+    private static final Pattern SAFE_MINUTES = Pattern.compile("[0-9]{1,3}");
+
+    private static final String PARCEL_FOOTER = "You are receiving this email because you have a parcel with SwiftDrop. "
+            + "You can change email notifications in your SwiftDrop notification preferences.";
+    private static final String ACCOUNT_FOOTER = "You are receiving this email because a request was made with this address on SwiftDrop. "
+            + "If this was not you, you can safely ignore this message. Never share this code with anyone.";
 
     private final String trackingUrlPrefix;
 
@@ -62,11 +74,37 @@ public class EmailHtmlRenderer {
     }
 
     public String renderHtml(String templateCode, String subject, String body, String trackingNumber) {
+        return renderHtml(templateCode, subject, body, trackingNumber, Map.of());
+    }
+
+    /**
+     * Same as the four-argument form, and for one-time-code templates also renders the code in a large
+     * box (taken from {@code params}) instead of the parcel tracking block and button.
+     */
+    public String renderHtml(String templateCode, String subject, String body, String trackingNumber,
+                             Map<String, String> params) {
         StatusStyle style = STYLES.getOrDefault(templateCode == null ? "" : templateCode, DEFAULT_STYLE);
         String safeSubject = esc(subject == null || subject.isBlank() ? "SwiftDrop notification" : subject);
         String safeBody = esc(body == null ? "" : body.trim()).replace("\n", "<br>");
-        String url = trackingUrl(trackingNumber);
-        boolean showTracking = trackingNumber != null && SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches();
+        boolean otp = SensitiveTemplates.isSensitive(templateCode);
+        String url = otp ? null : trackingUrl(trackingNumber);
+        boolean showTracking = !otp && trackingNumber != null && SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches();
+
+        String code = otp && params != null ? params.get("code") : null;
+        String minutes = otp && params != null ? params.get("expiresInMinutes") : null;
+        String codeBlock = code == null || !SAFE_CODE.matcher(code).matches() ? "" : """
+                <tr><td style="padding:0 40px 8px 40px;">
+                  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+                    <tr><td align="center" style="padding:20px;">
+                      <div style="font-size:12px;line-height:16px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Your code</div>
+                      <div style="font-family:Consolas,'Courier New',monospace;font-size:34px;line-height:44px;color:#0f172a;font-weight:800;letter-spacing:0.35em;padding-top:6px;">%s</div>
+                      %s
+                    </td></tr>
+                  </table>
+                </td></tr>
+                """.formatted(esc(code), minutes != null && SAFE_MINUTES.matcher(minutes).matches()
+                ? "<div style=\"font-size:13px;line-height:18px;color:#64748b;padding-top:6px;\">Expires in " + esc(minutes) + " minutes</div>"
+                : "");
 
         String trackingBlock = !showTracking ? "" : """
                 <tr><td style="padding:0 40px 8px 40px;">
@@ -112,11 +150,10 @@ public class EmailHtmlRenderer {
                       </td></tr>
                       <tr><td style="padding:16px 40px 0 40px;font-size:24px;line-height:32px;font-weight:800;color:#0f172a;">%7$s</td></tr>
                       <tr><td style="padding:12px 40px 24px 40px;font-size:15px;line-height:24px;color:#334155;">%2$s</td></tr>
-                      %8$s%9$s
+                      %8$s%9$s%12$s
                       <tr><td style="padding:32px 40px 0 40px;"><div style="border-top:1px solid #e2e8f0;"></div></td></tr>
                       <tr><td style="padding:20px 40px 32px 40px;font-size:12px;line-height:18px;color:#64748b;">
-                        You are receiving this email because you have a parcel with SwiftDrop. You can change
-                        email notifications in your SwiftDrop notification preferences.<br><br>
+                        %11$s<br><br>
                         This is an automated message. Please do not reply.<br>
                         &copy; %10$s SwiftDrop &middot; Sri Lanka
                       </td></tr>
@@ -126,7 +163,8 @@ public class EmailHtmlRenderer {
                 </body>
                 </html>
                 """.formatted(safeSubject, safeBody, style.bg(), style.fg(), style.border(), esc(style.badge()),
-                esc(style.headline()), trackingBlock, buttonBlock, Year.now().getValue());
+                esc(style.headline()), trackingBlock, buttonBlock, Year.now().getValue(),
+                esc(otp ? ACCOUNT_FOOTER : PARCEL_FOOTER), codeBlock);
     }
 
     private static String esc(String value) {

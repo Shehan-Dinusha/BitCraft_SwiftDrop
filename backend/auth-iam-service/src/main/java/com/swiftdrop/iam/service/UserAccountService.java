@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -56,14 +57,25 @@ public class UserAccountService {
         if (request.role() != UserRole.CUSTOMER && request.role() != UserRole.MERCHANT) {
             throw new IllegalArgumentException("Self-service registration supports only CUSTOMER and MERCHANT roles");
         }
+        // An abandoned, never-verified sign-up must not lock the real owner out of their own email:
+        // a repeat registration for the same address replaces the pending details.
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        Optional<UserAccount> pending = userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
+                .filter(existing -> !existing.isEmailVerified() && existing.getStatus() == UserStatus.ACTIVE);
+        if (pending.isPresent()) {
+            return refreshPendingRegistration(pending.get(), request);
+        }
         return createUser(request.username(), request.email(), request.phone(), request.firstName(),
-                request.lastName(), request.password(), request.role(), request.district(), request.merchantId());
+                request.lastName(), request.password(), request.role(), request.district(), request.merchantId(),
+                false);
     }
 
     @Transactional
     public UserProfileResponse create(CreateUserRequest request) {
+        // Accounts provisioned by an administrator are trusted: no email verification step.
         return createUser(request.username(), request.email(), request.phone(), request.firstName(),
-                request.lastName(), request.password(), request.role(), request.district(), request.merchantId());
+                request.lastName(), request.password(), request.role(), request.district(), request.merchantId(),
+                true);
     }
 
     @Transactional(readOnly = true)
@@ -137,7 +149,7 @@ public class UserAccountService {
             throw new IllegalArgumentException("New password must differ from the current password");
         }
 
-        passwordPolicy.validate(request.newPassword());
+        passwordPolicy.validate(request.newPassword(), user.getUsername(), user.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userAccountRepository.save(user);
         refreshTokenService.revokeAll(user);
@@ -153,7 +165,7 @@ public class UserAccountService {
     private UserProfileResponse createUser(String username, String email, String phone,
                                            String firstName, String lastName, String rawPassword,
                                            UserRole role, com.swiftdrop.contracts.enums.SriLankanDistrict district,
-                                           UUID merchantId) {
+                                           UUID merchantId, boolean emailVerified) {
         String normalizedUsername = username.trim();
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         String normalizedPhone = normalizeNullable(phone);
@@ -168,7 +180,7 @@ public class UserAccountService {
             throw new UserAlreadyExistsException("Phone number is already registered");
         }
 
-        passwordPolicy.validate(rawPassword);
+        passwordPolicy.validate(rawPassword, normalizedUsername, normalizedEmail);
 
         UserAccount user = new UserAccount();
         user.setUsername(normalizedUsername);
@@ -181,8 +193,34 @@ public class UserAccountService {
         user.setDistrict(district);
         user.setMerchantId(merchantId);
         user.setStatus(UserStatus.ACTIVE);
+        user.setEmailVerified(emailVerified);
 
         return AuthMapper.toProfile(userAccountRepository.save(user));
+    }
+
+    private UserProfileResponse refreshPendingRegistration(UserAccount existing, RegisterUserRequest request) {
+        String username = request.username().trim();
+        String phone = normalizeNullable(request.phone());
+
+        userAccountRepository.findByUsernameIgnoreCase(username)
+                .filter(other -> !other.getId().equals(existing.getId()))
+                .ifPresent(other -> {
+                    throw new UserAlreadyExistsException("Username is already registered");
+                });
+        if (phone != null && !phone.equals(existing.getPhone()) && userAccountRepository.existsByPhone(phone)) {
+            throw new UserAlreadyExistsException("Phone number is already registered");
+        }
+        passwordPolicy.validate(request.password(), username, existing.getEmail());
+
+        existing.setUsername(username);
+        existing.setPhone(phone);
+        existing.setFirstName(request.firstName().trim());
+        existing.setLastName(request.lastName().trim());
+        existing.setPasswordHash(passwordEncoder.encode(request.password()));
+        existing.setRole(request.role());
+        existing.setDistrict(request.district());
+        existing.setMerchantId(request.merchantId());
+        return AuthMapper.toProfile(userAccountRepository.save(existing));
     }
 
     private Specification<UserAccount> buildFilter(UserRole role, UserStatus status, String search) {
