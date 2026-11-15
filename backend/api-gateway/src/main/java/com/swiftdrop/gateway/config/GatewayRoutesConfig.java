@@ -56,6 +56,8 @@ public class GatewayRoutesConfig {
                 // ─── Merchant B2B ────────────────────────────────────────
                 .route("merchant-b2b-service", r -> r
                         .path("/api/v1/merchants/**",
+                                "/api/v1/admin/merchants/**",   // admin approval screen (JWT, SYSTEM_ADMIN)
+                                "/api/v1/b2b/**",               // B2B order API (merchant API key)
                                 "/api/v1/merchant/**",
                                 "/api/v1/merchant-order-ingest/**",
                                 "/api/v1/api-key-management/**",
