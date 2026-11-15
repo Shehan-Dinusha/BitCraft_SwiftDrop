@@ -105,17 +105,8 @@ public class UserAccountService {
         if (user.getRole() == role) {
             return AuthMapper.toProfile(user);
         }
-        if (user.getRole() == UserRole.SYSTEM_ADMIN
-                && activeSystemAdmins() <= 1
-                && role != UserRole.SYSTEM_ADMIN) {
-            throw new AuthException(HttpStatus.CONFLICT, "Cannot remove the last active SYSTEM_ADMIN");
-        }
-
-        user.setRole(role);
-        userAccountRepository.save(user);
-        refreshTokenService.revokeAll(user);
-        tokenIssuanceService.blacklistUser(user.getPublicId());
-        return AuthMapper.toProfile(user);
+        throw new AuthException(HttpStatus.CONFLICT,
+                "Account roles are fixed at creation and cannot be changed");
     }
 
     @Transactional

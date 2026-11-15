@@ -232,6 +232,100 @@ class DispatchAssignmentServiceTest {
         assertThat(suggestions.get(1).courierId()).isEqualTo(elsewhere.getCourierId());
     }
 
+    @Test
+    @DisplayName("PICKED_UP records pickup at the event time on an assigned order")
+    void testPickedUp_RecordsPickup() {
+        DispatchAssignment assignment = assignedAssignment();
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        ParcelStatusChangedEvent event = parcelStatus(PublicOrderStatus.PICKED_UP);
+
+        dispatchAssignmentService.handleParcelStatusChanged(event);
+
+        assertThat(assignment.getPickedUpAt()).isEqualTo(event.timestamp());
+        assertThat(assignment.getStatus()).as("pickup is not a lifecycle change").isEqualTo(AssignmentStatus.ASSIGNED);
+        verify(assignmentRepository).save(assignment);
+        verifyNoInteractions(courierShiftRepository);
+    }
+
+    @Test
+    @DisplayName("IN_TRANSIT or OUT_FOR_DELIVERY alone record pickup when PICKED_UP was missed")
+    void testLaterPostPickupStatusesRecordPickup() {
+        for (PublicOrderStatus status : List.of(PublicOrderStatus.IN_TRANSIT, PublicOrderStatus.OUT_FOR_DELIVERY)) {
+            DispatchAssignment assignment = assignedAssignment();
+            assignment.setStatus(AssignmentStatus.REASSIGNED);
+            when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+            dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(status));
+
+            assertThat(assignment.getPickedUpAt()).as(status + " records pickup").isNotNull();
+        }
+        verify(assignmentRepository, times(2)).save(any(DispatchAssignment.class));
+    }
+
+    @Test
+    @DisplayName("Duplicate or out-of-order post-pickup events keep the first pickup time and write nothing")
+    void testPickupAlreadyRecordedIsNotOverwritten() {
+        Instant firstPickup = Instant.parse("2026-11-15T08:30:00Z");
+        DispatchAssignment assignment = assignedAssignment();
+        assignment.setPickedUpAt(firstPickup);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.PICKED_UP));
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.IN_TRANSIT));
+
+        assertThat(assignment.getPickedUpAt()).isEqualTo(firstPickup);
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("A delayed post-pickup event leaves a completed or cancelled assignment untouched")
+    void testPickupEventAfterTerminalStateIsIgnored() {
+        for (AssignmentStatus terminal : List.of(AssignmentStatus.COMPLETED, AssignmentStatus.CANCELLED)) {
+            DispatchAssignment assignment = assignedAssignment();
+            assignment.setStatus(terminal);
+            when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+            dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.IN_TRANSIT));
+
+            assertThat(assignment.getPickedUpAt()).isNull();
+            assertThat(assignment.getStatus()).isEqualTo(terminal);
+        }
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("A pickup event for an unassigned order is ignored")
+    void testPickupEventForUnassignedOrderIsIgnored() {
+        DispatchAssignment assignment = assignedAssignment();
+        assignment.setCourierId(null);
+        assignment.setStatus(AssignmentStatus.UNASSIGNED);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.PICKED_UP));
+
+        assertThat(assignment.getPickedUpAt()).isNull();
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("A pickup event for an unknown order is acknowledged without changes")
+    void testPickupEventForUnknownOrderIsNoOp() {
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.PICKED_UP));
+
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("PICKUP_ASSIGNED and CREATED do not record pickup")
+    void testPrePickupStatusesAreIgnored() {
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.PICKUP_ASSIGNED));
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.CREATED));
+
+        verifyNoInteractions(assignmentRepository, courierShiftRepository);
+    }
+
     private DispatchAssignment assignedAssignment() {
         DispatchAssignment assignment = new DispatchAssignment();
         assignment.setOrderId(orderId);

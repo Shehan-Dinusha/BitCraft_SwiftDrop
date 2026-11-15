@@ -1,242 +1,144 @@
 package com.swiftdrop.dispatch.service;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
-import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
-import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.contracts.events.order.OrderCreatedEvent;
-import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
-import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
-import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
-import com.swiftdrop.dispatch.messaging.publisher.DispatchEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+/**
+ * order.created intake for dispatcher-driven allocation. Courier repositories and
+ * the event publisher are deliberately not collaborators any more: intake cannot
+ * assign a courier or announce an assignment.
+ */
 @ExtendWith(MockitoExtension.class)
 class CourierMatchingEngineTest {
 
     @Mock
     private DispatchAssignmentRepository assignmentRepository;
 
-    @Mock
-    private CourierShiftRepository courierShiftRepository;
-
-    @Mock
-    private DispatchEventPublisher eventPublisher;
-
     @InjectMocks
     private CourierMatchingEngine matchingEngine;
 
     private UUID orderId;
+    private UUID merchantId;
     private UUID customerId;
-    private UUID courierId;
 
     @BeforeEach
     void setUp() {
         orderId = UUID.randomUUID();
+        merchantId = UUID.randomUUID();
         customerId = UUID.randomUUID();
-        courierId = UUID.randomUUID();
     }
 
     @Test
-    @DisplayName("Process order.created: successfully matches available courier in district")
-    void testProcessOrderCreated_Success() {
-        OrderCreatedEvent event = new OrderCreatedEvent(
-                UUID.randomUUID(),
+    @DisplayName("order.created registers an UNASSIGNED order with its order data and no courier")
+    void testProcessOrderCreated_RegistersUnassignedOrder() {
+        OrderCreatedEvent event = event(UUID.randomUUID(), OrderSpeed.EXPRESS);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DispatchAssignment result = matchingEngine.processOrderCreated(event);
+
+        assertThat(result.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(result.getCourierId()).isNull();
+        assertThat(result.getCourierName()).isNull();
+        assertThat(result.getAssignedAt()).isNull();
+        assertThat(result.getOrderId()).isEqualTo(orderId);
+        assertThat(result.getMerchantId()).isEqualTo(merchantId);
+        assertThat(result.getCustomerId())
+                .as("kept for the dispatcher's later assignment notifications (#75)")
+                .isEqualTo(customerId);
+        assertThat(result.getTrackingNumber()).isEqualTo("SD-COL-12345");
+        assertThat(result.getPickupDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+        assertThat(result.getDeliveryDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
+        assertThat(result.getOrderSpeed()).isEqualTo(OrderSpeed.EXPRESS);
+        assertThat(result.getEstimatedPickupMinutes()).isEqualTo(15);
+        assertThat(result.getRetryCount()).isZero();
+        assertThat(result.getLastOrderCreatedEventId()).isEqualTo(event.eventId());
+    }
+
+    @Test
+    @DisplayName("order.created without a speed defaults to STANDARD")
+    void testProcessOrderCreated_DefaultsMissingSpeed() {
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DispatchAssignment result = matchingEngine.processOrderCreated(event(UUID.randomUUID(), null));
+
+        assertThat(result.getOrderSpeed()).isEqualTo(OrderSpeed.STANDARD);
+        assertThat(result.getEstimatedPickupMinutes()).isEqualTo(30);
+    }
+
+    @Test
+    @DisplayName("Redelivered order.created with the same event id leaves the existing record untouched")
+    void testProcessOrderCreated_RedeliveredEventIsIgnored() {
+        UUID eventId = UUID.randomUUID();
+        DispatchAssignment existing = existingUnassigned(eventId);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(existing));
+
+        DispatchAssignment result = matchingEngine.processOrderCreated(event(eventId, OrderSpeed.STANDARD));
+
+        assertThat(result).isSameAs(existing);
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("A second order.created for an already registered order is ignored, whatever its event id")
+    void testProcessOrderCreated_DuplicateOrderIsIgnored() {
+        DispatchAssignment existing = existingUnassigned(UUID.randomUUID());
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(existing));
+
+        DispatchAssignment result = matchingEngine.processOrderCreated(event(UUID.randomUUID(), OrderSpeed.STANDARD));
+
+        assertThat(result).isSameAs(existing);
+        assertThat(result.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    private DispatchAssignment existingUnassigned(UUID eventId) {
+        DispatchAssignment existing = new DispatchAssignment();
+        existing.setOrderId(orderId);
+        existing.setStatus(AssignmentStatus.UNASSIGNED);
+        existing.setLastOrderCreatedEventId(eventId);
+        return existing;
+    }
+
+    private OrderCreatedEvent event(UUID eventId, OrderSpeed speed) {
+        return new OrderCreatedEvent(
+                eventId,
                 UUID.randomUUID(),
                 orderId,
                 "SD-COL-12345",
                 customerId,
-                UUID.randomUUID(),
+                merchantId,
                 SriLankanDistrict.COLOMBO,
                 SriLankanDistrict.GAMPAHA,
-                OrderSpeed.EXPRESS,
+                speed,
                 BigDecimal.valueOf(500),
                 BigDecimal.valueOf(1000),
                 BigDecimal.valueOf(450),
                 "LKR",
                 Instant.now()
         );
-
-        CourierShift courier = new CourierShift();
-        courier.setCourierId(courierId);
-        courier.setCourierName("Sunil Perera");
-        courier.setCurrentDistrict(SriLankanDistrict.COLOMBO);
-        courier.setShiftStatus(ShiftStatus.AVAILABLE);
-        courier.setActiveParcelsCount(0);
-        courier.setMaxCapacity(5);
-
-        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
-        when(courierShiftRepository.findAvailableCandidates(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE))
-                .thenReturn(List.of(courier));
-        when(assignmentRepository.save(any(DispatchAssignment.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
-
-        DispatchAssignment result = matchingEngine.processOrderCreated(event);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getCourierId()).isEqualTo(courierId);
-        assertThat(result.getCourierName()).isEqualTo("Sunil Perera");
-        assertThat(result.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
-        assertThat(result.getEstimatedPickupMinutes()).isEqualTo(15); // EXPRESS
-
-        verify(courierShiftRepository).save(argThat(c -> c.getActiveParcelsCount() == 1));
-
-        ArgumentCaptor<CourierAssignedEvent> assignedCaptor = ArgumentCaptor.forClass(CourierAssignedEvent.class);
-        verify(eventPublisher).publishCourierAssigned(assignedCaptor.capture());
-        assertThat(assignedCaptor.getValue().orderId()).isEqualTo(orderId);
-        assertThat(assignedCaptor.getValue().courierId()).isEqualTo(courierId);
-        assertThat(assignedCaptor.getValue().trackingNumber()).isEqualTo("SD-COL-12345");
-        assertThat(assignedCaptor.getValue().merchantId()).isNotNull();
-        assertThat(assignedCaptor.getValue().customerId()).isEqualTo(customerId);
-        assertThat(assignedCaptor.getValue().pickupDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
-        assertThat(assignedCaptor.getValue().deliveryDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
-        assertThat(result.getCustomerId()).isEqualTo(customerId);
-
-        ArgumentCaptor<ParcelStatusChangedEvent> statusCaptor = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
-        verify(eventPublisher).publishParcelStatusChanged(statusCaptor.capture());
-        assertThat(statusCaptor.getValue().newPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
-    }
-
-    @Test
-    @DisplayName("Process order.created: no couriers available publishes dispatch.failed")
-    void testProcessOrderCreated_NoCouriers() {
-        OrderCreatedEvent event = new OrderCreatedEvent(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                orderId,
-                "SD-COL-99999",
-                customerId,
-                UUID.randomUUID(),
-                SriLankanDistrict.JAFFNA,
-                SriLankanDistrict.COLOMBO,
-                OrderSpeed.STANDARD,
-                BigDecimal.ZERO,
-                BigDecimal.valueOf(500),
-                BigDecimal.valueOf(350),
-                "LKR",
-                Instant.now()
-        );
-
-        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
-        when(courierShiftRepository.findAvailableCandidates(SriLankanDistrict.JAFFNA, ShiftStatus.AVAILABLE))
-                .thenReturn(Collections.emptyList());
-        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE))
-                .thenReturn(Collections.emptyList());
-        when(assignmentRepository.save(any(DispatchAssignment.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
-
-        DispatchAssignment result = matchingEngine.processOrderCreated(event);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
-        assertThat(result.getRetryCount()).isEqualTo(1);
-        assertThat(result.getFailureReason()).contains("No available courier in Sri Lanka");
-        // Kept for the dispatcher who assigns this order by hand later.
-        assertThat(result.getCustomerId()).isEqualTo(customerId);
-
-        verify(eventPublisher).publishDispatchFailed(argThat(e ->
-                e.orderId().equals(orderId) && e.attemptCount() == 1 && e.retryable()
-        ));
-        verify(eventPublisher, never()).publishCourierAssigned(any());
-    }
-
-    @Test
-    @DisplayName("Process order.created: falls back to an available courier in another district")
-    void testProcessOrderCreated_UsesIslandWideFallback() {
-        OrderCreatedEvent event = new OrderCreatedEvent(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                orderId,
-                "SD-JAF-12345",
-                customerId,
-                UUID.randomUUID(),
-                SriLankanDistrict.JAFFNA,
-                SriLankanDistrict.COLOMBO,
-                OrderSpeed.STANDARD,
-                BigDecimal.ZERO,
-                BigDecimal.valueOf(500),
-                BigDecimal.valueOf(350),
-                "LKR",
-                Instant.now()
-        );
-        CourierShift remoteCourier = new CourierShift();
-        remoteCourier.setCourierId(courierId);
-        remoteCourier.setCourierName("Remote Courier");
-        remoteCourier.setCurrentDistrict(SriLankanDistrict.COLOMBO);
-        remoteCourier.setShiftStatus(ShiftStatus.AVAILABLE);
-        remoteCourier.setActiveParcelsCount(0);
-        remoteCourier.setMaxCapacity(5);
-
-        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
-        when(courierShiftRepository.findAvailableCandidates(SriLankanDistrict.JAFFNA, ShiftStatus.AVAILABLE))
-                .thenReturn(Collections.emptyList());
-        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE))
-                .thenReturn(List.of(remoteCourier));
-        when(assignmentRepository.save(any(DispatchAssignment.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
-
-        DispatchAssignment result = matchingEngine.processOrderCreated(event);
-
-        assertThat(result.getCourierId()).isEqualTo(courierId);
-        assertThat(result.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
-        verify(courierShiftRepository).save(remoteCourier);
-        verify(eventPublisher).publishCourierAssigned(any(CourierAssignedEvent.class));
-    }
-
-    @Test
-    @DisplayName("Process duplicate order.created: returns existing unassigned record without retrying")
-    void testProcessOrderCreated_DuplicateAssignmentIsIgnored() {
-        UUID eventId = UUID.randomUUID();
-        OrderCreatedEvent event = new OrderCreatedEvent(
-                eventId,
-                UUID.randomUUID(),
-                orderId,
-                "SD-COL-12345",
-                customerId,
-                UUID.randomUUID(),
-                SriLankanDistrict.COLOMBO,
-                SriLankanDistrict.GAMPAHA,
-                OrderSpeed.STANDARD,
-                BigDecimal.ZERO,
-                BigDecimal.valueOf(500),
-                BigDecimal.valueOf(350),
-                "LKR",
-                Instant.now()
-        );
-
-        DispatchAssignment existing = new DispatchAssignment();
-        existing.setOrderId(orderId);
-        existing.setStatus(AssignmentStatus.UNASSIGNED);
-        existing.setLastOrderCreatedEventId(eventId);
-
-        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(existing));
-
-        DispatchAssignment result = matchingEngine.processOrderCreated(event);
-
-        assertThat(result).isSameAs(existing);
-        verifyNoInteractions(courierShiftRepository, eventPublisher);
-        verify(assignmentRepository, never()).save(any(DispatchAssignment.class));
     }
 }

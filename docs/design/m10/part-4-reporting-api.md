@@ -56,7 +56,7 @@ The final local run passed 61 analytics unit/controller/config tests and 25 real
 
 The new HTTP integration checks exercise the running servlet server and real SQL queries, inclusive Colombo boundaries, zero-filled dates, exact counts/rates/workload, authorization rejection, empty-rate serialization, and live bearer-security documentation. Existing 23 integration cases continue proving event reliability, projection calculations, weighted rates and upgrades.
 
-Follow-up verification on 2026-11-10 completed real IAM-account checks through port 8080: 30 acceptance checks passed with isolated services and disposable data. See the [Stages 1–5 completion guide](stages-1-to-5-summary.md) and the consolidated verification guide (the historical stage-5 helper is absent from this checkout). Admin/dispatcher access, customer rejection and forged-header rejection are now verified through the gateway. M5/M6's projection semantics and M1/M2's trusted downstream boundary remain review dependencies.
+Follow-up verification on 2026-11-10 completed real IAM-account checks through port 8080: 30 acceptance checks passed with isolated services and disposable data. See the [Stages 1–5 completion guide](verification.md) and the consolidated verification guide (the historical stage-5 helper is absent from this checkout). Admin/dispatcher access, customer rejection and forged-header rejection are now verified through the gateway. M5/M6's projection semantics and M1/M2's trusted downstream boundary remain review dependencies.
 
 ## Viva questions
 

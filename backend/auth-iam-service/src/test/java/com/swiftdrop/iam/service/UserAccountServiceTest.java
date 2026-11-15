@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -167,8 +168,6 @@ class UserAccountServiceTest {
     @Test
     void cannotDemoteLastActiveSystemAdmin() {
         when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
-        when(userAccountRepository.countByRoleAndStatus(UserRole.SYSTEM_ADMIN, UserStatus.ACTIVE)).thenReturn(1L);
-
         assertThatThrownBy(() -> userAccountService.updateRole(admin.getPublicId(), UserRole.DISPATCHER))
                 .isInstanceOf(AuthException.class)
                 .satisfies(exception -> assertThat(((AuthException) exception).getStatus())
@@ -188,20 +187,29 @@ class UserAccountServiceTest {
     }
 
     @Test
-    void roleChangeRevokesSessions() {
+    void existingAccountRoleCannotBeChanged() {
         UserAccount user = new UserAccount();
         user.setPublicId(UUID.randomUUID());
         user.setUsername("courier");
         user.setRole(UserRole.CUSTOMER);
         user.setStatus(UserStatus.ACTIVE);
         when(userAccountRepository.findByPublicId(user.getPublicId())).thenReturn(Optional.of(user));
-        when(userAccountRepository.save(user)).thenReturn(user);
+        assertThatThrownBy(() -> userAccountService.updateRole(user.getPublicId(), UserRole.COURIER))
+                .isInstanceOf(AuthException.class)
+                .satisfies(exception -> assertThat(((AuthException) exception).getStatus())
+                        .isEqualTo(HttpStatus.CONFLICT));
+        assertThat(user.getRole()).isEqualTo(UserRole.CUSTOMER);
+        verify(userAccountRepository, never()).save(user);
+        verifyNoInteractions(refreshTokenService, tokenIssuanceService);
+    }
 
-        userAccountService.updateRole(user.getPublicId(), UserRole.COURIER);
-
-        assertThat(user.getRole()).isEqualTo(UserRole.COURIER);
-        verify(refreshTokenService).revokeAll(user);
-        verify(tokenIssuanceService).blacklistUser(user.getPublicId());
+    @Test
+    void sameRoleRequestIsAnIdempotentNoOp() {
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+        assertThat(userAccountService.updateRole(admin.getPublicId(), UserRole.SYSTEM_ADMIN).role())
+                .isEqualTo(UserRole.SYSTEM_ADMIN);
+        verify(userAccountRepository, never()).save(admin);
+        verifyNoInteractions(refreshTokenService, tokenIssuanceService);
     }
 
     @Test
