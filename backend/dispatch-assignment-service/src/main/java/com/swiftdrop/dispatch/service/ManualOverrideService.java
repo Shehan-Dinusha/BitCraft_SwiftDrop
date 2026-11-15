@@ -236,7 +236,7 @@ public class ManualOverrideService {
                 eventCorrelationId,
                 assignment.getTrackingNumber(),
                 assignment.getOrderId(),
-                null,
+                assignment.getCustomerId(),
                 previousPublicStatus,
                 PublicOrderStatus.PICKUP_ASSIGNED,
                 InternalQueueStatus.PICKUP_ASSIGNED,
@@ -259,7 +259,13 @@ public class ManualOverrideService {
                 assignment.getAssignedAt(),
                 Instant.now(),
                 assignment.getTrackingNumber(),
-                assignment.getMerchantId()
+                assignment.getMerchantId(),
+                // From dev (#75): delivery-execution copies these onto its parcel-status
+                // events; without them the customer gets no picked-up / delivered / failed
+                // notifications and analytics rejects status events without a district.
+                assignment.getCustomerId(),
+                assignment.getPickupDistrict(),
+                assignment.getDeliveryDistrict()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
     }

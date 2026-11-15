@@ -60,6 +60,9 @@ public class CourierMatchingEngine {
         assignment.setStatus(AssignmentStatus.UNASSIGNED);
         assignment.setRetryCount(0);
         assignment.setLastOrderCreatedEventId(event.eventId());
+        // From dev (#75): kept so every later dispatcher (re)assignment can tell
+        // delivery-execution which customer to notify.
+        assignment.setCustomerId(event.customerId());
 
         return assignmentRepository.save(assignment);
     }

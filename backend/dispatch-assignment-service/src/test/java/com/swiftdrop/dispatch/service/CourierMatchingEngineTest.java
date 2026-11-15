@@ -41,11 +41,13 @@ class CourierMatchingEngineTest {
 
     private UUID orderId;
     private UUID merchantId;
+    private UUID customerId;
 
     @BeforeEach
     void setUp() {
         orderId = UUID.randomUUID();
         merchantId = UUID.randomUUID();
+        customerId = UUID.randomUUID();
     }
 
     @Test
@@ -63,6 +65,9 @@ class CourierMatchingEngineTest {
         assertThat(result.getAssignedAt()).isNull();
         assertThat(result.getOrderId()).isEqualTo(orderId);
         assertThat(result.getMerchantId()).isEqualTo(merchantId);
+        assertThat(result.getCustomerId())
+                .as("kept for the dispatcher's later assignment notifications (#75)")
+                .isEqualTo(customerId);
         assertThat(result.getTrackingNumber()).isEqualTo("SD-COL-12345");
         assertThat(result.getPickupDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
         assertThat(result.getDeliveryDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
@@ -124,7 +129,7 @@ class CourierMatchingEngineTest {
                 UUID.randomUUID(),
                 orderId,
                 "SD-COL-12345",
-                UUID.randomUUID(),
+                customerId,
                 merchantId,
                 SriLankanDistrict.COLOMBO,
                 SriLankanDistrict.GAMPAHA,

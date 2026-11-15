@@ -1,4 +1,4 @@
--- V8__track_assignment_pickup.sql
+-- V9__track_assignment_pickup.sql
 -- Set when delivery-execution-service reports that the parcel has passed the
 -- pickup boundary (PICKED_UP, IN_TRANSIT or OUT_FOR_DELIVERY). Normal
 -- reassignment is rejected once it is set.

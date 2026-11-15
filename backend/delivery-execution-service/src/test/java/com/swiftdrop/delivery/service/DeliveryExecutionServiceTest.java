@@ -102,7 +102,30 @@ class DeliveryExecutionServiceTest {
         verify(auditTransitionAction).execute(any(), eq(orderId), eq(DeliveryState.CREATED),
                 eq(DeliveryState.ASSIGNED), any(), any(), any(), any(), any());
         verify(publishStateTransitionAction).execute(any(), eq(orderId), any(), eq(courierId),
-                eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any());
+                any(), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Courier assigned: keeps the real tracking number, customer and districts from the event")
+    void testHandleCourierAssigned_KeepsOrderDetailsFromEvent() {
+        UUID customerId = UUID.randomUUID();
+        CourierAssignedEvent event = new CourierAssignedEvent(
+                UUID.randomUUID(), UUID.randomUUID(), orderId, courierId, "Sunil Perera", 25,
+                Instant.now(), Instant.now(), "SD-7K2P-Q9XM", null, customerId,
+                SriLankanDistrict.KANDY, SriLankanDistrict.COLOMBO);
+
+        when(deliverySessionRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(deliverySessionRepository.save(any(DeliverySession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DeliverySession session = deliveryService.handleCourierAssigned(event);
+
+        assertThat(session.getTrackingNumber()).isEqualTo("SD-7K2P-Q9XM");
+        assertThat(session.getCustomerId()).isEqualTo(customerId);
+        assertThat(session.getPickupDistrict()).isEqualTo(SriLankanDistrict.KANDY);
+        assertThat(session.getDeliveryDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+        verify(publishStateTransitionAction).execute(any(), eq(orderId), eq("SD-7K2P-Q9XM"), eq(courierId),
+                eq(customerId), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(),
+                eq(SriLankanDistrict.KANDY), eq(SriLankanDistrict.COLOMBO), any());
     }
 
     @Test
@@ -161,7 +184,7 @@ class DeliveryExecutionServiceTest {
         assertThat(result.getDeliveredAt()).isNotNull();
 
         verify(publishStateTransitionAction).execute(eq(deliveryId), eq(orderId), eq("SD-COL-12345"),
-                any(), eq(DeliveryState.OUT_FOR_DELIVERY), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
+                any(), any(), eq(DeliveryState.OUT_FOR_DELIVERY), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
     }
 
     @Test

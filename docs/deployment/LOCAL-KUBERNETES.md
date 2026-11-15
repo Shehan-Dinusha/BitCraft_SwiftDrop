@@ -65,6 +65,16 @@ When every pod shows `1/1 Running`, open **http://swiftdrop.localhost**. Sign in
 
 `*.localhost` addresses resolve to your own machine in Chrome, Edge, Firefox and curl, so no hosts-file edit is needed.
 
+## Demo data
+
+To fill the cluster with realistic demo data (25 dispatchers, 50 couriers, 40 customers and about 200 parcels in every state, with proof-of-delivery photos and notifications), run the seeder. It starts and stops services stage by stage, so it fits on a 4-CPU laptop:
+
+```bash
+SEED_PASSWORD='Demo-pass-2026' scripts/seed/run-local.sh
+```
+
+See [scripts/seed/README.md](../../scripts/seed/README.md).
+
 ## Everyday commands
 
 | Task | Command |

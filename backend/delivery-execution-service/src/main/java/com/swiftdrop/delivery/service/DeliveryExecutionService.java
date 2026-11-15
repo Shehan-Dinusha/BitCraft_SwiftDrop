@@ -73,6 +73,7 @@ public class DeliveryExecutionService {
                     DeliverySession newSession = new DeliverySession();
                     newSession.setDeliveryId(UUID.randomUUID());
                     newSession.setOrderId(event.orderId());
+                    // Fallback only for old events without a tracking number.
                     newSession.setTrackingNumber("SD-" + event.orderId().toString().substring(0, 8).toUpperCase());
                     newSession.setCurrentState(DeliveryState.CREATED);
                     newSession.setStatus("ACTIVE");
@@ -82,6 +83,20 @@ public class DeliveryExecutionService {
         DeliveryState prevState = session.getCurrentState();
         session.setCourierId(event.courierId());
         session.setCourierName(event.courierName());
+        if (event.customerId() != null) {
+            session.setCustomerId(event.customerId());
+        }
+        // The real tracking number keeps live tracking (keyed by it) working, and the
+        // districts are required by analytics, which rejects status events without one.
+        if (event.trackingNumber() != null && !event.trackingNumber().isBlank()) {
+            session.setTrackingNumber(event.trackingNumber());
+        }
+        if (event.pickupDistrict() != null) {
+            session.setPickupDistrict(event.pickupDistrict());
+        }
+        if (event.deliveryDistrict() != null) {
+            session.setDeliveryDistrict(event.deliveryDistrict());
+        }
         session.setPreviousState(prevState);
         session.setCurrentState(DeliveryState.ASSIGNED);
         session = deliverySessionRepository.save(session);
@@ -103,6 +118,7 @@ public class DeliveryExecutionService {
                 session.getOrderId(),
                 session.getTrackingNumber(),
                 session.getCourierId(),
+                session.getCustomerId(),
                 prevState,
                 DeliveryState.ASSIGNED,
                 "Courier assigned",
@@ -186,6 +202,7 @@ public class DeliveryExecutionService {
                 session.getOrderId(),
                 session.getTrackingNumber(),
                 session.getCourierId(),
+                session.getCustomerId(),
                 fromState,
                 toState,
                 request.notes(),

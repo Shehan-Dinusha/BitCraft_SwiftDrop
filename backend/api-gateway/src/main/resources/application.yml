@@ -63,6 +63,10 @@ springdoc:
 swiftdrop:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  gateway:
+    # Proxies whose X-Forwarded-For entries are believed (nginx, ingress, load balancer). The real client
+    # is the right-most address outside these ranges; see ClientIpResolutionFilter.
+    trusted-proxies: ${GATEWAY_TRUSTED_PROXIES:10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128,fc00::/7}
   routes:
     auth: ${AUTH_SERVICE_URL:http://localhost:8081}
     order: ${ORDER_SERVICE_URL:http://localhost:8082}

@@ -1,21 +1,29 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { AtSign, ChevronDown, Lock, Mail, MapPin, UserPlus, UserRound } from 'lucide-react';
+import { Alert } from '@/design-system/components/Alert/Alert';
 import { Button } from '@/design-system/primitives/Button';
+import { Field } from '@/design-system/primitives/Field';
 import { Input } from '@/design-system/primitives/Input';
-import { roleHome } from '@/app/roleHome';
-import { registerUser, googleAuthorizeUrl, SRI_LANKAN_DISTRICTS, type RegisterUserInput } from '@/services/api/authApi';
-import { personaForRole, useAuthStore } from '@/store/useAuthStore';
-
-/** Mirrors PasswordPolicy in auth-iam-service: 8-72 chars with at least one letter and one digit. */
-function validatePassword(value: string): string | null {
-  if (value.length < 8) return 'Password must be at least 8 characters.';
-  if (value.length > 72) return 'Password must not exceed 72 characters.';
-  if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
-    return 'Password must contain at least one letter and one digit.';
-  }
-  return null;
-}
+import { registerUser, SRI_LANKAN_DISTRICTS, type RegisterUserInput } from '@/services/api/authApi';
+import { parseApiError } from '@/services/api/apiError';
+import { validatePassword } from '@/features/auth/passwordPolicy';
+import {
+  PasswordMatchMeter,
+  PasswordStrengthMeter
+} from '@/features/auth/components/PasswordStrengthMeter';
+import { USERNAME_PATTERN, useUsernameAvailability } from '@/features/auth/useUsernameAvailability';
+import { useSignedInRedirect } from '@/features/auth/useSignedInRedirect';
+import {
+  AuthDivider,
+  AuthLink,
+  AuthShell,
+  authFieldClass,
+  authNativeFieldClass,
+  FieldIcon,
+  GoogleTile
+} from '@/features/auth/components/AuthShell';
+import { cn } from '@/utils/cn';
 
 function districtLabel(value: string): string {
   return value
@@ -24,12 +32,12 @@ function districtLabel(value: string): string {
     .join(' ');
 }
 
-const selectClass =
-  'flex w-full items-center gap-2 border transition-colors rounded-lg border-border-subtle bg-card px-3 py-2.5 text-sm text-primary outline-none focus:outline focus:outline-2 focus:outline-offset-[-2px] focus:outline-border-focus';
-const inputClass = selectClass + ' placeholder:text-muted';
+/** Shape check only; the server is the authority. */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type FieldName = 'firstName' | 'lastName' | 'email' | 'username' | 'password' | 'confirm';
 
 export function SignUpPage() {
-  const setAuth = useAuthStore((state) => state.setAuth);
   const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState('');
@@ -41,224 +49,313 @@ export function SignUpPage() {
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A field shows its error once the user has left it, or after they press "Create account".
+  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const usernameStatus = useUsernameAvailability(username);
+  const signedInHome = useSignedInRedirect();
+
+  if (signedInHome) return <Navigate to={signedInHome} replace />;
+
+  /** The current problem with each field, or undefined when it is fine. Recomputed on every change. */
+  const problems: Record<FieldName, string | undefined> = {
+    firstName: firstName.trim() ? undefined : 'First name is required.',
+    lastName: lastName.trim() ? undefined : 'Last name is required.',
+    email: !email.trim()
+      ? 'Email address is required.'
+      : EMAIL_PATTERN.test(email.trim())
+        ? undefined
+        : 'Enter a valid email address, like name@example.com.',
+    username: !username.trim()
+      ? 'Username is required.'
+      : !USERNAME_PATTERN.test(username.trim())
+        ? 'Use 3-50 letters, digits, dots, underscores or hyphens.'
+        : usernameStatus === 'taken'
+          ? 'This username is already taken.'
+          : undefined,
+    password: !password
+      ? 'Password is required.'
+      : (validatePassword(password, { username: username.trim(), email: email.trim() }) ??
+        undefined),
+    confirm: !confirm
+      ? 'Please confirm your password.'
+      : confirm !== password
+        ? 'Passwords do not match.'
+        : undefined
+  };
+
+  // "Taken" is shown live as soon as the check answers; everything else waits for blur or submit.
+  const errorFor = (name: FieldName) =>
+    submitted || touched[name] || (name === 'username' && usernameStatus === 'taken')
+      ? problems[name]
+      : undefined;
+  // The filled style hides the border; a field with an error keeps the Input's red error border.
+  const fieldClass = (name: FieldName) =>
+    errorFor(name) ? 'bg-elevated focus-within:bg-card' : authFieldClass;
+  const touch = (name: FieldName) => () => setTouched((current) => ({ ...current, [name]: true }));
+
+  const usernameHint =
+    usernameStatus === 'checking'
+      ? 'Checking availability…'
+      : usernameStatus === 'available'
+        ? 'This username is available.'
+        : undefined;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setSubmitted(true);
 
-    // Client-side guard: passwords must match.
-    if (password !== confirm) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    // Client-side password policy check (mirrors server-side PasswordPolicy).
-    const policyError = validatePassword(password);
-    if (policyError) {
-      setError(policyError);
+    const firstProblem = (Object.keys(problems) as FieldName[]).find((name) => problems[name]);
+    if (firstProblem) {
+      // Take the user straight to the first field that needs attention.
+      document.getElementById(`signup-${firstProblem}`)?.focus();
       return;
     }
 
     setLoading(true);
     try {
-      const tokens = await registerUser({
+      const normalizedEmail = email.trim().toLowerCase();
+      await registerUser({
         username: username.trim(),
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         district
       });
-      setAuth(tokens);
-      // New accounts are always CUSTOMER — navigate to the customer home.
-      navigate(roleHome[personaForRole(tokens.role)], { replace: true });
+      // The account is unverified until the emailed code is confirmed; after that the user signs in.
+      navigate(`/verify-email?identifier=${encodeURIComponent(normalizedEmail)}`, {
+        replace: true
+      });
     } catch (requestError) {
-      if (axios.isAxiosError(requestError)) {
-        // Show only the server message; never echo back passwords or personal data.
-        const data = requestError.response?.data as
-          | { message?: string; fieldErrors?: Record<string, string[]> }
-          | undefined;
-        const details = Object.values(data?.fieldErrors ?? {}).flat().join(' ');
-        setError(details || data?.message || 'Registration failed. Please try again.');
-      } else {
-        setError('Unable to reach the server. Check your connection and try again.');
-      }
+      const parsed = parseApiError(requestError);
+      setError(
+        parsed.message ??
+          (parsed.status
+            ? 'Registration failed. Please try again.'
+            : 'Unable to reach the server. Check your connection and try again.')
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-canvas p-6 text-primary">
-      <section className="w-full max-w-md rounded-2xl border border-border-subtle bg-card p-8 shadow-ambient">
-        <p className="text-xs font-bold uppercase tracking-wider text-brand-primary">
-          SwiftDrop / Velocity
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Create your account.</h1>
-        <p className="mt-2 text-sm text-secondary">
-          New accounts are created as customers. Contact an administrator to change your role.
+    <AuthShell
+      icon={<UserPlus />}
+      width="lg"
+      title="Create your account"
+      description="Start sending parcels in minutes. We'll email you a code to confirm your address."
+      below={
+        <>
+          Already have an account? <AuthLink to="/login">Sign in</AuthLink>
+        </>
+      }
+    >
+      {error ? (
+        <Alert tone="danger" title="We couldn't create your account" className="mb-5">
+          {error}
+        </Alert>
+      ) : null}
+
+      <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+        <p className="text-caption text-muted">
+          Fields marked <span className="text-status-danger">*</span> are required.
         </p>
 
-        <form className="mt-8 space-y-4" onSubmit={onSubmit}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="block space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                First name
-              </span>
-              <input
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-                autoComplete="given-name"
-                placeholder="John"
-                required
-                maxLength={100}
-                className={inputClass}
-              />
-            </label>
-            <label className="block space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                Last name
-              </span>
-              <input
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-                autoComplete="family-name"
-                placeholder="Doe"
-                required
-                maxLength={100}
-                className={inputClass}
-              />
-            </label>
-          </div>
-
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              Username
-            </span>
+        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+          <Field label="First name" required error={errorFor('firstName')}>
             <Input
+              id="signup-firstName"
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              onBlur={touch('firstName')}
+              autoComplete="given-name"
+              placeholder="Nimal"
+              maxLength={100}
+              required
+              autoFocus
+              className={fieldClass('firstName')}
+              leading={
+                <FieldIcon>
+                  <UserRound />
+                </FieldIcon>
+              }
+            />
+          </Field>
+          <Field label="Last name" required error={errorFor('lastName')}>
+            <Input
+              id="signup-lastName"
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              onBlur={touch('lastName')}
+              autoComplete="family-name"
+              placeholder="Perera"
+              maxLength={100}
+              required
+              className={fieldClass('lastName')}
+              leading={
+                <FieldIcon>
+                  <UserRound />
+                </FieldIcon>
+              }
+            />
+          </Field>
+        </div>
+
+        <Field label="Email address" required error={errorFor('email')}>
+          <Input
+            id="signup-email"
+            inputMode="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            onBlur={touch('email')}
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="name@example.com"
+            maxLength={320}
+            required
+            className={fieldClass('email')}
+            leading={
+              <FieldIcon>
+                <Mail />
+              </FieldIcon>
+            }
+          />
+        </Field>
+
+        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+          <Field
+            label="Username"
+            required
+            error={errorFor('username')}
+            hint={usernameHint}
+            className={cn(
+              usernameStatus === 'available' && '[&>span:last-child]:text-status-success'
+            )}
+          >
+            <Input
+              id="signup-username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
+              onBlur={touch('username')}
               autoComplete="username"
-              placeholder="john.doe"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="nimal.perera"
+              maxLength={50}
               required
-              minLength={3}
+              className={fieldClass('username')}
+              leading={
+                <FieldIcon>
+                  <AtSign />
+                </FieldIcon>
+              }
             />
-          </label>
+          </Field>
 
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              Email address
-            </span>
-            {/*
-              The design-system Input omits the `type` prop (variant drives input type).
-              We use a raw <input> here styled to match, as "email" is not an Input variant.
-            */}
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              placeholder="john@example.com"
-              required
-              className={inputClass}
-            />
-          </label>
-
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              District
-            </span>
-            <select
-              value={district}
-              onChange={(event) => setDistrict(event.target.value as RegisterUserInput['district'])}
-              className={selectClass}
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="signup-district"
+              className="text-xs font-semibold leading-4 text-primary"
             >
-              {SRI_LANKAN_DISTRICTS.map((value) => (
-                <option key={value} value={value}>
-                  {districtLabel(value)}
-                </option>
-              ))}
-            </select>
-          </label>
+              District <span className="text-status-danger">*</span>
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
+                <FieldIcon>
+                  <MapPin />
+                </FieldIcon>
+              </span>
+              <select
+                id="signup-district"
+                value={district}
+                onChange={(event) =>
+                  setDistrict(event.target.value as RegisterUserInput['district'])
+                }
+                required
+                className={authNativeFieldClass}
+              >
+                {SRI_LANKAN_DISTRICTS.map((value) => (
+                  <option key={value} value={value}>
+                    {districtLabel(value)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted"
+              />
+            </div>
+          </div>
+        </div>
 
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              Password
-            </span>
+        <div className="flex flex-col gap-2">
+          <Field label="Password" required error={errorFor('password')}>
             <Input
+              id="signup-password"
               variant="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              onBlur={touch('password')}
               autoComplete="new-password"
-              placeholder="Min 8 chars, with a letter and a number"
+              placeholder="At least 8 characters"
+              maxLength={72}
               required
+              className={fieldClass('password')}
+              leading={
+                <FieldIcon>
+                  <Lock />
+                </FieldIcon>
+              }
             />
-          </label>
+          </Field>
+          <PasswordStrengthMeter
+            password={password}
+            context={{ username: username.trim(), email: email.trim() }}
+          />
+        </div>
 
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              Confirm password
-            </span>
+        <div className="flex flex-col gap-2">
+          <Field label="Confirm password" required error={errorFor('confirm')}>
             <Input
+              id="signup-confirm"
               variant="password"
               value={confirm}
               onChange={(event) => setConfirm(event.target.value)}
+              onBlur={touch('confirm')}
               autoComplete="new-password"
               placeholder="Repeat your password"
+              maxLength={72}
               required
+              className={fieldClass('confirm')}
+              leading={
+                <FieldIcon>
+                  <Lock />
+                </FieldIcon>
+              }
             />
-          </label>
-
-          {error ? (
-            <p role="alert" className="text-sm font-medium text-status-danger">
-              {error}
-            </p>
-          ) : null}
-
-          <Button type="submit" className="w-full" loading={loading} loadingLabel="Creating account">
-            Create account
-          </Button>
-        </form>
-
-        <p className="mt-5 text-center text-sm text-secondary">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-brand-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-
-        {/* ── Google OAuth sign-up ─────────────────────────────────────── */}
-        <div className="mt-5 flex items-center gap-3">
-          <span className="h-px flex-1 bg-border-subtle" />
-          <span className="text-xs text-muted">or</span>
-          <span className="h-px flex-1 bg-border-subtle" />
+          </Field>
+          {errorFor('confirm') ? null : (
+            <PasswordMatchMeter password={password} confirm={confirm} />
+          )}
         </div>
 
-        {/*
-          Use an <a> tag for a full browser navigation — Google OAuth requires a
-          real redirect, not an XHR/fetch call.
-        */}
-        <a
-          href={googleAuthorizeUrl()}
-          className="mt-4 inline-flex w-full items-center justify-center gap-3 rounded-lg border border-border-subtle bg-card px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-surface-hover"
+        <Button
+          type="submit"
+          className="mt-2 h-12 w-full rounded-xl shadow-ambient"
+          loading={loading}
+          loadingLabel="Creating account"
         >
-          {/* Official Google "G" logo */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 48 48"
-            className="h-5 w-5 shrink-0"
-            aria-hidden="true"
-          >
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            <path fill="none" d="M0 0h48v48H0z"/>
-          </svg>
-          Continue with Google
-        </a>
-      </section>
-    </main>
+          Create account
+        </Button>
+      </form>
+
+      <AuthDivider label="Or sign up with" />
+      <GoogleTile label="Sign up with Google" />
+    </AuthShell>
   );
 }
 

@@ -17,7 +17,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Verifies V8, which adds the nullable picked_up_at column used to block post-pickup reassignment. */
+/** Verifies V9, which adds the nullable picked_up_at column used to block post-pickup reassignment. */
 @Testcontainers(disabledWithoutDocker = true)
 class PickupTrackingMigrationIT {
 
@@ -30,11 +30,11 @@ class PickupTrackingMigrationIT {
     }
 
     @Test
-    @DisplayName("Fresh install: V8 adds picked_up_at as a nullable timestamptz column")
+    @DisplayName("Fresh install: V9 adds picked_up_at as a nullable timestamptz column")
     void freshInstallAddsNullablePickedUpAt() throws SQLException {
         flyway(null).migrate();
 
-        assertThat(migrationApplied("8")).isTrue();
+        assertThat(migrationApplied("9")).isTrue();
         try (Connection connection = connection();
              PreparedStatement statement = connection.prepareStatement("""
                      SELECT data_type, is_nullable, column_default FROM information_schema.columns
@@ -49,9 +49,9 @@ class PickupTrackingMigrationIT {
     }
 
     @Test
-    @DisplayName("Existing database: V8 keeps assignments intact and leaves picked_up_at NULL (no backfill)")
+    @DisplayName("Existing database at V8: V9 keeps assignments intact and leaves picked_up_at NULL (no backfill)")
     void existingAssignmentsKeepTheirDataWithNullPickup() throws SQLException {
-        flyway("7").migrate();
+        flyway("8").migrate();
         UUID orderId = UUID.randomUUID();
         UUID courierId = UUID.randomUUID();
         try (Connection connection = connection();
@@ -64,7 +64,7 @@ class PickupTrackingMigrationIT {
 
         flyway(null).migrate();
 
-        assertThat(migrationApplied("8")).isTrue();
+        assertThat(migrationApplied("9")).isTrue();
         try (Connection connection = connection();
              PreparedStatement statement = connection.prepareStatement(
                      "SELECT courier_id, status, version, picked_up_at FROM dispatch_assignments WHERE order_id = ?")) {

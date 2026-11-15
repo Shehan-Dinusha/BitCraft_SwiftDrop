@@ -1,6 +1,7 @@
 package com.swiftdrop.dispatch.service;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
+import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
@@ -60,6 +61,44 @@ class ManualOverrideServiceTest {
         orderId = UUID.randomUUID();
         oldCourierId = UUID.randomUUID();
         newCourierId = UUID.randomUUID();
+    }
+
+    @Test
+    @DisplayName("Manual assign: the published events name the order's customer, so delivery can notify them")
+    void testManualAssign_PropagatesCustomerId() {
+        UUID customerId = UUID.randomUUID();
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(orderId);
+        assignment.setCustomerId(customerId);
+        assignment.setStatus(AssignmentStatus.UNASSIGNED);
+        assignment.setPickupDistrict(SriLankanDistrict.KANDY);
+        assignment.setDeliveryDistrict(SriLankanDistrict.COLOMBO);
+        assignment.setOrderSpeed(OrderSpeed.STANDARD);
+        assignment.setTrackingNumber("SD-KAN-22222");
+
+        CourierShift newCourier = new CourierShift();
+        newCourier.setCourierId(newCourierId);
+        newCourier.setCourierName("New Courier");
+        newCourier.setActiveParcelsCount(0);
+        newCourier.setMaxCapacity(5);
+        newCourier.setShiftStatus(ShiftStatus.AVAILABLE);
+
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(newCourier));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        manualOverrideService.manualAssign(new ManualAssignRequest(orderId, newCourierId, "dispatcher.kandy", "Nearest courier"));
+
+        ArgumentCaptor<CourierAssignedEvent> assigned = ArgumentCaptor.forClass(CourierAssignedEvent.class);
+        verify(eventPublisher).publishCourierAssigned(assigned.capture());
+        assertThat(assigned.getValue().customerId()).isEqualTo(customerId);
+        assertThat(assigned.getValue().trackingNumber()).isEqualTo("SD-KAN-22222");
+        assertThat(assigned.getValue().pickupDistrict()).isEqualTo(SriLankanDistrict.KANDY);
+        assertThat(assigned.getValue().deliveryDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+
+        ArgumentCaptor<ParcelStatusChangedEvent> status = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
+        verify(eventPublisher).publishParcelStatusChanged(status.capture());
+        assertThat(status.getValue().customerId()).isEqualTo(customerId);
     }
 
     @Test
@@ -289,7 +328,10 @@ class ManualOverrideServiceTest {
     @DisplayName("Reassign events: only courier.assigned, naming the new courier, with the request correlation ID")
     void testReassign_EventContents() {
         UUID correlationId = UUID.randomUUID();
-        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignedOrder(AssignmentStatus.ASSIGNED)));
+        UUID customerId = UUID.randomUUID();
+        DispatchAssignment assignment = assignedOrder(AssignmentStatus.ASSIGNED);
+        assignment.setCustomerId(customerId);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
         when(courierShiftRepository.findByCourierId(newCourierId))
                 .thenReturn(Optional.of(courier(newCourierId, "New Courier", 0)));
         when(courierShiftRepository.findByCourierId(oldCourierId))
@@ -304,6 +346,9 @@ class ManualOverrideServiceTest {
         assertThat(assigned.courierName()).isEqualTo("New Courier");
         assertThat(assigned.trackingNumber()).isEqualTo("SD-COL-11111");
         assertThat(assigned.correlationId()).isEqualTo(correlationId);
+        assertThat(assigned.customerId()).as("customer kept for delivery notifications (#75)").isEqualTo(customerId);
+        assertThat(assigned.pickupDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+        assertThat(assigned.deliveryDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
         verify(eventPublisher, never()).publishParcelStatusChanged(any());
     }
 

@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
-import { Package } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { LogOut, Package } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BottomNav,
+  IconButton,
   NavItem,
   SideNav,
   TopBar,
@@ -13,6 +14,7 @@ import {
   type ShellRole
 } from '@/design-system';
 import { PersonaSwitcherDevBar } from '@/features/auth/components/PersonaSwitcherDevBar';
+import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -152,13 +154,26 @@ export function AppShell() {
     .sort((left, right) => (right.to?.length ?? 0) - (left.to?.length ?? 0))[0];
   const pageTitle = activeEntry?.label ?? spec.label;
 
-  const handleSignOut = () => {
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  // Sign-out asks first; the dialog's confirm button does the actual logout.
+  const handleSignOut = () => setConfirmingSignOut(true);
+
+  const confirmSignOut = () => {
+    setSigningOut(true);
     void (async () => {
       try {
+        // Revokes the refresh token and blacklists the access token on the server.
         await logoutUser(refreshToken);
+      } catch {
+        // Already expired or the API is unreachable: the local session is still cleared below.
       } finally {
         signOut();
-        navigate('/login', { replace: true });
+        navigate('/login', {
+          replace: true,
+          state: { notice: 'You have been signed out.' }
+        });
       }
     })();
   };
@@ -197,7 +212,20 @@ export function AppShell() {
           district={shellRole === 'dispatcher' ? user?.district : undefined}
           notificationSlot={<NotificationBell />}
           leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}
-        />
+        >
+          {hasTabs ? (
+            // Phones hide the sidebar (and its account footer), so sign-out lives in the top bar there.
+            <IconButton
+              variant="ghost"
+              density="compact"
+              aria-label="Sign out"
+              title="Sign out"
+              icon={<LogOut aria-hidden="true" />}
+              onClick={handleSignOut}
+              className="size-9 text-secondary md:hidden"
+            />
+          ) : null}
+        </TopBar>
         <main className={hasTabs ? 'flex-1 pb-[68px] md:pb-0' : 'flex-1'}>
           <Outlet />
         </main>
@@ -223,6 +251,14 @@ export function AppShell() {
       <div className="fixed bottom-6 right-6 z-40">
         <AiAssistantSlot />
       </div>
+
+      <SignOutDialog
+        open={confirmingSignOut}
+        accountLabel={user?.email ?? user?.username}
+        signingOut={signingOut}
+        onCancel={() => setConfirmingSignOut(false)}
+        onConfirm={confirmSignOut}
+      />
     </div>
   );
 }

@@ -22,6 +22,31 @@ data:
 {{- $hpa := eq (include "swiftdrop.hpaEnabled" (dict "root" $ "svc" $raw)) "true" }}
 {{- $cmData := include "swiftdrop.serviceConfigData" (dict "root" $ "name" $name "s" $s) | trim }}
 {{- $port := int $s.port }}
+{{- $persist := get $s "persistence" | default dict }}
+{{- if get $persist "enabled" }}
+---
+# Files the service keeps on disk (e.g. proof-of-delivery photos when no Azure Blob
+# account is configured). ReadWriteOnce: fine on a single node; multi-node clusters
+# should use object storage instead and leave persistence disabled.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-data
+  namespace: {{ $apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- with get $persist "storageClassName" }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ get $persist "size" | default "1Gi" }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -80,7 +105,7 @@ metadata:
     {{- end }}
 spec:
   {{- if not $hpa }}
-  replicas: {{ $s.replicas }}
+  replicas: {{ include "swiftdrop.replicas" (dict "root" $ "svc" $raw) }}
   {{- end }}
   revisionHistoryLimit: 5
   strategy:
@@ -109,6 +134,14 @@ spec:
       serviceAccountName: {{ $name }}-sa
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
+      {{- if get $persist "enabled" }}
+      securityContext:
+        fsGroup: 1001          # the image's non-root user; makes the volume writable
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $name }}-data
+      {{- end }}
       {{- with $.Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -191,6 +224,11 @@ spec:
             {{- end }}
           resources:
             {{- toYaml $s.resources | nindent 12 }}
+          {{- if get $persist "enabled" }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ required "persistence.mountPath is required" (get $persist "mountPath") }}
+          {{- end }}
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
@@ -210,7 +248,8 @@ spec:
               port: http
             initialDelaySeconds: {{ $s.probes.livenessInitialDelaySeconds }}
             periodSeconds: 30
-            timeoutSeconds: 5
+            timeoutSeconds: {{ $s.probes.livenessTimeoutSeconds | default 5 }}
+            failureThreshold: {{ $s.probes.livenessFailureThreshold | default 3 }}
 {{- if $hpa }}
 ---
 apiVersion: autoscaling/v2

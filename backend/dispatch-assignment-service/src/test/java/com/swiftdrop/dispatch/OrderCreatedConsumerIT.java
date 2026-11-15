@@ -110,7 +110,7 @@ class OrderCreatedConsumerIT {
 
         // Dispatcher-driven allocation: available couriers, including one in the
         // pickup district, must not cause an order to be assigned automatically.
-        // The test owns its couriers; V7 removes the old demo seed couriers.
+        // The test owns its couriers; V8 removes the old demo seed couriers.
         pickupDistrictCourierId = createCourier(SriLankanDistrict.COLOMBO);
         createCourier(SriLankanDistrict.GAMPAHA);
         List<CourierShift> couriers = courierShiftRepository.findAll();
@@ -192,6 +192,7 @@ class OrderCreatedConsumerIT {
 
         DispatchAssignment registered = recordsFor(event.orderId()).getFirst();
         assertThat(registered.getCourierId()).as("no courier is auto-assigned").isNull();
+        assertThat(registered.getCustomerId()).as("customer stored at intake (#75)").isEqualTo(event.customerId());
         assertThat(registered.getAssignedAt()).isNull();
         assertThat(dispatchAssignmentService.getUnassignedParcels())
                 .extracting(DispatchAssignmentResponse::orderId)
@@ -245,7 +246,10 @@ class OrderCreatedConsumerIT {
                 rabbitTemplate.receive(COURIER_ASSIGNED_PROBE_QUEUE, 10_000);
         assertThat(assignedEvent).as("explicit assignment publishes dispatch.courier.assigned").isNotNull();
         assertThat(new String(assignedEvent.getBody(), StandardCharsets.UTF_8))
-                .contains(event.orderId().toString(), courier.getCourierId().toString());
+                .contains(event.orderId().toString(), courier.getCourierId().toString())
+                .as("customer and districts reach delivery-execution (#75)")
+                .contains("\"customerId\":\"" + event.customerId() + "\"",
+                        "\"pickupDistrict\":\"COLOMBO\"", "\"deliveryDistrict\":\"GAMPAHA\"");
         assertThat(rabbitTemplate.receive(COURIER_ASSIGNED_PROBE_QUEUE, 2_000)).isNull();
     }
 

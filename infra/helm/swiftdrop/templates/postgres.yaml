@@ -91,26 +91,29 @@ spec:
           volumeMounts:
             - name: {{ $key }}-pgdata
               mountPath: /var/lib/postgresql/data
+          # Probes run through sh: Kubernetes does not expand $(VAR) in exec probes.
           # First boot runs initdb, which can take minutes on a busy node. The startup
           # probe holds off liveness until Postgres has answered once, so a slow
           # initdb is never killed half-way (that can leave the database uncreated).
           startupProbe:
             exec:
-              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d {{ $db.dbName }}"]
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 30
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d {{ $db.dbName }}"]
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", {{ $db.dbName | quote }}]
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d {{ $db.dbName }}"]
             periodSeconds: 30
             timeoutSeconds: 10
-            failureThreshold: 3
+            # Restarting a database is drastic; only do it after ~3 minutes of silence
+            # (a CPU-starved laptop or node can stall pg_isready for a minute or more).
+            failureThreshold: 6
   volumeClaimTemplates:
     - metadata:
         name: {{ $key }}-pgdata

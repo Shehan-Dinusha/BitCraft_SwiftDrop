@@ -80,8 +80,6 @@ secrets:
     clientSecret: ""
   aiProvider:
     apiKey: ""
-  acsEmail:
-    accessKey: ""
 
 # ── Shared config (ConfigMap "swiftdrop-common-config", mounted into every backend service) ──
 commonConfig:
@@ -129,6 +127,8 @@ serviceDefaults:
   probes:
     readinessInitialDelaySeconds: 20
     livenessInitialDelaySeconds: 40
+    livenessTimeoutSeconds: 5
+    livenessFailureThreshold: 3     # restart after ~90 s without a liveness answer
     startupFailureThreshold: 30
   networkPolicy:
     # When non-empty, only pods of these services (same namespace) may call this service.
@@ -154,7 +154,7 @@ services:
     config:
       REDIS_HOST: "redis.{{ .Values.namespaces.messaging }}.svc.cluster.local"
       REDIS_PORT: "6379"
-      CORS_ALLOWED_ORIGINS: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}"
+      CORS_ALLOWED_ORIGINS: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}'
       AUTH_SERVICE_URL: "http://auth-iam-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       ORDER_SERVICE_URL: "http://customer-order-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       PRICING_SERVICE_URL: "http://pricing-zone-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
@@ -198,18 +198,57 @@ services:
       JWT_ACCESS_TOKEN_EXPIRATION_MS: "3600000"
       JWT_REFRESH_TOKEN_EXPIRATION_DAYS: "30"
       JWT_BLACKLIST_PREFIX: "jwt:blacklist:"
-      GOOGLE_REDIRECT_URI: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}/api/v1/auth/oauth2/google/callback"
-      FRONTEND_URL: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}"
+      GOOGLE_REDIRECT_URI: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}/api/v1/auth/oauth2/google/callback'
+      FRONTEND_URL: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}'
+      AUTH_OTP_LOG_CODE: "false"
     secretEnv:
       - { name: JWT_SECRET, secretName: swiftdrop-jwt-credentials, key: secret }
-      - { name: JWT_PRIVATE_KEY, secretName: swiftdrop-jwt-credentials, key: private-key }
-      - { name: JWT_PUBLIC_KEY, secretName: swiftdrop-jwt-credentials, key: public-key }
-      - { name: BOOTSTRAP_ADMIN_USERNAME, secretName: swiftdrop-bootstrap-admin, key: username, optional: true }
-      - { name: BOOTSTRAP_ADMIN_PASSWORD, secretName: swiftdrop-bootstrap-admin, key: password, optional: true }
-      - { name: BOOTSTRAP_ADMIN_EMAIL, secretName: swiftdrop-bootstrap-admin, key: email, optional: true }
-      - { name: BOOTSTRAP_ADMIN_DISTRICT, secretName: swiftdrop-bootstrap-admin, key: district, optional: true }
-      - { name: GOOGLE_CLIENT_ID, secretName: swiftdrop-google-oauth, key: client-id, optional: true }
-      - { name: GOOGLE_CLIENT_SECRET, secretName: swiftdrop-google-oauth, key: client-secret, optional: true }
+      - {
+          name: JWT_PRIVATE_KEY,
+          secretName: swiftdrop-jwt-credentials,
+          key: private-key,
+        }
+      - {
+          name: JWT_PUBLIC_KEY,
+          secretName: swiftdrop-jwt-credentials,
+          key: public-key,
+        }
+      - {
+          name: BOOTSTRAP_ADMIN_USERNAME,
+          secretName: swiftdrop-bootstrap-admin,
+          key: username,
+          optional: true,
+        }
+      - {
+          name: BOOTSTRAP_ADMIN_PASSWORD,
+          secretName: swiftdrop-bootstrap-admin,
+          key: password,
+          optional: true,
+        }
+      - {
+          name: BOOTSTRAP_ADMIN_EMAIL,
+          secretName: swiftdrop-bootstrap-admin,
+          key: email,
+          optional: true,
+        }
+      - {
+          name: BOOTSTRAP_ADMIN_DISTRICT,
+          secretName: swiftdrop-bootstrap-admin,
+          key: district,
+          optional: true,
+        }
+      - {
+          name: GOOGLE_CLIENT_ID,
+          secretName: swiftdrop-google-oauth,
+          key: client-id,
+          optional: true,
+        }
+      - {
+          name: GOOGLE_CLIENT_SECRET,
+          secretName: swiftdrop-google-oauth,
+          key: client-secret,
+          optional: true,
+        }
 
   customer-order-service:
     enabled: true
@@ -222,7 +261,7 @@ services:
       PRICING_SERVICE_URL: "http://pricing-zone-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       PRICING_CONNECT_TIMEOUT_MS: "1000"
       PRICING_READ_TIMEOUT_MS: "5000"
-      PUBLIC_TRACKING_BASE_URL: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}"
+      PUBLIC_TRACKING_BASE_URL: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}'
 
   pricing-zone-service:
     enabled: true
@@ -250,6 +289,20 @@ services:
     image:
       repository: delivery-execution-service
     hpa: { minReplicas: 2, maxReplicas: 12, scaleUpPods: 3 }
+    config:
+      # Proof-of-delivery photos go to Azure Blob when secrets.podStorage.azureConnectionString
+      # is set; otherwise to POD_STORAGE_DIR (mount a volume there with `persistence`).
+      AZURE_STORAGE_CONTAINER_NAME: pod-images
+      POD_STORAGE_DIR: /var/lib/swiftdrop/pod
+    secretEnv:
+      - { name: AZURE_STORAGE_CONNECTION_STRING, secretName: delivery-pod-storage, key: azure-connection-string, optional: true }
+    # Disabled here: production runs several replicas across nodes, so photos must live in
+    # Azure Blob. Single-node profiles (student, local) enable it.
+    persistence:
+      enabled: false
+      mountPath: /var/lib/swiftdrop/pod
+      size: 2Gi
+      storageClassName: ""
 
   merchant-b2b-service:
     enabled: true
@@ -285,12 +338,6 @@ services:
       AUTH_SERVICE_URL: "http://auth-iam-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       CONTACT_MODE: iam
       CONTACT_CACHE_TTL_MINUTES: "10"
-      PUBLIC_TRACKING_BASE_URL: "{{ ternary \"https\" \"http\" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}"
-      NOTIFICATION_EMAIL_PROVIDER: mock
-      ACS_EMAIL_ENDPOINT: ""
-      ACS_EMAIL_SENDER_ADDRESS: ""
-    secretEnv:
-      - { name: ACS_EMAIL_ACCESS_KEY, secretName: notification-acs-email, key: access-key, optional: true }
 
   analytics-ai-service:
     enabled: true
@@ -311,7 +358,12 @@ services:
       AI_ENDPOINT: ""
       GATEWAY_URL: "http://api-gateway.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
     secretEnv:
-      - { name: AI_API_KEY, secretName: analytics-ai-provider, key: api-key, optional: true }
+      - {
+          name: AI_API_KEY,
+          secretName: analytics-ai-provider,
+          key: api-key,
+          optional: true,
+        }
 
 # ── Frontend (React build served by nginx) ───────────────────────────────────
 frontend:

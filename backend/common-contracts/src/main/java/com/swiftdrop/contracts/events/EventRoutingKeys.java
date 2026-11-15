@@ -21,4 +21,11 @@ public final class EventRoutingKeys {
     public static final String DISPATCH_FAILED = "dispatch.failed";
 
     public static final String MERCHANT_APPROVED = "merchant.approved";
+
+    /**
+     * One-time code (email verification / password reset) to be emailed by notification-service.
+     * Deliberately under the {@code notification.} namespace so the existing {@code notification.#}
+     * binding delivers it; the {@code auth.#} queue has no consumer.
+     */
+    public static final String AUTH_OTP_REQUESTED = "notification.auth.otp";
 }

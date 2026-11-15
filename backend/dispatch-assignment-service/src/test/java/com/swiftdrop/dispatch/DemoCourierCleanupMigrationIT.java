@@ -20,7 +20,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies V7, which removes the four demo couriers seeded by V2, on a fresh
+ * Verifies V8, which removes the four demo couriers seeded by V2, on a fresh
  * install and on an existing database where V2 has already been applied.
  */
 @Testcontainers(disabledWithoutDocker = true)
@@ -41,18 +41,19 @@ class DemoCourierCleanupMigrationIT {
     }
 
     @Test
-    @DisplayName("Fresh install: V2 seeds the demo couriers and V7 removes all four")
+    @DisplayName("Fresh install: V2 seeds the demo couriers and V8 removes all four")
     void freshInstallEndsWithoutDemoCouriers() throws SQLException {
         flyway(null).migrate();
 
-        assertThat(migrationApplied("7")).as("V7 recorded as applied (later migrations may follow)").isTrue();
+        assertThat(migrationApplied("8")).as("V8 recorded as applied (later migrations may follow)").isTrue();
         assertThat(remainingDemoCouriers()).isEmpty();
     }
 
     @Test
     @DisplayName("Existing database: unreferenced demo couriers are removed; referenced and real data are kept")
     void existingDatabaseKeepsReferencedDemoCourierAndRealData() throws SQLException {
-        flyway("6").migrate();
+        flyway("7").migrate();
+        assertThat(migrationApplied("7")).as("dev V7 (customer_id) already applied").isTrue();
         assertThat(remainingDemoCouriers()).as("V2 applied the demo seed").hasSize(4);
 
         UUID realCourier = UUID.randomUUID();
@@ -69,7 +70,7 @@ class DemoCourierCleanupMigrationIT {
 
         flyway(null).migrate();
 
-        assertThat(migrationApplied("7")).as("V7 recorded as applied (later migrations may follow)").isTrue();
+        assertThat(migrationApplied("8")).as("V8 recorded as applied (later migrations may follow)").isTrue();
         assertThat(remainingDemoCouriers())
                 .as("only the demo courier still referenced by an assignment is kept")
                 .containsExactly(DEMO_COURIERS.get(1));

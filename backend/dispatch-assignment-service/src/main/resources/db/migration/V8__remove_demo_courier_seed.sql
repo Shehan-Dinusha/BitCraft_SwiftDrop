@@ -1,4 +1,4 @@
--- V7__remove_demo_courier_seed.sql
+-- V8__remove_demo_courier_seed.sql
 -- V2 seeded four demo couriers for local testing. They have no user accounts
 -- in auth-iam-service, so they are not real couriers and must not be offered to
 -- dispatchers or receive assignments.
@@ -37,7 +37,7 @@ BEGIN
     );
 
     IF kept_count > 0 THEN
-        RAISE NOTICE 'V7 kept % demo courier record(s) because dispatch assignments still reference them; review them manually',
+        RAISE NOTICE 'V8 kept % demo courier record(s) because dispatch assignments still reference them; review them manually',
             kept_count;
     END IF;
 END $$;
