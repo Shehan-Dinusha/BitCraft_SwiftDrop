@@ -77,7 +77,9 @@ function psql(db, sql) {
 const rows = (out) => out.split('\n').filter(Boolean).map((l) => l.split('|'));
 const sqlText = (s) => `'${String(s).replace(/'/g, "''")}'`;
 const num = (n) => Number(n).toFixed(3);
-const sqlArray = (xs) => `ARRAY[${xs.map(num).join(',')}]::float8[]`;
+// Anchors keep microsecond precision: courier steps were ~1 s apart during seeding, so even a
+// millisecond of rounding, stretched to hours, moved steps by tens of seconds.
+const sqlArray = (xs) => `ARRAY[${xs.map((x) => Number(x).toFixed(6)).join(',')}]::float8[]`;
 
 function columnsOf(db) {
   const out = psql(db, `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public';`);
@@ -192,6 +194,10 @@ DECLARE t float8; len int := array_length(o, 1); r float8;
 BEGIN
   IF col IS NULL THEN RETURN NULL; END IF;
   t := extract(epoch FROM col);
+  -- A row recorded at one of the steps takes exactly that step's new time.
+  FOR i IN 1 .. len LOOP
+    IF abs(t - o[i]) < 0.002 THEN RETURN to_timestamp(LEAST(n[i], extract(epoch FROM now()) - 60)); END IF;
+  END LOOP;
   IF t <= o[1] THEN r := n[1];
   ELSIF t >= o[len] THEN r := n[len];
   ELSE
