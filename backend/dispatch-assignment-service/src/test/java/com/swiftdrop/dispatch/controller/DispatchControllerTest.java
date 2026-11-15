@@ -10,6 +10,7 @@ import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
 import com.swiftdrop.dispatch.exception.AssignmentConflictException;
+import com.swiftdrop.dispatch.exception.ReassignmentNotAllowedException;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
 import org.junit.jupiter.api.DisplayName;
@@ -268,6 +269,21 @@ class DispatchControllerTest {
                 .andExpect(status().isOk());
 
         verify(manualOverrideService).manualAssign(any(ManualAssignRequest.class), isNull());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/dispatch/reassign returns 409 Reassignment Not Allowed after pickup")
+    void testReassign_AfterPickupConflict() throws Exception {
+        when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any()))
+                .thenThrow(new ReassignmentNotAllowedException("Order was picked up; reassignment is not allowed after pickup."));
+
+        mockMvc.perform(post("/api/v1/dispatch/reassign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reassignRequest())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Reassignment Not Allowed"))
+                .andExpect(jsonPath("$.message").value("Order was picked up; reassignment is not allowed after pickup."));
     }
 
     private ReassignCourierRequest reassignRequest() {

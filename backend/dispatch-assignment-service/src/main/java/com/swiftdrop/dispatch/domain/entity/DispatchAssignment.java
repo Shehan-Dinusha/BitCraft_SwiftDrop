@@ -66,6 +66,10 @@ public class DispatchAssignment {
     @Column(name = "assigned_at")
     private Instant assignedAt;
 
+    /** When delivery-execution reported the parcel past pickup; reassignment is blocked once set. */
+    @Column(name = "picked_up_at")
+    private Instant pickedUpAt;
+
     @Column(name = "estimated_pickup_minutes")
     private Integer estimatedPickupMinutes = 30;
 
@@ -152,6 +156,9 @@ public class DispatchAssignment {
 
     public Instant getAssignedAt() { return assignedAt; }
     public void setAssignedAt(Instant assignedAt) { this.assignedAt = assignedAt; }
+
+    public Instant getPickedUpAt() { return pickedUpAt; }
+    public void setPickedUpAt(Instant pickedUpAt) { this.pickedUpAt = pickedUpAt; }
 
     public Integer getEstimatedPickupMinutes() { return estimatedPickupMinutes; }
     public void setEstimatedPickupMinutes(Integer estimatedPickupMinutes) { this.estimatedPickupMinutes = estimatedPickupMinutes; }

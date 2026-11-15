@@ -3,7 +3,6 @@ package com.swiftdrop.dispatch;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
-import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.dispatch.config.RabbitMQConfig;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
@@ -176,7 +175,7 @@ class AfterCommitEventPublishingIT {
     }
 
     @Test
-    @DisplayName("Committed reassignment publishes after commit with the correct previous status, courier and correlation ID")
+    @DisplayName("Committed reassignment publishes only courier.assigned after commit, with the new courier and correlation ID")
     void committedReassignmentPublishesCorrectEventsAfterCommit() {
         UUID oldCourier = availableCourier();
         UUID newCourier = availableCourier();
@@ -189,19 +188,14 @@ class AfterCommitEventPublishingIT {
         });
 
         ArgumentCaptor<CourierAssignedEvent> assigned = ArgumentCaptor.forClass(CourierAssignedEvent.class);
-        ArgumentCaptor<ParcelStatusChangedEvent> statusChanged = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
         InOrder broker = inOrder(rabbitTemplate);
         broker.verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME),
                 eq(RabbitMQConfig.ROUTING_KEY_COURIER_ASSIGNED), assigned.capture());
-        broker.verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME),
-                eq(RabbitMQConfig.ROUTING_KEY_PARCEL_STATUS), statusChanged.capture());
+        // No parcel.status.changed: the public status stays PICKUP_ASSIGNED on reassignment.
         broker.verifyNoMoreInteractions();
 
         assertThat(assigned.getValue().courierId()).isEqualTo(newCourier);
         assertThat(assigned.getValue().correlationId()).isEqualTo(correlationId);
-        assertThat(statusChanged.getValue().previousPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
-        assertThat(statusChanged.getValue().newPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
-        assertThat(statusChanged.getValue().correlationId()).isEqualTo(correlationId);
         assertThat(workload(oldCourier)).isZero();
         assertThat(workload(newCourier)).isEqualTo(1);
     }

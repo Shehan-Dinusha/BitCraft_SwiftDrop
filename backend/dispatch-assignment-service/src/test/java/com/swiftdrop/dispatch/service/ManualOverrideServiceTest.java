@@ -17,6 +17,7 @@ import com.swiftdrop.dispatch.exception.AssignmentConflictException;
 import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
+import com.swiftdrop.dispatch.exception.ReassignmentNotAllowedException;
 import com.swiftdrop.dispatch.messaging.publisher.DispatchEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -135,7 +136,7 @@ class ManualOverrideServiceTest {
         verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(oldCourierId) && c.getActiveParcelsCount() == 1));
         verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(newCourierId) && c.getActiveParcelsCount() == 2));
         verify(eventPublisher).publishCourierAssigned(any(CourierAssignedEvent.class));
-        verify(eventPublisher).publishParcelStatusChanged(any());
+        verify(eventPublisher, never()).publishParcelStatusChanged(any());
     }
 
     @Test
@@ -285,7 +286,7 @@ class ManualOverrideServiceTest {
     }
 
     @Test
-    @DisplayName("Reassign events: previous status PICKUP_ASSIGNED, the new courier and the request correlation ID")
+    @DisplayName("Reassign events: only courier.assigned, naming the new courier, with the request correlation ID")
     void testReassign_EventContents() {
         UUID correlationId = UUID.randomUUID();
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignedOrder(AssignmentStatus.ASSIGNED)));
@@ -299,21 +300,16 @@ class ManualOverrideServiceTest {
                 orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null), correlationId);
 
         CourierAssignedEvent assigned = capturedCourierAssigned();
-        ParcelStatusChangedEvent status = capturedStatusChanged();
         assertThat(assigned.courierId()).as("event names the new courier").isEqualTo(newCourierId);
         assertThat(assigned.courierName()).isEqualTo("New Courier");
         assertThat(assigned.trackingNumber()).isEqualTo("SD-COL-11111");
-        assertThat(status.previousPublicStatus())
-                .as("an assigned order was already PICKUP_ASSIGNED, not CREATED")
-                .isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
-        assertThat(status.newPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
         assertThat(assigned.correlationId()).isEqualTo(correlationId);
-        assertThat(status.correlationId()).isEqualTo(correlationId);
+        verify(eventPublisher, never()).publishParcelStatusChanged(any());
     }
 
     @Test
-    @DisplayName("Second reassignment also reports PICKUP_ASSIGNED as the previous status")
-    void testReassign_FromReassignedReportsPickupAssigned() {
+    @DisplayName("Reassign: a second reassignment also publishes courier.assigned only")
+    void testReassign_FromReassignedPublishesCourierAssignedOnly() {
         when(assignmentRepository.findByOrderId(orderId))
                 .thenReturn(Optional.of(assignedOrder(AssignmentStatus.REASSIGNED)));
         when(courierShiftRepository.findByCourierId(newCourierId))
@@ -323,12 +319,13 @@ class ManualOverrideServiceTest {
         manualOverrideService.reassign(new ReassignCourierRequest(
                 orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null));
 
-        assertThat(capturedStatusChanged().previousPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
+        assertThat(capturedCourierAssigned().courierId()).isEqualTo(newCourierId);
+        verify(eventPublisher, never()).publishParcelStatusChanged(any());
     }
 
     @Test
-    @DisplayName("Without a request correlation ID both events share one generated correlation ID")
-    void testReassign_GeneratesOneSharedCorrelationId() {
+    @DisplayName("Reassign: without a request correlation ID, courier.assigned carries a generated one")
+    void testReassign_GeneratesCorrelationId() {
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignedOrder(AssignmentStatus.ASSIGNED)));
         when(courierShiftRepository.findByCourierId(newCourierId))
                 .thenReturn(Optional.of(courier(newCourierId, "New Courier", 0)));
@@ -337,9 +334,54 @@ class ManualOverrideServiceTest {
         manualOverrideService.reassign(new ReassignCourierRequest(
                 orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null), null);
 
+        assertThat(capturedCourierAssigned().correlationId()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Assign: without a request correlation ID both events share one generated correlation ID")
+    void testManualAssign_GeneratesOneSharedCorrelationId() {
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
+        when(courierShiftRepository.findByCourierId(newCourierId))
+                .thenReturn(Optional.of(courier(newCourierId, "New Courier", 0)));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        manualOverrideService.manualAssign(new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_ONE", null), null);
+
         UUID generated = capturedCourierAssigned().correlationId();
         assertThat(generated).isNotNull();
         assertThat(capturedStatusChanged().correlationId()).isEqualTo(generated);
+    }
+
+    @Test
+    @DisplayName("Reassign: rejected after pickup without changing the assignment, workloads or events")
+    void testReassign_AfterPickupIsRejected() {
+        DispatchAssignment assignment = assignedOrder(AssignmentStatus.ASSIGNED);
+        assignment.setPickedUpAt(java.time.Instant.parse("2026-11-15T08:30:00Z"));
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        assertThatThrownBy(() -> manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null), UUID.randomUUID()))
+                .isInstanceOf(ReassignmentNotAllowedException.class)
+                .hasMessageContaining("picked up");
+
+        assertThat(assignment.getCourierId()).isEqualTo(oldCourierId);
+        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Reassign: pickup is reported before a stale expected courier")
+    void testReassign_PickupTakesPrecedenceOverStaleCourier() {
+        DispatchAssignment assignment = assignedOrder(AssignmentStatus.REASSIGNED);
+        assignment.setPickedUpAt(java.time.Instant.parse("2026-11-15T08:30:00Z"));
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+
+        assertThatThrownBy(() -> manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, UUID.randomUUID(), newCourierId, "DISPATCH_SUPERVISOR", null)))
+                .isInstanceOf(ReassignmentNotAllowedException.class);
+
+        verifyNoInteractions(courierShiftRepository, eventPublisher);
     }
 
     private CourierAssignedEvent capturedCourierAssigned() {

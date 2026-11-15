@@ -41,6 +41,15 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(409, "Assignment Conflict", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(ReassignmentNotAllowedException.class)
+    public ResponseEntity<ApiErrorResponse> handleReassignmentNotAllowed(
+            ReassignmentNotAllowedException ex,
+            HttpServletRequest request) {
+        log.warn("Reassignment rejected on {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(409, "Reassignment Not Allowed", ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(AssignmentNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(AssignmentNotFoundException ex, HttpServletRequest request) {
         log.warn("Assignment not found: {}", ex.getMessage());

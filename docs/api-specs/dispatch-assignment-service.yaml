@@ -67,7 +67,8 @@ paths:
       description: >-
         Explicitly moves an assigned order to another courier. The request must name the courier
         currently assigned, so a reassignment based on a stale view is rejected instead of
-        overwriting another dispatcher's decision.
+        overwriting another dispatcher's decision. Not allowed once dispatch has recorded the parcel
+        as picked up. Publishes dispatch.courier.assigned only; the public status is unchanged.
       operationId: reassign
       parameters:
         - name: X-Correlation-Id
@@ -96,8 +97,9 @@ paths:
         "409":
           description: >-
             Order has no courier yet or is no longer assigned to the expected courier
-            (Assignment Conflict), courier not available, assignment in a terminal state, or the
-            record was changed by a concurrent operation
+            (Assignment Conflict), order already picked up (Reassignment Not Allowed), courier not
+            available, assignment in a terminal state, or the record was changed by a concurrent
+            operation
 
   /api/v1/dispatch/assignments:
     get:

@@ -45,7 +45,7 @@ class DemoCourierCleanupMigrationIT {
     void freshInstallEndsWithoutDemoCouriers() throws SQLException {
         flyway(null).migrate();
 
-        assertThat(currentSchemaVersion()).isEqualTo("7");
+        assertThat(migrationApplied("7")).as("V7 recorded as applied (later migrations may follow)").isTrue();
         assertThat(remainingDemoCouriers()).isEmpty();
     }
 
@@ -69,7 +69,7 @@ class DemoCourierCleanupMigrationIT {
 
         flyway(null).migrate();
 
-        assertThat(currentSchemaVersion()).isEqualTo("7");
+        assertThat(migrationApplied("7")).as("V7 recorded as applied (later migrations may follow)").isTrue();
         assertThat(remainingDemoCouriers())
                 .as("only the demo courier still referenced by an assignment is kept")
                 .containsExactly(DEMO_COURIERS.get(1));
@@ -110,14 +110,8 @@ class DemoCourierCleanupMigrationIT {
         return remaining;
     }
 
-    private String currentSchemaVersion() throws SQLException {
-        try (Connection connection = connection();
-             PreparedStatement statement = connection.prepareStatement(
-                     "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1");
-             ResultSet rows = statement.executeQuery()) {
-            rows.next();
-            return rows.getString(1);
-        }
+    private boolean migrationApplied(String version) throws SQLException {
+        return count("SELECT count(*) FROM flyway_schema_history WHERE version = ? AND success", version) == 1;
     }
 
     private int count(String sql, Object... parameters) throws SQLException {

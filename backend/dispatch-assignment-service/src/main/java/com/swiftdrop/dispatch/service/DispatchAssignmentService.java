@@ -21,8 +21,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.Comparator;
 
@@ -30,6 +33,12 @@ import java.util.Comparator;
 public class DispatchAssignmentService {
 
     private static final Logger log = LoggerFactory.getLogger(DispatchAssignmentService.class);
+
+    /** Public statuses that mean the courier has already collected the parcel. */
+    static final Set<PublicOrderStatus> PICKUP_BOUNDARY_STATUSES = EnumSet.of(
+            PublicOrderStatus.PICKED_UP,
+            PublicOrderStatus.IN_TRANSIT,
+            PublicOrderStatus.OUT_FOR_DELIVERY);
 
     private final DispatchAssignmentRepository assignmentRepository;
     private final CourierShiftRepository courierShiftRepository;
@@ -131,6 +140,10 @@ public class DispatchAssignmentService {
 
     @Transactional
     public void handleParcelStatusChanged(ParcelStatusChangedEvent event) {
+        if (PICKUP_BOUNDARY_STATUSES.contains(event.newPublicStatus())) {
+            recordPickup(event);
+            return;
+        }
         if (event.newPublicStatus() == PublicOrderStatus.FAILED
                 || event.newPublicStatus() == PublicOrderStatus.DELIVERED
                 || event.newPublicStatus() == PublicOrderStatus.RETURNED_TO_SENDER
@@ -166,6 +179,43 @@ public class DispatchAssignmentService {
                 }
             });
         }
+    }
+
+    /**
+     * Records that the parcel has passed the pickup boundary, which blocks normal
+     * reassignment. Any post-pickup status counts, so a lost or delayed PICKED_UP
+     * event is covered by the next IN_TRANSIT or OUT_FOR_DELIVERY event.
+     *
+     * <p>Idempotent: duplicates and out-of-order events find pickup already
+     * recorded and write nothing, so they do not bump the row version. When a
+     * value is written it goes through the versioned entity update, so a
+     * concurrent reassignment and this update cannot both apply blindly: the
+     * later commit fails with an optimistic-lock conflict and is retried (the
+     * listener) or rejected with 409 (the HTTP request).</p>
+     */
+    private void recordPickup(ParcelStatusChangedEvent event) {
+        Optional<DispatchAssignment> assignmentOpt = event.orderId() != null
+                ? assignmentRepository.findByOrderId(event.orderId())
+                : assignmentRepository.findByTrackingNumber(event.trackingNumber());
+        if (assignmentOpt.isEmpty()) {
+            log.debug("No dispatch assignment for {} event on order {}", event.newPublicStatus(), event.orderId());
+            return;
+        }
+
+        DispatchAssignment assignment = assignmentOpt.get();
+        if (assignment.getPickedUpAt() != null || assignment.getStatus().isTerminal()) {
+            return;
+        }
+        if (assignment.getStatus() == AssignmentStatus.UNASSIGNED) {
+            log.warn("Ignoring {} event for order {} that has no assigned courier",
+                    event.newPublicStatus(), assignment.getOrderId());
+            return;
+        }
+
+        assignment.setPickedUpAt(event.timestamp() != null ? event.timestamp() : Instant.now());
+        assignmentRepository.save(assignment);
+        log.info("Order {} passed pickup ({}); reassignment is now blocked",
+                assignment.getOrderId(), event.newPublicStatus());
     }
 
     private AssignmentStatus toTerminalAssignmentStatus(PublicOrderStatus status) {
