@@ -92,6 +92,8 @@ class OrderCreatedConsumerIT {
     @Autowired
     private ManualOverrideService manualOverrideService;
 
+    private UUID pickupDistrictCourierId;
+
     @BeforeEach
     void resetBrokerAndMakeCouriersAvailable() {
         startListeners();
@@ -101,15 +103,28 @@ class OrderCreatedConsumerIT {
         rabbitAdmin.purgeQueue(DISPATCH_DLQ, true);
         declareCourierAssignedProbe();
 
-        // Dispatcher-driven allocation: available couriers, including ones in the
+        // Dispatcher-driven allocation: available couriers, including one in the
         // pickup district, must not cause an order to be assigned automatically.
+        // The test owns its couriers; V7 removes the old demo seed couriers.
+        pickupDistrictCourierId = createCourier(SriLankanDistrict.COLOMBO);
+        createCourier(SriLankanDistrict.GAMPAHA);
         List<CourierShift> couriers = courierShiftRepository.findAll();
         couriers.forEach(courier -> {
             courier.setShiftStatus(ShiftStatus.AVAILABLE);
             courier.setActiveParcelsCount(0);
         });
         courierShiftRepository.saveAllAndFlush(couriers);
-        assertThat(couriers).anyMatch(courier -> courier.getCurrentDistrict() == SriLankanDistrict.COLOMBO);
+    }
+
+    private UUID createCourier(SriLankanDistrict district) {
+        CourierShift courier = new CourierShift();
+        courier.setCourierId(UUID.randomUUID());
+        courier.setCourierName("IT Courier " + district);
+        courier.setCurrentDistrict(district);
+        courier.setShiftStatus(ShiftStatus.AVAILABLE);
+        courier.setActiveParcelsCount(0);
+        courier.setMaxCapacity(5);
+        return courierShiftRepository.saveAndFlush(courier).getCourierId();
     }
 
     @Test
@@ -168,10 +183,7 @@ class OrderCreatedConsumerIT {
                 .untilAsserted(() -> assertThat(recordsFor(event.orderId())).hasSize(1));
         assertThat(recordsFor(event.orderId()).getFirst().getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
 
-        CourierShift courier = courierShiftRepository.findAll().stream()
-                .filter(candidate -> candidate.getCurrentDistrict() == SriLankanDistrict.COLOMBO)
-                .findFirst()
-                .orElseThrow();
+        CourierShift courier = courierShiftRepository.findByCourierId(pickupDistrictCourierId).orElseThrow();
 
         manualOverrideService.manualAssign(
                 new ManualAssignRequest(event.orderId(), courier.getCourierId(), "IT_DISPATCHER", null));
