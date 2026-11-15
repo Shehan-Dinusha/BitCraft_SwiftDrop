@@ -118,6 +118,9 @@ public class ManualOverrideService {
                 Instant.now(),
                 assignment.getTrackingNumber(),
                 assignment.getMerchantId(),
+                // Delivery copies this onto its parcel-status events; without it the
+                // customer gets no picked-up / delivered / failed notifications.
+                assignment.getCustomerId(),
                 assignment.getPickupDistrict(),
                 assignment.getDeliveryDistrict()
         );
@@ -128,7 +131,7 @@ public class ManualOverrideService {
                 UUID.randomUUID(),
                 assignment.getTrackingNumber(),
                 assignment.getOrderId(),
-                null,
+                assignment.getCustomerId(),
                 PublicOrderStatus.CREATED,
                 PublicOrderStatus.PICKUP_ASSIGNED,
                 InternalQueueStatus.PICKUP_ASSIGNED,

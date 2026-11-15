@@ -44,6 +44,20 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- ternary "true" "false" (eq (toString $enabled) "true") -}}
 {{- end }}
 
+{{/* replicas resolved explicitly, because mergeOverwrite cannot set `0` (the seeding
+     profile creates every Deployment scaled to zero). A missing or null key is skipped.
+     dict "root" $ "svc" <raw service values> */}}
+{{- define "swiftdrop.replicas" -}}
+{{- $replicas := 1 -}}
+{{- $d := .root.Values.serviceDefaults | default dict -}}
+{{- if not (kindIs "invalid" (get $d "replicas")) }}{{ $replicas = get $d "replicas" }}{{ end -}}
+{{- $s := .svc | default dict -}}
+{{- if not (kindIs "invalid" (get $s "replicas")) }}{{ $replicas = get $s "replicas" }}{{ end -}}
+{{- $o := .root.Values.serviceOverrides | default dict -}}
+{{- if not (kindIs "invalid" (get $o "replicas")) }}{{ $replicas = get $o "replicas" }}{{ end -}}
+{{- int $replicas -}}
+{{- end }}
+
 {{/* Effective PostgreSQL settings as YAML (parse with fromYaml).
      Merge order: postgres.defaults < postgres.databases.<key> < postgres.overrides.
      dict "root" $ "db" <raw database values> */}}

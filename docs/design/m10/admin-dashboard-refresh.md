@@ -23,13 +23,9 @@ The visual treatment uses SwiftDrop's existing typography, compact density, Butt
 - Shared modal behavior now traps Tab navigation and restores focus when closed.
 - The control-tower SLA banner reports unavailable metrics explicitly instead of substituting 96.5% and zero breaches.
 
-## Real dispatch/delivery integration repair
+## Dispatch/delivery integration
 
-When the actual services were started, delivery synthesized tracking numbers and emitted status events with null districts. Analytics correctly rejected these payloads, preventing the outcome charts from updating.
-
-`CourierAssignedEvent` now includes optional `pickupDistrict` and `deliveryDistrict`. Automatic/manual dispatch publishers supply the fields from their own assignment record. Delivery stores those existing route fields and uses the supplied order tracking number before publishing status changes. Existing 8/10-argument constructors remain available; older JSON consumers ignore the additive fields. No new tables, migrations, queues or routing keys were needed.
-
-Deploy the updated dispatch and delivery services together to supply valid route context. Shared contracts were rebuilt, producer/consumer regressions were added, and the whole backend was compiled for compatibility.
+The latest `dev` supplies the real tracking number, customer ID and route districts through `CourierAssignedEvent`. The merged implementation preserves this context for delivery status events, tracking, customer notifications and analytics. Upstream producer/consumer regression coverage is retained, alongside the manual-assignment route assertions. No additional event fields, migrations or queues are introduced by this dashboard change.
 
 ## Runtime and validation
 

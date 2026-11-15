@@ -455,6 +455,23 @@ Rules:
 
 **Done when:** Files committed and shared with the team lead.
 
+### PR 8: Email verification and password reset (OTP)
+
+#### Stage 21: One-time codes
+
+Self-service sign-ups now start **unverified** and confirm their email with a 6-digit code; "Forgot password" uses the same mechanism.
+
+- **IAM:** `V5__email_verification.sql` adds `user_accounts.email_verified` (existing rows stay verified). `OtpService` keeps a hashed, expiring, attempt-limited code in Redis; `EmailVerificationService`, `PasswordResetService` and `RegistrationService` implement the flows; `AuthController` exposes `/verify-email`, `/resend-verification`, `/forgot-password`, `/reset-password`. Login returns `403 EMAIL_NOT_VERIFIED` for an unverified account (after a correct password).
+- **Messaging:** IAM publishes `AuthOtpRequestedEvent` on `notification.auth.otp`; the existing `notification.#` binding delivers it. `common-contracts` holds the event and the routing-key constant.
+- **notification-service (Member 9):** `AuthOtpTrigger` + templates `EMAIL_VERIFICATION` / `PASSWORD_RESET`. Because the message holds a secret, the dispatcher stores a redacted log body, ignores the "email off" preference and the consumer skips the in-app inbox (`SensitiveTemplates`).
+- **Gateway (Member 1):** four new paths added to `PUBLIC_PATHS` in `JwtAuthenticationGlobalFilter`.
+- **Frontend:** `/verify-email`, `/registered`, `/forgot-password`, `/reset-password`. Sign-up redirects to the code screen; a correct code (or a first-time Google sign-in) shows *Successfully registered* with **Go to sign in**: registration never signs the user in. New-password fields show a strength meter. Sign-up checks username availability as you type (`GET /auth/username-availability`) and confirm-password fields show a live match meter. Sign-out asks for confirmation (`SignOutDialog`, design-system `Modal`) and is in the top bar on phones.
+- **Hardening:** gateway `ClientIpResolutionFilter` (unforgeable client IP for all per-IP limits), per-account login throttle across IPs, constant-time login for unknown users, logout revokes the current refresh token after a refresh, nginx security headers.
+
+Full design, sequence diagrams and the security table: [otp-email-verification-and-password-reset.md](../design/m2/otp-email-verification-and-password-reset.md).
+
+To try it locally without an email provider set `AUTH_OTP_LOG_CODE=true` (dev only) and read the code from the `swiftdrop-auth-iam` log.
+
 ## Part C. Testing and security (summary)
 
 Every test below is written and committed inside a stage in Part B. Use this table as a final checklist.

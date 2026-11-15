@@ -3,6 +3,7 @@ package com.swiftdrop.gateway.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
+import com.swiftdrop.contracts.security.JwtSessionRevocation;
 import com.swiftdrop.gateway.security.JwksKeyStore;
 import com.swiftdrop.gateway.security.JwsHeader;
 import io.jsonwebtoken.Claims;
@@ -59,6 +60,11 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
             "/api/v1/auth/refresh",
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/resend-verification",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/username-availability",
             "/api/v1/auth/oauth2/",
             "/api/v1/auth/.well-known/",
             "/api/v1/public/track",
@@ -230,7 +236,7 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         );
         String jwtId = claims.getId();
 
-        return isBlacklisted(token, userId, jwtId)
+        return isBlacklisted(token, userId, jwtId, claims)
                 .flatMap(blacklisted -> {
                     if (blacklisted) {
                         log.warn("Rejected blacklisted token for path: {}", path);
@@ -262,20 +268,34 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
                 });
     }
 
-    private Mono<Boolean> isBlacklisted(String token, String userId, String jwtId) {
+    /**
+     * A token is rejected when the token itself or its {@code jti} was revoked (logout), or when it was
+     * issued before the user's revocation cutoff ({@code user:<id>} holds an ISO timestamp written on
+     * password change/reset, role or status change, or refresh-token replay). The cutoff is compared
+     * with {@link JwtSessionRevocation}, exactly as IAM does, so sessions started AFTER the cutoff work;
+     * treating the key's mere existence as revocation would lock the user out for the key's lifetime.
+     */
+    private Mono<Boolean> isBlacklisted(String token, String userId, String jwtId, Claims claims) {
         String tokenHash = sha256(token);
-        List<String> keys = new ArrayList<>(3);
+        List<String> keys = new ArrayList<>(2);
         keys.add(blacklistPrefix + "token:" + tokenHash);
-        if (userId != null && !userId.isBlank()) {
-            keys.add(blacklistPrefix + "user:" + userId);
-        }
         if (jwtId != null && !jwtId.isBlank()) {
             keys.add(blacklistPrefix + "jti:" + jwtId);
         }
-
-        return Flux.fromIterable(keys)
+        Mono<Boolean> tokenRevoked = Flux.fromIterable(keys)
                 .flatMap(redisTemplate::hasKey)
-                .any(Boolean::booleanValue)
+                .any(Boolean::booleanValue);
+
+        Mono<Boolean> userCutoffApplies = userId == null || userId.isBlank()
+                ? Mono.just(false)
+                : redisTemplate.opsForValue().get(blacklistPrefix + "user:" + userId)
+                        .map(cutoff -> JwtSessionRevocation.isRevoked(
+                                cutoff,
+                                claimAsString(claims, JwtSessionRevocation.ISSUED_AT_CLAIM),
+                                claims.getIssuedAt() == null ? null : claims.getIssuedAt().toInstant()))
+                        .defaultIfEmpty(false);
+
+        return Mono.zip(tokenRevoked, userCutoffApplies, (byToken, byUser) -> byToken || byUser)
                 .onErrorResume(exception -> {
                     log.warn("Redis blacklist check failed; allowing token: {}", exception.getMessage());
                     return Mono.just(false);

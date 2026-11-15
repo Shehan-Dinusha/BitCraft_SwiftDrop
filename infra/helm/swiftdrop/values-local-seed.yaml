@@ -1,0 +1,35 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SwiftDrop — SEED overlay for the LOCAL profile (layer it on top of values-local.yaml)
+#
+#   helm upgrade --install swiftdrop infra/helm/swiftdrop -n default \
+#     -f infra/helm/swiftdrop/values-local.yaml \
+#     -f infra/helm/swiftdrop/values-local-seed.yaml \
+#     -f infra/helm/swiftdrop/values-secrets.yaml
+#
+# Creates ALL ten services and all nine databases, but only the gateway and
+# auth-iam run at first. scripts/seed/run-local.sh then scales services up and
+# down stage by stage (kubectl scale), so a 4-CPU laptop never runs more than a
+# few JVMs at once. RabbitMQ's durable queues hold events for stopped services.
+#
+# Afterwards, return to the normal local profile (data stays in the volumes):
+#   helm upgrade swiftdrop infra/helm/swiftdrop -n default \
+#     -f infra/helm/swiftdrop/values-local.yaml -f infra/helm/swiftdrop/values-secrets.yaml
+# See scripts/seed/README.md.
+# ──────────────────────────────────────────────────────────────────────────────
+
+serviceOverrides:
+  replicas: null          # remove the profile-wide value so the per-service counts below apply
+  hpa:
+    enabled: false        # an HPA would fight the script's kubectl scale
+
+services:
+  api-gateway:                 { enabled: true, replicas: 1 }
+  auth-iam-service:            { enabled: true, replicas: 1 }
+  customer-order-service:      { enabled: true, replicas: 0 }
+  pricing-zone-service:        { enabled: true, replicas: 0 }
+  dispatch-assignment-service: { enabled: true, replicas: 0 }
+  delivery-execution-service:  { enabled: true, replicas: 0 }
+  merchant-b2b-service:        { enabled: true, replicas: 0 }
+  webhook-resiliency-service:  { enabled: true, replicas: 0 }
+  notification-service:        { enabled: true, replicas: 0 }
+  analytics-ai-service:        { enabled: true, replicas: 0 }

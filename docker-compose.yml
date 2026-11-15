@@ -96,6 +96,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/v1/auth/oauth2/google/callback}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AUTH_OTP_LOG_CODE: ${AUTH_OTP_LOG_CODE:-false}
     depends_on:
       iam-postgres:
         condition: service_healthy
@@ -129,6 +130,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      GATEWAY_TRUSTED_PROXIES: ${GATEWAY_TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128,fc00::/7}
       MERCHANT_API_KEY_VALIDATION_URL: http://merchant-b2b-service:8086/internal/v1/api-keys/validate
       AUTH_SERVICE_URL: http://auth-iam-service:8081
       ORDER_SERVICE_URL: http://customer-order-service:8082
@@ -284,6 +286,12 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+      # Proof-of-delivery photos: Azure Blob when the connection string is set, else the pod_photos volume.
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_STORAGE_CONTAINER_NAME: ${AZURE_STORAGE_CONTAINER_NAME:-pod-images}
+      POD_STORAGE_DIR: /var/lib/swiftdrop/pod
+    volumes:
+      - pod_photos:/var/lib/swiftdrop/pod
     depends_on:
       delivery-postgres:
         condition: service_healthy
@@ -683,6 +691,8 @@ configs:
 # ═══════════════════════════════════════════════════════════════════════════════
 volumes:
   rabbitmq_data:
+    driver: local
+  pod_photos:
     driver: local
   redis_data:
     driver: local

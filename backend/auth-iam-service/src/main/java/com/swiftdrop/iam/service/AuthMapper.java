@@ -21,6 +21,7 @@ final class AuthMapper {
                 user.getDistrict(),
                 user.getMerchantId(),
                 user.getStatus(),
+                user.isEmailVerified(),
                 user.getLastLoginAt(),
                 user.getCreatedAt()
         );

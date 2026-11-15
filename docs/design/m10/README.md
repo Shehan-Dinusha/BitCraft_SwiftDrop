@@ -12,7 +12,7 @@ Live Azure pricing and owned-tracking verification is recorded in the Azure veri
 | [Azure setup and costs](azure-setup-and-cost-management.md) | Provisioning, credentials and cost controls |
 | [Azure verification](stage-7-azure-verification.md) | Deployment settings and recorded live provider checks |
 | [MCP and frontend](stages-12-to-15.md) | MCP connection, dashboard and customer-widget integration |
-| [Admin UI and integration changes](admin-dashboard-refresh.md) | Current UI behavior, role policy and dispatch/delivery route-context fix |
+| [Admin UI and integration changes](admin-dashboard-refresh.md) | Current UI behavior, role policy and dispatch/delivery integration |
 | [Reporting contracts](reporting-contracts.md) | Metric definitions, date ranges and workload semantics |
 | [Event reliability](part-2-event-reliability.md) | Idempotency, validation, retries and broker declarations |
 | [Analytics projections](part-3-analytics-projections.md) | Daily/order/courier projections and reconciliation |

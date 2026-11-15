@@ -1,18 +1,18 @@
 {
   "auth-iam-service": {
-    "tests": 76,
+    "tests": 123,
     "failures": 0,
     "errors": 0,
     "skipped": 0
   },
   "dispatch-assignment-service": {
-    "tests": 37,
+    "tests": 38,
     "failures": 0,
     "errors": 0,
     "skipped": 0
   },
   "delivery-execution-service": {
-    "tests": 98,
+    "tests": 99,
     "failures": 0,
     "errors": 0,
     "skipped": 0

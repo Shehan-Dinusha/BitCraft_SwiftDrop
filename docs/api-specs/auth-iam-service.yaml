@@ -36,7 +36,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '403':
-          description: Account is not active
+          description: Account is not active, or the email is not verified yet (the ApiErrorResponse error field is EMAIL_NOT_VERIFIED; call /verify-email)
           content:
             application/json:
               schema:
@@ -51,6 +51,10 @@ paths:
     post:
       tags: [Auth]
       summary: Register a customer or merchant account
+      description: |
+        Creates the account unverified and emails a 6-digit verification code (via notification-service).
+        The user must confirm it with `POST /api/v1/auth/verify-email` before password sign-in works.
+        Registering again with the same, still-unverified email replaces the pending sign-up.
       security: []
       requestBody:
         required: true
@@ -60,7 +64,7 @@ paths:
               $ref: '#/components/schemas/RegisterUserRequest'
       responses:
         '201':
-          description: Account registered
+          description: Account created; a verification code was emailed
           content:
             application/json:
               schema:
@@ -73,6 +77,157 @@ paths:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '409':
           description: Username, email, or phone already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Confirm an email address with the emailed code
+      description: |
+        Marks the account verified. No session is created: the frontend shows a "registered"
+        confirmation and the user then signs in with `/login`. Codes expire after 10 minutes, are
+        single use, and are destroyed after 5 wrong attempts (HTTP 429).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '200':
+          description: Email verified; the user can now sign in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '400':
+          description: Invalid or expired code, or validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Email address is already verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many attempts or requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/username-availability:
+    get:
+      tags: [Auth]
+      summary: Check whether a username is free for a new account
+      description: >-
+        Used by the sign-up form while the user types. Case-insensitive; a pending (unverified) sign-up
+        also holds its username. Rate limited to 60 checks per minute per client IP. The database unique
+        index remains the authority, so /register still answers 409 for a taken username.
+      security: []
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+          example: nimal.perera
+      responses:
+        '200':
+          description: Availability of the username
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUsernameAvailability'
+        '429':
+          description: Too many checks from this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Send a new email verification code
+      description: Always answers 200 so it cannot be used to discover which accounts exist. Throttled per user and per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentifierRequest'
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '429':
+          description: Too many requests from this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Email a password reset code
+      description: Always answers 200 so it cannot be used to discover which accounts exist. Throttled per user and per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentifierRequest'
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '429':
+          description: Too many requests from this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Set a new password using the emailed reset code
+      description: Revokes every existing session of the account. The new password must meet the policy, must not contain the username or email, and must differ from the current password; the code is consumed only when the reset succeeds.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '400':
+          description: Invalid or expired code, or password does not meet the policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many attempts or requests
           content:
             application/json:
               schema:
@@ -484,6 +639,49 @@ components:
         refreshToken:
           type: string
           description: Optional refresh token to revoke.
+    VerifyEmailRequest:
+      type: object
+      required: [identifier, code]
+      properties:
+        identifier:
+          type: string
+          maxLength: 320
+          description: Username or email address of the account.
+          example: customer.one@example.com
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          description: 6-digit verification code.
+          example: '482913'
+    IdentifierRequest:
+      type: object
+      required: [identifier]
+      properties:
+        identifier:
+          type: string
+          maxLength: 320
+          description: Username or email address of the account.
+          example: customer.one@example.com
+    ResetPasswordRequest:
+      type: object
+      required: [identifier, code, newPassword]
+      properties:
+        identifier:
+          type: string
+          maxLength: 320
+          description: Username or email address of the account.
+          example: customer.one@example.com
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          description: 6-digit reset code.
+          example: '482913'
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 72
+          format: password
+          description: 8-72 characters with at least one letter and one digit.
     ChangePasswordRequest:
       type: object
       required: [currentPassword, newPassword]
@@ -563,6 +761,9 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/UserStatus'
+        emailVerified:
+          type: boolean
+          description: True once the email address has been verified.
         lastLoginAt:
           type: string
           format: date-time
@@ -579,6 +780,33 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/UserProfileResponse'
+        timestamp:
+          type: string
+          format: date-time
+    UsernameAvailabilityResponse:
+      type: object
+      required: [username, available]
+      properties:
+        username:
+          type: string
+          description: The username that was checked, trimmed.
+        available:
+          type: boolean
+          description: True when the username is valid and no account (verified or pending) uses it.
+        reason:
+          type: string
+          nullable: true
+          enum: [TAKEN, INVALID]
+          description: Why it is not available. Null when available.
+    ApiResponseUsernameAvailability:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/UsernameAvailabilityResponse'
         timestamp:
           type: string
           format: date-time

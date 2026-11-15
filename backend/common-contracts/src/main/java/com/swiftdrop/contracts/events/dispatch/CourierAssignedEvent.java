@@ -11,11 +11,11 @@ import java.util.UUID;
  * Published when a courier is successfully assigned to an order.
  * Routing key: {@code dispatch.courier.assigned}
  *
- * <p>{@code trackingNumber} and {@code merchantId} were added as nullable,
- * additive fields requested by Members 5 and 6 for downstream correlation
- * in delivery-execution-service and notification-service.</p>
- * <p>Optional pickup/delivery districts let delivery preserve route context in
- * public status events. Older producers remain compatible; new publishers supply both.</p>
+ * <p>{@code trackingNumber}, {@code merchantId}, {@code customerId}, {@code pickupDistrict} and
+ * {@code deliveryDistrict} were added as nullable, additive fields for downstream correlation:
+ * delivery-execution-service only learns about an order from this event, and its
+ * {@code parcel.status.changed} events need the real tracking number (live tracking), the
+ * customer (notifications) and the districts (analytics rejects status events without one).</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record CourierAssignedEvent(
@@ -50,6 +50,9 @@ public record CourierAssignedEvent(
         @JsonProperty("merchantId")
         UUID merchantId,
 
+        @JsonProperty("customerId")
+        UUID customerId,
+
         @JsonProperty("pickupDistrict")
         SriLankanDistrict pickupDistrict,
 
@@ -62,20 +65,12 @@ public record CourierAssignedEvent(
         if (correlationId == null) correlationId = UUID.randomUUID();
         if (timestamp == null) timestamp = Instant.now();
         if (assignedAt == null) assignedAt = Instant.now();
-        // trackingNumber and merchantId are intentionally nullable
-    }
-
-    /** Legacy assignments did not include districts; new publishers provide both. */
-    public CourierAssignedEvent(UUID eventId, UUID correlationId, UUID orderId, UUID courierId,
-            String courierName, int estimatedPickupMinutes, Instant assignedAt, Instant timestamp,
-            String trackingNumber, UUID merchantId) {
-        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes,
-                assignedAt, timestamp, trackingNumber, merchantId, null, null);
+        // trackingNumber, merchantId, customerId and the districts are intentionally nullable
     }
 
     /**
      * Backward-compatible constructor for existing callers who do not provide
-     * {@code trackingNumber} and {@code merchantId}.
+     * {@code trackingNumber}, {@code merchantId}, and {@code customerId}.
      */
     public CourierAssignedEvent(
             UUID eventId,
@@ -87,6 +82,45 @@ public record CourierAssignedEvent(
             Instant assignedAt,
             Instant timestamp
     ) {
-        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp, null, null);
+        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp, null, null, null, null, null);
+    }
+
+    /**
+     * Backward-compatible constructor for callers who provide
+     * {@code trackingNumber} and {@code merchantId}, but not {@code customerId}.
+     */
+    public CourierAssignedEvent(
+            UUID eventId,
+            UUID correlationId,
+            UUID orderId,
+            UUID courierId,
+            String courierName,
+            int estimatedPickupMinutes,
+            Instant assignedAt,
+            Instant timestamp,
+            String trackingNumber,
+            UUID merchantId
+    ) {
+        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp, trackingNumber, merchantId, null, null, null);
+    }
+
+    /**
+     * Backward-compatible constructor for callers who provide {@code customerId}
+     * but not the districts.
+     */
+    public CourierAssignedEvent(
+            UUID eventId,
+            UUID correlationId,
+            UUID orderId,
+            UUID courierId,
+            String courierName,
+            int estimatedPickupMinutes,
+            Instant assignedAt,
+            Instant timestamp,
+            String trackingNumber,
+            UUID merchantId,
+            UUID customerId
+    ) {
+        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp, trackingNumber, merchantId, customerId, null, null);
     }
 }

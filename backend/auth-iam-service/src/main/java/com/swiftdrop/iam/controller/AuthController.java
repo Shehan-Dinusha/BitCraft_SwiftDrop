@@ -4,18 +4,26 @@ import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.openapi.OpenApiConstants;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.iam.dto.ChangePasswordRequest;
+import com.swiftdrop.iam.dto.IdentifierRequest;
 import com.swiftdrop.iam.exception.AuthException;
 import com.swiftdrop.iam.dto.LoginRequest;
 import com.swiftdrop.iam.dto.LogoutRequest;
 import com.swiftdrop.iam.dto.OAuthExchangeRequest;
 import com.swiftdrop.iam.dto.RefreshTokenRequest;
 import com.swiftdrop.iam.dto.RegisterUserRequest;
+import com.swiftdrop.iam.dto.ResetPasswordRequest;
 import com.swiftdrop.iam.dto.TokenResponse;
 import com.swiftdrop.iam.dto.UserProfileResponse;
+import com.swiftdrop.iam.dto.UsernameAvailabilityResponse;
+import com.swiftdrop.iam.dto.VerifyEmailRequest;
 import com.swiftdrop.iam.security.SecurityPrincipal;
 import com.swiftdrop.iam.service.AuthenticationService;
+import com.swiftdrop.iam.service.EmailVerificationService;
 import com.swiftdrop.iam.service.GoogleOAuthService;
+import com.swiftdrop.iam.service.PasswordResetService;
+import com.swiftdrop.iam.service.RegistrationService;
 import com.swiftdrop.iam.service.UserAccountService;
+import com.swiftdrop.iam.service.UsernameAvailabilityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,13 +52,25 @@ public class AuthController {
         private final AuthenticationService authenticationService;
         private final UserAccountService userAccountService;
         private final GoogleOAuthService googleOAuthService;
+        private final RegistrationService registrationService;
+        private final EmailVerificationService emailVerificationService;
+        private final PasswordResetService passwordResetService;
+        private final UsernameAvailabilityService usernameAvailabilityService;
 
         public AuthController(AuthenticationService authenticationService,
                         UserAccountService userAccountService,
-                        GoogleOAuthService googleOAuthService) {
+                        GoogleOAuthService googleOAuthService,
+                        RegistrationService registrationService,
+                        EmailVerificationService emailVerificationService,
+                        PasswordResetService passwordResetService,
+                        UsernameAvailabilityService usernameAvailabilityService) {
+                this.usernameAvailabilityService = usernameAvailabilityService;
                 this.authenticationService = authenticationService;
                 this.userAccountService = userAccountService;
                 this.googleOAuthService = googleOAuthService;
+                this.registrationService = registrationService;
+                this.emailVerificationService = emailVerificationService;
+                this.passwordResetService = passwordResetService;
         }
 
         // ─── Password-based auth ────────────────────────────────────────────────────
@@ -67,11 +87,68 @@ public class AuthController {
         }
 
         @PostMapping("/register")
-        @Operation(summary = "Register a customer or merchant account")
+        @Operation(summary = "Register a customer or merchant account",
+                        description = "Creates the account unverified and emails a 6-digit code. "
+                                        + "The user must confirm it via /verify-email before signing in.")
         public ResponseEntity<ApiResponse<UserProfileResponse>> register(
                         @Valid @RequestBody RegisterUserRequest request) {
                 return ResponseEntity.status(HttpStatus.CREATED)
-                                .body(ApiResponse.success(userAccountService.register(request), "Account registered"));
+                                .body(ApiResponse.success(registrationService.register(request),
+                                                "Account created. Enter the verification code sent to your email."));
+        }
+
+        @GetMapping("/username-availability")
+        @Operation(summary = "Check whether a username is free for a new account",
+                        description = "Used by the sign-up form while the user types. Case-insensitive; a "
+                                        + "pending (unverified) sign-up also holds its username. Rate limited "
+                                        + "per client IP. The database unique index remains the authority.")
+        public ApiResponse<UsernameAvailabilityResponse> usernameAvailability(
+                        @RequestParam String username,
+                        HttpServletRequest httpRequest) {
+                UsernameAvailabilityResponse result = usernameAvailabilityService.check(username, clientIp(httpRequest));
+                return ApiResponse.success(result,
+                                result.available() ? "Username is available" : "Username is not available");
+        }
+
+        // ─── Email verification and password reset (one-time codes) ───────────────────
+
+        @PostMapping("/verify-email")
+        @Operation(summary = "Confirm an email address with the emailed code",
+                        description = "Marks the account verified. No session is created: the user signs in "
+                                        + "with /login afterwards. After 5 wrong codes the code is destroyed "
+                                        + "and a new one must be requested.")
+        public ApiResponse<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request,
+                        HttpServletRequest httpRequest) {
+                emailVerificationService.verify(request.identifier(), request.code(), clientIp(httpRequest));
+                return ApiResponse.success("Email verified. You can now sign in.");
+        }
+
+        @PostMapping("/resend-verification")
+        @Operation(summary = "Send a new email verification code",
+                        description = "Always answers 200 so it cannot be used to discover which accounts exist.")
+        public ApiResponse<Void> resendVerification(@Valid @RequestBody IdentifierRequest request,
+                        HttpServletRequest httpRequest) {
+                emailVerificationService.resend(request.identifier(), clientIp(httpRequest));
+                return ApiResponse.success("If the account exists and is not verified yet, a new code has been sent.");
+        }
+
+        @PostMapping("/forgot-password")
+        @Operation(summary = "Email a password reset code",
+                        description = "Always answers 200 so it cannot be used to discover which accounts exist.")
+        public ApiResponse<Void> forgotPassword(@Valid @RequestBody IdentifierRequest request,
+                        HttpServletRequest httpRequest) {
+                passwordResetService.request(request.identifier(), clientIp(httpRequest));
+                return ApiResponse.success("If the account exists, a password reset code has been sent.");
+        }
+
+        @PostMapping("/reset-password")
+        @Operation(summary = "Set a new password using the emailed reset code",
+                        description = "Revokes every existing session of the account.")
+        public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request,
+                        HttpServletRequest httpRequest) {
+                passwordResetService.reset(request.identifier(), request.code(), request.newPassword(),
+                                clientIp(httpRequest));
+                return ApiResponse.success("Password updated. Sign in with your new password.");
         }
 
         @PostMapping("/refresh")
@@ -150,9 +227,9 @@ public class AuthController {
                                         .build();
                 }
 
-                String exchangeCode;
+                GoogleOAuthService.CallbackResult result;
                 try {
-                        exchangeCode = googleOAuthService.handleCallback(
+                        result = googleOAuthService.handleCallback(
                                         code, state, httpRequest.getHeader("User-Agent"));
                 } catch (AuthException ex) {
                         // Browser navigation: send the user back to the app, not a raw JSON error.
@@ -164,7 +241,11 @@ public class AuthController {
 
                 // Redirect to the frontend callback page; the page calls /oauth2/exchange.
                 // Tokens are NOT embedded in the URL.
-                URI frontendRedirect = googleOAuthService.buildFrontendRedirect(exchangeCode);
+                // A brand-new Google account is shown the "registered" page and then signs in;
+                // an existing account is signed straight in via the one-time exchange code.
+                URI frontendRedirect = result.newAccount()
+                                ? googleOAuthService.buildFrontendRegisteredRedirect()
+                                : googleOAuthService.buildFrontendRedirect(result.exchangeCode());
                 return ResponseEntity.status(HttpStatus.FOUND)
                                 .location(frontendRedirect)
                                 .build();
@@ -190,6 +271,9 @@ public class AuthController {
         // ─── Helpers ────────────────────────────────────────────────────────────────
 
         private static String oauthErrorCode(AuthException ex) {
+                if ("email_unverified".equals(ex.getCode())) {
+                        return "email_unverified";
+                }
                 return switch (ex.getStatus()) {
                         case SERVICE_UNAVAILABLE -> "not_configured";
                         case FORBIDDEN -> "account_inactive";
@@ -199,9 +283,12 @@ public class AuthController {
         }
 
         private String clientIp(HttpServletRequest request) {
+                // The gateway appends the address it received the request from, so the rightmost entry
+                // is the trustworthy one; earlier entries are whatever the client chose to send.
                 String forwardedFor = request.getHeader("X-Forwarded-For");
                 if (forwardedFor != null && !forwardedFor.isBlank()) {
-                        return forwardedFor.split(",")[0].trim();
+                        String[] hops = forwardedFor.split(",");
+                        return hops[hops.length - 1].trim();
                 }
                 String realIp = request.getHeader("X-Real-IP");
                 if (realIp != null && !realIp.isBlank()) {

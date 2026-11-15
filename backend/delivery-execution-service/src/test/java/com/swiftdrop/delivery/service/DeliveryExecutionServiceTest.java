@@ -102,23 +102,30 @@ class DeliveryExecutionServiceTest {
         verify(auditTransitionAction).execute(any(), eq(orderId), eq(DeliveryState.CREATED),
                 eq(DeliveryState.ASSIGNED), any(), any(), any(), any(), any());
         verify(publishStateTransitionAction).execute(any(), eq(orderId), any(), eq(courierId),
-                eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any());
+                any(), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any());
     }
 
     @Test
-    void assignmentPreservesTrackingAndDistrictsForPublishedStatus() {
-        var origin = com.swiftdrop.contracts.enums.SriLankanDistrict.COLOMBO;
-        var destination = com.swiftdrop.contracts.enums.SriLankanDistrict.KANDY;
-        var event = new CourierAssignedEvent(UUID.randomUUID(), UUID.randomUUID(), orderId, courierId,
-                "Dashboard courier", 10, Instant.now(), Instant.now(), "SD-ABCD-1234", null, origin, destination);
+    @DisplayName("Courier assigned: keeps the real tracking number, customer and districts from the event")
+    void testHandleCourierAssigned_KeepsOrderDetailsFromEvent() {
+        UUID customerId = UUID.randomUUID();
+        CourierAssignedEvent event = new CourierAssignedEvent(
+                UUID.randomUUID(), UUID.randomUUID(), orderId, courierId, "Sunil Perera", 25,
+                Instant.now(), Instant.now(), "SD-7K2P-Q9XM", null, customerId,
+                SriLankanDistrict.KANDY, SriLankanDistrict.COLOMBO);
+
         when(deliverySessionRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
         when(deliverySessionRepository.save(any(DeliverySession.class))).thenAnswer(inv -> inv.getArgument(0));
-        var session = deliveryService.handleCourierAssigned(event);
-        assertThat(session.getTrackingNumber()).isEqualTo("SD-ABCD-1234");
-        assertThat(session.getPickupDistrict()).isEqualTo(origin);
-        assertThat(session.getDeliveryDistrict()).isEqualTo(destination);
-        verify(publishStateTransitionAction).execute(any(), eq(orderId), eq("SD-ABCD-1234"), eq(courierId),
-                eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), eq(origin), eq(destination), any());
+
+        DeliverySession session = deliveryService.handleCourierAssigned(event);
+
+        assertThat(session.getTrackingNumber()).isEqualTo("SD-7K2P-Q9XM");
+        assertThat(session.getCustomerId()).isEqualTo(customerId);
+        assertThat(session.getPickupDistrict()).isEqualTo(SriLankanDistrict.KANDY);
+        assertThat(session.getDeliveryDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+        verify(publishStateTransitionAction).execute(any(), eq(orderId), eq("SD-7K2P-Q9XM"), eq(courierId),
+                eq(customerId), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(),
+                eq(SriLankanDistrict.KANDY), eq(SriLankanDistrict.COLOMBO), any());
     }
 
     @Test
@@ -177,7 +184,7 @@ class DeliveryExecutionServiceTest {
         assertThat(result.getDeliveredAt()).isNotNull();
 
         verify(publishStateTransitionAction).execute(eq(deliveryId), eq(orderId), eq("SD-COL-12345"),
-                any(), eq(DeliveryState.OUT_FOR_DELIVERY), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
+                any(), any(), eq(DeliveryState.OUT_FOR_DELIVERY), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
     }
 
     @Test

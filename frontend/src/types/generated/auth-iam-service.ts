@@ -45,7 +45,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiErrorResponse"];
                     };
                 };
-                /** @description Account is not active */
+                /** @description Account is not active, or the email is not verified yet (the ApiErrorResponse error field is EMAIL_NOT_VERIFIED; call /verify-email) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -80,7 +80,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Register a customer or merchant account */
+        /**
+         * Register a customer or merchant account
+         * @description Creates the account unverified and emails a 6-digit verification code (via notification-service).
+         *     The user must confirm it with `POST /api/v1/auth/verify-email` before password sign-in works.
+         *     Registering again with the same, still-unverified email replaces the pending sign-up.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -94,7 +99,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Account registered */
+                /** @description Account created; a verification code was emailed */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -114,6 +119,294 @@ export interface paths {
                 };
                 /** @description Username, email, or phone already registered */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm an email address with the emailed code
+         * @description Marks the account verified. No session is created: the frontend shows a "registered"
+         *     confirmation and the user then signs in with `/login`. Codes expire after 10 minutes, are
+         *     single use, and are destroyed after 5 wrong attempts (HTTP 429).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyEmailRequest"];
+                };
+            };
+            responses: {
+                /** @description Email verified; the user can now sign in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Invalid or expired code, or validation failure */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Email address is already verified */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many attempts or requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/username-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check whether a username is free for a new account
+         * @description Used by the sign-up form while the user types. Case-insensitive; a pending (unverified) sign-up also holds its username. Rate limited to 60 checks per minute per client IP. The database unique index remains the authority, so /register still answers 409 for a taken username.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @example nimal.perera */
+                    username: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Availability of the username */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUsernameAvailability"];
+                    };
+                };
+                /** @description Too many checks from this client */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a new email verification code
+         * @description Always answers 200 so it cannot be used to discover which accounts exist. Throttled per user and per IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["IdentifierRequest"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Too many requests from this client */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a password reset code
+         * @description Always answers 200 so it cannot be used to discover which accounts exist. Throttled per user and per IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["IdentifierRequest"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Too many requests from this client */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password using the emailed reset code
+         * @description Revokes every existing session of the account. The new password must meet the policy, must not contain the username or email, and must differ from the current password; the code is consumed only when the reset succeeds.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description Password updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Invalid or expired code, or password does not meet the policy */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many attempts or requests */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -730,6 +1023,42 @@ export interface components {
             /** @description Optional refresh token to revoke. */
             refreshToken?: string;
         };
+        VerifyEmailRequest: {
+            /**
+             * @description Username or email address of the account.
+             * @example customer.one@example.com
+             */
+            identifier: string;
+            /**
+             * @description 6-digit verification code.
+             * @example 482913
+             */
+            code: string;
+        };
+        IdentifierRequest: {
+            /**
+             * @description Username or email address of the account.
+             * @example customer.one@example.com
+             */
+            identifier: string;
+        };
+        ResetPasswordRequest: {
+            /**
+             * @description Username or email address of the account.
+             * @example customer.one@example.com
+             */
+            identifier: string;
+            /**
+             * @description 6-digit reset code.
+             * @example 482913
+             */
+            code: string;
+            /**
+             * Format: password
+             * @description 8-72 characters with at least one letter and one digit.
+             */
+            newPassword: string;
+        };
         ChangePasswordRequest: {
             /** Format: password */
             currentPassword: string;
@@ -775,6 +1104,8 @@ export interface components {
             /** Format: uuid */
             merchantId?: string | null;
             status?: components["schemas"]["UserStatus"];
+            /** @description True once the email address has been verified. */
+            emailVerified?: boolean;
             /** Format: date-time */
             lastLoginAt?: string | null;
             /** Format: date-time */
@@ -784,6 +1115,24 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["UserProfileResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        UsernameAvailabilityResponse: {
+            /** @description The username that was checked, trimmed. */
+            username: string;
+            /** @description True when the username is valid and no account (verified or pending) uses it. */
+            available: boolean;
+            /**
+             * @description Why it is not available. Null when available.
+             * @enum {string|null}
+             */
+            reason?: "TAKEN" | "INVALID" | null;
+        };
+        ApiResponseUsernameAvailability: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["UsernameAvailabilityResponse"];
             /** Format: date-time */
             timestamp?: string;
         };

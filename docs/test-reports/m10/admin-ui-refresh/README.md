@@ -8,16 +8,17 @@ The implementation/research record is [admin-dashboard-refresh.md](../../../desi
 | API generation from static specs | Passed; only changed IAM declarations retained |
 | Live admin browser acceptance | 15 checks passed, no unhandled browser exceptions |
 | Existing dashboard/customer-widget browser regression | 19 checks passed, no unhandled browser exceptions |
-| IAM | 76 tests passed, including all opt-in database/session integration tests; no skips |
-| Dispatch | 37 tests passed, no failures/skips |
-| Delivery | 98 tests passed, no failures/skips |
+| IAM | 123 tests passed, including all opt-in database/session integration tests; no skips |
+| Dispatch | 38 tests passed, no failures/skips |
+| Delivery | 99 tests passed, no failures/skips |
 | Analytics | 108 unit/controller and 26 PostgreSQL/RabbitMQ integration tests passed, no failures/skips |
+| Fresh merged-service acceptance | 56 checks passed through real IAM/gateway/pricing/orders/analytics with mock AI |
 | Shared contracts clean install | Passed |
 | Complete backend reactor compilation | Passed |
 | Real order → assignment → courier delivery → analytics | Passed for delivered, failed and active demo parcels |
 | Direct role-change attempt via gateway | 409; account unchanged |
 
-IAM integration tests ran with `-Dswiftdrop.integration-tests=true` in a fresh temporary IAM database, which was removed afterward. The tests never used the demo IAM database. A previously skipped create-user fixture was corrected to include its required role. Backend validation used temporary POM copies changing only the build output for IAM/analytics to `target-admin-ui/review`, avoiding running-JAR locks. Original POMs are unchanged.
+IAM integration tests ran with `-Dswiftdrop.integration-tests=true` in a fresh temporary IAM database, which was removed afterward. The tests never used the demo IAM database. A previously skipped create-user fixture was corrected to include its required role. Backend validation used temporary POM copies changing only the build output for packaged services to `target-admin-ui/merged`, avoiding running-JAR locks. Original POMs are unchanged. Temporary review POMs were removed after packaging. The 56-check acceptance run used disposable databases, RabbitMQ and Redis, and verified staff-provisioned customer accounts without bypassing self-registration OTP verification.
 
 ## Browser coverage
 
@@ -41,4 +42,4 @@ Screenshots use synthetic demo accounts/orders and contain no tokens or model ke
 
 Open [Analytics](http://localhost:5173/ops/analytics) or [User management](http://localhost:5173/ops/users), sign in as `m10.ai.demo` using the existing local demo password. Refresh the page to load the updated UI. The dedicated demo's dispatch and delivery services are now running on 8084/8085 with their own databases and the same demo RabbitMQ virtual host. Existing real accounts were not reassigned to different roles.
 
-The first demo rehearsal exposed missing district/tracking information in delivery events. The producer/consumer code was repaired, regression-tested and restarted. Only that rehearsal's 11 synthetic rejected events were replayed with route/tracking data obtained from their real customer orders; original DLQ records remain available for inspection. New demo deliveries flow normally without that repair step. No volume resets, pushes, merges or AKS deployment were performed.
+The first demo rehearsal exposed missing district/tracking information in delivery events. The producer/consumer code was repaired, regression-tested and restarted. Only that rehearsal's 11 synthetic rejected events were replayed with route/tracking data obtained from their real customer orders; original DLQ records remain available for inspection. New demo deliveries flow normally without that repair step. No volume resets, pushes or AKS deployment were performed. The branch was integrated with `dev` at `a9b783d`, preserving the newer OTP authentication, sign-out confirmation and customer notification context.

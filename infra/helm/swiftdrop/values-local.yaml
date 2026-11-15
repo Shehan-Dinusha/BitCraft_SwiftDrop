@@ -31,7 +31,10 @@ services:
   customer-order-service:      { enabled: true }
   pricing-zone-service:        { enabled: true }
   dispatch-assignment-service: { enabled: false }
-  delivery-execution-service:  { enabled: false }
+  delivery-execution-service:
+    enabled: false
+    # Proof-of-delivery photos survive pod restarts (no Azure Blob locally).
+    persistence: { enabled: true, storageClassName: hostpath, size: 1Gi }
   merchant-b2b-service:        { enabled: false }
   webhook-resiliency-service:  { enabled: false }
   notification-service:        { enabled: false }
@@ -50,6 +53,10 @@ serviceOverrides:
     scaleUpPods: 1
   probes:
     startupFailureThreshold: 60   # JVMs share 4 CPUs locally — allow 5 minutes
+    # A JVM starting next door can starve the others of CPU for a minute or more;
+    # only restart a service after ~3 minutes without a liveness answer.
+    livenessTimeoutSeconds: 10
+    livenessFailureThreshold: 6
 
 frontend:
   replicas: 1

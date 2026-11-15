@@ -144,5 +144,5 @@ node docs/design/m10/fixtures/verify-admin-ui.mjs '<path-to-Chrome>'
 The fixture reads credentials from the ignored demo session or `M10_DEMO_ADMIN` /
 `M10_DEMO_PASSWORD` environment variables; credentials and tokens must never be committed.
 See the [current validation report](../../test-reports/m10/admin-ui-refresh/README.md).
-The former baseline, planning roadmap, stage-1?5 summary and duplicate Part 4 checklists
+The former baseline, planning roadmap, stage-1-to-5 summary and duplicate Part 4 checklists
 were removed; this guide is the single verification entry point.

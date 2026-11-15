@@ -6,6 +6,7 @@ import com.swiftdrop.contracts.enums.UserStatus;
 import com.swiftdrop.iam.domain.entity.UserAccount;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.ChangePasswordRequest;
+import com.swiftdrop.iam.dto.CreateUserRequest;
 import com.swiftdrop.iam.dto.RegisterUserRequest;
 import com.swiftdrop.iam.exception.AuthException;
 import com.swiftdrop.iam.exception.UserAlreadyExistsException;
@@ -103,6 +104,65 @@ class UserAccountServiceTest {
         assertThat(profile.phone()).isNull();
         assertThat(profile.role()).isEqualTo(UserRole.CUSTOMER);
         assertThat(profile.status()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(profile.emailVerified()).isFalse();
+    }
+
+    @Test
+    void registeringAgainWithAnUnverifiedEmailReplacesThePendingSignUp() {
+        UserAccount pending = new UserAccount();
+        pending.setId(42L);
+        pending.setPublicId(UUID.randomUUID());
+        pending.setUsername("old.name");
+        pending.setEmail("alice@example.com");
+        pending.setPasswordHash("attacker-hash");
+        pending.setRole(UserRole.CUSTOMER);
+        pending.setStatus(UserStatus.ACTIVE);
+        pending.setEmailVerified(false);
+        pending.setCreatedAt(Instant.now());
+
+        when(userAccountRepository.findByEmailIgnoreCase("alice@example.com")).thenReturn(Optional.of(pending));
+        when(userAccountRepository.findByUsernameIgnoreCase("alice")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("Secret123")).thenReturn("owner-hash");
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var profile = userAccountService.register(new RegisterUserRequest(
+                "alice", "alice@example.com", null, "Alice", "Perera",
+                "Secret123", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO, null));
+
+        assertThat(profile.id()).isEqualTo(pending.getPublicId());
+        assertThat(pending.getPasswordHash()).isEqualTo("owner-hash");
+        assertThat(pending.getUsername()).isEqualTo("alice");
+        assertThat(profile.emailVerified()).isFalse();
+    }
+
+    @Test
+    void registeringWithAVerifiedEmailIsRejected() {
+        UserAccount verified = new UserAccount();
+        verified.setId(43L);
+        verified.setPublicId(UUID.randomUUID());
+        verified.setEmail("alice@example.com");
+        verified.setStatus(UserStatus.ACTIVE);
+        verified.setEmailVerified(true);
+        when(userAccountRepository.findByEmailIgnoreCase("alice@example.com")).thenReturn(Optional.of(verified));
+        when(userAccountRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> userAccountService.register(new RegisterUserRequest(
+                "alice2", "alice@example.com", null, "Alice", "Perera",
+                "Secret123", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO, null)))
+                .isInstanceOf(UserAlreadyExistsException.class);
+        verify(userAccountRepository, never()).save(any());
+    }
+
+    @Test
+    void usersCreatedByAnAdministratorAreVerifiedImmediately() {
+        when(passwordEncoder.encode("Secret123")).thenReturn("encoded");
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var profile = userAccountService.create(new CreateUserRequest(
+                "courier.one", "courier.one@example.com", null, "Courier", "One",
+                "Secret123", UserRole.COURIER, SriLankanDistrict.COLOMBO, null));
+
+        assertThat(profile.emailVerified()).isTrue();
     }
 
     @Test
@@ -164,7 +224,7 @@ class UserAccountServiceTest {
                 new ChangePasswordRequest("OldPass123", "NewPass123"));
 
         assertThat(admin.getPasswordHash()).isEqualTo("new-hash");
-        verify(passwordPolicy).validate("NewPass123");
+        verify(passwordPolicy).validate("NewPass123", admin.getUsername(), admin.getEmail());
         verify(refreshTokenService).revokeAll(admin);
         verify(tokenIssuanceService).blacklistUser(admin.getPublicId());
     }

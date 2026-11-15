@@ -10,6 +10,7 @@ import com.swiftdrop.notification.messaging.trigger.EventEnvelope;
 import com.swiftdrop.notification.messaging.trigger.NotificationTrigger;
 import com.swiftdrop.notification.service.InAppNotificationService;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
+import com.swiftdrop.notification.util.SensitiveTemplates;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -95,6 +96,9 @@ public class NotificationEventConsumer {
                 if (requests != null && !requests.isEmpty()) {
                     for (DispatchNotificationRequest request : requests) {
                         NotificationDispatchLogResponse dispatchLog = dispatcher.dispatch(request);
+                        if (SensitiveTemplates.isSensitive(request.templateCode())) {
+                            continue; // one-time codes are emailed only, never copied to the in-app inbox
+                        }
                         if (request.recipientId() != null) {
                             String title = dispatchLog != null && dispatchLog.subject() != null
                                     ? dispatchLog.subject()

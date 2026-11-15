@@ -31,6 +31,9 @@ public class DeliverySession {
     @Column(name = "order_id", nullable = false)
     private UUID orderId;
 
+    @Column(name = "customer_id")
+    private UUID customerId;
+
     @Column(name = "tracking_number", nullable = false, length = 32)
     private String trackingNumber;
 
@@ -108,6 +111,9 @@ public class DeliverySession {
 
     public UUID getOrderId() { return orderId; }
     public void setOrderId(UUID orderId) { this.orderId = orderId; }
+
+    public UUID getCustomerId() { return customerId; }
+    public void setCustomerId(UUID customerId) { this.customerId = customerId; }
 
     public String getTrackingNumber() { return trackingNumber; }
     public void setTrackingNumber(String trackingNumber) { this.trackingNumber = trackingNumber; }

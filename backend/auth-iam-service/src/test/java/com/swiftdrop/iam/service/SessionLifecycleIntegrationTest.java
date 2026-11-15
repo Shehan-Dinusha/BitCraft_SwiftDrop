@@ -60,6 +60,7 @@ class SessionLifecycleIntegrationTest {
         password = "Regression7!" + UUID.randomUUID();
         userId = users.register(new RegisterUserRequest(username, username + "@example.invalid", null,
                 "Regression", "Test", password, UserRole.CUSTOMER, SriLankanDistrict.COLOMBO, null)).id();
+        jdbc.update("update user_accounts set email_verified = true where public_id = ?", userId);
     }
 
     @AfterEach

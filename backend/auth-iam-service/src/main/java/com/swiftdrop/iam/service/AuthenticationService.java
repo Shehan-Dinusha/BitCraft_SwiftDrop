@@ -5,6 +5,7 @@ import com.swiftdrop.iam.domain.entity.UserAccount;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.TokenResponse;
 import com.swiftdrop.iam.exception.AccountNotActiveException;
+import com.swiftdrop.iam.exception.EmailNotVerifiedException;
 import com.swiftdrop.iam.exception.InvalidCredentialsException;
 import com.swiftdrop.iam.exception.InvalidRefreshTokenException;
 import io.jsonwebtoken.Claims;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthenticationService {
@@ -25,6 +27,8 @@ public class AuthenticationService {
     private final TokenIssuanceService tokenIssuanceService;
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
+    /** bcrypt hash of a random value, used only to equalize login timing for unknown users. */
+    private volatile String timingEqualizerHash;
 
     public AuthenticationService(UserAccountRepository userAccountRepository,
                                  PasswordEncoder passwordEncoder,
@@ -45,7 +49,12 @@ public class AuthenticationService {
         Optional<UserAccount> candidate = userAccountRepository
                 .findByUsernameIgnoreCaseOrEmailIgnoreCase(identifier.trim(), identifier.trim());
 
-        if (candidate.isEmpty() || !passwordEncoder.matches(password, candidate.get().getPasswordHash())) {
+        // Always run one bcrypt comparison. Skipping it for unknown users made "no such user" answer
+        // ~100 ms faster than "wrong password", which reveals which usernames and emails exist.
+        boolean passwordMatches = candidate.isPresent()
+                ? passwordEncoder.matches(password, candidate.get().getPasswordHash())
+                : burnPasswordCheck(password);
+        if (!passwordMatches) {
             loginAttemptService.recordFailure(identifier, ipAddress);
             throw new InvalidCredentialsException();
         }
@@ -54,6 +63,10 @@ public class AuthenticationService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             loginAttemptService.recordFailure(identifier, ipAddress);
             throw new AccountNotActiveException();
+        }
+        if (!user.isEmailVerified()) {
+            // Only reached with a correct password, so this does not reveal which emails exist.
+            throw new EmailNotVerifiedException();
         }
 
         loginAttemptService.clear(identifier, ipAddress);
@@ -65,6 +78,23 @@ public class AuthenticationService {
                 refreshTokenService.create(user, userAgent, ipAddress);
 
         return AuthMapper.toTokenResponse(user, accessToken, refreshToken.rawToken());
+    }
+
+    /**
+     * Spends the same work as a real password check, against a hash no password can match, so the
+     * response time does not depend on whether the account exists. Always returns false.
+     */
+    private boolean burnPasswordCheck(String password) {
+        String dummy = timingEqualizerHash;
+        if (dummy == null) {
+            // Encoded lazily with the configured encoder so the cost factor matches real hashes.
+            dummy = passwordEncoder.encode(UUID.randomUUID().toString());
+            timingEqualizerHash = dummy;
+        }
+        if (dummy != null) {
+            passwordEncoder.matches(password, dummy);
+        }
+        return false;
     }
 
     @Transactional(noRollbackFor = {InvalidRefreshTokenException.class, AccountNotActiveException.class})
