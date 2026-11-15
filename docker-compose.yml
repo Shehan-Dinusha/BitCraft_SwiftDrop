@@ -682,7 +682,7 @@ configs:
   rabbitmq_conf:
     content: |
       management.load_definitions = /etc/rabbitmq/definitions.json
-      vm_memory_high_watermark.relative = 0.7
+      vm_memory_high_watermark.relative = 0.4
       disk_free_limit.relative = 1.5
       consumer_timeout = 3600000
 

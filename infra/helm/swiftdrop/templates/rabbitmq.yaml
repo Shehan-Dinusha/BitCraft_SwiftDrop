@@ -111,6 +111,15 @@ spec:
               mountPath: /etc/rabbitmq/conf.d/20-swiftdrop.conf
               subPath: 20-swiftdrop.conf
               readOnly: true
+          # After a restart RabbitMQ recovers its queues from disk before it opens the AMQP
+          # port, which can take minutes on a busy node. The startup probe holds off
+          # liveness until then (up to 10 min), so recovery is never killed half-way.
+          startupProbe:
+            tcpSocket:
+              port: amqp
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
           # rabbitmq-diagnostics boots a short-lived Erlang VM, which can take >10s
           # on a CPU-starved node. Liveness (restart decision) therefore uses a cheap
           # TCP check; readiness keeps the thorough check with a generous timeout.
@@ -124,7 +133,6 @@ spec:
           livenessProbe:
             tcpSocket:
               port: amqp
-            initialDelaySeconds: 60
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 6

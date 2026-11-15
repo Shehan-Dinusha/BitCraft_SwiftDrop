@@ -488,8 +488,11 @@ rabbitmq:
     requests: { cpu: 500m, memory: 512Mi }
     limits: { cpu: "1", memory: 1Gi }
   # Mounted as /etc/rabbitmq/conf.d/20-swiftdrop.conf (mirrors docker-compose).
+  # 0.4 is RabbitMQ's default: above the watermark it pages messages to disk and blocks
+  # publishers, and the Erlang VM + management plugin need headroom on top of it. At 0.7
+  # the container could reach its memory limit first and be OOMKilled.
   config: |
-    vm_memory_high_watermark.relative = 0.7
+    vm_memory_high_watermark.relative = 0.4
     disk_free_limit.relative = 1.5
     consumer_timeout = 3600000
 
