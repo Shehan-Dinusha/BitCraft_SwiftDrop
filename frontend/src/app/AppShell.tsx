@@ -13,7 +13,6 @@ import {
   type NavGroup,
   type ShellRole
 } from '@/design-system';
-import { PersonaSwitcherDevBar } from '@/features/auth/components/PersonaSwitcherDevBar';
 import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
@@ -132,6 +131,7 @@ export function AppShell() {
   const user = useAuthStore((state) => state.user);
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const signOut = useAuthStore((state) => state.signOut);
+  const isDevSession = useAuthStore((state) => state.isDevSession);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isWide = useMediaQuery('(min-width: 1280px)');
@@ -143,10 +143,10 @@ export function AppShell() {
   const groups = useMemo<NavGroup[]>(
     // The design catalog is a developer tool, so real users never see it in their menu.
     () =>
-      import.meta.env.DEV
+      import.meta.env.DEV && isDevSession
         ? [...routedNav[shellRole], { label: 'Design system', items: [catalogEntry] }]
         : routedNav[shellRole],
-    [shellRole]
+    [shellRole, isDevSession]
   );
   const entries = groups.flatMap((group) => group.items);
   const activeEntry = entries
@@ -184,7 +184,7 @@ export function AppShell() {
         <SideNav
           role={shellRole}
           groups={groups}
-          workspace={user?.district ? `${spec.label} · ${user.district}` : undefined}
+          workspace={spec.label}
           activeId={activeEntry?.id}
           rail={!isWide}
           account={{ name: user?.username ?? spec.label, email: user?.email }}
@@ -198,17 +198,22 @@ export function AppShell() {
               count={entry.count}
               active={active}
               rail={rail}
+              className={
+                role === 'ADMIN_OPS'
+                  ? `h-11 rounded-xl text-sm ${active ? 'bg-brand-primary text-brand-on shadow-sm hover:bg-brand-hover' : 'text-secondary hover:bg-brand-subtle hover:text-brand-primary'}`
+                  : undefined
+              }
             />
           )}
         />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <PersonaSwitcherDevBar onSwitch={(nextRole) => navigate(roleHome[nextRole])} />
         <TopBar
           role={shellRole}
           section={spec.label}
           page={pageTitle}
+          showUtilities={role !== 'ADMIN_OPS'}
           district={shellRole === 'dispatcher' ? user?.district : undefined}
           notificationSlot={<NotificationBell />}
           leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}

@@ -1,0 +1,21 @@
+{
+  "count": 15,
+  "checks": [
+    "admin header utilities removed",
+    "roles are read-only badges",
+    "active account exposes only Suspend",
+    "suspension opens named confirmation",
+    "cancelling keeps account active",
+    "confirmed suspension persisted",
+    "suspended account exposes only Reactivate",
+    "reactivation persisted and success announced",
+    "failed status update stays in dialog with error",
+    "backend rejects direct role mutation",
+    "analytics renders three charts from live services",
+    "metric font matches the interface",
+    "quick date range applies",
+    "analytics fits mobile width",
+    "no unhandled browser exceptions"
+  ],
+  "errors": []
+}

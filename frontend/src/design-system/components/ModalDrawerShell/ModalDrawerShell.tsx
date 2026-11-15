@@ -69,6 +69,27 @@ export function ModalDrawerShell({
     if (!open || inline) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
+      if (event.key === 'Tab') {
+        const controls = panelRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]'
+        );
+        if (!controls?.length) {
+          event.preventDefault();
+          return;
+        }
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (
+          event.shiftKey &&
+          (document.activeElement === first || document.activeElement === panelRef.current)
+        ) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -77,10 +98,13 @@ export function ModalDrawerShell({
   useEffect(() => {
     if (!open || inline) return;
     const previousOverflow = document.body.style.overflow;
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.style.overflow = 'hidden';
     panelRef.current?.focus();
     return () => {
       document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
     };
   }, [open, inline]);
 

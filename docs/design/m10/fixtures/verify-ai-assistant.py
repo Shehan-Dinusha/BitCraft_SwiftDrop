@@ -136,14 +136,16 @@ def main():
             check("IAM login " + username, status == 200)
             return result["accessToken"]
 
+        # Staff-provisioned demo accounts are already verified. Self-service
+        # registration now requires the IAM email-OTP flow, tested by Member 2.
+        admin = login("aiadmin")
         tokens = []
         for username in ["aicustomer", "aiother", "airatelimit"]:
-            status, _ = http(gateway, "/api/v1/auth/register", {"username": username, "email": username + "@example.test",
-                            "firstName": "AI", "lastName": "Test", "password": password, "role": "CUSTOMER", "district": "COLOMBO"})
-            check("IAM registration " + username, status == 201)
+            status, _ = http(gateway, "/api/v1/users", {"username": username, "email": username + "@example.test",
+                            "firstName": "AI", "lastName": "Test", "password": password, "role": "CUSTOMER", "district": "COLOMBO"}, admin)
+            check("IAM provisions verified demo customer " + username, status == 201)
             tokens.append(login(username))
         user, other, limited = tokens
-        admin = login("aiadmin")
         check("admin cannot use customer chat", http(gateway, "/api/v1/ai/chat", {"message": "Hello"}, admin)[0] == 403)
         check("chat requires token", http(gateway, "/api/v1/ai/chat", {"message": "Hello"})[0] == 401)
         check("forged headers cannot authenticate", http(gateway, "/api/v1/ai/chat", {"message": "Hello"},
