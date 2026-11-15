@@ -104,10 +104,13 @@ stage_users() {
 }
 
 stage_orders() {
-  log "Orders: customers book parcels (dispatch is off; its events wait in the queue)"
+  log "Orders: customers book parcels, merchants are approved and send B2B orders (dispatch is off; its events wait in the queue)"
   up customer-order-service pricing-zone-service
   seed orders
-  down pricing-zone-service
+  # Merchant B2B orders are forwarded to order-service (which prices them), so all three run here.
+  up merchant-b2b-service
+  seed merchants
+  down merchant-b2b-service pricing-zone-service
 }
 
 stage_assign() {

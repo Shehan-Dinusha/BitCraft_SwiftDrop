@@ -33,7 +33,7 @@ export function ActiveDeliveryExecutionPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const courierId = user?.id || '11111111-1111-1111-1111-111111111111';
+  const courierId = user?.id ?? '';
 
   const orderIdParam = searchParams.get('orderId');
   const deliveryIdParam = id || searchParams.get('deliveryId');
@@ -69,7 +69,7 @@ export function ActiveDeliveryExecutionPage() {
         activeDelivery = await deliveryApi.getDeliveryById(deliveryIdParam);
       } else if (orderIdParam) {
         activeDelivery = await deliveryApi.getDeliveryByOrderId(orderIdParam);
-      } else {
+      } else if (courierId) {
         // Fallback: lookup current courier's active deliveries
         const courierDeliveries = await deliveryApi.getDeliveriesByCourier(courierId);
         if (courierDeliveries && courierDeliveries.length > 0) {

@@ -9,6 +9,7 @@ import {
   type SriLankanDistrict
 } from '@/services/api/dispatchApi';
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
+import { SRI_LANKAN_DISTRICTS, fetchCurrentUser } from '@/services/api/authApi';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
@@ -27,25 +28,19 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-const SRI_LANKAN_DISTRICTS: SriLankanDistrict[] = [
-  'COLOMBO',
-  'GAMPAHA',
-  'KALUTARA',
-  'KANDY',
-  'MATALE',
-  'NUWARA_ELIYA',
-  'GALLE',
-  'MATARA',
-  'HAMBANTOTA',
-  'JAFFNA',
-  'KURUNEGALA',
-  'RATNAPURA'
+type VehicleType = NonNullable<CourierShiftResponse['vehicleType']>;
+
+const VEHICLES: { value: VehicleType; label: string }[] = [
+  { value: 'MOTORCYCLE', label: 'Motorcycle' },
+  { value: 'THREE_WHEELER', label: 'Three-wheeler' },
+  { value: 'VAN', label: 'Van' },
+  { value: 'BICYCLE', label: 'Bicycle' }
 ];
 
 export function CourierShiftDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const courierId = user?.id || '11111111-1111-1111-1111-111111111111';
+  const courierId = user?.id;
 
   const [shift, setShift] = useState<CourierShiftResponse | null>(null);
   const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
@@ -59,8 +54,10 @@ export function CourierShiftDashboard() {
   const [selectedDistrict, setSelectedDistrict] = useState<SriLankanDistrict>(
     (user?.district as SriLankanDistrict) || 'COLOMBO'
   );
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('MOTORCYCLE');
 
   const fetchShiftData = useCallback(async () => {
+    if (!courierId) return;
     try {
       setLoading(true);
       setErrorMsg(null);
@@ -69,6 +66,8 @@ export function CourierShiftDashboard() {
       try {
         const shiftData = await dispatchApi.getCourier(courierId);
         setShift(shiftData);
+        if (shiftData?.vehicleType) setSelectedVehicle(shiftData.vehicleType);
+        if (shiftData?.currentDistrict) setSelectedDistrict(shiftData.currentDistrict as SriLankanDistrict);
       } catch {
         setShift(null);
       }
@@ -98,16 +97,21 @@ export function CourierShiftDashboard() {
   }, [fetchShiftData]);
 
   const handleStartShift = async () => {
+    if (!courierId) return;
     try {
       setUpdating(true);
       setErrorMsg(null);
+      // Starting a shift updates the courier's dispatch record, so send their real profile:
+      // the name and phone dispatchers see come from the account, not placeholders.
+      const profile = await fetchCurrentUser().catch(() => null);
+      const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ');
       const res = await dispatchApi.startShift({
         courierId,
-        courierName: user?.username || 'Sunil Perera',
-        phone: '+94771234567',
-        vehicleType: 'MOTORCYCLE',
+        courierName: fullName || shift?.courierName || user?.username || 'Courier',
+        phone: profile?.phone || shift?.phone || undefined,
+        vehicleType: selectedVehicle,
         initialDistrict: selectedDistrict,
-        maxCapacity: 5
+        maxCapacity: shift?.maxCapacity ?? 5
       });
       setShift(res);
       setSuccessMsg('Shift started! You are now AVAILABLE for delivery dispatches.');
@@ -121,6 +125,7 @@ export function CourierShiftDashboard() {
   };
 
   const handleUpdateStatus = async (newStatus: ShiftStatus) => {
+    if (!courierId) return;
     try {
       setUpdating(true);
       setErrorMsg(null);
@@ -139,6 +144,7 @@ export function CourierShiftDashboard() {
   };
 
   const handleLocationPing = async () => {
+    if (!courierId) return;
     try {
       setUpdating(true);
       setErrorMsg(null);
@@ -159,7 +165,7 @@ export function CourierShiftDashboard() {
   };
 
   const handleEndShift = async () => {
-    if (!window.confirm('Are you sure you want to end your shift?')) return;
+    if (!courierId || !window.confirm('Are you sure you want to end your shift?')) return;
     try {
       setUpdating(true);
       setErrorMsg(null);
@@ -280,6 +286,18 @@ export function CourierShiftDashboard() {
                   {SRI_LANKAN_DISTRICTS.map((d) => (
                     <option key={d} value={d}>
                       {d}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedVehicle}
+                  onChange={(e) => setSelectedVehicle(e.target.value as VehicleType)}
+                  aria-label="Vehicle"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  {VEHICLES.map((v) => (
+                    <option key={v.value} value={v.value}>
+                      {v.label}
                     </option>
                   ))}
                 </select>

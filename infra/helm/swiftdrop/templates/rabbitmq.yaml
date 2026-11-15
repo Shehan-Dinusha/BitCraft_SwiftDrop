@@ -13,6 +13,17 @@ metadata:
 data:
   20-swiftdrop.conf: |
     {{- $r.config | trim | nindent 4 }}
+    {{- /* RabbitMQ sizes its memory watermark from the NODE's memory, not the container
+           limit (seen: "0.4 of available memory, computed to 2.46 GB" under a 768Mi limit),
+           so it never paged to disk before being OOMKilled. Tell it the real limit. */}}
+    {{- $mem := toString (dig "limits" "memory" "" ($r.resources | default dict)) }}
+    {{- $bytes := 0 }}
+    {{- if hasSuffix "Gi" $mem }}{{ $bytes = mul (trimSuffix "Gi" $mem | atoi) 1073741824 }}
+    {{- else if hasSuffix "Mi" $mem }}{{ $bytes = mul (trimSuffix "Mi" $mem | atoi) 1048576 }}
+    {{- end }}
+    {{- if gt (int64 $bytes) 0 }}
+    total_memory_available_override_value = {{ $bytes }}
+    {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -74,7 +85,8 @@ spec:
         app.kubernetes.io/name: rabbitmq
         app.kubernetes.io/component: messaging
       annotations:
-        checksum/config: {{ $r.config | sha256sum }}
+        # Covers the memory override rendered from resources too, so changing the limit rolls the pod.
+        checksum/config: {{ printf "%s|%s" $r.config (toJson $r.resources) | sha256sum }}
         checksum/secrets: {{ toYaml .Values.secrets.rabbitmq | sha256sum }}
     spec:
       terminationGracePeriodSeconds: 120
@@ -111,6 +123,15 @@ spec:
               mountPath: /etc/rabbitmq/conf.d/20-swiftdrop.conf
               subPath: 20-swiftdrop.conf
               readOnly: true
+          # After a restart RabbitMQ recovers its queues from disk before it opens the AMQP
+          # port, which can take minutes on a busy node. The startup probe holds off
+          # liveness until then (up to 10 min), so recovery is never killed half-way.
+          startupProbe:
+            tcpSocket:
+              port: amqp
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
           # rabbitmq-diagnostics boots a short-lived Erlang VM, which can take >10s
           # on a CPU-starved node. Liveness (restart decision) therefore uses a cheap
           # TCP check; readiness keeps the thorough check with a generous timeout.
@@ -124,7 +145,6 @@ spec:
           livenessProbe:
             tcpSocket:
               port: amqp
-            initialDelaySeconds: 60
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 6

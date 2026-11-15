@@ -39,7 +39,8 @@ public class MerchantApiKeyGlobalFilter implements GlobalFilter, Ordered {
 
     private static final List<String> API_KEY_PATHS = List.of(
             "/api/v1/merchant/",
-            "/api/v1/merchant-order-ingest/"
+            "/api/v1/merchant-order-ingest/",
+            "/api/v1/b2b/"
     );
 
     private final WebClient webClient;

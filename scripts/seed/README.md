@@ -4,8 +4,9 @@ Fills SwiftDrop with realistic demo data **through the public APIs**, the way re
 
 | Who | What the seeder does as them |
 |---|---|
-| System admin (bootstrap account) | Creates 25 dispatchers (one per district) and 50 couriers (two per district) |
-| 40 customers | Register themselves, then book 4–6 parcels each (≈200 orders, real towns and postcodes) |
+| System admin (bootstrap account) | Creates 25 dispatchers (one per district), 50 couriers (two per district), 40 customers and 6 merchant owners |
+| 40 customers | Book 4–6 parcels each (≈200 orders, real towns and postcodes) |
+| 6 merchant businesses | Apply; the admin approves 4, leaves 1 pending and rejects 1 with a reason. Approved merchants create an API key and send 8–12 B2B orders each (≈40) through the B2B API |
 | Couriers | Start their shifts |
 | Customers | Cancel ~10% of parcels before dispatch |
 | Dispatchers | Assign ~80% of parcels to a courier in the pickup district; ~10% stay unassigned so the board has work |
@@ -15,7 +16,11 @@ Fills SwiftDrop with realistic demo data **through the public APIs**, the way re
 Nothing is written with SQL. Dispatch, delivery, notification and analytics fill themselves from the
 RabbitMQ events these actions publish, so every database stays consistent with the others.
 
-All people are fictional. E-mail addresses use the reserved `example.com` domain, and SMS/e-mail
+Accounts are provisioned by the admin: since email verification was added, a self-registered
+account cannot sign in until it confirms a code sent by e-mail, which a script cannot read.
+Admin-provisioned accounts are trusted and verified from the start.
+
+All people and businesses are fictional. E-mail addresses use the reserved `example.com` domain, and SMS/e-mail
 sending is mocked, so nothing can reach a real person. Google sign-in cannot be scripted. Every seeded
 account uses a username and password; test Google sign-in by hand with a real Google account.
 
@@ -38,7 +43,7 @@ It takes 20–40 minutes on a laptop. The stages, which you can also run one at 
 | `install` | none | Installs the chart with `values-local-seed.yaml`: all services and databases created, most scaled to zero |
 | `warmup` | each consumer, briefly | Makes sure every consumer queue exists (events sent to a missing queue are lost) |
 | `users` | none | Staff accounts and customer sign-ups |
-| `orders` | order, pricing | Bookings; dispatch is off, so `order.created` events queue up |
+| `orders` | order, pricing (+ merchant) | Customer bookings, then merchant applications, approvals, API keys and B2B orders; dispatch is off, so `order.created` events queue up |
 | `assign` | order, dispatch | Dispatch files the bookings as unassigned, then shifts, cancellations, assignments |
 | `deliver` | delivery | Courier transitions and proof-of-delivery uploads |
 | `catchup` | order, dispatch, notification, analytics | They process the queued events; notifications are marked read; summary |
@@ -82,10 +87,13 @@ charts show a single spike. `timeshift.mjs` runs **once, after the last stage**,
   trail and pickup/delivered times, the proof photo (minutes before delivery), dispatch's
   assignment time, analytics events and projection fields, and notifications; any other
   timestamp is placed between the new step times;
+- merchants get a story built backwards from their first B2B order: the owner signs up, the business
+  applies, the admin approves it in office hours, an API key is created, then the orders arrive; the
+  pending application is a day or two old and the rejected one a couple of weeks;
 - the analytics daily and per-courier totals are rebuilt with the analytics service's own rules;
   seeded accounts get believable sign-up dates.
 
-It only touches orders of seeded (`@example.com`) customers, refuses to run a second time, and edits
+It only touches seeded data (`@example.com` customers and merchants), refuses to run a second time, and edits
 demo data directly in the service databases through `kubectl exec` (no schema or code changes).
 
 ```bash
@@ -121,4 +129,5 @@ placeholder images.
 | `SEED_CUSTOMERS` | `40` | Number of customers |
 
 Demo logins: `dispatcher.<district>` (for example `dispatcher.colombo`, `dispatcher.nuwara-eliya`),
-`courier.<district>.1` and `.2`, and the customer usernames printed by the summary stage.
+`courier.<district>.1` and `.2`, `merchant.kandy-valley-spice` (approved; the summary lists the others),
+and the customer usernames printed by the summary stage.

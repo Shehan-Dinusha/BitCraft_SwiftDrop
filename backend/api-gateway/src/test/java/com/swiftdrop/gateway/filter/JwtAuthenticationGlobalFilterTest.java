@@ -166,6 +166,17 @@ class JwtAuthenticationGlobalFilterTest {
     }
 
     @Test
+    void b2bOrderApiSkipsJwtValidation() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/v1/b2b/orders").build());
+        RecordingChain chain = new RecordingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertNotNull(chain.exchange.get());
+    }
+
+    @Test
     void merchantApiKeyPathSkipsJwtValidation() {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/merchant-order-ingest/orders").build());
