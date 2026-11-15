@@ -14,6 +14,7 @@ import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
@@ -30,6 +31,7 @@ import org.springframework.amqp.rabbit.listener.MessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -92,6 +94,9 @@ class OrderCreatedConsumerIT {
     @Autowired
     private ManualOverrideService manualOverrideService;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private UUID pickupDistrictCourierId;
 
     @BeforeEach
@@ -125,6 +130,48 @@ class OrderCreatedConsumerIT {
         courier.setActiveParcelsCount(0);
         courier.setMaxCapacity(5);
         return courierShiftRepository.saveAndFlush(courier).getCourierId();
+    }
+
+    @AfterEach
+    void removeInjectedDatabaseFailure() {
+        jdbcTemplate.execute("DROP TRIGGER IF EXISTS it_fail_first_assignment_insert ON dispatch_assignments");
+        jdbcTemplate.execute("DROP FUNCTION IF EXISTS it_fail_first_assignment_insert()");
+        jdbcTemplate.execute("DROP SEQUENCE IF EXISTS it_assignment_insert_attempts");
+    }
+
+    @Test
+    void transientDatabaseFailureIsRetriedWithoutDuplicateProcessing() {
+        // Fail the first INSERT with a genuine transient PostgreSQL error (40001).
+        // A sequence counts attempts because nextval() survives the rollback.
+        jdbcTemplate.execute("CREATE SEQUENCE it_assignment_insert_attempts");
+        jdbcTemplate.execute("""
+                CREATE FUNCTION it_fail_first_assignment_insert() RETURNS trigger AS $$
+                BEGIN
+                    IF nextval('it_assignment_insert_attempts') = 1 THEN
+                        RAISE EXCEPTION 'injected transient failure' USING ERRCODE = '40001';
+                    END IF;
+                    RETURN NEW;
+                END $$ LANGUAGE plpgsql
+                """);
+        jdbcTemplate.execute("""
+                CREATE TRIGGER it_fail_first_assignment_insert BEFORE INSERT ON dispatch_assignments
+                FOR EACH ROW EXECUTE FUNCTION it_fail_first_assignment_insert()
+                """);
+        OrderCreatedEvent event = newEvent();
+
+        publish(event);
+        assertQueueContainsOneMessage();
+        startListeners();
+
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
+            assertThat(queueInfo().getMessageCount()).isZero();
+            List<DispatchAssignment> records = recordsFor(event.orderId());
+            assertThat(records).hasSize(1);
+            assertThat(records.getFirst().getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        });
+        assertThat(jdbcTemplate.queryForObject("SELECT last_value FROM it_assignment_insert_attempts", Long.class))
+                .as("first attempt failed and rolled back, the retry succeeded").isEqualTo(2L);
+        assertThat(rabbitAdmin.getQueueInfo(DISPATCH_DLQ).getMessageCount()).isZero();
     }
 
     @Test

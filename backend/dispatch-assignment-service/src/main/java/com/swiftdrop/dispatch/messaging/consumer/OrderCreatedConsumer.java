@@ -6,6 +6,7 @@ import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.service.CourierMatchingEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,11 @@ public class OrderCreatedConsumer {
     public void onOrderCreated(OrderCreatedEvent event) {
         log.info("Received OrderCreatedEvent for order: {}, tracking: {}, pickup: {}",
                 event.orderId(), event.trackingNumber(), event.pickupDistrict());
+        if (event.orderId() == null) {
+            // Permanent: retrying cannot repair the event, so dead-letter it immediately.
+            throw new AmqpRejectAndDontRequeueException(
+                    "order.created event " + event.eventId() + " has no orderId");
+        }
         try {
             matchingEngine.processOrderCreated(event);
         } catch (DataIntegrityViolationException ex) {

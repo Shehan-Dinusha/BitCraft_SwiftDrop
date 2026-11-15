@@ -19,6 +19,9 @@ public class RabbitMQConfig {
     public static final String DEAD_LETTER_EXCHANGE_NAME = "swiftdrop.dlx.exchange";
     public static final String DISPATCH_DEAD_LETTER_ROUTING_KEY = "dlq.dispatch.events";
     public static final int DISPATCH_QUEUE_TTL_MILLIS = 86_400_000;
+    public static final String DISPATCH_DEAD_LETTER_QUEUE = "dlq.dispatch.events.queue";
+    /** Must match infra/local/rabbitmq/definitions.json exactly to avoid PRECONDITION_FAILED. */
+    public static final int DISPATCH_DEAD_LETTER_TTL_MILLIS = 604_800_000;
 
     public static final String ORDER_CREATED_QUEUE = "dispatch.order-created.queue";
     public static final String ORDER_CANCELLED_QUEUE = "dispatch.order-cancelled.queue";
@@ -82,6 +85,29 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(parcelStatusQueue)
                 .to(eventsExchange)
                 .with(ROUTING_KEY_PARCEL_STATUS_CHANGED);
+    }
+
+    /**
+     * Dead-letter queue for every dispatch queue. Declared here, as the notification,
+     * webhook and analytics services do for theirs, because brokers that do not
+     * import definitions.json (AKS) would otherwise drop dead-lettered messages.
+     * Durable quorum queue with a 7-day TTL and no dead-letter arguments of its own.
+     */
+    @Bean
+    public Queue dispatchDeadLetterQueue() {
+        return QueueBuilder.durable(DISPATCH_DEAD_LETTER_QUEUE)
+                .quorum()
+                .ttl(DISPATCH_DEAD_LETTER_TTL_MILLIS)
+                .build();
+    }
+
+    @Bean
+    public Binding dispatchDeadLetterBinding(
+            Queue dispatchDeadLetterQueue,
+            @Qualifier("deadLetterExchange") TopicExchange deadLetterExchange) {
+        return BindingBuilder.bind(dispatchDeadLetterQueue)
+                .to(deadLetterExchange)
+                .with(DISPATCH_DEAD_LETTER_ROUTING_KEY);
     }
 
     private Queue dispatchQueue(String queueName) {
