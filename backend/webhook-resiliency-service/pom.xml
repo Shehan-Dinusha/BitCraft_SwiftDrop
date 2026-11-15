@@ -31,7 +31,11 @@
         <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId><artifactId>maven-failsafe-plugin</artifactId>
-            <configuration><failIfNoTests>true</failIfNoTests></configuration>
+            <!-- The module's test sources were removed on purpose for the current development phase
+                 (see IMPLEMENTATION_PLAN.md, "NO AUTOMATED TESTS IN THIS DEVELOPMENT SESSION"), so an empty
+                 integration-test run must not fail `mvn verify`. Set this back to true when *IT classes are
+                 restored, so a misconfiguration can never silently skip them. -->
+            <configuration><failIfNoTests>false</failIfNoTests></configuration>
         </plugin>
     </plugins></build>
 </project>
