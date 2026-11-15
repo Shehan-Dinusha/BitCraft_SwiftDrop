@@ -30,6 +30,13 @@ paths:
         Dispatcher confirms a courier for an order in the unassigned queue. An order that
         already has a courier is never replaced by this operation; use /api/v1/dispatch/reassign.
       operationId: manualAssign
+      parameters:
+        - name: X-Correlation-Id
+          in: header
+          required: false
+          description: Request correlation ID, propagated to the published events when it is a UUID
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -62,6 +69,13 @@ paths:
         currently assigned, so a reassignment based on a stale view is rejected instead of
         overwriting another dispatcher's decision.
       operationId: reassign
+      parameters:
+        - name: X-Correlation-Id
+          in: header
+          required: false
+          description: Request correlation ID, propagated to the published events when it is a UUID
+          schema:
+            type: string
       requestBody:
         required: true
         content:

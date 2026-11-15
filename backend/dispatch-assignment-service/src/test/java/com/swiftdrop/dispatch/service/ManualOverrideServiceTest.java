@@ -2,6 +2,8 @@ package com.swiftdrop.dispatch.service;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.enums.PublicOrderStatus;
+import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -255,6 +258,100 @@ class ManualOverrideServiceTest {
                 .isInstanceOf(InvalidAssignmentTransitionException.class);
 
         verifyNoInteractions(courierShiftRepository, eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Assign events: CREATED -> PICKUP_ASSIGNED, the assigned courier and the request correlation ID")
+    void testManualAssign_EventContents() {
+        UUID correlationId = UUID.randomUUID();
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
+        when(courierShiftRepository.findByCourierId(newCourierId))
+                .thenReturn(Optional.of(courier(newCourierId, "New Courier", 0)));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DispatchAssignment result = manualOverrideService.manualAssign(
+                new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_ONE", null), correlationId);
+
+        CourierAssignedEvent assigned = capturedCourierAssigned();
+        ParcelStatusChangedEvent status = capturedStatusChanged();
+        assertThat(assigned.orderId()).isEqualTo(orderId);
+        assertThat(assigned.courierId()).isEqualTo(newCourierId);
+        assertThat(assigned.courierName()).isEqualTo("New Courier");
+        assertThat(assigned.assignedAt()).isEqualTo(result.getAssignedAt());
+        assertThat(status.previousPublicStatus()).isEqualTo(PublicOrderStatus.CREATED);
+        assertThat(status.newPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
+        assertThat(assigned.correlationId()).isEqualTo(correlationId);
+        assertThat(status.correlationId()).isEqualTo(correlationId);
+    }
+
+    @Test
+    @DisplayName("Reassign events: previous status PICKUP_ASSIGNED, the new courier and the request correlation ID")
+    void testReassign_EventContents() {
+        UUID correlationId = UUID.randomUUID();
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignedOrder(AssignmentStatus.ASSIGNED)));
+        when(courierShiftRepository.findByCourierId(newCourierId))
+                .thenReturn(Optional.of(courier(newCourierId, "New Courier", 0)));
+        when(courierShiftRepository.findByCourierId(oldCourierId))
+                .thenReturn(Optional.of(courier(oldCourierId, "Old Courier", 1)));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null), correlationId);
+
+        CourierAssignedEvent assigned = capturedCourierAssigned();
+        ParcelStatusChangedEvent status = capturedStatusChanged();
+        assertThat(assigned.courierId()).as("event names the new courier").isEqualTo(newCourierId);
+        assertThat(assigned.courierName()).isEqualTo("New Courier");
+        assertThat(assigned.trackingNumber()).isEqualTo("SD-COL-11111");
+        assertThat(status.previousPublicStatus())
+                .as("an assigned order was already PICKUP_ASSIGNED, not CREATED")
+                .isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
+        assertThat(status.newPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
+        assertThat(assigned.correlationId()).isEqualTo(correlationId);
+        assertThat(status.correlationId()).isEqualTo(correlationId);
+    }
+
+    @Test
+    @DisplayName("Second reassignment also reports PICKUP_ASSIGNED as the previous status")
+    void testReassign_FromReassignedReportsPickupAssigned() {
+        when(assignmentRepository.findByOrderId(orderId))
+                .thenReturn(Optional.of(assignedOrder(AssignmentStatus.REASSIGNED)));
+        when(courierShiftRepository.findByCourierId(newCourierId))
+                .thenReturn(Optional.of(courier(newCourierId, "New Courier", 0)));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null));
+
+        assertThat(capturedStatusChanged().previousPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
+    }
+
+    @Test
+    @DisplayName("Without a request correlation ID both events share one generated correlation ID")
+    void testReassign_GeneratesOneSharedCorrelationId() {
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignedOrder(AssignmentStatus.ASSIGNED)));
+        when(courierShiftRepository.findByCourierId(newCourierId))
+                .thenReturn(Optional.of(courier(newCourierId, "New Courier", 0)));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null), null);
+
+        UUID generated = capturedCourierAssigned().correlationId();
+        assertThat(generated).isNotNull();
+        assertThat(capturedStatusChanged().correlationId()).isEqualTo(generated);
+    }
+
+    private CourierAssignedEvent capturedCourierAssigned() {
+        ArgumentCaptor<CourierAssignedEvent> captor = ArgumentCaptor.forClass(CourierAssignedEvent.class);
+        verify(eventPublisher).publishCourierAssigned(captor.capture());
+        return captor.getValue();
+    }
+
+    private ParcelStatusChangedEvent capturedStatusChanged() {
+        ArgumentCaptor<ParcelStatusChangedEvent> captor = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
+        verify(eventPublisher).publishParcelStatusChanged(captor.capture());
+        return captor.getValue();
     }
 
     private DispatchAssignment unassignedOrder() {

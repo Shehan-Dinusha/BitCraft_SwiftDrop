@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -76,7 +79,7 @@ class DispatchControllerTest {
         assignment.setAssignedBy("ADMIN");
         assignment.setAssignedAt(Instant.now());
 
-        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class))).thenReturn(assignment);
+        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any())).thenReturn(assignment);
 
         mockMvc.perform(post("/api/v1/dispatch/assign")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -152,7 +155,7 @@ class DispatchControllerTest {
                 "Retry after conflict"
         );
 
-        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class)))
+        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any()))
                 .thenThrow(new ObjectOptimisticLockingFailureException(DispatchAssignment.class, 1L));
 
         mockMvc.perform(post("/api/v1/dispatch/assign")
@@ -170,7 +173,7 @@ class DispatchControllerTest {
     @DisplayName("POST /api/v1/dispatch/assign returns 409 when the order is already assigned")
     void testManualAssign_AlreadyAssignedConflict() throws Exception {
         ManualAssignRequest request = new ManualAssignRequest(UUID.randomUUID(), UUID.randomUUID(), "DISPATCHER_TWO", null);
-        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class)))
+        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any()))
                 .thenThrow(new AssignmentConflictException("Order is already assigned to a courier."));
 
         mockMvc.perform(post("/api/v1/dispatch/assign")
@@ -196,7 +199,7 @@ class DispatchControllerTest {
         assignment.setCourierId(newCourierId);
         assignment.setCourierName("Kamal Silva");
         assignment.setStatus(AssignmentStatus.REASSIGNED);
-        when(manualOverrideService.reassign(any(ReassignCourierRequest.class))).thenReturn(assignment);
+        when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any())).thenReturn(assignment);
 
         mockMvc.perform(post("/api/v1/dispatch/reassign")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -220,5 +223,63 @@ class DispatchControllerTest {
                 .andExpect(jsonPath("$.status").value(400));
 
         verifyNoInteractions(manualOverrideService);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/dispatch/reassign passes a UUID X-Correlation-Id to the service")
+    void testReassign_PropagatesCorrelationId() throws Exception {
+        UUID correlationId = UUID.randomUUID();
+        when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any())).thenReturn(reassigned());
+
+        mockMvc.perform(post("/api/v1/dispatch/reassign")
+                        .header("X-Correlation-Id", correlationId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reassignRequest())))
+                .andExpect(status().isOk());
+
+        verify(manualOverrideService).reassign(any(ReassignCourierRequest.class), eq(correlationId));
+    }
+
+    @Test
+    @DisplayName("A non-UUID X-Correlation-Id is not propagated and does not fail the request")
+    void testReassign_IgnoresNonUuidCorrelationId() throws Exception {
+        when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any())).thenReturn(reassigned());
+
+        mockMvc.perform(post("/api/v1/dispatch/reassign")
+                        .header("X-Correlation-Id", "client-trace-42")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reassignRequest())))
+                .andExpect(status().isOk());
+
+        verify(manualOverrideService).reassign(any(ReassignCourierRequest.class), isNull());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/dispatch/assign without X-Correlation-Id lets the service generate one")
+    void testManualAssign_WithoutCorrelationId() throws Exception {
+        DispatchAssignment assignment = reassigned();
+        assignment.setStatus(AssignmentStatus.ASSIGNED);
+        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any())).thenReturn(assignment);
+
+        mockMvc.perform(post("/api/v1/dispatch/assign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ManualAssignRequest(UUID.randomUUID(), UUID.randomUUID(), "DISPATCHER_ONE", null))))
+                .andExpect(status().isOk());
+
+        verify(manualOverrideService).manualAssign(any(ManualAssignRequest.class), isNull());
+    }
+
+    private ReassignCourierRequest reassignRequest() {
+        return new ReassignCourierRequest(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "DISPATCH_SUPERVISOR", null);
+    }
+
+    private DispatchAssignment reassigned() {
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setAssignmentId(UUID.randomUUID());
+        assignment.setOrderId(UUID.randomUUID());
+        assignment.setCourierId(UUID.randomUUID());
+        assignment.setStatus(AssignmentStatus.REASSIGNED);
+        return assignment;
     }
 }

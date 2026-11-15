@@ -3,6 +3,7 @@ package com.swiftdrop.dispatch;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
+import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.dispatch.config.RabbitMQConfig;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
@@ -11,11 +12,14 @@ import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
+import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
+import com.swiftdrop.dispatch.exception.AssignmentConflictException;
 import com.swiftdrop.dispatch.messaging.publisher.DispatchEventPublisher;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -169,6 +173,100 @@ class AfterCommitEventPublishingIT {
         assignment.setDeliveryDistrict(SriLankanDistrict.GAMPAHA);
         assignment.setStatus(AssignmentStatus.UNASSIGNED);
         return assignmentRepository.saveAndFlush(assignment).getOrderId();
+    }
+
+    @Test
+    @DisplayName("Committed reassignment publishes after commit with the correct previous status, courier and correlation ID")
+    void committedReassignmentPublishesCorrectEventsAfterCommit() {
+        UUID oldCourier = availableCourier();
+        UUID newCourier = availableCourier();
+        UUID orderId = assignedOrder(oldCourier);
+        UUID correlationId = UUID.randomUUID();
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            manualOverrideService.reassign(reassignRequest(orderId, oldCourier, newCourier), correlationId);
+            verifyNoInteractions(rabbitTemplate);
+        });
+
+        ArgumentCaptor<CourierAssignedEvent> assigned = ArgumentCaptor.forClass(CourierAssignedEvent.class);
+        ArgumentCaptor<ParcelStatusChangedEvent> statusChanged = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
+        InOrder broker = inOrder(rabbitTemplate);
+        broker.verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME),
+                eq(RabbitMQConfig.ROUTING_KEY_COURIER_ASSIGNED), assigned.capture());
+        broker.verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME),
+                eq(RabbitMQConfig.ROUTING_KEY_PARCEL_STATUS), statusChanged.capture());
+        broker.verifyNoMoreInteractions();
+
+        assertThat(assigned.getValue().courierId()).isEqualTo(newCourier);
+        assertThat(assigned.getValue().correlationId()).isEqualTo(correlationId);
+        assertThat(statusChanged.getValue().previousPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
+        assertThat(statusChanged.getValue().newPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
+        assertThat(statusChanged.getValue().correlationId()).isEqualTo(correlationId);
+        assertThat(workload(oldCourier)).isZero();
+        assertThat(workload(newCourier)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Rolled-back reassignment publishes nothing and leaves the assignment and workloads unchanged")
+    void rolledBackReassignmentPublishesNothing() {
+        UUID oldCourier = availableCourier();
+        UUID newCourier = availableCourier();
+        UUID orderId = assignedOrder(oldCourier);
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            manualOverrideService.reassign(reassignRequest(orderId, oldCourier, newCourier), UUID.randomUUID());
+            status.setRollbackOnly();
+        });
+
+        verifyNoInteractions(rabbitTemplate);
+        DispatchAssignment unchanged = assignmentRepository.findByOrderId(orderId).orElseThrow();
+        assertThat(unchanged.getCourierId()).isEqualTo(oldCourier);
+        assertThat(unchanged.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
+        assertThat(workload(oldCourier)).isEqualTo(1);
+        assertThat(workload(newCourier)).isZero();
+    }
+
+    @Test
+    @DisplayName("Rejected reassignment (stale expected courier) publishes nothing")
+    void rejectedReassignmentPublishesNothing() {
+        UUID oldCourier = availableCourier();
+        UUID newCourier = availableCourier();
+        UUID orderId = assignedOrder(oldCourier);
+
+        assertThatThrownBy(() -> manualOverrideService.reassign(
+                reassignRequest(orderId, UUID.randomUUID(), newCourier), UUID.randomUUID()))
+                .isInstanceOf(AssignmentConflictException.class);
+
+        verifyNoInteractions(rabbitTemplate);
+        assertThat(assignmentRepository.findByOrderId(orderId).orElseThrow().getCourierId()).isEqualTo(oldCourier);
+        assertThat(workload(oldCourier)).isEqualTo(1);
+        assertThat(workload(newCourier)).isZero();
+    }
+
+    private UUID assignedOrder(UUID courierId) {
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(UUID.randomUUID());
+        assignment.setTrackingNumber("SD-IT-" + UUID.randomUUID().toString().substring(0, 8));
+        assignment.setPickupDistrict(SriLankanDistrict.COLOMBO);
+        assignment.setDeliveryDistrict(SriLankanDistrict.GAMPAHA);
+        assignment.setStatus(AssignmentStatus.ASSIGNED);
+        assignment.setCourierId(courierId);
+        assignment.setCourierName("IT Courier");
+        assignment.setAssignedAt(Instant.now());
+        UUID orderId = assignmentRepository.saveAndFlush(assignment).getOrderId();
+
+        CourierShift courier = courierShiftRepository.findByCourierId(courierId).orElseThrow();
+        courier.setActiveParcelsCount(1);
+        courierShiftRepository.saveAndFlush(courier);
+        return orderId;
+    }
+
+    private int workload(UUID courierId) {
+        return courierShiftRepository.findByCourierId(courierId).orElseThrow().getActiveParcelsCount();
+    }
+
+    private ReassignCourierRequest reassignRequest(UUID orderId, UUID expectedCourier, UUID newCourier) {
+        return new ReassignCourierRequest(orderId, expectedCourier, newCourier, "IT_SUPERVISOR", null);
     }
 
     private UUID availableCourier() {

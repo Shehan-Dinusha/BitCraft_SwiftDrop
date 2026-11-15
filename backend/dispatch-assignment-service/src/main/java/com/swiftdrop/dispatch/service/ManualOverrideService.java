@@ -60,6 +60,15 @@ public class ManualOverrideService {
      */
     @Transactional
     public DispatchAssignment manualAssign(ManualAssignRequest request) {
+        return manualAssign(request, null);
+    }
+
+    /**
+     * @param correlationId request correlation ID to carry on the published events;
+     *                      a new one is generated when {@code null}
+     */
+    @Transactional
+    public DispatchAssignment manualAssign(ManualAssignRequest request, UUID correlationId) {
         log.info("Dispatcher assignment for order: {} to courier: {}", request.orderId(), request.courierId());
 
         DispatchAssignment assignment = findActiveAssignment(request.orderId());
@@ -67,13 +76,14 @@ public class ManualOverrideService {
             throw new AssignmentConflictException("Order " + request.orderId()
                     + " is already assigned to a courier. Refresh the queue, or use reassignment to change the courier.");
         }
+        PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
 
         CourierShift courier = findAcceptingCourier(request.courierId());
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.ASSIGNED);
         incrementWorkload(courier);
 
         assignment = applyCourier(assignment, courier, AssignmentStatus.ASSIGNED, request.assignedBy());
-        publishAssignmentEvents(assignment, courier);
+        publishAssignmentEvents(assignment, courier, previousPublicStatus, correlationId);
         return assignment;
     }
 
@@ -86,6 +96,15 @@ public class ManualOverrideService {
      */
     @Transactional
     public DispatchAssignment reassign(ReassignCourierRequest request) {
+        return reassign(request, null);
+    }
+
+    /**
+     * @param correlationId request correlation ID to carry on the published events;
+     *                      a new one is generated when {@code null}
+     */
+    @Transactional
+    public DispatchAssignment reassign(ReassignCourierRequest request, UUID correlationId) {
         log.info("Dispatcher reassignment for order: {} from courier: {} to courier: {}",
                 request.orderId(), request.expectedCurrentCourierId(), request.newCourierId());
 
@@ -102,6 +121,7 @@ public class ManualOverrideService {
         if (currentCourierId.equals(request.newCourierId())) {
             throw new IllegalArgumentException("The new courier must differ from the currently assigned courier");
         }
+        PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
 
         CourierShift newCourier = findAcceptingCourier(request.newCourierId());
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.REASSIGNED);
@@ -109,8 +129,23 @@ public class ManualOverrideService {
         incrementWorkload(newCourier);
 
         assignment = applyCourier(assignment, newCourier, AssignmentStatus.REASSIGNED, request.assignedBy());
-        publishAssignmentEvents(assignment, newCourier);
+        log.info("Order {} reassigned from courier {} to courier {}",
+                assignment.getOrderId(), currentCourierId, newCourier.getCourierId());
+        publishAssignmentEvents(assignment, newCourier, previousPublicStatus, correlationId);
         return assignment;
+    }
+
+    /**
+     * Public status implied by the assignment state before this operation. Dispatch
+     * only tracks allocation, so an assigned order is reported as PICKUP_ASSIGNED.
+     */
+    private PublicOrderStatus publicStatusOf(AssignmentStatus status) {
+        return switch (status) {
+            case UNASSIGNED -> PublicOrderStatus.CREATED;
+            case ASSIGNED, REASSIGNED -> PublicOrderStatus.PICKUP_ASSIGNED;
+            case COMPLETED -> PublicOrderStatus.DELIVERED;
+            case CANCELLED -> PublicOrderStatus.CANCELLED;
+        };
     }
 
     private DispatchAssignment findActiveAssignment(UUID orderId) {
@@ -167,16 +202,24 @@ public class ManualOverrideService {
         return assignmentRepository.save(assignment);
     }
 
-    private void publishAssignmentEvents(DispatchAssignment assignment, CourierShift courier) {
+    /**
+     * Records both assignment events for after-commit publication. They share one
+     * correlation ID: the caller's when supplied, otherwise a newly generated one.
+     */
+    private void publishAssignmentEvents(DispatchAssignment assignment, CourierShift courier,
+                                         PublicOrderStatus previousPublicStatus, UUID correlationId) {
+        UUID eventCorrelationId = correlationId != null ? correlationId : UUID.randomUUID();
+        Instant now = Instant.now();
+
         CourierAssignedEvent assignedEvent = new CourierAssignedEvent(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
+                eventCorrelationId,
                 assignment.getOrderId(),
                 courier.getCourierId(),
                 courier.getCourierName(),
                 assignment.getEstimatedPickupMinutes() != null ? assignment.getEstimatedPickupMinutes() : 25,
-                Instant.now(),
-                Instant.now(),
+                assignment.getAssignedAt(),
+                now,
                 assignment.getTrackingNumber(),
                 assignment.getMerchantId()
         );
@@ -184,17 +227,17 @@ public class ManualOverrideService {
 
         ParcelStatusChangedEvent statusEvent = new ParcelStatusChangedEvent(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
+                eventCorrelationId,
                 assignment.getTrackingNumber(),
                 assignment.getOrderId(),
                 null,
-                PublicOrderStatus.CREATED,
+                previousPublicStatus,
                 PublicOrderStatus.PICKUP_ASSIGNED,
                 InternalQueueStatus.PICKUP_ASSIGNED,
                 assignment.getPickupDistrict(),
                 assignment.getDeliveryDistrict(),
                 null,
-                Instant.now()
+                now
         );
         eventPublisher.publishParcelStatusChanged(statusEvent);
     }
