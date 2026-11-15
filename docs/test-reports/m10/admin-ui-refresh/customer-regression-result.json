@@ -1,0 +1,25 @@
+{
+  "passed": [
+    "dashboard renders all three charts",
+    "operations pages have no chatbot",
+    "date picker requests the applied report range",
+    "refresh updates chart source and accessible table",
+    "empty outcomes and courier states are explicit",
+    "refresh failure keeps previous results with an error",
+    "close and reopen preserves conversation",
+    "follow-up and retry carry conversation ID",
+    "retry does not duplicate the user bubble",
+    "new conversation clears previous messages",
+    "account switch starts with an empty assistant",
+    "mobile page has no horizontal overflow",
+    "rate limit disables composer and retry during cooldown",
+    "CUSTOMER dev session cannot see customer chatbot",
+    "MERCHANT cannot see customer chatbot",
+    "COURIER cannot see customer chatbot",
+    "DISPATCHER cannot see customer chatbot",
+    "signed-out visitors cannot see customer chatbot",
+    "no unhandled browser exceptions"
+  ],
+  "count": 19,
+  "errors": []
+}

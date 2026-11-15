@@ -1,5 +1,7 @@
 # Member 10: Buddika · Analytics & AI Delivery Assistant
 
+> Current implementation and validation: see the [Member 10 index](../design/m10/README.md) and [admin/integration review](../test-reports/m10/admin-ui-refresh/README.md). Older dated stage notes below describe historical milestones, not unresolved current blockers.
+
 > Draft guide, written from the `dev` branch of [Shehan-Dinusha/BitCraft_SwiftDrop](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/tree/dev) as of 27 Oct 2026 (commit `1a05498`).
 > Your assignment list is the source of truth for **what** you build. The repo is the source of truth for **how** (stack, folders, ports, names).
 
@@ -166,7 +168,7 @@ Rules:
 
 ### PR 1: Analytics correctness
 
-**Implementation status (2026-11-10):** Stages 1–5 are implemented and tested. The reporting gateway acceptance check now passes with real IAM-created dispatcher, system-admin and customer accounts. See the [Stages 1–5 completion guide](../design/m10/stages-1-to-5-summary.md) for the implementation mapping, evidence and commands. This does not mark later AI/frontend/documentation stages complete or imply a PR merge.
+**Implementation status (2026-11-10):** Stages 1–5 are implemented and tested. The reporting gateway acceptance check now passes with real IAM-created dispatcher, system-admin and customer accounts. See the [Stages 1–5 completion guide](../design/m10/verification.md) for the implementation mapping, evidence and commands. This does not mark later AI/frontend/documentation stages complete or imply a PR merge.
 
 
 #### Stage 1: Idempotent consumer

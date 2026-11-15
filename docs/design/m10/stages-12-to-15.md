@@ -11,8 +11,10 @@ actual commit history. PR creation and merge remain separate steps.
 | 14 | `/ops/analytics`, with navigation for dispatchers and system administrators |
 | 15 | Existing customer widget hardened and browser-verified |
 
-Stage 7 live Azure verification remains deferred. Stage 16 diagrams remain outside
-this change. Mock mode requires no model key.
+This is the historical 12 November implementation record. For current UI and role policy,
+see [the admin refresh](admin-dashboard-refresh.md); for subsequent live Azure checks,
+see [Azure verification](stage-7-azure-verification.md); for completed diagram artifacts,
+see [Stage 16](stage-16-diagrams.md). Mock mode requires no model key.
 
 ## MCP connection
 

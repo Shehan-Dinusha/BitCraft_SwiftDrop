@@ -106,6 +106,22 @@ class DeliveryExecutionServiceTest {
     }
 
     @Test
+    void assignmentPreservesTrackingAndDistrictsForPublishedStatus() {
+        var origin = com.swiftdrop.contracts.enums.SriLankanDistrict.COLOMBO;
+        var destination = com.swiftdrop.contracts.enums.SriLankanDistrict.KANDY;
+        var event = new CourierAssignedEvent(UUID.randomUUID(), UUID.randomUUID(), orderId, courierId,
+                "Dashboard courier", 10, Instant.now(), Instant.now(), "SD-ABCD-1234", null, origin, destination);
+        when(deliverySessionRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(deliverySessionRepository.save(any(DeliverySession.class))).thenAnswer(inv -> inv.getArgument(0));
+        var session = deliveryService.handleCourierAssigned(event);
+        assertThat(session.getTrackingNumber()).isEqualTo("SD-ABCD-1234");
+        assertThat(session.getPickupDistrict()).isEqualTo(origin);
+        assertThat(session.getDeliveryDistrict()).isEqualTo(destination);
+        verify(publishStateTransitionAction).execute(any(), eq(orderId), eq("SD-ABCD-1234"), eq(courierId),
+                eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), eq(origin), eq(destination), any());
+    }
+
+    @Test
     @DisplayName("transition to DELIVERED: throws InvalidStateTransitionException if PoD not verified")
     void testTransitionToDelivered_PoDNotVerified_ThrowsException() {
         DeliverySession session = new DeliverySession();

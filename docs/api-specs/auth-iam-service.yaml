@@ -284,8 +284,8 @@ paths:
   /api/v1/users/{userId}/role:
     patch:
       tags: [Users]
-      summary: Change a user's role
-      description: Requires SYSTEM_ADMIN. Revokes the target user's active sessions.
+      summary: Verify an existing account role
+      description: Requires SYSTEM_ADMIN. Roles are fixed at account creation. Requests for a different role return 409; the current role is an idempotent no-op.
       parameters:
         - $ref: '#/components/parameters/UserId'
       requestBody:
@@ -296,7 +296,7 @@ paths:
               $ref: '#/components/schemas/UpdateUserRoleRequest'
       responses:
         '200':
-          description: Role updated
+          description: Account role unchanged
           content:
             application/json:
               schema:
@@ -320,7 +320,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '409':
-          description: Cannot remove the last active SYSTEM_ADMIN
+          description: Account roles cannot be changed after creation
           content:
             application/json:
               schema:
@@ -499,6 +499,7 @@ components:
           format: password
     UpdateUserRoleRequest:
       type: object
+      description: Compatibility request to verify an existing role. Account roles cannot be changed after creation.
       required: [role]
       properties:
         role:

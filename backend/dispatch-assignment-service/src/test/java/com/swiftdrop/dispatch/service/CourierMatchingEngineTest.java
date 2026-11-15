@@ -109,6 +109,8 @@ class CourierMatchingEngineTest {
         assertThat(assignedCaptor.getValue().courierId()).isEqualTo(courierId);
         assertThat(assignedCaptor.getValue().trackingNumber()).isEqualTo("SD-COL-12345");
         assertThat(assignedCaptor.getValue().merchantId()).isNotNull();
+        assertThat(assignedCaptor.getValue().pickupDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+        assertThat(assignedCaptor.getValue().deliveryDistrict()).isEqualTo(event.deliveryDistrict());
 
         ArgumentCaptor<ParcelStatusChangedEvent> statusCaptor = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
         verify(eventPublisher).publishParcelStatusChanged(statusCaptor.capture());

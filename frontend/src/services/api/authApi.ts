@@ -102,7 +102,7 @@ export async function listUsers(params?: {
   };
 }
 
-/** Change a user's role. Requires SYSTEM_ADMIN role. */
+/** Compatibility role check. Different roles return 409; roles are fixed at creation. */
 export async function updateUserRole(userId: string, role: UserRole): Promise<UserProfileItem> {
   const { data } = await apiClient.patch<{ data?: UserProfileItem }>(
     `/v1/users/${userId}/role`,

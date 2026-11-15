@@ -188,7 +188,7 @@ try {
         conversationId: '00000000-0000-0000-0000-000000000003',
         toolCalls: [{ name: 'calculate_estimate', outcome: 'OK' }]
       };
-    } else if (url.pathname.endsWith('/assignments')) value = [];
+    } else if (url.pathname.endsWith('/assignments') || url.pathname.endsWith('/deliveries/me')) value = [];
     else if (url.pathname.includes('/orders'))
       value = { content: [], totalElements: 0, totalPages: 0 };
     await cdp('Fetch.fulfillRequest', {
@@ -228,10 +228,10 @@ try {
   await writeFile(resolve(output, 'analytics-desktop.png'), Buffer.from(desktop.data, 'base64'));
   empty = true;
   await click('Refresh reports');
-  await until(async () => (await body()).includes('No completed outcomes in this period.'));
+  await until(async () => (await body()).includes('No completed outcomes in this period'));
   check(
     'empty outcomes and courier states are explicit',
-    (await body()).includes('No couriers in the projection yet.')
+    (await body()).includes('No couriers in the projection yet')
   );
   unavailable = true;
   await click('Refresh reports');

@@ -80,6 +80,13 @@ public class DeliveryExecutionService {
                 });
 
         DeliveryState prevState = session.getCurrentState();
+        // Carry the order identity and route through to public status/analytics events.
+        // Old assignment producers omit districts, so preserve any existing values.
+        if (event.trackingNumber() != null && !event.trackingNumber().isBlank()) {
+            session.setTrackingNumber(event.trackingNumber());
+        }
+        if (event.pickupDistrict() != null) session.setPickupDistrict(event.pickupDistrict());
+        if (event.deliveryDistrict() != null) session.setDeliveryDistrict(event.deliveryDistrict());
         session.setCourierId(event.courierId());
         session.setCourierName(event.courierName());
         session.setPreviousState(prevState);

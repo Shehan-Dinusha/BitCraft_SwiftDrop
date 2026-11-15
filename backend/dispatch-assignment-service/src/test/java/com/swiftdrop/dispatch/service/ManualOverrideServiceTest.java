@@ -101,7 +101,10 @@ class ManualOverrideServiceTest {
         // New courier incremented
         verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(newCourierId) && c.getActiveParcelsCount() == 2));
 
-        verify(eventPublisher).publishCourierAssigned(any(CourierAssignedEvent.class));
+        verify(eventPublisher).publishCourierAssigned(argThat(event ->
+                event.pickupDistrict() == SriLankanDistrict.COLOMBO
+                        && event.deliveryDistrict() == SriLankanDistrict.GAMPAHA
+                        && "SD-COL-11111".equals(event.trackingNumber())));
         verify(eventPublisher).publishParcelStatusChanged(any());
     }
 

@@ -126,3 +126,23 @@ answer. See the [AI setup guide](stages-6-to-11-ai-assistant.md) for browser tes
 The viva distinction is: events provide reliable facts, projections provide reports, and
 the assistant interprets customer questions while tools retrieve authorized source data.
 The model does not calculate authoritative prices or read another service's database.
+
+
+## Current admin UI and role-policy review
+
+The admin UI hides development persona controls and unused header utilities. Roles are fixed
+at creation. Active accounts show only Suspend; suspended accounts show only Reactivate.
+Both actions require confirmation and expose failures without optimistically changing status.
+The Updated timestamp remains visible on Analytics at the project owner's request.
+
+After starting the isolated local demo, run:
+
+```powershell
+node docs/design/m10/fixtures/verify-admin-ui.mjs '<path-to-Chrome>'
+```
+
+The fixture reads credentials from the ignored demo session or `M10_DEMO_ADMIN` /
+`M10_DEMO_PASSWORD` environment variables; credentials and tokens must never be committed.
+See the [current validation report](../../test-reports/m10/admin-ui-refresh/README.md).
+The former baseline, planning roadmap, stage-1?5 summary and duplicate Part 4 checklists
+were removed; this guide is the single verification entry point.
