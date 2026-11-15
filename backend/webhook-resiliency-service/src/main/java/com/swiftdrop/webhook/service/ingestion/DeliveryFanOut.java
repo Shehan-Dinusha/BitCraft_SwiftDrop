@@ -11,7 +11,11 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 /**
- * Creates one delivery job per active endpoint of the event's merchant that subscribes to the event type.
+ * Creates one delivery job per endpoint of the event's merchant that subscribes to the event type, <b>including
+ * paused (inactive) endpoints</b> (decision D8): an event arriving during a pause is queued as a {@code PENDING} job
+ * and is delivered after the endpoint is re-enabled. Paused endpoints are skipped when jobs are <em>claimed</em>
+ * ({@code DeliveryJobRepository.claimDue}), never here. Deleted endpoints no longer exist and get nothing; nothing is
+ * sent from ingestion.
  *
  * <p>Tenant isolation: endpoints are queried by merchant, never globally, and the composite foreign keys on
  * {@code webhook_deliveries} reject any row whose merchant differs from the event's or the endpoint's. There is
@@ -33,7 +37,7 @@ class DeliveryFanOut {
      */
     int createDeliveries(UUID eventId, String eventType, UUID merchantId) {
         int created = 0;
-        for (WebhookEndpoint endpoint : endpointRepository.findByMerchantIdAndActiveTrue(merchantId)) {
+        for (WebhookEndpoint endpoint : endpointRepository.findByMerchantId(merchantId)) {
             if (!EventSubscriptionPatterns.parseStored(endpoint.getSubscribedEvents()).matches(eventType)) {
                 continue;
             }

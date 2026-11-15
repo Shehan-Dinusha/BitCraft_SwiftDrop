@@ -3,6 +3,7 @@ package com.swiftdrop.webhook.exception;
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
+import com.swiftdrop.webhook.security.UnsafeWebhookUrlException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -37,6 +38,14 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining("; "));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "Validation Failed", errors, request.getRequestURI()));
+    }
+
+    /** Webhook target URL refused by the destination (SSRF) policy. The message is a fixed, safe sentence. */
+    @ExceptionHandler(UnsafeWebhookUrlException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnsafeWebhookUrl(UnsafeWebhookUrlException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "Invalid Webhook URL", ex.getMessage(),
+                        request.getRequestURI()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.webhook.dto.CreateWebhookEndpointRequest;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
+import com.swiftdrop.webhook.dto.WebhookEndpointCreatedResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
 import com.swiftdrop.webhook.service.WebhookSubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,10 +38,11 @@ public class WebhookSubscriptionController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Register a new webhook subscription endpoint",
             description = "A MERCHANT registers under the merchant identity of its token; merchantId may be omitted and "
-                    + "any other value is refused (403). A SYSTEM_ADMIN must supply merchantId. Other roles: 403.")
-    public ApiResponse<WebhookEndpointResponse> createEndpoint(
+                    + "any other value is refused (403). A SYSTEM_ADMIN must supply merchantId. Other roles: 403. "
+                    + "The response is the only place the generated signing secret is ever returned.")
+    public ApiResponse<WebhookEndpointCreatedResponse> createEndpoint(
             @Valid @RequestBody CreateWebhookEndpointRequest request, CallerContext caller) {
-        WebhookEndpointResponse response = subscriptionService.createEndpoint(request, caller);
+        WebhookEndpointCreatedResponse response = subscriptionService.createEndpoint(request, caller);
         return ApiResponse.success(response, "Webhook endpoint created successfully");
     }
 
@@ -83,7 +85,10 @@ public class WebhookSubscriptionController {
     }
 
     @PostMapping("/{endpointId}/test")
-    @Operation(summary = "Dispatch a test ping to the webhook endpoint")
+    @Operation(summary = "Dispatch a test ping to the webhook endpoint",
+            description = "Connectivity check: exactly one signed POST of a fixed test payload, with no retry and no "
+                    + "dead-letter record. Returns the HTTP status, failure classification and latency; the "
+                    + "endpoint's response body is never returned.")
     public ApiResponse<WebhookDeliveryAttemptResponse> testPing(@PathVariable UUID endpointId, CallerContext caller) {
         log.info("Triggering test ping for endpoint: {}", endpointId);
         WebhookDeliveryAttemptResponse response = subscriptionService.testPing(endpointId, caller);

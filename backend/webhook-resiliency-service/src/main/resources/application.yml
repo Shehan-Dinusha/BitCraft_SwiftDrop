@@ -35,6 +35,30 @@ webhook:
       initial-interval: 1s
       multiplier: 2.0
       max-interval: 10s
+  security:
+    # LOCAL DEVELOPMENT ONLY: exact host:port entries (comma-separated, no wildcards) that may be used over plain
+    # HTTP and may resolve to private addresses, e.g. host.docker.internal:9090 for a mock receiver on the host.
+    # Empty by default. Startup fails if it is non-empty while the 'aks' profile is active.
+    dev-http-allowlist: ${WEBHOOK_SECURITY_DEV_HTTP_ALLOWLIST:}
+    # Hostname resolution during URL validation; a slower or failed lookup rejects the URL (fail closed).
+    dns-timeout: 3s
+  delivery:
+    # D1: attempt 1 is immediate; these are the delays before attempts 2, 3 and 4 (4 attempts in total), each with
+    # ±jitter-ratio random jitter. After the last failed attempt the delivery is DEAD.
+    retry-delays: 30s,2m,10m
+    jitter-ratio: 0.2
+    # D2: a Retry-After on 429/503 may lengthen (never shorten) a delay, up to this cap.
+    retry-after-cap: 10m
+    # Delivery worker on/off (Step 10). Set WEBHOOK_DELIVERY_WORKER_ENABLED=false to stop outbound sends locally.
+    worker-enabled: ${WEBHOOK_DELIVERY_WORKER_ENABLED:true}
+    # How often expired leases (crashed/stalled attempts) are closed as UNKNOWN and rescheduled.
+    lease-recovery-interval: 30s
+    # D9: worker limits per replica (the cluster runs 2-8 replicas, so cluster-wide totals multiply).
+    max-concurrency: 4
+    max-per-endpoint: 1
+    claim-batch-size: 10
+    poll-interval: 2s
+    lease-duration: 60s
 management:
   endpoints:
     web:
@@ -45,3 +69,9 @@ springdoc:
     version: OPENAPI_3_1
   swagger-ui:
     path: /swagger-ui.html
+logging:
+  level:
+    # Reactor Netty logs "The connection observed an error" at WARN with the remote host, IP and raw TLS/IO exception
+    # text. Merchant hosts and raw errors must not reach logs; the webhook sender logs every failure itself in a
+    # sanitised form (ids, error class, status, latency). Applies to all profiles, including aks.
+    reactor.netty.http.client.HttpClientConnect: ERROR

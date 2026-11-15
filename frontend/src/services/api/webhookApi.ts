@@ -3,6 +3,8 @@ import type { components } from '@/types/generated/webhook-resiliency-service';
 
 export type CreateWebhookEndpointRequest = components['schemas']['CreateWebhookEndpointRequest'];
 export type WebhookEndpointResponse = components['schemas']['WebhookEndpointResponse'];
+/** Create-only response: the endpoint plus its signing secret, which the API returns this one time only. */
+export type WebhookEndpointCreatedResponse = components['schemas']['WebhookEndpointCreatedResponse'];
 export type WebhookDeliveryAttemptResponse = components['schemas']['WebhookDeliveryAttemptResponse'];
 export type DeadLetterWebhookResponse = components['schemas']['DeadLetterWebhookResponse'];
 export type ReplayDlqResponse = components['schemas']['ReplayDlqResponse'];
@@ -22,7 +24,7 @@ export const webhookApi = {
   },
 
   createEndpoint: async (request: CreateWebhookEndpointRequest) => {
-    const { data } = await apiClient.post<{ success: boolean; data: WebhookEndpointResponse }>(
+    const { data } = await apiClient.post<{ success: boolean; data: WebhookEndpointCreatedResponse }>(
       '/v1/webhooks/subscriptions',
       request
     );
