@@ -85,7 +85,8 @@ spec:
         app.kubernetes.io/name: rabbitmq
         app.kubernetes.io/component: messaging
       annotations:
-        checksum/config: {{ $r.config | sha256sum }}
+        # Covers the memory override rendered from resources too, so changing the limit rolls the pod.
+        checksum/config: {{ printf "%s|%s" $r.config (toJson $r.resources) | sha256sum }}
         checksum/secrets: {{ toYaml .Values.secrets.rabbitmq | sha256sum }}
     spec:
       terminationGracePeriodSeconds: 120
