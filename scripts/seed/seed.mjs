@@ -470,10 +470,10 @@ async function stageCancel() {
 }
 
 // ── Stage: assign ───────────────────────────────────────────────────────────
-// Dispatch's V2 Flyway migration inserts four demo courier shifts (ids 1111…, 2222…)
-// that have no user account. Its auto-engine hands them orders that nobody can ever
-// deliver, so dispatchers reassign those to real couriers and take the demo couriers
-// offline. (Proper fix: a dispatch migration that removes the demo rows.)
+// Older dispatch databases may still hold the four demo courier shifts from the V2
+// migration (ids 1111…, 2222…) that have no user account; V8 removes them unless an
+// assignment references them. Any order still assigned to one is reassigned to a real
+// courier (allowed until pickup), and the demo couriers are taken offline.
 async function rescueFromGhostCouriers(anyDispatcher) {
   const real = new Set();
   for (const c of PEOPLE.staff.filter((p) => p.role === 'COURIER')) real.add((await login(c.username)).userId);
@@ -486,11 +486,19 @@ async function rescueFromGhostCouriers(anyDispatcher) {
       const d = await login(dispatcher.username);
       const pool = couriersIn(district);
       const c = await login(pool[hash(a.orderId) % pool.length].username);
-      await api('POST', '/api/v1/dispatch/assign', {
-        token: d.token,
-        body: { orderId: a.orderId, courierId: c.userId, assignedBy: dispatcher.username, reason: `Reassigned: ${ghost.courierName} is not an active courier` },
-      });
-      count('reassigned from demo couriers');
+      try {
+        await api('POST', '/api/v1/dispatch/reassign', {
+          token: d.token,
+          body: {
+            orderId: a.orderId, expectedCurrentCourierId: ghost.courierId, newCourierId: c.userId,
+            assignedBy: dispatcher.username, reason: `Reassigned: ${ghost.courierName} is not an active courier`,
+          },
+        });
+        count('reassigned from demo couriers');
+      } catch (e) {
+        if (e.status !== 409 && e.status !== 422) throw e; // e.g. already picked up
+        count('could not reassign (already picked up)');
+      }
     }
     if (ghost.shiftStatus !== 'OFFLINE') {
       await api('PUT', '/api/v1/dispatch/couriers/shifts/status', {
