@@ -26,7 +26,11 @@
 // notifications move to the time of the status they announce, analytics' totals
 // are rebuilt with its own rules, and seeded accounts get sign-up dates.
 //
-// Only seeded data is touched: orders whose customer has an @example.com account.
+// Merchants get a story built backwards from their first B2B order: owner signs up,
+// applies, the admin approves in office hours, an API key is created, then the orders.
+// A pending application is recent; a rejected one is a couple of weeks old.
+//
+// Only seeded data is touched: orders of @example.com customers or seeded merchants.
 // It edits demo data directly in six service databases (owned by other members);
 // it never changes their schema or code. Runs through `kubectl exec` into the
 // PostgreSQL pods, so it works on the local cluster and on AKS alike.
@@ -255,13 +259,19 @@ function main() {
   const customers = new Set(users.filter(([, role]) => role === 'CUSTOMER').map(([id]) => id));
   if (!customers.size) throw new Error('No seeded customers (@example.com) found. Run the seeder first.');
 
+  // Seeded merchants (business e-mail @example.com) and their owners.
+  const merchantRows = rows(psql('merchant', `SELECT merchant_id, owner_user_id, status FROM merchant_accounts
+    WHERE contact_email LIKE '%@example.com';`));
+  const merchantIds = new Set(merchantRows.map(([id]) => id));
+
   const orders = new Map();
-  for (const [orderId, tracking, status, speed, customerId, from, to, created] of rows(psql('order', `
-      SELECT order_id, tracking_number, status, coalesce(order_speed, 'STANDARD'), customer_id,
-             pickup_district, delivery_district, extract(epoch FROM created_at) FROM customer_orders;`))) {
-    if (customers.has(customerId)) {
+  for (const [orderId, tracking, status, speed, customerId, merchantId, from, to, created] of rows(psql('order', `
+      SELECT order_id, tracking_number, status, coalesce(order_speed, 'STANDARD'), coalesce(customer_id::text, ''),
+             coalesce(merchant_id::text, ''), pickup_district, delivery_district, extract(epoch FROM created_at)
+      FROM customer_orders;`))) {
+    if (customers.has(customerId) || merchantIds.has(merchantId)) {
       orders.set(orderId, {
-        orderId, tracking, status, speed, customerId, pickupDistrict: from, deliveryDistrict: to,
+        orderId, tracking, status, speed, customerId, merchantId, pickupDistrict: from, deliveryDistrict: to,
         statuses: [], oldTimes: [], created: Number(created),
       });
     }
@@ -407,14 +417,64 @@ function main() {
     COMMIT;`);
   console.log('   analytics: done (daily and courier totals rebuilt)');
 
-  // Accounts: customers signed up 1–20 days before their first order; staff ~5–6 weeks ago.
+  // Merchants: a story built backwards from the first B2B order.
+  const ownerSignup = {};
+  const merchantPlan = merchantRows.map(([merchantId, ownerId, status]) => {
+    const r = rng(`merchant:${merchantId}`);
+    const mine = plan.filter((p) => p.merchantId === merchantId);
+    const m = { merchantId };
+    if (status === 'APPROVED' && mine.length) {
+      const first = Math.min(...mine.map((p) => p.newTimes[0]));
+      m.approved = withinHours(first - r.between(0.5, 3) * DAY, 9, 17, r);
+      while (m.approved > first - HOUR) m.approved -= DAY;
+      m.applied = withinHours(m.approved - r.between(5, 72) * HOUR, 8, 21, r);
+      while (m.applied > m.approved - 2 * HOUR) m.applied -= DAY;
+      m.keyCreated = Math.min(m.approved + r.between(15, 300) * MIN, first - 10 * MIN);
+      m.keyLastUsed = Math.max(...mine.map((p) => p.newTimes[0]));
+      m.updated = m.approved;
+    } else if (status === 'REJECTED') {
+      m.applied = withinHours(now - r.between(10, 20) * DAY, 8, 21, r);
+      m.updated = withinHours(m.applied + r.between(4, 48) * HOUR, 9, 17, r);
+    } else { // pending (or anything else): a recent application
+      m.applied = now - r.between(6, 60) * HOUR;
+      if (!bookingHour(m.applied)) m.applied -= 10 * HOUR;
+      m.updated = m.applied;
+    }
+    if (ownerId) ownerSignup[ownerId] = m.applied - r.between(10 / 60, 20) * HOUR;
+    return m;
+  });
+  if (merchantPlan.length) {
+    cols = columnsOf('merchant');
+    const mvals = merchantPlan.map((m) => `(${sqlText(m.merchantId)}::uuid, ${num(m.applied)}, ${m.approved ? num(m.approved) : 'NULL'}, `
+      + `${num(m.updated)}, ${m.keyCreated ? num(m.keyCreated) : 'NULL'}, ${m.keyLastUsed ? num(m.keyLastUsed) : 'NULL'})`).join(',\n');
+    const has = (t, c) => cols[t]?.has(c);
+    let msql = `BEGIN;\n${header}CREATE TEMP TABLE mplan (merchant_id uuid PRIMARY KEY, applied float8, approved float8, updated float8, key_created float8, key_used float8);
+INSERT INTO mplan VALUES\n${mvals};
+UPDATE merchant_accounts x SET created_at = to_timestamp(m.applied)${has('merchant_accounts', 'updated_at') ? ', updated_at = to_timestamp(m.updated)' : ''}
+  FROM mplan m WHERE x.merchant_id = m.merchant_id;
+UPDATE merchant_accounts x SET approved_at = to_timestamp(m.approved) FROM mplan m
+  WHERE x.merchant_id = m.merchant_id AND m.approved IS NOT NULL AND x.approved_at IS NOT NULL;\n`;
+    if (cols.merchant_api_keys) {
+      msql += `UPDATE merchant_api_keys x SET created_at = to_timestamp(m.key_created)`
+        + (has('merchant_api_keys', 'expires_at') ? `, expires_at = CASE WHEN x.expires_at IS NULL THEN NULL ELSE to_timestamp(m.key_created) + interval '365 days' END` : '')
+        + (has('merchant_api_keys', 'last_used_at') ? `, last_used_at = CASE WHEN x.last_used_at IS NULL THEN NULL ELSE to_timestamp(m.key_used) END` : '')
+        + (has('merchant_api_keys', 'revoked_at') ? `, revoked_at = CASE WHEN x.revoked_at IS NULL THEN NULL ELSE to_timestamp(m.key_created) END` : '')
+        + ` FROM mplan m WHERE x.merchant_id = m.merchant_id AND m.key_created IS NOT NULL;\n`;
+    }
+    msql += stepUpdate(cols, 'merchant_order_receipts', 'created_at', "'CREATED'", { offset: 1 });
+    psql('merchant', `${msql}COMMIT;`);
+    console.log(`   merchant: done (${merchantPlan.length} businesses)`);
+  }
+
+  // Accounts: customers signed up 1–20 days before their first order; merchant owners
+  // shortly before applying; staff ~5–6 weeks ago.
   const firstOrder = {};
-  for (const p of plan) firstOrder[p.customerId] = Math.min(firstOrder[p.customerId] ?? Infinity, p.newTimes[0]);
+  for (const p of plan) if (p.customerId) firstOrder[p.customerId] = Math.min(firstOrder[p.customerId] ?? Infinity, p.newTimes[0]);
   const signups = users.map(([id, role]) => {
     const r = rng(`signup:${id}`);
-    const at = role === 'CUSTOMER' && firstOrder[id] !== undefined
-      ? firstOrder[id] - r.between(1, 20) * DAY
-      : now - r.between(35, 45) * DAY;
+    const at = role === 'CUSTOMER' && firstOrder[id] !== undefined ? firstOrder[id] - r.between(1, 20) * DAY
+      : role === 'MERCHANT' && ownerSignup[id] !== undefined ? ownerSignup[id]
+        : now - r.between(35, 45) * DAY;
     return `(${sqlText(id)}::uuid, ${num(at)})`;
   });
   cols = columnsOf('iam');

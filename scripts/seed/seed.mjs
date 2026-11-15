@@ -2,13 +2,14 @@
 // SwiftDrop demo-data seeder.
 //
 // Drives the system through its public APIs (via the gateway), exactly like real users:
-// the admin provisions staff, customers register and book parcels, dispatchers assign
+// the admin provisions staff, customers and merchant owners, customers book parcels,
+// merchants are approved and send B2B orders with an API key, dispatchers assign
 // them, couriers deliver them with proof-of-delivery photos. Every downstream service
 // (dispatch, delivery, notifications, analytics) fills itself from the events this
 // produces — no SQL, no cross-database IDs to keep in sync.
 //
 // Usage:  node scripts/seed/seed.mjs <stage> [<stage> ...]
-//   stages: users orders shifts cancel assign deliver notifications summary
+//   stages: users orders merchants shifts cancel assign deliver notifications summary
 //           all  (every stage in order — for a cluster that runs all services at once)
 //
 // Environment:
@@ -27,7 +28,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
-  DISTRICTS, STREETS, NAMES, ITEMS, NOTES, CANCEL_REASONS, FAILURES, VEHICLES,
+  DISTRICTS, STREETS, NAMES, ITEMS, NOTES, CANCEL_REASONS, FAILURES, VEHICLES, MERCHANTS,
 } from './data.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -68,6 +69,7 @@ function rng(seed) { // mulberry32 — deterministic, so re-runs plan the same p
   return {
     next,
     int: (min, max) => min + Math.floor(next() * (max - min + 1)),
+    between: (lo, hi) => lo + next() * (hi - lo),
     pick: (arr) => arr[Math.floor(next() * arr.length)],
     chance: (p) => next() < p,
     weighted: (pairs) => { // [[value, weight], ...]
@@ -104,11 +106,11 @@ function errorText(body) {
   return body.message || body.error || JSON.stringify(body).slice(0, 200);
 }
 
-async function api(method, urlPath, { token, body, form, expect = [200, 201], retries = 6 } = {}) {
+async function api(method, urlPath, { token, body, form, headers: extra = {}, expect = [200, 201], retries = 6 } = {}) {
   for (let attempt = 0; ; attempt++) {
     let res;
     try {
-      const headers = {};
+      const headers = { ...extra };
       if (token) headers.Authorization = `Bearer ${token}`;
       let payload;
       if (form) payload = form;
@@ -185,6 +187,8 @@ function customerAllocation() {
   return alloc;
 }
 
+const districtOf = (code) => DISTRICTS.find((d) => d.code === code);
+
 function planPeople() {
   const r = rng('swiftdrop-seed-people-v1');
   const staff = [];
@@ -216,8 +220,16 @@ function planPeople() {
       });
     }
   }
-  for (const p of [...staff, ...customers]) p.email = `${p.username}@example.com`;
-  return { staff, customers, all: [...staff, ...customers] };
+  const merchants = MERCHANTS.map((m) => {
+    const d = districtOf(m.district);
+    const n = personName(r, d);
+    return {
+      role: 'MERCHANT', username: `merchant.${m.slug}`, ...n, district: d, town: d.towns[0], phone: uniquePhone(r),
+      street: `No. ${r.int(1, 240)}, ${r.pick(STREETS)}`, regNo: `PV ${r.int(100000, 999999)}`, plan: m,
+    };
+  });
+  for (const p of [...staff, ...customers, ...merchants]) p.email = `${p.username}@example.com`;
+  return { staff, customers, merchants, all: [...staff, ...customers, ...merchants] };
 }
 
 const PEOPLE = planPeople();
@@ -235,20 +247,13 @@ async function stageUsers() {
     password: PASSWORD, role: p.role, district: p.district.code,
   });
 
-  await mapLimit(PEOPLE.staff, CONCURRENCY, async (p) => {
+  // The admin provisions every account. Self-registered accounts must confirm a code sent
+  // by e-mail before they can sign in (email verification), which a script cannot do;
+  // admin-provisioned accounts are trusted and verified from the start.
+  await mapLimit(PEOPLE.all, CONCURRENCY, async (p) => {
     try {
       await api('POST', '/api/v1/users', { token: admin.token, body: profile(p) });
       count(`${p.role.toLowerCase()}s created`);
-    } catch (e) {
-      if (!isDuplicate(e)) throw e;
-      count('already existed');
-    }
-  });
-  // Customers sign themselves up, as they would on the website.
-  await mapLimit(PEOPLE.customers, CONCURRENCY, async (p) => {
-    try {
-      await api('POST', '/api/v1/auth/register', { body: profile(p) });
-      count('customers registered');
     } catch (e) {
       if (!isDuplicate(e)) throw e;
       count('already existed');
@@ -319,6 +324,100 @@ async function stageOrders() {
     if (existing >= planned) count('customers already complete');
   });
   report('orders');
+}
+
+// ── Stage: merchants ────────────────────────────────────────────────────────
+const jwtClaims = (token) => JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+
+function merchantOrderBody(m, r, k) {
+  const plan = m.plan;
+  const toOther = r.chance(0.7);
+  const dest = toOther
+    ? districtByCode[r.weighted(DISTRICTS.filter((d) => d.code !== plan.district).map((d) => [d.code, d.weight]))]
+    : m.district;
+  const [destCity, destPostal] = r.pick(dest.towns);
+  const recipient = personName(r, dest);
+  const declared = r.int(15, 250) * 100;
+  return {
+    externalRef: `SO-${plan.slug.split('-')[0].toUpperCase()}-${1001 + k}`,
+    pickup: {
+      addressLine1: m.street, city: m.town[0], district: plan.district, postalCode: m.town[1],
+      contactName: plan.business, contactPhone: m.phone,
+    },
+    delivery: {
+      addressLine1: `No. ${r.int(1, 320)}, ${r.pick(STREETS)}`, city: destCity, district: dest.code, postalCode: destPostal,
+      contactName: `${recipient.first} ${recipient.last}`, contactPhone: anyPhone(r),
+    },
+    parcel: {
+      actualWeightKg: Math.round(r.between(0.3, 6) * 100) / 100,
+      prohibitedItemsDeclared: true,
+      itemDescription: r.pick(plan.items),
+      declaredValue: declared,
+      codAmount: r.chance(0.5) ? declared : 0,
+    },
+    speed: r.chance(0.2) ? 'EXPRESS' : 'STANDARD',
+  };
+}
+
+async function stageMerchants() {
+  if (!ADMIN_PASSWORD) throw new Error('SEED_ADMIN_PASSWORD is required for the merchants stage');
+  const admin = await login(ADMIN_USER, ADMIN_PASSWORD);
+  const applications = (await api('GET', '/api/v1/admin/merchants', { token: admin.token })) || [];
+  for (const m of PEOPLE.merchants) {
+    const plan = m.plan;
+    const owner = await login(m.username);
+    // 1. The owner applies (once).
+    let app = applications.find((a) => a.ownerUserId === owner.userId);
+    if (!app) {
+      app = await api('POST', '/api/v1/merchants/register', {
+        token: owner.token,
+        body: {
+          businessName: plan.business, businessRegNo: m.regNo, contactEmail: m.email, contactPhone: m.phone,
+          pickupAddress: `${m.street}, ${m.town[0]} ${m.town[1]}`, operatingDistrict: plan.district,
+        },
+      });
+      count('businesses applied');
+    }
+    // 2. The admin decides.
+    if (app.status === 'PENDING_APPROVAL' && plan.outcome === 'APPROVED') {
+      app = await api('POST', `/api/v1/admin/merchants/${app.merchantId}/approve`, { token: admin.token });
+      count('approved');
+    } else if (app.status === 'PENDING_APPROVAL' && plan.outcome === 'REJECTED') {
+      app = await api('POST', `/api/v1/admin/merchants/${app.merchantId}/reject`, { token: admin.token, body: { reason: plan.reason } });
+      count('rejected');
+    }
+    if (plan.outcome !== 'APPROVED' || app.status !== 'APPROVED') { count(`left ${app.status.toLowerCase()}`); continue; }
+
+    // 3. IAM links the merchant to the owner's account from the merchant.approved event;
+    //    sign in again until the token carries the merchant id.
+    let session;
+    for (let i = 0; i < 30; i++) {
+      sessions.delete(m.username);
+      session = await login(m.username);
+      if (jwtClaims(session.token).merchantId === app.merchantId) break;
+      session = null;
+      await sleep(2000);
+    }
+    if (!session) throw new Error(`${m.username}: the account was not linked to merchant ${app.merchantId} (is the IAM merchant-event consumer running?)`);
+
+    // 4. An API key for their online store (re-runs regenerate it: the secret is shown only once).
+    const keys = (await api('GET', `/api/v1/merchants/${app.merchantId}/api-keys`, { token: session.token })) || [];
+    const existing = keys.find((k) => k.active && k.keyName === 'Online store');
+    const key = existing
+      ? await api('POST', `/api/v1/merchants/${app.merchantId}/api-keys/${existing.keyId}/regenerate`, { token: session.token })
+      : await api('POST', `/api/v1/merchants/${app.merchantId}/api-keys`, { token: session.token, body: { keyName: 'Online store', expiresInDays: 365 } });
+    if (!key?.rawApiKey) throw new Error(`${m.username}: no API key secret returned`);
+
+    // 5. B2B orders through the gateway with the API key; externalRef makes re-runs idempotent.
+    const r = rng(`merchant-orders:${plan.slug}`);
+    for (let k = 0; k < plan.orders; k++) {
+      const result = await api('POST', '/api/v1/b2b/orders', {
+        headers: { 'X-API-Key': key.rawApiKey }, body: merchantOrderBody(m, r, k),
+      });
+      count(result?.created ? 'b2b orders booked' : 'b2b orders already there');
+    }
+  }
+  report('merchants');
 }
 
 // ── Stage: shifts ───────────────────────────────────────────────────────────
@@ -549,7 +648,7 @@ async function stageSummary() {
   const rows = [];
   if (ADMIN_PASSWORD) {
     const admin = await login(ADMIN_USER, ADMIN_PASSWORD);
-    for (const role of ['SYSTEM_ADMIN', 'DISPATCHER', 'COURIER', 'CUSTOMER']) {
+    for (const role of ['SYSTEM_ADMIN', 'DISPATCHER', 'COURIER', 'CUSTOMER', 'MERCHANT']) {
       const res = await api('GET', `/api/v1/users?role=${role}&size=1`, { token: admin.token }).catch(() => null);
       rows.push([`${role} accounts`, res?.totalElements ?? '?']);
     }
@@ -562,6 +661,7 @@ async function stageSummary() {
   console.log(`     Dispatcher     ${dispatcherOf('COLOMBO').username}   (one per district: dispatcher.<district>)`);
   console.log(`     Courier        ${couriersIn('COLOMBO')[0].username}  (courier.<district>.1 / .2)`);
   console.log(`     Customer       ${customer.username}  (${customer.district.code})`);
+  console.log(`     Merchant       ${PEOPLE.merchants[0].username}  (approved; also: ${PEOPLE.merchants.slice(1).map((m) => `${m.username} [${m.plan.outcome.toLowerCase()}]`).join(', ')})`);
   console.log(`     ...and ${PEOPLE.customers.length - 1} more customers; e-mails are <username>@example.com\n`);
 }
 
@@ -632,7 +732,7 @@ function placeholderPhotos() {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 const STAGES = {
-  users: stageUsers, orders: stageOrders, shifts: stageShifts, cancel: stageCancel,
+  users: stageUsers, orders: stageOrders, merchants: stageMerchants, shifts: stageShifts, cancel: stageCancel,
   assign: stageAssign, deliver: stageDeliver, notifications: stageNotifications, summary: stageSummary,
 };
 
@@ -642,6 +742,7 @@ async function stageAll() {
   // would assign them all and the dispatcher board would be empty.
   await stageUsers();
   await stageOrders();
+  await stageMerchants();
   const anyDispatcher = await login(dispatcherOf('COLOMBO').username);
   await settle('unassigned queue', async () => (await api('GET', '/api/v1/dispatch/unassigned', { token: anyDispatcher.token })).length);
   await stageShifts();

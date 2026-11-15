@@ -116,3 +116,20 @@ export const FAILURES = {
 };
 
 export const VEHICLES = [['MOTORCYCLE', 60], ['THREE_WHEELER', 20], ['VAN', 15], ['BICYCLE', 5]];
+
+// Fictional businesses (names invented for the demo). outcome decides what the admin does
+// with the application: APPROVED merchants get an API key and send B2B orders; one stays
+// PENDING so the approval screen has work; one is REJECTED with a reason.
+export const MERCHANTS = [
+  { slug: 'kandy-valley-spice', business: 'Kandy Valley Spice Co.', district: 'KANDY', outcome: 'APPROVED', orders: 12,
+    items: ['Ceylon cinnamon quills', 'Black pepper pack', 'Cardamom pods', 'Spice gift box', 'Curry powder set'] },
+  { slug: 'wayamba-handloom', business: 'Wayamba Handloom Studio', district: 'KURUNEGALA', outcome: 'APPROVED', orders: 10,
+    items: ['Handloom saree', 'Handloom shirt', 'Cushion covers', 'Table runner'] },
+  { slug: 'southern-lantern-crafts', business: 'Southern Lantern Crafts', district: 'GALLE', outcome: 'APPROVED', orders: 10,
+    items: ['Wooden mask', 'Lacquerware bowl', 'Batik wall hanging', 'Brass oil lamp'] },
+  { slug: 'nallur-palmyrah-works', business: 'Nallur Palmyrah Works', district: 'JAFFNA', outcome: 'APPROVED', orders: 8,
+    items: ['Palmyrah basket', 'Palmyrah jaggery', 'Woven mat', 'Palmyrah fan'] },
+  { slug: 'pettah-gadget-hub', business: 'Pettah Gadget Hub', district: 'COLOMBO', outcome: 'PENDING', orders: 0, items: [] },
+  { slug: 'lagoon-catch-exports', business: 'Lagoon Catch Exports', district: 'GAMPAHA', outcome: 'REJECTED', orders: 0, items: [],
+    reason: 'Fresh and frozen seafood is perishable and is not accepted under the SwiftDrop parcel policy.' },
+];
