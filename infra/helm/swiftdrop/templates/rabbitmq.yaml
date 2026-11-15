@@ -13,6 +13,17 @@ metadata:
 data:
   20-swiftdrop.conf: |
     {{- $r.config | trim | nindent 4 }}
+    {{- /* RabbitMQ sizes its memory watermark from the NODE's memory, not the container
+           limit (seen: "0.4 of available memory, computed to 2.46 GB" under a 768Mi limit),
+           so it never paged to disk before being OOMKilled. Tell it the real limit. */}}
+    {{- $mem := toString (dig "limits" "memory" "" ($r.resources | default dict)) }}
+    {{- $bytes := 0 }}
+    {{- if hasSuffix "Gi" $mem }}{{ $bytes = mul (trimSuffix "Gi" $mem | atoi) 1073741824 }}
+    {{- else if hasSuffix "Mi" $mem }}{{ $bytes = mul (trimSuffix "Mi" $mem | atoi) 1048576 }}
+    {{- end }}
+    {{- if gt (int64 $bytes) 0 }}
+    total_memory_available_override_value = {{ $bytes }}
+    {{- end }}
 ---
 apiVersion: v1
 kind: Service
