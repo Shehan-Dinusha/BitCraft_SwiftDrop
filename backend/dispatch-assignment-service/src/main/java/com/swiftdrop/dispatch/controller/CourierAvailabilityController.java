@@ -8,6 +8,7 @@ import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
+import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import com.swiftdrop.dispatch.service.CourierShiftService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,9 +31,12 @@ import java.util.UUID;
 public class CourierAvailabilityController {
 
     private final CourierShiftService courierShiftService;
+    private final CourierConflictRetry courierConflictRetry;
 
-    public CourierAvailabilityController(CourierShiftService courierShiftService) {
+    public CourierAvailabilityController(CourierShiftService courierShiftService,
+                                         CourierConflictRetry courierConflictRetry) {
         this.courierShiftService = courierShiftService;
+        this.courierConflictRetry = courierConflictRetry;
     }
 
     @GetMapping("/health")
@@ -102,7 +106,7 @@ public class CourierAvailabilityController {
     @Operation(summary = "Record courier GPS location heartbeat ping")
     public ApiResponse<CourierShiftResponse> updateLocation(@Valid @RequestBody CourierLocationPingRequest request) {
         return ApiResponse.success(
-                courierShiftService.updateLocation(request),
+                courierConflictRetry.run("Location update", () -> courierShiftService.updateLocation(request)),
                 "Location updated successfully"
         );
     }

@@ -1,7 +1,11 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Dispatch Assignment API
-  description: Courier assignment, shifts, capacity, and dispatch management APIs.
+  description: >-
+    Courier assignment, shifts, capacity, and dispatch management APIs.
+    Errors use the ApiErrorResponse body. An unexpected server error returns HTTP 500 with
+    error "Internal Server Error", message "An unexpected error occurred" and, when the request
+    X-Correlation-Id header is a UUID, that correlationId; internal details are never returned.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
@@ -57,7 +61,13 @@ paths:
         "409":
           description: >-
             Order already assigned (Assignment Conflict), courier not available, assignment in a
-            terminal state, or the record was changed by a concurrent operation
+            terminal state, or the record was changed by a concurrent operation (Conflict). A conflict
+            on the courier's record only, such as a location update, is retried automatically up to
+            three times before a 409 is returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/reassign:
     post:
@@ -99,7 +109,12 @@ paths:
             Order has no courier yet or is no longer assigned to the expected courier
             (Assignment Conflict), order already picked up (Reassignment Not Allowed), courier not
             available, assignment in a terminal state, or the record was changed by a concurrent
-            operation
+            operation (Conflict). A conflict on the courier's record only, such as a location update,
+            is retried automatically up to three times before a 409 is returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/assignments:
     get:
@@ -338,6 +353,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
+        "409":
+          description: >-
+            Data Conflict: the shift record was created by a concurrent request for the same courier
+            (unique-key violation). Database details are not returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                dataConflict:
+                  summary: Concurrent first-time shift start
+                  value:
+                    status: 409
+                    error: Data Conflict
+                    message: The request conflicts with an existing record. Refresh and retry.
+                    path: /api/v1/dispatch/couriers/shifts/start
+                    timestamp: "2026-11-15T08:30:00Z"
 
   /api/v1/dispatch/couriers/shifts/{courierId}/end:
     post:
@@ -359,6 +391,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
+        "409":
+          description: >-
+            Shift Conflict: the courier still has active parcels, so the shift is left unchanged.
+            Also returned as Courier Not Available for an unknown courier, or Conflict when the
+            courier's record was changed by a concurrent operation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                activeParcels:
+                  summary: Courier still has active parcels
+                  value:
+                    status: 409
+                    error: Shift Conflict
+                    message: "Cannot end shift: the courier still has 2 active parcel(s). Complete or reassign them first."
+                    path: /api/v1/dispatch/couriers/shifts/11111111-2222-4333-8444-555555555555/end
+                    timestamp: "2026-11-15T08:30:00Z"
 
   /api/v1/dispatch/couriers/shifts/status:
     put:
@@ -399,6 +449,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
+        "409":
+          description: >-
+            Conflict: the courier's record kept changing concurrently (for example during an
+            assignment) after up to three automatic attempts, or Courier Not Available for an
+            unknown courier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                courierRecordChanged:
+                  summary: Courier record changed by another operation
+                  value:
+                    status: 409
+                    error: Conflict
+                    message: >-
+                      The courier's record was changed by another operation, such as a location
+                      update or another assignment. Refresh and retry.
+                    path: /api/v1/dispatch/couriers/shifts/location
+                    timestamp: "2026-11-15T08:30:00Z"
 
 components:
   schemas:
@@ -654,6 +724,46 @@ components:
           type: integer
         shiftStatus:
           $ref: "#/components/schemas/ShiftStatus"
+
+    ApiErrorResponse:
+      type: object
+      description: >-
+        Error body returned by the global exception handler (com.swiftdrop.contracts.dto.ApiErrorResponse).
+        Null fields are omitted.
+      required:
+        - status
+        - error
+        - message
+        - path
+        - timestamp
+      properties:
+        status:
+          type: integer
+          example: 409
+        error:
+          type: string
+          description: Error label, for example Conflict, Assignment Conflict, Shift Conflict or Data Conflict
+          example: Shift Conflict
+        message:
+          type: string
+          example: "Cannot end shift: the courier still has 2 active parcel(s). Complete or reassign them first."
+        path:
+          type: string
+          example: /api/v1/dispatch/couriers/shifts/11111111-2222-4333-8444-555555555555/end
+        correlationId:
+          type: string
+          description: Request correlation ID, included on 500 responses when the X-Correlation-Id header is a UUID
+          example: 0f5e8c4a-2c6d-4a58-9c8f-4c2c4e7b8a11
+        fieldErrors:
+          type: object
+          description: Field name mapped to its validation messages, when present
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        timestamp:
+          type: string
+          format: date-time
 
     ApiResponseString:
       type: object

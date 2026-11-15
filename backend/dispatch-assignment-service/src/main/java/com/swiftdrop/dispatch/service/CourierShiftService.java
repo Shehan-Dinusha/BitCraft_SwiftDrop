@@ -9,6 +9,7 @@ import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
+import com.swiftdrop.dispatch.exception.ShiftEndNotAllowedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -64,8 +65,8 @@ public class CourierShiftService {
                 .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
 
         if (shift.getActiveParcelsCount() > 0) {
-            throw new IllegalStateException("Cannot end shift: courier still has "
-                    + shift.getActiveParcelsCount() + " active parcels assigned");
+            throw new ShiftEndNotAllowedException("Cannot end shift: the courier still has "
+                    + shift.getActiveParcelsCount() + " active parcel(s). Complete or reassign them first.");
         }
 
         shift.setShiftStatus(ShiftStatus.OFFLINE);

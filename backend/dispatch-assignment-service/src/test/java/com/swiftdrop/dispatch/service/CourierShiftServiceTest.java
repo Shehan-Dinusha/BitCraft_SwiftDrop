@@ -9,6 +9,7 @@ import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
+import com.swiftdrop.dispatch.exception.ShiftEndNotAllowedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -88,17 +89,23 @@ class CourierShiftServiceTest {
     }
 
     @Test
-    @DisplayName("End shift: throws IllegalStateException when active parcels remain")
+    @DisplayName("End shift: rejected with ShiftEndNotAllowedException while active parcels remain, nothing changes")
     void testEndShift_ParcelsRemaining() {
         CourierShift shift = new CourierShift();
         shift.setCourierId(courierId);
         shift.setActiveParcelsCount(2);
+        shift.setShiftStatus(ShiftStatus.BUSY);
 
         when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
 
         assertThatThrownBy(() -> courierShiftService.endShift(courierId))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("active parcels assigned");
+                .isInstanceOf(ShiftEndNotAllowedException.class)
+                .hasMessageContaining("2 active parcel(s)");
+
+        assertThat(shift.getShiftStatus()).isEqualTo(ShiftStatus.BUSY);
+        assertThat(shift.getActiveParcelsCount()).isEqualTo(2);
+        assertThat(shift.getShiftEndedAt()).isNull();
+        verify(courierShiftRepository, never()).save(any());
     }
 
     @Test

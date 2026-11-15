@@ -8,6 +8,7 @@ import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
+import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,12 +41,15 @@ public class DispatchController {
 
     private final ManualOverrideService manualOverrideService;
     private final DispatchAssignmentService dispatchAssignmentService;
+    private final CourierConflictRetry courierConflictRetry;
 
     public DispatchController(
             ManualOverrideService manualOverrideService,
-            DispatchAssignmentService dispatchAssignmentService) {
+            DispatchAssignmentService dispatchAssignmentService,
+            CourierConflictRetry courierConflictRetry) {
         this.manualOverrideService = manualOverrideService;
         this.dispatchAssignmentService = dispatchAssignmentService;
+        this.courierConflictRetry = courierConflictRetry;
     }
 
     @GetMapping("/health")
@@ -62,7 +66,9 @@ public class DispatchController {
             @Valid @RequestBody ManualAssignRequest request,
             @Parameter(description = "Request correlation ID, propagated to the published events when it is a UUID")
             @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId) {
-        var assignment = manualOverrideService.manualAssign(request, correlationIdOrNull(correlationId));
+        UUID eventCorrelationId = correlationIdOrNull(correlationId);
+        var assignment = courierConflictRetry.run("Assignment",
+                () -> manualOverrideService.manualAssign(request, eventCorrelationId));
         return ApiResponse.success(
                 DispatchAssignmentResponse.fromEntity(assignment),
                 "Order successfully assigned to courier"
@@ -77,7 +83,9 @@ public class DispatchController {
             @Valid @RequestBody ReassignCourierRequest request,
             @Parameter(description = "Request correlation ID, propagated to the published events when it is a UUID")
             @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId) {
-        var assignment = manualOverrideService.reassign(request, correlationIdOrNull(correlationId));
+        UUID eventCorrelationId = correlationIdOrNull(correlationId);
+        var assignment = courierConflictRetry.run("Reassignment",
+                () -> manualOverrideService.reassign(request, eventCorrelationId));
         return ApiResponse.success(
                 DispatchAssignmentResponse.fromEntity(assignment),
                 "Order successfully reassigned to courier"
