@@ -24,8 +24,8 @@ import java.util.UUID;
 <span class="pc bpc" id="L24" title="2 of 4 branches missed.">        if (envelope == null || envelope.routingKey() == null) {</span>
 <span class="nc" id="L25">            return false;</span>
         }
-<span class="pc bpc" id="L27" title="1 of 2 branches missed.">        boolean isParcelStatusEvent = envelope.routingKey().startsWith(&quot;parcel.status.changed&quot;)</span>
-<span class="nc bnc" id="L28" title="All 2 branches missed.">                || envelope.routingKey().startsWith(&quot;notification.&quot;);</span>
+<span class="fc bfc" id="L27" title="All 2 branches covered.">        boolean isParcelStatusEvent = envelope.routingKey().startsWith(&quot;parcel.status.changed&quot;)</span>
+<span class="pc bpc" id="L28" title="1 of 2 branches missed.">                || envelope.routingKey().startsWith(&quot;notification.&quot;);</span>
 <span class="pc bpc" id="L29" title="1 of 4 branches missed.">        return isParcelStatusEvent &amp;&amp; &quot;PICKED_UP&quot;.equalsIgnoreCase(envelope.extractStatus().orElse(&quot;&quot;));</span>
     }
 

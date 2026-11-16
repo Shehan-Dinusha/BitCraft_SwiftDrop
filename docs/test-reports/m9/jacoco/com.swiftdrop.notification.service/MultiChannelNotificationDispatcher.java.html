@@ -11,6 +11,7 @@ import com.swiftdrop.notification.dto.RecipientContact;
 import com.swiftdrop.notification.service.email.EmailHtmlRenderer;
 import com.swiftdrop.notification.service.email.EmailSender;
 import com.swiftdrop.notification.util.PiiMasker;
+import com.swiftdrop.notification.util.SensitiveTemplates;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-<span class="fc" id="L25">@Slf4j</span>
+<span class="fc" id="L26">@Slf4j</span>
 @Service
 @RequiredArgsConstructor
 public class MultiChannelNotificationDispatcher {
@@ -39,172 +40,187 @@ public class MultiChannelNotificationDispatcher {
      */
     @Transactional
     public NotificationDispatchLogResponse dispatch(DispatchNotificationRequest request) {
-<span class="fc" id="L42">        log.info(&quot;Processing notification dispatch to recipient: {} channel: {} template: {}&quot;,</span>
-<span class="fc" id="L43">                request.recipientId(), request.channel(), request.templateCode());</span>
+<span class="fc" id="L43">        log.info(&quot;Processing notification dispatch to recipient: {} channel: {} template: {}&quot;,</span>
+<span class="fc" id="L44">                request.recipientId(), request.channel(), request.templateCode());</span>
 
-<span class="fc" id="L45">        Optional&lt;RecipientPreference&gt; prefOpt = preferenceRepository.findByRecipientId(request.recipientId());</span>
-<span class="fc" id="L46">        RecipientPreference pref = prefOpt.orElse(null);</span>
+<span class="fc" id="L46">        Optional&lt;RecipientPreference&gt; prefOpt = preferenceRepository.findByRecipientId(request.recipientId());</span>
+<span class="fc" id="L47">        RecipientPreference pref = prefOpt.orElse(null);</span>
 
-<span class="fc" id="L48">        String channel = request.channel().toUpperCase();</span>
-<span class="fc" id="L49">        boolean isChannelEnabled = isChannelEnabled(pref, channel);</span>
+<span class="fc" id="L49">        String channel = request.channel().toUpperCase();</span>
+        // One-time security codes are not optional mail: they ignore the email-off preference.
+<span class="fc" id="L51">        boolean sensitive = SensitiveTemplates.isSensitive(request.templateCode());</span>
+<span class="fc bfc" id="L52" title="All 4 branches covered.">        boolean isChannelEnabled = sensitive || isChannelEnabled(pref, channel);</span>
 
         // Resolve destination
-<span class="fc" id="L52">        String destination = resolveDestination(request.destination(), pref, channel, request.recipientId());</span>
+        // One-time codes go only to the account's registered (IAM) address: never to a request-supplied
+        // or preference address, which could otherwise redirect a password-reset code to someone else.
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        String destination = sensitive</span>
+<span class="fc" id="L58">                ? registeredEmail(channel, request.recipientId())</span>
+<span class="fc" id="L59">                : resolveDestination(request.destination(), pref, channel, request.recipientId());</span>
 
         // Render template
-<span class="fc" id="L55">        TemplateRendererService.RenderedNotification rendered = templateRenderer.renderTemplate(</span>
-<span class="fc" id="L56">                request.templateCode(),</span>
-<span class="pc bpc" id="L57" title="1 of 2 branches missed.">                request.templateParams() != null ? request.templateParams() : Map.of()</span>
+<span class="fc" id="L62">        TemplateRendererService.RenderedNotification rendered = templateRenderer.renderTemplate(</span>
+<span class="fc" id="L63">                request.templateCode(),</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">                request.templateParams() != null ? request.templateParams() : Map.of()</span>
         );
 
         String status;
-<span class="fc" id="L61">        String failureReason = null;</span>
-<span class="fc" id="L62">        Instant sentAt = null;</span>
+<span class="fc" id="L68">        String failureReason = null;</span>
+<span class="fc" id="L69">        Instant sentAt = null;</span>
 
-<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (!isChannelEnabled) {</span>
-<span class="fc" id="L65">            log.info(&quot;Notification suppressed by user preferences for channel: {}&quot;, channel);</span>
-<span class="fc" id="L66">            status = &quot;SUPPRESSED&quot;;</span>
-<span class="fc" id="L67">            failureReason = &quot;Channel &quot; + channel + &quot; disabled in user preferences&quot;;</span>
-<span class="pc bpc" id="L68" title="1 of 4 branches missed.">        } else if (destination == null || destination.isBlank()) {</span>
-<span class="fc" id="L69">            log.warn(&quot;Notification dispatch failed: Missing destination for channel {}&quot;, channel);</span>
-<span class="fc" id="L70">            status = &quot;FAILED&quot;;</span>
-<span class="fc" id="L71">            failureReason = &quot;No valid &quot; + channel + &quot; destination address or phone provided&quot;;</span>
-<span class="fc" id="L72">        } else {</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        if (!isChannelEnabled) {</span>
+<span class="fc" id="L72">            log.info(&quot;Notification suppressed by user preferences for channel: {}&quot;, channel);</span>
+<span class="fc" id="L73">            status = &quot;SUPPRESSED&quot;;</span>
+<span class="fc" id="L74">            failureReason = &quot;Channel &quot; + channel + &quot; disabled in user preferences&quot;;</span>
+<span class="pc bpc" id="L75" title="1 of 4 branches missed.">        } else if (destination == null || destination.isBlank()) {</span>
+<span class="fc" id="L76">            log.warn(&quot;Notification dispatch failed: Missing destination for channel {}&quot;, channel);</span>
+<span class="fc" id="L77">            status = &quot;FAILED&quot;;</span>
+<span class="fc" id="L78">            failureReason = &quot;No valid &quot; + channel + &quot; destination address or phone provided&quot;;</span>
+<span class="fc" id="L79">        } else {</span>
             // EMAIL goes through the configured provider (mock or Azure); PUSH is the in-app inbox.
             try {
-<span class="fc" id="L75">                executeDelivery(channel, destination, request, rendered);</span>
-<span class="fc" id="L76">                status = &quot;SENT&quot;;</span>
-<span class="fc" id="L77">                sentAt = Instant.now();</span>
-<span class="fc" id="L78">                log.info(&quot;Notification successfully dispatched to {} via {}&quot;, PiiMasker.maskDestination(destination), channel);</span>
-<span class="fc" id="L79">            } catch (Exception e) {</span>
-<span class="fc" id="L80">                log.error(&quot;Failed to transmit notification via {}: {}&quot;, channel, e.getMessage());</span>
-<span class="fc" id="L81">                status = &quot;FAILED&quot;;</span>
-<span class="fc" id="L82">                failureReason = e.getMessage();</span>
+<span class="fc" id="L82">                executeDelivery(channel, destination, request, rendered);</span>
+<span class="fc" id="L83">                status = &quot;SENT&quot;;</span>
+<span class="fc" id="L84">                sentAt = Instant.now();</span>
+<span class="fc" id="L85">                log.info(&quot;Notification successfully dispatched to {} via {}&quot;, PiiMasker.maskDestination(destination), channel);</span>
+<span class="fc" id="L86">            } catch (Exception e) {</span>
+<span class="fc" id="L87">                log.error(&quot;Failed to transmit notification via {}: {}&quot;, channel, e.getMessage());</span>
+<span class="fc" id="L88">                status = &quot;FAILED&quot;;</span>
+<span class="fc" id="L89">                failureReason = e.getMessage();</span>
             }
         }
 
-<span class="fc" id="L86">        NotificationDispatchLog dispatchLog = NotificationDispatchLog.builder()</span>
-<span class="fc" id="L87">                .logId(UUID.randomUUID())</span>
-<span class="fc" id="L88">                .recipientId(request.recipientId())</span>
-<span class="fc" id="L89">                .channel(channel)</span>
-<span class="fc" id="L90">                .templateCode(request.templateCode())</span>
-<span class="fc bfc" id="L91" title="All 2 branches covered.">                .destination(destination != null ? destination : &quot;UNRESOLVED&quot;)</span>
-<span class="fc" id="L92">                .subject(rendered.subject())</span>
-<span class="fc" id="L93">                .content(rendered.body())</span>
-<span class="fc" id="L94">                .status(status)</span>
-<span class="fc" id="L95">                .failureReason(failureReason)</span>
-<span class="fc" id="L96">                .sentAt(sentAt)</span>
-<span class="fc" id="L97">                .referenceId(request.referenceId())</span>
-<span class="fc" id="L98">                .build();</span>
+<span class="fc" id="L93">        NotificationDispatchLog dispatchLog = NotificationDispatchLog.builder()</span>
+<span class="fc" id="L94">                .logId(UUID.randomUUID())</span>
+<span class="fc" id="L95">                .recipientId(request.recipientId())</span>
+<span class="fc" id="L96">                .channel(channel)</span>
+<span class="fc" id="L97">                .templateCode(request.templateCode())</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">                .destination(destination != null ? destination : &quot;UNRESOLVED&quot;)</span>
+<span class="fc" id="L99">                .subject(rendered.subject())</span>
+                // Never persist a one-time code in the audit log.
+<span class="fc bfc" id="L101" title="All 2 branches covered.">                .content(sensitive ? SensitiveTemplates.REDACTED_CONTENT : rendered.body())</span>
+<span class="fc" id="L102">                .status(status)</span>
+<span class="fc" id="L103">                .failureReason(failureReason)</span>
+<span class="fc" id="L104">                .sentAt(sentAt)</span>
+<span class="fc" id="L105">                .referenceId(request.referenceId())</span>
+<span class="fc" id="L106">                .build();</span>
 
-<span class="fc" id="L100">        NotificationDispatchLog saved = logRepository.save(dispatchLog);</span>
-<span class="fc" id="L101">        return mapToResponse(saved);</span>
+<span class="fc" id="L108">        NotificationDispatchLog saved = logRepository.save(dispatchLog);</span>
+<span class="fc" id="L109">        return mapToResponse(saved);</span>
     }
 
     @Transactional(readOnly = true)
     public List&lt;NotificationDispatchLogResponse&gt; listLogs(UUID recipientId, String channel, String status) {
         List&lt;NotificationDispatchLog&gt; logs;
-<span class="pc bpc" id="L107" title="1 of 2 branches missed.">        if (recipientId != null) {</span>
-<span class="pc bpc" id="L108" title="2 of 4 branches missed.">            if (channel != null &amp;&amp; !channel.isBlank()) {</span>
-<span class="fc" id="L109">                logs = logRepository.findByRecipientIdAndChannelOrderByCreatedAtDesc(recipientId, channel.toUpperCase());</span>
-<span class="pc bnc" id="L110" title="All 4 branches missed.">            } else if (status != null &amp;&amp; !status.isBlank()) {</span>
-<span class="nc" id="L111">                logs = logRepository.findByRecipientIdAndStatusOrderByCreatedAtDesc(recipientId, status.toUpperCase());</span>
-<span class="nc" id="L112">            } else {</span>
-<span class="nc" id="L113">                logs = logRepository.findByRecipientIdOrderByCreatedAtDesc(recipientId);</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        if (recipientId != null) {</span>
+<span class="pc bpc" id="L116" title="2 of 4 branches missed.">            if (channel != null &amp;&amp; !channel.isBlank()) {</span>
+<span class="fc" id="L117">                logs = logRepository.findByRecipientIdAndChannelOrderByCreatedAtDesc(recipientId, channel.toUpperCase());</span>
+<span class="pc bnc" id="L118" title="All 4 branches missed.">            } else if (status != null &amp;&amp; !status.isBlank()) {</span>
+<span class="nc" id="L119">                logs = logRepository.findByRecipientIdAndStatusOrderByCreatedAtDesc(recipientId, status.toUpperCase());</span>
+<span class="nc" id="L120">            } else {</span>
+<span class="nc" id="L121">                logs = logRepository.findByRecipientIdOrderByCreatedAtDesc(recipientId);</span>
             }
-<span class="nc bnc" id="L115" title="All 4 branches missed.">        } else if (status != null &amp;&amp; !status.isBlank()) {</span>
-<span class="nc" id="L116">            logs = logRepository.findByStatusOrderByCreatedAtDesc(status.toUpperCase());</span>
-<span class="nc" id="L117">        } else {</span>
-<span class="nc" id="L118">            logs = logRepository.findAllByOrderByCreatedAtDesc();</span>
+<span class="nc bnc" id="L123" title="All 4 branches missed.">        } else if (status != null &amp;&amp; !status.isBlank()) {</span>
+<span class="nc" id="L124">            logs = logRepository.findByStatusOrderByCreatedAtDesc(status.toUpperCase());</span>
+<span class="nc" id="L125">        } else {</span>
+<span class="nc" id="L126">            logs = logRepository.findAllByOrderByCreatedAtDesc();</span>
         }
 
-<span class="fc" id="L121">        return logs.stream().map(this::mapToResponse).toList();</span>
+<span class="fc" id="L129">        return logs.stream().map(this::mapToResponse).toList();</span>
     }
 
     @Transactional(readOnly = true)
     public Optional&lt;NotificationDispatchLogResponse&gt; getLog(UUID logId) {
-<span class="fc" id="L126">        return logRepository.findByLogId(logId).map(this::mapToResponse);</span>
+<span class="fc" id="L134">        return logRepository.findByLogId(logId).map(this::mapToResponse);</span>
     }
 
     private boolean isChannelEnabled(RecipientPreference pref, String channel) {
-<span class="fc bfc" id="L130" title="All 2 branches covered.">        if (pref == null) return true; // Default enabled</span>
-<span class="pc bpc" id="L131" title="2 of 3 branches missed.">        return switch (channel) {</span>
-<span class="fc" id="L132">            case &quot;EMAIL&quot; -&gt; pref.isEmailEnabled();</span>
-<span class="nc" id="L133">            case &quot;PUSH&quot; -&gt; pref.isPushEnabled();</span>
-<span class="nc" id="L134">            default -&gt; true;</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        if (pref == null) return true; // Default enabled</span>
+<span class="pc bpc" id="L139" title="2 of 3 branches missed.">        return switch (channel) {</span>
+<span class="fc" id="L140">            case &quot;EMAIL&quot; -&gt; pref.isEmailEnabled();</span>
+<span class="nc" id="L141">            case &quot;PUSH&quot; -&gt; pref.isPushEnabled();</span>
+<span class="nc" id="L142">            default -&gt; true;</span>
         };
     }
 
+    private String registeredEmail(String channel, UUID recipientId) {
+<span class="pc bpc" id="L147" title="3 of 6 branches missed.">        if (!&quot;EMAIL&quot;.equals(channel) || contactClient == null || recipientId == null) {</span>
+<span class="nc" id="L148">            return null;</span>
+        }
+<span class="fc" id="L150">        return contactClient.lookupContact(recipientId).map(RecipientContact::email).orElse(null);</span>
+    }
+
     private String resolveDestination(String requestDest, RecipientPreference pref, String channel, UUID recipientId) {
-<span class="pc bpc" id="L139" title="1 of 4 branches missed.">        if (requestDest != null &amp;&amp; !requestDest.isBlank()) {</span>
-<span class="fc" id="L140">            return requestDest.trim();</span>
+<span class="pc bpc" id="L154" title="1 of 4 branches missed.">        if (requestDest != null &amp;&amp; !requestDest.isBlank()) {</span>
+<span class="fc" id="L155">            return requestDest.trim();</span>
         }
-<span class="fc bfc" id="L142" title="All 2 branches covered.">        if (pref != null) {</span>
-<span class="pc bpc" id="L143" title="2 of 3 branches missed.">            String prefDestination = switch (channel) {</span>
-<span class="fc" id="L144">                case &quot;EMAIL&quot; -&gt; pref.getEmailAddress();</span>
-<span class="nc" id="L145">                case &quot;PUSH&quot; -&gt; pref.getRecipientId().toString();</span>
-<span class="nc" id="L146">                default -&gt; null;</span>
+<span class="fc bfc" id="L157" title="All 2 branches covered.">        if (pref != null) {</span>
+<span class="pc bpc" id="L158" title="2 of 3 branches missed.">            String prefDestination = switch (channel) {</span>
+<span class="fc" id="L159">                case &quot;EMAIL&quot; -&gt; pref.getEmailAddress();</span>
+<span class="nc" id="L160">                case &quot;PUSH&quot; -&gt; pref.getRecipientId().toString();</span>
+<span class="nc" id="L161">                default -&gt; null;</span>
             };
-<span class="pc bpc" id="L148" title="2 of 4 branches missed.">            if (prefDestination != null &amp;&amp; !prefDestination.isBlank()) {</span>
-<span class="fc" id="L149">                return prefDestination.trim();</span>
+<span class="pc bpc" id="L163" title="2 of 4 branches missed.">            if (prefDestination != null &amp;&amp; !prefDestination.isBlank()) {</span>
+<span class="fc" id="L164">                return prefDestination.trim();</span>
             }
         }
-<span class="pc bpc" id="L152" title="1 of 4 branches missed.">        if (&quot;PUSH&quot;.equals(channel) &amp;&amp; recipientId != null) {</span>
-<span class="fc" id="L153">            return recipientId.toString();</span>
+<span class="pc bpc" id="L167" title="1 of 4 branches missed.">        if (&quot;PUSH&quot;.equals(channel) &amp;&amp; recipientId != null) {</span>
+<span class="fc" id="L168">            return recipientId.toString();</span>
         }
-<span class="pc bpc" id="L155" title="2 of 4 branches missed.">        if (contactClient != null &amp;&amp; recipientId != null) {</span>
-<span class="fc" id="L156">            Optional&lt;RecipientContact&gt; contactOpt = contactClient.lookupContact(recipientId);</span>
-<span class="pc bpc" id="L157" title="1 of 4 branches missed.">            if (contactOpt.isPresent() &amp;&amp; &quot;EMAIL&quot;.equals(channel)) {</span>
-<span class="fc" id="L158">                return contactOpt.get().email();</span>
+<span class="pc bpc" id="L170" title="2 of 4 branches missed.">        if (contactClient != null &amp;&amp; recipientId != null) {</span>
+<span class="fc" id="L171">            Optional&lt;RecipientContact&gt; contactOpt = contactClient.lookupContact(recipientId);</span>
+<span class="pc bpc" id="L172" title="1 of 4 branches missed.">            if (contactOpt.isPresent() &amp;&amp; &quot;EMAIL&quot;.equals(channel)) {</span>
+<span class="fc" id="L173">                return contactOpt.get().email();</span>
             }
         }
-<span class="fc" id="L161">        return null;</span>
+<span class="fc" id="L176">        return null;</span>
     }
 
     private void executeDelivery(String channel, String destination, DispatchNotificationRequest request,
                                  TemplateRendererService.RenderedNotification rendered) {
-<span class="fc bfc" id="L166" title="All 3 branches covered.">        switch (channel) {</span>
+<span class="fc bfc" id="L181" title="All 3 branches covered.">        switch (channel) {</span>
             case &quot;EMAIL&quot; -&gt; {
                 // Email sanity check before handing the message to the provider.
-<span class="fc bfc" id="L169" title="All 2 branches covered.">                if (!destination.contains(&quot;@&quot;)) {</span>
-<span class="fc" id="L170">                    throw new IllegalArgumentException(&quot;Invalid email destination format: &quot; + PiiMasker.maskDestination(destination));</span>
+<span class="fc bfc" id="L184" title="All 2 branches covered.">                if (!destination.contains(&quot;@&quot;)) {</span>
+<span class="fc" id="L185">                    throw new IllegalArgumentException(&quot;Invalid email destination format: &quot; + PiiMasker.maskDestination(destination));</span>
                 }
-<span class="fc" id="L172">                String trackingNumber = trackingNumberOf(request);</span>
-<span class="fc" id="L173">                emailSender.send(destination, rendered.subject(),</span>
-<span class="fc" id="L174">                        emailHtmlRenderer.renderText(rendered.body(), trackingNumber),</span>
-<span class="fc" id="L175">                        emailHtmlRenderer.renderHtml(request.templateCode(), rendered.subject(), rendered.body(), trackingNumber));</span>
+<span class="fc" id="L187">                String trackingNumber = trackingNumberOf(request);</span>
+<span class="fc" id="L188">                emailSender.send(destination, rendered.subject(),</span>
+<span class="fc" id="L189">                        emailHtmlRenderer.renderText(rendered.body(), trackingNumber),</span>
+<span class="fc" id="L190">                        emailHtmlRenderer.renderHtml(request.templateCode(), rendered.subject(), rendered.body(), trackingNumber,</span>
+<span class="fc" id="L191">                                request.templateParams()));</span>
             }
             case &quot;PUSH&quot; -&gt; {
                 // In-app push is delivered through the inbox; nothing to transmit here.
             }
-<span class="fc" id="L180">            default -&gt; throw new IllegalArgumentException(&quot;Unsupported channel &quot; + channel + &quot;; use EMAIL or PUSH&quot;);</span>
+<span class="fc" id="L196">            default -&gt; throw new IllegalArgumentException(&quot;Unsupported channel &quot; + channel + &quot;; use EMAIL or PUSH&quot;);</span>
         }
-<span class="fc" id="L182">    }</span>
+<span class="fc" id="L198">    }</span>
 
     private static String trackingNumberOf(DispatchNotificationRequest request) {
-<span class="pc bpc" id="L185" title="1 of 2 branches missed.">        if (request.templateParams() != null) {</span>
-<span class="fc" id="L186">            String fromParams = request.templateParams().get(&quot;trackingNumber&quot;);</span>
-<span class="pc bpc" id="L187" title="3 of 4 branches missed.">            if (fromParams != null &amp;&amp; !fromParams.isBlank()) {</span>
-<span class="nc" id="L188">                return fromParams.trim();</span>
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">        if (request.templateParams() != null) {</span>
+<span class="fc" id="L202">            String fromParams = request.templateParams().get(&quot;trackingNumber&quot;);</span>
+<span class="pc bpc" id="L203" title="1 of 4 branches missed.">            if (fromParams != null &amp;&amp; !fromParams.isBlank()) {</span>
+<span class="fc" id="L204">                return fromParams.trim();</span>
             }
         }
-<span class="fc" id="L191">        return request.referenceId();</span>
+<span class="fc" id="L207">        return request.referenceId();</span>
     }
 
     private NotificationDispatchLogResponse mapToResponse(NotificationDispatchLog entity) {
-<span class="fc" id="L195">        return new NotificationDispatchLogResponse(</span>
-<span class="fc" id="L196">                entity.getLogId(),</span>
-<span class="fc" id="L197">                entity.getRecipientId(),</span>
-<span class="fc" id="L198">                entity.getChannel(),</span>
-<span class="fc" id="L199">                entity.getTemplateCode(),</span>
-<span class="fc" id="L200">                entity.getDestination(),</span>
-<span class="fc" id="L201">                entity.getSubject(),</span>
-<span class="fc" id="L202">                entity.getContent(),</span>
-<span class="fc" id="L203">                entity.getStatus(),</span>
-<span class="fc" id="L204">                entity.getFailureReason(),</span>
-<span class="fc" id="L205">                entity.getSentAt(),</span>
-<span class="fc" id="L206">                entity.getReferenceId(),</span>
-<span class="fc" id="L207">                entity.getCreatedAt()</span>
+<span class="fc" id="L211">        return new NotificationDispatchLogResponse(</span>
+<span class="fc" id="L212">                entity.getLogId(),</span>
+<span class="fc" id="L213">                entity.getRecipientId(),</span>
+<span class="fc" id="L214">                entity.getChannel(),</span>
+<span class="fc" id="L215">                entity.getTemplateCode(),</span>
+<span class="fc" id="L216">                entity.getDestination(),</span>
+<span class="fc" id="L217">                entity.getSubject(),</span>
+<span class="fc" id="L218">                entity.getContent(),</span>
+<span class="fc" id="L219">                entity.getStatus(),</span>
+<span class="fc" id="L220">                entity.getFailureReason(),</span>
+<span class="fc" id="L221">                entity.getSentAt(),</span>
+<span class="fc" id="L222">                entity.getReferenceId(),</span>
+<span class="fc" id="L223">                entity.getCreatedAt()</span>
         );
     }
 }

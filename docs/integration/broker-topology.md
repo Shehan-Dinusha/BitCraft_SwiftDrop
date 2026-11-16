@@ -16,7 +16,8 @@
 |---|---|---|---|---|
 | `order.events.queue` | customer-order-service | ✅ | `dlq.order.events` | 24 h |
 | `dlq.order.events.queue` | customer-order-service | ✅ | — | 7 d |
-| `customer-order.fee-revision.queue` | customer-order-service | ✅ | — | — |
+| `customer-order.fee-revision.queue` | customer-order-service | ✅ (see note) | — | — |
+| `customer-order.status-sync.queue` | customer-order-service | ✅ | `dlq.order.events` | 24 h |
 | `dispatch.events.queue` | dispatch-assignment-service | ✅ | `dlq.dispatch.events` | 24 h |
 | `dispatch.order-created.queue` | dispatch-assignment-service | ✅ | `dlq.dispatch.events` | 24 h |
 | `dispatch.order-cancelled.queue` | dispatch-assignment-service | ✅ | `dlq.dispatch.events` | 24 h |
@@ -55,8 +56,10 @@
 | `parcel.status.changed.#` | `swiftdrop.gateway.tracking.queue` | api-gateway |
 | `parcel.fee.revised` | `swiftdrop.gateway.fee.queue` | api-gateway |
 | `parcel.fee.revised` | `customer-order.fee-revision.queue` | customer-order-service |
+| `parcel.status.changed.#` | `customer-order.status-sync.queue` | customer-order-service |
 | `parcel.status.changed.#` | `analytics.events.queue` | analytics-ai-service |
 | `dispatch.#` | `analytics.events.queue` | analytics-ai-service |
+| `order.created` | `analytics.events.queue` | analytics-ai-service |
 | `auth.#` | `swiftdrop.auth.events` | auth-iam-service |
 | `merchant.approved` | `iam.merchant-approved.queue` | auth-iam-service |
 
@@ -83,9 +86,38 @@
 | `DISPATCH_COURIER_ASSIGNED` | `dispatch.courier.assigned` | dispatch-assignment-service |
 | `DISPATCH_FAILED` | `dispatch.failed` | dispatch-assignment-service |
 | `MERCHANT_APPROVED` | `merchant.approved` | merchant-b2b-service |
+| `AUTH_OTP_REQUESTED` | `notification.auth.otp` | auth-iam-service (consumed by notification-service through `notification.#`) |
 
 ## Policy
 
 | Name | Pattern | Apply To | delivery-limit |
 |---|---|---|---|
 | `ha-quorum-queues` | `.*` | `quorum_queues` | 5 |
+
+## Known parity issue: `customer-order.fee-revision.queue`
+
+`definitions.json` declares this queue as a **quorum** queue, but `customer-order-service`
+declares it as a plain classic queue (`new Queue(FEE_REVISION_QUEUE, true)`). On a broker started
+from `definitions.json`, RabbitMQ rejects the service's declaration:
+
+```text
+inequivalent arg 'x-queue-type' for queue 'customer-order.fee-revision.queue' in vhost '/':
+received none but current is the value 'quorum'
+```
+
+Verified on 2026-11-16 against `rabbitmq:3.13-management-alpine` loaded with `definitions.json`.
+Spring declares a service's queues in order on one channel, so this failure can also skip the
+declarations that follow it. The fee-revision listener still works because the queue exists.
+
+Recommended fix, owned by customer-order-service (Member 3), in its `RabbitMQConfig.java`:
+
+```java
+@Bean
+public Queue feeRevisionQueue() {
+    return QueueBuilder.durable(FEE_REVISION_QUEUE).quorum().build();
+}
+```
+
+Brokers that already hold a classic `customer-order.fee-revision.queue` (for example an AKS broker
+where the service created it) must delete that queue once when this change is deployed; the
+service then recreates it as quorum.

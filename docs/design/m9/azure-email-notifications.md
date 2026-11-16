@@ -6,7 +6,7 @@ phone number that the student subscription cannot get. In-app push (the notifica
 is unchanged. The default provider is still `mock`, so development, tests and CI never send
 real email.
 
-Status on 2026-11-14: implemented, unit/integration tested (99 tests pass), and verified live.
+Status: implemented and verified live on 2026-11-14. Current test results are in [docs/test-reports/m9](../../test-reports/m9/README.md).
 A real order created through the gateway delivered an order-confirmation email to a real inbox.
 
 ## 1. What changed
@@ -20,7 +20,8 @@ A real order created through the gateway delivered an order-confirmation email t
 | SMS removed | Removed from triggers, dispatcher, preferences (`smsEnabled`, `phoneNumber`), contact lookup, API spec and frontend. `POST /logs/dispatch` rejects `SMS` with 400. Migration `V5__remove_sms_channel.sql` drops the two preference columns and moves the seeded templates to EMAIL; old dispatch-log rows keep `SMS` as history |
 | In-app inbox | One inbox row per recipient per event |
 | Email design | `EmailHtmlRenderer` sends a branded HTML email (SwiftDrop header, coloured status badge, tracking-number box, **Track your parcel** button, footer) plus a plain-text copy. Table layout with inline styles and no images, so Gmail and Outlook render it; all text is HTML-escaped. The button links to `PUBLIC_TRACKING_BASE_URL/track/<number>` (use `http://localhost:5173` for a local demo) |
-| Frontend | The customer preferences card shows Email and Browser Push only; **Send Test Email** sends a real test email to the address on the card |
+| Frontend | The customer preferences card shows Email and Browser Push only; **Send Test Email** sends a real test email to the caller's saved notification email (or account email) |
+| Access rules (2026-11-16) | Preferences and logs are scoped to the caller; DISPATCHER/SYSTEM_ADMIN can view all logs. `POST /logs/dispatch` lets non-staff send only a test to themselves at their own address, and nobody can send OTP templates through it. One-time codes go only to the registered IAM address |
 | Configuration | `NOTIFICATION_EMAIL_PROVIDER`, `ACS_EMAIL_ENDPOINT`, `ACS_EMAIL_ACCESS_KEY`, `ACS_EMAIL_SENDER_ADDRESS` added to `application.yml`, `.env.example`, `docker-compose.yml` and Helm (`values.yaml`; the key is an optional Secret `notification-acs-email`) |
 
 ### Privacy and safety
@@ -120,7 +121,7 @@ docker exec swiftdrop-notify-postgres psql -U swiftdrop -d swiftdrop_notify -c `
 Expect exactly one row: `EMAIL | PARCEL_CREATED | SENT`.
 
 **Faster alternative to steps 2–3:** sign in as the customer, open the notification
-preferences card, check the **Notification Email** field, and click **Send Test Email**. The
+preferences card, check and save the **Notification Email** field, and click **Send Test Email**. The
 audit table on the same card shows the new `EMAIL | SENT` row, and an "Out for Delivery" test
 email arrives at that address.
 
@@ -142,7 +143,7 @@ Invoke-RestMethod http://localhost:8080/api/v1/notifications/me -Headers @{ Auth
 | Check | Result |
 |---|---|
 | Direct ACS send test (REST + HMAC, same scheme as the Java sender) | HTTP 202, operation status Succeeded |
-| `mvn -f backend/pom.xml -pl notification-service -am verify` | BUILD SUCCESS, 99 tests, including `BrokerNotificationIT` (Testcontainers, applies V1–V5) |
+| `mvn -f backend/pom.xml -pl notification-service -am verify` | BUILD SUCCESS, 99 unit tests. Correction: the `*IT` integration tests did not run in this build (Failsafe was not enabled); they run since 2026-11-16, see the test report |
 | Startup with `NOTIFICATION_EMAIL_PROVIDER=azure` | `Email provider: azure (...)` |
 | Order `SD-QE82-BQC3` booked through the gateway | EMAIL `SENT` to the customer's IAM address; Azure accepted it |
 | Order `SD-FBHQ-PCB4` | EMAIL `SENT`, operation id logged |
@@ -150,7 +151,7 @@ Invoke-RestMethod http://localhost:8080/api/v1/notifications/me -Headers @{ Auth
 | Log scan for the full recipient address | Not present; only `n***@uom.lk` |
 | After SMS removal: V5 migration on the running database | Applied; `sms_enabled`/`phone_number` dropped; all 5 templates `EMAIL` |
 | After SMS removal: order `SD-LYWN-GQZ3` for a Gmail customer | One row, `EMAIL SENT` (no SMS row); Azure operation status `Succeeded` |
-| HTML email: order `SD-3M46-66WQ` for the same Gmail customer | `EMAIL SENT`; Azure operation status `Succeeded`; 99 tests pass |
+| HTML email: order `SD-3M46-66WQ` for the same Gmail customer | `EMAIL SENT`; Azure operation status `Succeeded` |
 
 Picked up, out for delivery, delivered and failed use the same email path. They were covered
 by tests, not run live, because the delivery-execution service was not part of this demo.

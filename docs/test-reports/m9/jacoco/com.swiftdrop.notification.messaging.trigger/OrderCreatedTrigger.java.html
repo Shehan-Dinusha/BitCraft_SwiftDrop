@@ -16,51 +16,51 @@ import java.util.UUID;
  * Routing key: {@code order.created}
  * Template: {@code PARCEL_CREATED}
  */
-<span class="nc" id="L19">@Slf4j</span>
+<span class="fc" id="L19">@Slf4j</span>
 @Component
-<span class="nc" id="L21">public class OrderCreatedTrigger implements NotificationTrigger {</span>
+<span class="fc" id="L21">public class OrderCreatedTrigger implements NotificationTrigger {</span>
 
     public static final String ROUTING_KEY = &quot;order.created&quot;;
-<span class="nc" id="L24">    public static final String TEMPLATE_CODE = &quot;PARCEL_CREATED&quot;;</span>
+    public static final String TEMPLATE_CODE = &quot;PARCEL_CREATED&quot;;
 
     @Override
     public boolean matches(EventEnvelope envelope) {
-<span class="nc bnc" id="L28" title="All 4 branches missed.">        if (envelope == null || envelope.routingKey() == null) {</span>
+<span class="pc bpc" id="L28" title="2 of 4 branches missed.">        if (envelope == null || envelope.routingKey() == null) {</span>
 <span class="nc" id="L29">            return false;</span>
         }
-<span class="nc" id="L31">        return ROUTING_KEY.equalsIgnoreCase(envelope.routingKey());</span>
+<span class="fc" id="L31">        return ROUTING_KEY.equalsIgnoreCase(envelope.routingKey());</span>
     }
 
     @Override
     public List&lt;DispatchNotificationRequest&gt; build(EventEnvelope envelope) {
-<span class="nc" id="L36">        Optional&lt;UUID&gt; recipientIdOpt = envelope.extractRecipientId();</span>
-<span class="nc bnc" id="L37" title="All 2 branches missed.">        if (recipientIdOpt.isEmpty()) {</span>
+<span class="fc" id="L36">        Optional&lt;UUID&gt; recipientIdOpt = envelope.extractRecipientId();</span>
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        if (recipientIdOpt.isEmpty()) {</span>
 <span class="nc" id="L38">            log.debug(&quot;No customer/recipient ID found in order.created event. Skipping notification.&quot;);</span>
 <span class="nc" id="L39">            return List.of();</span>
         }
 
-<span class="nc" id="L42">        String trackingNumber = envelope.extractTrackingNumber();</span>
-<span class="nc" id="L43">        JsonNode payload = envelope.payload();</span>
+<span class="fc" id="L42">        String trackingNumber = envelope.extractTrackingNumber();</span>
+<span class="fc" id="L43">        JsonNode payload = envelope.payload();</span>
 
-<span class="nc" id="L45">        Map&lt;String, String&gt; params = new HashMap&lt;&gt;();</span>
-<span class="nc" id="L46">        params.put(&quot;trackingNumber&quot;, trackingNumber);</span>
+<span class="fc" id="L45">        Map&lt;String, String&gt; params = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L46">        params.put(&quot;trackingNumber&quot;, trackingNumber);</span>
 
-<span class="nc bnc" id="L48" title="All 2 branches missed.">        if (payload != null) {</span>
-<span class="nc bnc" id="L49" title="All 2 branches missed.">            if (payload.hasNonNull(&quot;pickupDistrict&quot;)) {</span>
-<span class="nc" id="L50">                params.put(&quot;pickupDistrict&quot;, payload.get(&quot;pickupDistrict&quot;).asText());</span>
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">        if (payload != null) {</span>
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">            if (payload.hasNonNull(&quot;pickupDistrict&quot;)) {</span>
+<span class="fc" id="L50">                params.put(&quot;pickupDistrict&quot;, payload.get(&quot;pickupDistrict&quot;).asText());</span>
             }
-<span class="nc bnc" id="L52" title="All 2 branches missed.">            if (payload.hasNonNull(&quot;deliveryDistrict&quot;)) {</span>
-<span class="nc" id="L53">                params.put(&quot;deliveryDistrict&quot;, payload.get(&quot;deliveryDistrict&quot;).asText());</span>
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">            if (payload.hasNonNull(&quot;deliveryDistrict&quot;)) {</span>
+<span class="fc" id="L53">                params.put(&quot;deliveryDistrict&quot;, payload.get(&quot;deliveryDistrict&quot;).asText());</span>
             }
-<span class="nc bnc" id="L55" title="All 2 branches missed.">            if (payload.hasNonNull(&quot;speed&quot;)) {</span>
-<span class="nc" id="L56">                params.put(&quot;speed&quot;, payload.get(&quot;speed&quot;).asText());</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">            if (payload.hasNonNull(&quot;speed&quot;)) {</span>
+<span class="fc" id="L56">                params.put(&quot;speed&quot;, payload.get(&quot;speed&quot;).asText());</span>
             }
-<span class="nc bnc" id="L58" title="All 2 branches missed.">            if (payload.hasNonNull(&quot;orderId&quot;)) {</span>
-<span class="nc" id="L59">                params.put(&quot;orderId&quot;, payload.get(&quot;orderId&quot;).asText());</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">            if (payload.hasNonNull(&quot;orderId&quot;)) {</span>
+<span class="fc" id="L59">                params.put(&quot;orderId&quot;, payload.get(&quot;orderId&quot;).asText());</span>
             }
         }
 
-<span class="nc" id="L63">        return NotificationTrigger.email(recipientIdOpt.get(), TEMPLATE_CODE, params, trackingNumber);</span>
+<span class="fc" id="L63">        return NotificationTrigger.email(recipientIdOpt.get(), TEMPLATE_CODE, params, trackingNumber);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

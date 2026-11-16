@@ -52,8 +52,8 @@ public class AzureCommunicationEmailSender implements EmailSender {
 <span class="fc" id="L52">                Clock.systemUTC(), Duration.ofSeconds(10));</span>
 <span class="fc" id="L53">    }</span>
 
-<span class="fc" id="L55">    AzureCommunicationEmailSender(String endpoint, String base64AccessKey, String senderAddress,</span>
-                                  ObjectMapper objectMapper, HttpClient httpClient, Clock clock, Duration timeout) {
+    AzureCommunicationEmailSender(String endpoint, String base64AccessKey, String senderAddress,
+<span class="fc" id="L56">                                  ObjectMapper objectMapper, HttpClient httpClient, Clock clock, Duration timeout) {</span>
 <span class="fc" id="L57">        URI base = URI.create(endpoint.replaceAll(&quot;/+$&quot;, &quot;&quot;));</span>
 <span class="fc" id="L58">        this.sendUri = URI.create(base + SEND_PATH);</span>
 <span class="fc bfc" id="L59" title="All 2 branches covered.">        this.signedHost = base.getPort() == -1 ? base.getHost() : base.getHost() + &quot;:&quot; + base.getPort();</span>
@@ -89,7 +89,7 @@ public class AzureCommunicationEmailSender implements EmailSender {
 <span class="nc" id="L89">        } catch (InterruptedException e) {</span>
 <span class="nc" id="L90">            Thread.currentThread().interrupt();</span>
 <span class="nc" id="L91">            throw new EmailDeliveryException(&quot;Azure email request interrupted&quot;);</span>
-        }
+<span class="fc" id="L92">        }</span>
 
 <span class="fc bfc" id="L94" title="All 2 branches covered.">        if (response.statusCode() != 202) {</span>
 <span class="fc" id="L95">            throw new EmailDeliveryException(&quot;Azure email rejected the message (HTTP &quot; + response.statusCode() + &quot;)&quot;);</span>
@@ -119,8 +119,8 @@ public class AzureCommunicationEmailSender implements EmailSender {
 <span class="fc" id="L119">            content.put(&quot;html&quot;, htmlBody);</span>
         }
 <span class="fc" id="L121">        Map&lt;String, Object&gt; payload = Map.of(</span>
-<span class="fc" id="L122">                &quot;senderAddress&quot;, senderAddress,</span>
-<span class="fc" id="L123">                &quot;content&quot;, content,</span>
+                &quot;senderAddress&quot;, senderAddress,
+                &quot;content&quot;, content,
 <span class="fc" id="L124">                &quot;recipients&quot;, Map.of(&quot;to&quot;, List.of(Map.of(&quot;address&quot;, to))));</span>
         try {
 <span class="fc" id="L126">            return objectMapper.writeValueAsBytes(payload);</span>

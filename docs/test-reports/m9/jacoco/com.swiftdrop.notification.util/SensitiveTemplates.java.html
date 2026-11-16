@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SensitiveTemplates.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.util</a> &gt; <span class="el_source">SensitiveTemplates.java</span></div><h1>SensitiveTemplates.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.util;
+
+import java.util.Set;
+
+/**
+ * Templates that carry a secret (a one-time code). For these the pipeline must:
+ * &lt;ul&gt;
+ *   &lt;li&gt;send even when the user switched email notifications off (security mail is not optional),&lt;/li&gt;
+ *   &lt;li&gt;store only {@link #REDACTED_CONTENT} in the dispatch audit log, never the rendered body,&lt;/li&gt;
+ *   &lt;li&gt;never copy the message into the user's in-app inbox.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+public final class SensitiveTemplates {
+
+    public static final String EMAIL_VERIFICATION = &quot;EMAIL_VERIFICATION&quot;;
+    public static final String PASSWORD_RESET = &quot;PASSWORD_RESET&quot;;
+
+    /** What is stored in {@code notification_dispatch_logs.content} instead of the real body. */
+    public static final String REDACTED_CONTENT = &quot;[redacted: contains a one-time security code]&quot;;
+
+<span class="fc" id="L21">    private static final Set&lt;String&gt; CODES = Set.of(EMAIL_VERIFICATION, PASSWORD_RESET);</span>
+
+    private SensitiveTemplates() {
+    }
+
+    public static boolean isSensitive(String templateCode) {
+<span class="pc bpc" id="L27" title="1 of 4 branches missed.">        return templateCode != null &amp;&amp; CODES.contains(templateCode.trim().toUpperCase());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,8 +1,10 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmailHtmlRenderer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.service.email</a> &gt; <span class="el_source">EmailHtmlRenderer.java</span></div><h1>EmailHtmlRenderer.java</h1><pre class="source lang-java linenums"><span class="fc" id="L1">package com.swiftdrop.notification.service.email;</span>
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmailHtmlRenderer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.service.email</a> &gt; <span class="el_source">EmailHtmlRenderer.java</span></div><h1>EmailHtmlRenderer.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.service.email;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
+
+import com.swiftdrop.notification.util.SensitiveTemplates;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -20,55 +22,91 @@ import java.util.regex.Pattern;
 @Component
 public class EmailHtmlRenderer {
 
-<span class="fc" id="L23">    private static final Pattern SAFE_TRACKING_NUMBER = Pattern.compile(&quot;[A-Za-z0-9-]{4,40}&quot;);</span>
+<span class="fc" id="L25">    private static final Pattern SAFE_TRACKING_NUMBER = Pattern.compile(&quot;[A-Za-z0-9-]{4,40}&quot;);</span>
 
     /** Badge label, headline and colours (background, foreground, border) per template. */
-    record StatusStyle(String badge, String headline, String bg, String fg, String border) {}
+<span class="fc" id="L28">    record StatusStyle(String badge, String headline, String bg, String fg, String border) {}</span>
 
-<span class="fc" id="L28">    private static final StatusStyle DEFAULT_STYLE =</span>
-<span class="fc" id="L29">            new StatusStyle(&quot;Update&quot;, &quot;There is an update on your parcel&quot;, &quot;#f1f5f9&quot;, &quot;#334155&quot;, &quot;#cbd5e1&quot;);</span>
+<span class="fc" id="L30">    private static final StatusStyle DEFAULT_STYLE =</span>
+            new StatusStyle(&quot;Update&quot;, &quot;There is an update on your parcel&quot;, &quot;#f1f5f9&quot;, &quot;#334155&quot;, &quot;#cbd5e1&quot;);
 
-<span class="fc" id="L31">    private static final Map&lt;String, StatusStyle&gt; STYLES = Map.of(</span>
-<span class="fc" id="L32">            &quot;PARCEL_CREATED&quot;, new StatusStyle(&quot;Order confirmed&quot;, &quot;Your order is confirmed&quot;, &quot;#eef2ff&quot;, &quot;#3730a3&quot;, &quot;#c7d2fe&quot;),</span>
-<span class="fc" id="L33">            &quot;PARCEL_PICKED_UP&quot;, new StatusStyle(&quot;Picked up&quot;, &quot;Your parcel has been picked up&quot;, &quot;#e0f2fe&quot;, &quot;#075985&quot;, &quot;#bae6fd&quot;),</span>
-<span class="fc" id="L34">            &quot;PARCEL_OUT_FOR_DELIVERY&quot;, new StatusStyle(&quot;Out for delivery&quot;, &quot;Your parcel is out for delivery&quot;, &quot;#f3e8ff&quot;, &quot;#5b21b6&quot;, &quot;#e9d5ff&quot;),</span>
-<span class="fc" id="L35">            &quot;PARCEL_DELIVERED&quot;, new StatusStyle(&quot;Delivered&quot;, &quot;Your parcel has been delivered&quot;, &quot;#d1fae5&quot;, &quot;#065f46&quot;, &quot;#a7f3d0&quot;),</span>
-<span class="fc" id="L36">            &quot;PARCEL_FAILED&quot;, new StatusStyle(&quot;Delivery attempt failed&quot;, &quot;We could not deliver your parcel&quot;, &quot;#fee2e2&quot;, &quot;#991b1b&quot;, &quot;#fecaca&quot;));</span>
+<span class="fc" id="L33">    private static final Map&lt;String, StatusStyle&gt; STYLES = Map.of(</span>
+            &quot;PARCEL_CREATED&quot;, new StatusStyle(&quot;Order confirmed&quot;, &quot;Your order is confirmed&quot;, &quot;#eef2ff&quot;, &quot;#3730a3&quot;, &quot;#c7d2fe&quot;),
+            &quot;PARCEL_PICKED_UP&quot;, new StatusStyle(&quot;Picked up&quot;, &quot;Your parcel has been picked up&quot;, &quot;#e0f2fe&quot;, &quot;#075985&quot;, &quot;#bae6fd&quot;),
+            &quot;PARCEL_OUT_FOR_DELIVERY&quot;, new StatusStyle(&quot;Out for delivery&quot;, &quot;Your parcel is out for delivery&quot;, &quot;#f3e8ff&quot;, &quot;#5b21b6&quot;, &quot;#e9d5ff&quot;),
+            &quot;PARCEL_DELIVERED&quot;, new StatusStyle(&quot;Delivered&quot;, &quot;Your parcel has been delivered&quot;, &quot;#d1fae5&quot;, &quot;#065f46&quot;, &quot;#a7f3d0&quot;),
+            &quot;PARCEL_FAILED&quot;, new StatusStyle(&quot;Delivery attempt failed&quot;, &quot;We could not deliver your parcel&quot;, &quot;#fee2e2&quot;, &quot;#991b1b&quot;, &quot;#fecaca&quot;),
+            SensitiveTemplates.EMAIL_VERIFICATION, new StatusStyle(&quot;Verify your email&quot;, &quot;Confirm your email address&quot;, &quot;#eef2ff&quot;, &quot;#3730a3&quot;, &quot;#c7d2fe&quot;),
+            SensitiveTemplates.PASSWORD_RESET, new StatusStyle(&quot;Password reset&quot;, &quot;Reset your password&quot;, &quot;#fef3c7&quot;, &quot;#92400e&quot;, &quot;#fde68a&quot;));
+
+<span class="fc" id="L42">    private static final Pattern SAFE_CODE = Pattern.compile(&quot;[0-9]{4,10}&quot;);</span>
+<span class="fc" id="L43">    private static final Pattern SAFE_MINUTES = Pattern.compile(&quot;[0-9]{1,3}&quot;);</span>
+
+    private static final String PARCEL_FOOTER = &quot;You are receiving this email because you have a parcel with SwiftDrop. &quot;
+            + &quot;You can change email notifications in your SwiftDrop notification preferences.&quot;;
+    private static final String ACCOUNT_FOOTER = &quot;You are receiving this email because a request was made with this address on SwiftDrop. &quot;
+            + &quot;If this was not you, you can safely ignore this message. Never share this code with anyone.&quot;;
 
     private final String trackingUrlPrefix;
 
-<span class="fc" id="L40">    public EmailHtmlRenderer(@Value(&quot;${swiftdrop.public-tracking-base-url:https://swiftdrop.lk}&quot;) String publicTrackingBaseUrl) {</span>
-<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        String base = publicTrackingBaseUrl == null ? &quot;&quot; : publicTrackingBaseUrl.trim().replaceAll(&quot;/+$&quot;, &quot;&quot;);</span>
-<span class="fc bfc" id="L42" title="All 2 branches covered.">        this.trackingUrlPrefix = base.matches(&quot;(?i)https?://\\S+&quot;) ? base + &quot;/track/&quot; : null;</span>
-<span class="fc" id="L43">    }</span>
+<span class="fc" id="L52">    public EmailHtmlRenderer(@Value(&quot;${swiftdrop.public-tracking-base-url:https://swiftdrop.lk}&quot;) String publicTrackingBaseUrl) {</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        String base = publicTrackingBaseUrl == null ? &quot;&quot; : publicTrackingBaseUrl.trim().replaceAll(&quot;/+$&quot;, &quot;&quot;);</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        this.trackingUrlPrefix = base.matches(&quot;(?i)https?://\\S+&quot;) ? base + &quot;/track/&quot; : null;</span>
+<span class="fc" id="L55">    }</span>
 
     /** Public tracking link for the parcel, or {@code null} when it cannot be built safely. */
     public String trackingUrl(String trackingNumber) {
-<span class="fc bfc" id="L47" title="All 6 branches covered.">        if (trackingUrlPrefix == null || trackingNumber == null || !SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches()) {</span>
-<span class="fc" id="L48">            return null;</span>
+<span class="fc bfc" id="L59" title="All 6 branches covered.">        if (trackingUrlPrefix == null || trackingNumber == null || !SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches()) {</span>
+<span class="fc" id="L60">            return null;</span>
         }
-<span class="fc" id="L50">        return trackingUrlPrefix + URLEncoder.encode(trackingNumber, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L62">        return trackingUrlPrefix + URLEncoder.encode(trackingNumber, StandardCharsets.UTF_8);</span>
     }
 
     /** Plain-text alternative: the message, the tracking link and the automated-message notice. */
     public String renderText(String body, String trackingNumber) {
-<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        StringBuilder text = new StringBuilder(body == null ? &quot;&quot; : body.trim());</span>
-<span class="fc" id="L56">        String url = trackingUrl(trackingNumber);</span>
-<span class="pc bpc" id="L57" title="1 of 2 branches missed.">        if (url != null) {</span>
-<span class="fc" id="L58">            text.append(&quot;\n\nTrack your parcel: &quot;).append(url);</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">        StringBuilder text = new StringBuilder(body == null ? &quot;&quot; : body.trim());</span>
+<span class="fc" id="L68">        String url = trackingUrl(trackingNumber);</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        if (url != null) {</span>
+<span class="fc" id="L70">            text.append(&quot;\n\nTrack your parcel: &quot;).append(url);</span>
         }
-<span class="fc" id="L60">        text.append(&quot;\n\n--\nSwiftDrop. This is an automated message; please do not reply.&quot;);</span>
-<span class="fc" id="L61">        return text.toString();</span>
+<span class="fc" id="L72">        text.append(&quot;\n\n--\nSwiftDrop. This is an automated message; please do not reply.&quot;);</span>
+<span class="fc" id="L73">        return text.toString();</span>
     }
 
     public String renderHtml(String templateCode, String subject, String body, String trackingNumber) {
-<span class="pc bpc" id="L65" title="1 of 2 branches missed.">        StatusStyle style = STYLES.getOrDefault(templateCode == null ? &quot;&quot; : templateCode, DEFAULT_STYLE);</span>
-<span class="pc bpc" id="L66" title="2 of 4 branches missed.">        String safeSubject = esc(subject == null || subject.isBlank() ? &quot;SwiftDrop notification&quot; : subject);</span>
-<span class="pc bpc" id="L67" title="1 of 2 branches missed.">        String safeBody = esc(body == null ? &quot;&quot; : body.trim()).replace(&quot;\n&quot;, &quot;&lt;br&gt;&quot;);</span>
-<span class="fc" id="L68">        String url = trackingUrl(trackingNumber);</span>
-<span class="fc bfc" id="L69" title="All 4 branches covered.">        boolean showTracking = trackingNumber != null &amp;&amp; SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches();</span>
+<span class="fc" id="L77">        return renderHtml(templateCode, subject, body, trackingNumber, Map.of());</span>
+    }
 
-<span class="fc bfc" id="L71" title="All 2 branches covered.">        String trackingBlock = !showTracking ? &quot;&quot; : &quot;&quot;&quot;</span>
+    /**
+     * Same as the four-argument form, and for one-time-code templates also renders the code in a large
+     * box (taken from {@code params}) instead of the parcel tracking block and button.
+     */
+    public String renderHtml(String templateCode, String subject, String body, String trackingNumber,
+                             Map&lt;String, String&gt; params) {
+<span class="pc bpc" id="L86" title="1 of 2 branches missed.">        StatusStyle style = STYLES.getOrDefault(templateCode == null ? &quot;&quot; : templateCode, DEFAULT_STYLE);</span>
+<span class="pc bpc" id="L87" title="2 of 4 branches missed.">        String safeSubject = esc(subject == null || subject.isBlank() ? &quot;SwiftDrop notification&quot; : subject);</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">        String safeBody = esc(body == null ? &quot;&quot; : body.trim()).replace(&quot;\n&quot;, &quot;&lt;br&gt;&quot;);</span>
+<span class="fc" id="L89">        boolean otp = SensitiveTemplates.isSensitive(templateCode);</span>
+<span class="fc bfc" id="L90" title="All 2 branches covered.">        String url = otp ? null : trackingUrl(trackingNumber);</span>
+<span class="fc bfc" id="L91" title="All 6 branches covered.">        boolean showTracking = !otp &amp;&amp; trackingNumber != null &amp;&amp; SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches();</span>
+
+<span class="pc bpc" id="L93" title="1 of 4 branches missed.">        String code = otp &amp;&amp; params != null ? params.get(&quot;code&quot;) : null;</span>
+<span class="pc bpc" id="L94" title="1 of 4 branches missed.">        String minutes = otp &amp;&amp; params != null ? params.get(&quot;expiresInMinutes&quot;) : null;</span>
+<span class="fc bfc" id="L95" title="All 4 branches covered.">        String codeBlock = code == null || !SAFE_CODE.matcher(code).matches() ? &quot;&quot; : &quot;&quot;&quot;</span>
+                &lt;tr&gt;&lt;td style=&quot;padding:0 40px 8px 40px;&quot;&gt;
+                  &lt;table role=&quot;presentation&quot; width=&quot;100%%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;&quot;&gt;
+                    &lt;tr&gt;&lt;td align=&quot;center&quot; style=&quot;padding:20px;&quot;&gt;
+                      &lt;div style=&quot;font-size:12px;line-height:16px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;&quot;&gt;Your code&lt;/div&gt;
+                      &lt;div style=&quot;font-family:Consolas,'Courier New',monospace;font-size:34px;line-height:44px;color:#0f172a;font-weight:800;letter-spacing:0.35em;padding-top:6px;&quot;&gt;%s&lt;/div&gt;
+                      %s
+                    &lt;/td&gt;&lt;/tr&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;&lt;/tr&gt;
+<span class="pc bpc" id="L105" title="2 of 4 branches missed.">                &quot;&quot;&quot;.formatted(esc(code), minutes != null &amp;&amp; SAFE_MINUTES.matcher(minutes).matches()</span>
+<span class="fc" id="L106">                ? &quot;&lt;div style=\&quot;font-size:13px;line-height:18px;color:#64748b;padding-top:6px;\&quot;&gt;Expires in &quot; + esc(minutes) + &quot; minutes&lt;/div&gt;&quot;</span>
+<span class="pc" id="L107">                : &quot;&quot;);</span>
+
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        String trackingBlock = !showTracking ? &quot;&quot; : &quot;&quot;&quot;</span>
                 &lt;tr&gt;&lt;td style=&quot;padding:0 40px 8px 40px;&quot;&gt;
                   &lt;table role=&quot;presentation&quot; width=&quot;100%%&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot; style=&quot;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;&quot;&gt;
                     &lt;tr&gt;&lt;td style=&quot;padding:16px 20px;&quot;&gt;
@@ -77,9 +115,9 @@ public class EmailHtmlRenderer {
                     &lt;/td&gt;&lt;/tr&gt;
                   &lt;/table&gt;
                 &lt;/td&gt;&lt;/tr&gt;
-<span class="fc" id="L80">                &quot;&quot;&quot;.formatted(esc(trackingNumber));</span>
+<span class="fc" id="L118">                &quot;&quot;&quot;.formatted(esc(trackingNumber));</span>
 
-<span class="fc bfc" id="L82" title="All 2 branches covered.">        String buttonBlock = url == null ? &quot;&quot; : &quot;&quot;&quot;</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">        String buttonBlock = url == null ? &quot;&quot; : &quot;&quot;&quot;</span>
                 &lt;tr&gt;&lt;td style=&quot;padding:24px 40px 8px 40px;&quot;&gt;
                   &lt;table role=&quot;presentation&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot; border=&quot;0&quot;&gt;&lt;tr&gt;
                     &lt;td style=&quot;border-radius:8px;background:#2563eb;&quot;&gt;
@@ -87,9 +125,9 @@ public class EmailHtmlRenderer {
                     &lt;/td&gt;
                   &lt;/tr&gt;&lt;/table&gt;
                 &lt;/td&gt;&lt;/tr&gt;
-<span class="fc" id="L90">                &quot;&quot;&quot;.formatted(esc(url));</span>
+<span class="fc" id="L128">                &quot;&quot;&quot;.formatted(esc(url));</span>
 
-<span class="fc" id="L92">        return &quot;&quot;&quot;</span>
+<span class="fc" id="L130">        return &quot;&quot;&quot;</span>
                 &lt;!DOCTYPE html&gt;
                 &lt;html lang=&quot;en&quot;&gt;
                 &lt;head&gt;
@@ -112,11 +150,10 @@ public class EmailHtmlRenderer {
                       &lt;/td&gt;&lt;/tr&gt;
                       &lt;tr&gt;&lt;td style=&quot;padding:16px 40px 0 40px;font-size:24px;line-height:32px;font-weight:800;color:#0f172a;&quot;&gt;%7$s&lt;/td&gt;&lt;/tr&gt;
                       &lt;tr&gt;&lt;td style=&quot;padding:12px 40px 24px 40px;font-size:15px;line-height:24px;color:#334155;&quot;&gt;%2$s&lt;/td&gt;&lt;/tr&gt;
-                      %8$s%9$s
+                      %8$s%9$s%12$s
                       &lt;tr&gt;&lt;td style=&quot;padding:32px 40px 0 40px;&quot;&gt;&lt;div style=&quot;border-top:1px solid #e2e8f0;&quot;&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;
                       &lt;tr&gt;&lt;td style=&quot;padding:20px 40px 32px 40px;font-size:12px;line-height:18px;color:#64748b;&quot;&gt;
-                        You are receiving this email because you have a parcel with SwiftDrop. You can change
-                        email notifications in your SwiftDrop notification preferences.&lt;br&gt;&lt;br&gt;
+                        %11$s&lt;br&gt;&lt;br&gt;
                         This is an automated message. Please do not reply.&lt;br&gt;
                         &amp;copy; %10$s SwiftDrop &amp;middot; Sri Lanka
                       &lt;/td&gt;&lt;/tr&gt;
@@ -125,12 +162,13 @@ public class EmailHtmlRenderer {
                 &lt;/table&gt;
                 &lt;/body&gt;
                 &lt;/html&gt;
-<span class="fc" id="L128">                &quot;&quot;&quot;.formatted(safeSubject, safeBody, style.bg(), style.fg(), style.border(), esc(style.badge()),</span>
-<span class="fc" id="L129">                esc(style.headline()), trackingBlock, buttonBlock, Year.now().getValue());</span>
+<span class="fc" id="L165">                &quot;&quot;&quot;.formatted(safeSubject, safeBody, style.bg(), style.fg(), style.border(), esc(style.badge()),</span>
+<span class="fc" id="L166">                esc(style.headline()), trackingBlock, buttonBlock, Year.now().getValue(),</span>
+<span class="fc bfc" id="L167" title="All 2 branches covered.">                esc(otp ? ACCOUNT_FOOTER : PARCEL_FOOTER), codeBlock);</span>
     }
 
     private static String esc(String value) {
-<span class="fc" id="L133">        return HtmlUtils.htmlEscape(value, StandardCharsets.UTF_8.name());</span>
+<span class="fc" id="L171">        return HtmlUtils.htmlEscape(value, StandardCharsets.UTF_8.name());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
