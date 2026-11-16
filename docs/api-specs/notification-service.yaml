@@ -21,6 +21,7 @@ paths:
     get:
       tags: [Preference]
       summary: Get current authenticated user notification preferences
+      description: Returns the caller's own preferences. recipientId is honoured only for the caller, DISPATCHER or SYSTEM_ADMIN.
       parameters:
         - name: X-User-Id
           in: header
@@ -34,6 +35,10 @@ paths:
             type: string
             format: uuid
       responses:
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+        "403":
+          description: Caller is not allowed to access this recipient or operation
         "200":
           description: Notification preferences retrieved
           content:
@@ -44,6 +49,7 @@ paths:
     get:
       tags: [Preference]
       summary: Get notification preferences for a recipient
+      description: Only the recipient themselves, DISPATCHER or SYSTEM_ADMIN.
       parameters:
         - name: recipientId
           in: path
@@ -52,6 +58,10 @@ paths:
             type: string
             format: uuid
       responses:
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+        "403":
+          description: Caller is not allowed to access this recipient or operation
         "200":
           description: Notification preferences retrieved
           content:
@@ -61,6 +71,7 @@ paths:
     put:
       tags: [Preference]
       summary: Update notification preferences for a recipient
+      description: Only the recipient themselves or SYSTEM_ADMIN.
       parameters:
         - name: recipientId
           in: path
@@ -75,6 +86,10 @@ paths:
             schema:
               $ref: "#/components/schemas/UpdatePreferenceRequest"
       responses:
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+        "403":
+          description: Caller is not allowed to access this recipient or operation
         "200":
           description: Notification preferences updated successfully
           content:
@@ -96,6 +111,7 @@ paths:
     get:
       tags: [NotificationLog]
       summary: List notification dispatch audit logs
+      description: DISPATCHER/SYSTEM_ADMIN see every log (recipientId optional). Other roles see only their own logs.
       parameters:
         - name: recipientId
           in: query
@@ -119,6 +135,10 @@ paths:
           schema:
             type: string
       responses:
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+        "403":
+          description: Caller is not allowed to access this recipient or operation
         "200":
           description: Notification logs retrieved
           content:
@@ -129,6 +149,7 @@ paths:
     get:
       tags: [NotificationLog]
       summary: Get notification dispatch log detail by log UUID
+      description: Only the log's recipient, DISPATCHER or SYSTEM_ADMIN.
       parameters:
         - name: logId
           in: path
@@ -137,6 +158,10 @@ paths:
             type: string
             format: uuid
       responses:
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+        "403":
+          description: Caller is not allowed to access this recipient or operation
         "200":
           description: Log retrieved
           content:
@@ -147,6 +172,7 @@ paths:
     post:
       tags: [NotificationLog]
       summary: Ad-hoc or manual notification dispatch
+      description: DISPATCHER/SYSTEM_ADMIN may dispatch to any recipient. Other roles may only send a test to themselves; destination is ignored and their own address is used. One-time-code templates (EMAIL_VERIFICATION, PASSWORD_RESET) are rejected with 403.
       requestBody:
         required: true
         content:
@@ -154,6 +180,10 @@ paths:
             schema:
               $ref: "#/components/schemas/DispatchNotificationRequest"
       responses:
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+        "403":
+          description: Caller is not allowed to access this recipient or operation
         "201":
           description: Notification dispatched
           content:

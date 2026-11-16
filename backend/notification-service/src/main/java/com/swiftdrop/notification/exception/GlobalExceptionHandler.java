@@ -1,6 +1,7 @@
 package com.swiftdrop.notification.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.security.CallerContextException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,16 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /** Missing/invalid gateway identity headers -> 401; caller not allowed -> 403. */
+    @ExceptionHandler(CallerContextException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallerContext(CallerContextException ex, HttpServletRequest request) {
+        log.warn("Access denied on {}: {}", request.getRequestURI(), ex.getMessage());
+        int status = ex.statusCode();
+        String errorName = status == 403 ? "Forbidden" : "Unauthorized";
+        return ResponseEntity.status(status)
+                .body(ApiErrorResponse.of(status, errorName, ex.getMessage(), request.getRequestURI()));
+    }
 
     @ExceptionHandler(RecipientPreferenceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handlePreferenceNotFound(

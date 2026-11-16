@@ -103,7 +103,7 @@ export function NotificationPreferencesCard() {
         recipientId,
         channel: 'EMAIL',
         templateCode: 'PARCEL_OUT_FOR_DELIVERY',
-        destination: emailAddress,
+        // No destination: the server sends to your saved notification email (or your account email).
         templateParams: {
           trackingNumber: 'SD-TEST-' + Math.floor(1000 + Math.random() * 9000),
           courierName: 'SwiftDrop Express Courier',
@@ -154,6 +154,7 @@ export function NotificationPreferencesCard() {
           disabled={isDispatching}
           leftIcon={<Send className="size-3.5" />}
           className="self-start sm:self-auto"
+          title="Sends a sample email to your saved notification email, or your account email if none is saved"
         >
           {isDispatching ? 'Sending...' : 'Send Test Email'}
         </Button>

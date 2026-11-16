@@ -98,6 +98,48 @@ class OtpEmailDispatchTest {
     }
 
     @Test
+    @DisplayName("Sends the code only to the registered IAM address, never to a preference or requested address")
+    void sendsOnlyToTheRegisteredAddress() {
+        UUID recipient = UUID.randomUUID();
+        // An attacker who changed the victim's preference email, or asked for a custom destination,
+        // must not receive the victim's password-reset code.
+        when(preferenceRepository.findByRecipientId(recipient)).thenReturn(Optional.of(
+                RecipientPreference.builder().recipientId(recipient).emailEnabled(true)
+                        .emailAddress("attacker@example.com").build()));
+        when(templateRenderer.renderTemplate(eq("PASSWORD_RESET"), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("Reset your SwiftDrop password",
+                        "Your SwiftDrop password reset code is " + CODE + ".", "EMAIL"));
+        when(contactClient.lookupContact(recipient)).thenReturn(Optional.of(new RecipientContact("alice@example.com")));
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(recipient,
+                "EMAIL", "PASSWORD_RESET", "attacker2@example.com", Map.of("code", CODE, "expiresInMinutes", "10"), null));
+
+        assertThat(response.destination()).isEqualTo("alice@example.com");
+        verify(emailSender).send(eq("alice@example.com"), any(), any(), any());
+        verify(emailSender, never()).send(eq("attacker@example.com"), any(), any(), any());
+        verify(emailSender, never()).send(eq("attacker2@example.com"), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Without a registered IAM address the code is not sent anywhere")
+    void failsWithoutRegisteredAddress() {
+        UUID recipient = UUID.randomUUID();
+        when(preferenceRepository.findByRecipientId(recipient)).thenReturn(Optional.of(
+                RecipientPreference.builder().recipientId(recipient).emailAddress("attacker@example.com").build()));
+        when(templateRenderer.renderTemplate(eq("EMAIL_VERIFICATION"), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("Your SwiftDrop verification code",
+                        "Your SwiftDrop verification code is " + CODE + ".", "EMAIL"));
+        when(contactClient.lookupContact(recipient)).thenReturn(Optional.empty());
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(request(recipient));
+
+        assertThat(response.status()).isEqualTo("FAILED");
+        verify(emailSender, never()).send(any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("Stores a redacted body in the dispatch log, never the code")
     void redactsTheAuditLog() {
         UUID recipient = UUID.randomUUID();
