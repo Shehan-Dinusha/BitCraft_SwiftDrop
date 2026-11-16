@@ -32,7 +32,7 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 through Azure Communication Services (`NOTIFICATION_EMAIL_PROVIDER=azure`; default `mock`).
 Every trigger sends EMAIL; **SMS was removed** (Azure SMS needs a purchased number the student
 subscription cannot get), and in-app push is unchanged. See [Azure email notifications](../design/m9/azure-email-notifications.md) and the
-[test and coverage evidence](../test-reports/m9/README.md) (99 tests). The original checkboxes are kept below for reference.
+[test and coverage evidence](../test-reports/m9/README.md) (124 unit + 2 integration tests). A review on 2026-11-16 added caller access checks to the preference, log and dispatch APIs, enabled the integration tests in `mvn verify`, and brought `definitions.json` and the event schema document back in line with the code. The original checkboxes are kept below for reference.
 
 **Broker orchestration (you own this for the whole team):**
 

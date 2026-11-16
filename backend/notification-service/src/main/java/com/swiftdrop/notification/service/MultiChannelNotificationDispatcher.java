@@ -52,7 +52,11 @@ public class MultiChannelNotificationDispatcher {
         boolean isChannelEnabled = sensitive || isChannelEnabled(pref, channel);
 
         // Resolve destination
-        String destination = resolveDestination(request.destination(), pref, channel, request.recipientId());
+        // One-time codes go only to the account's registered (IAM) address: never to a request-supplied
+        // or preference address, which could otherwise redirect a password-reset code to someone else.
+        String destination = sensitive
+                ? registeredEmail(channel, request.recipientId())
+                : resolveDestination(request.destination(), pref, channel, request.recipientId());
 
         // Render template
         TemplateRendererService.RenderedNotification rendered = templateRenderer.renderTemplate(
@@ -137,6 +141,13 @@ public class MultiChannelNotificationDispatcher {
             case "PUSH" -> pref.isPushEnabled();
             default -> true;
         };
+    }
+
+    private String registeredEmail(String channel, UUID recipientId) {
+        if (!"EMAIL".equals(channel) || contactClient == null || recipientId == null) {
+            return null;
+        }
+        return contactClient.lookupContact(recipientId).map(RecipientContact::email).orElse(null);
     }
 
     private String resolveDestination(String requestDest, RecipientPreference pref, String channel, UUID recipientId) {

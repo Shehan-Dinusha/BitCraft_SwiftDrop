@@ -47,7 +47,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get current authenticated user notification preferences */
+        /**
+         * Get current authenticated user notification preferences
+         * @description Returns the caller's own preferences. recipientId is honoured only for the caller, DISPATCHER or SYSTEM_ADMIN.
+         */
         get: {
             parameters: {
                 query?: {
@@ -70,6 +73,20 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseRecipientPreferenceResponse"];
                     };
                 };
+                /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not allowed to access this recipient or operation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         put?: never;
@@ -87,7 +104,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get notification preferences for a recipient */
+        /**
+         * Get notification preferences for a recipient
+         * @description Only the recipient themselves, DISPATCHER or SYSTEM_ADMIN.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -108,9 +128,26 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseRecipientPreferenceResponse"];
                     };
                 };
+                /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not allowed to access this recipient or operation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
-        /** Update notification preferences for a recipient */
+        /**
+         * Update notification preferences for a recipient
+         * @description Only the recipient themselves or SYSTEM_ADMIN.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -134,6 +171,20 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["ApiResponseRecipientPreferenceResponse"];
                     };
+                };
+                /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not allowed to access this recipient or operation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -187,7 +238,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List notification dispatch audit logs */
+        /**
+         * List notification dispatch audit logs
+         * @description DISPATCHER/SYSTEM_ADMIN see every log (recipientId optional). Other roles see only their own logs.
+         */
         get: {
             parameters: {
                 query?: {
@@ -212,6 +266,20 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseListNotificationDispatchLogResponse"];
                     };
                 };
+                /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not allowed to access this recipient or operation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         put?: never;
@@ -229,7 +297,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get notification dispatch log detail by log UUID */
+        /**
+         * Get notification dispatch log detail by log UUID
+         * @description Only the log's recipient, DISPATCHER or SYSTEM_ADMIN.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -250,6 +321,20 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseNotificationDispatchLogResponse"];
                     };
                 };
+                /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not allowed to access this recipient or operation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         put?: never;
@@ -269,7 +354,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ad-hoc or manual notification dispatch */
+        /**
+         * Ad-hoc or manual notification dispatch
+         * @description DISPATCHER/SYSTEM_ADMIN may dispatch to any recipient. Other roles may only send a test to themselves; destination is ignored and their own address is used. One-time-code templates (EMAIL_VERIFICATION, PASSWORD_RESET) are rejected with 403.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -291,6 +379,20 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["ApiResponseNotificationDispatchLogResponse"];
                     };
+                };
+                /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not allowed to access this recipient or operation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };

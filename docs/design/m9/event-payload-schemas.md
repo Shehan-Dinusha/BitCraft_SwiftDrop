@@ -154,8 +154,8 @@ Every event serialized onto the bus complies with the following baseline rules:
 
 * **Producer:** `dispatch-assignment-service` (:8084)
 * **Routing Key:** `dispatch.courier.assigned`
-* **Destination Queues:** `delivery.dispatch-assigned.queue`, `analytics.events.queue`
-* **Consumers:** `delivery-execution-service`, `analytics-ai-service`, `notification-service`
+* **Destination Queues:** `delivery.dispatch-assigned.queue`, `dispatch.events.queue`, `analytics.events.queue`
+* **Consumers:** `delivery-execution-service`, `analytics-ai-service` (not `notification-service`: its queue does not bind `dispatch.*`)
 
 #### Field Specification
 
@@ -171,6 +171,9 @@ Every event serialized onto the bus complies with the following baseline rules:
 | `timestamp` | `Instant` | No | Event publication timestamp | Safe |
 | `trackingNumber` | `String` | Yes | Tracking number (Member 9 & 5 additive field) | Safe |
 | `merchantId` | `UUID` | Yes | Merchant identifier (Member 9 & 7 additive field) | Safe |
+| `customerId` | `UUID` | Yes | Customer who owns the parcel, so later status events can notify them | Safe |
+| `pickupDistrict` | `SriLankanDistrict` | Yes | Pickup district | Safe |
+| `deliveryDistrict` | `SriLankanDistrict` | Yes | Delivery district | Safe |
 
 #### Example JSON Payload
 ```json
@@ -184,7 +187,10 @@ Every event serialized onto the bus complies with the following baseline rules:
   "assignedAt": "2026-11-13T15:00:00Z",
   "timestamp": "2026-11-13T15:00:01Z",
   "trackingNumber": "SD-7K4M-9QX2",
-  "merchantId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+  "merchantId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "customerId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "pickupDistrict": "COLOMBO",
+  "deliveryDistrict": "KANDY"
 }
 ```
 
@@ -279,10 +285,12 @@ Every event serialized onto the bus complies with the following baseline rules:
 | `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
 | `trackingNumber` | `String` | No | Tracking number | Safe |
 | `orderId` | `UUID` | No | Order identifier | Safe |
+| `customerId` | `UUID` | Yes | Customer to notify about the revision | Safe |
 | `originalFee` | `BigDecimal` | No | Initial fee before revision | Safe |
 | `revisedFee` | `BigDecimal` | No | New calculated shipping fee | Safe |
 | `currency` | `String` | No | Currency code (`LKR`) | Safe |
 | `reason` | `String` | No | Cause of revision (e.g. volumetric weight adjustment) | Safe |
+| `status` | `FeeRevisionStatus` | No | `PENDING` (default), `APPROVED`, `REJECTED` or `EXPIRED` | Safe |
 | `timestamp` | `Instant` | No | Revision timestamp | Safe |
 
 #### Example JSON Payload
@@ -296,6 +304,7 @@ Every event serialized onto the bus complies with the following baseline rules:
   "revisedFee": 850.00,
   "currency": "LKR",
   "reason": "Measured volumetric weight (3.2 kg) exceeded declared weight (1.0 kg)",
+  "status": "PENDING",
   "timestamp": "2026-11-13T15:30:00Z"
 }
 ```
@@ -315,9 +324,14 @@ Every event serialized onto the bus complies with the following baseline rules:
 |---|---|---|---|---|
 | `eventId` | `UUID` | No | Unique event identifier | Safe |
 | `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `webhookId` | `UUID` | Yes | Webhook subscription to deliver to | Safe |
 | `merchantId` | `UUID` | No | Target merchant subscription identity | Safe |
+| `targetUrl` | `String` | Yes | Merchant endpoint URL | Safe |
+| `httpMethod` | `String` | Yes | HTTP method, normally `POST` | Safe |
 | `eventType` | `String` | No | Domain trigger name (e.g. `order.delivered`) | Safe |
 | `payload` | `Map<String, Object>` | No | Sanitized webhook payload map | Sanitized |
+| `headers` | `Map<String, String>` | Yes | Extra HTTP headers for the delivery | May hold merchant secrets; never log |
+| `maxRetries` | `int` | No | Retry budget before dead-lettering | Safe |
 | `timestamp` | `Instant` | No | Request timestamp | Safe |
 
 #### Example JSON Payload
@@ -336,3 +350,153 @@ Every event serialized onto the bus complies with the following baseline rules:
 }
 ```
 
+---
+
+### 2.9 `notification.auth.otp` — `AuthOtpRequestedEvent`
+
+* **Producer:** `auth-iam-service` (:8081)
+* **Routing Key:** `notification.auth.otp` (deliberately under `notification.` so the existing `notification.#` binding delivers it)
+* **Destination Queues:** `notification.events.queue`
+* **Consumers:** `notification-service` (`AuthOtpTrigger`)
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier (deduplication) | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `recipientId` | `UUID` | No | IAM user the code is for; notification-service resolves the registered email from IAM | Safe |
+| `purpose` | `OtpPurpose` | No | `EMAIL_VERIFICATION` or `PASSWORD_RESET`; selects the email template | Safe |
+| `code` | `String` | No | 6-digit one-time code | **Secret**: never logged, stored in dispatch logs or copied to the in-app inbox |
+| `expiresInMinutes` | `int` | No | Code lifetime shown in the email | Safe |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+The email address never travels on the bus. notification-service sends the code **only** to the
+registered IAM address (never to a preference or request-supplied address), ignores the user's
+email-off preference for these security emails, and stores a redacted body in the audit log.
+These templates cannot be triggered through `POST /api/v1/notifications/logs/dispatch`.
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "6d7e8f90-a1b2-4c3d-8e9f-0a1b2c3d4e5f",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "recipientId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "purpose": "PASSWORD_RESET",
+  "code": "482913",
+  "expiresInMinutes": 10,
+  "timestamp": "2026-11-16T09:30:00Z"
+}
+```
+
+---
+
+### 2.10 `dispatch.failed` — `DispatchFailedEvent`
+
+* **Producer:** `dispatch-assignment-service` (:8084)
+* **Routing Key:** `dispatch.failed`
+* **Destination Queues:** `dispatch.events.queue`, `analytics.events.queue` (via `dispatch.#`)
+* **Consumers:** `dispatch-assignment-service`, `analytics-ai-service`
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `orderId` | `UUID` | No | Order that could not be assigned | Safe |
+| `failureReason` | `String` | No | Why no courier could be assigned | Safe |
+| `attemptCount` | `int` | No | Assignment attempts so far | Safe |
+| `retryable` | `boolean` | No | Whether dispatch will try again | Safe |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "failureReason": "No available courier in KANDY",
+  "attemptCount": 3,
+  "retryable": true,
+  "timestamp": "2026-11-16T10:05:00Z"
+}
+```
+
+---
+
+### 2.11 `delivery.state.changed` — `DeliveryStateChangedEvent`
+
+* **Producer:** `delivery-execution-service` (:8085), on every delivery state-machine transition
+* **Routing Key:** `delivery.state.changed`
+* **Destination Queues:** `delivery.events.queue` (via `delivery.#`)
+* **Consumers:** `delivery-execution-service` (internal). Public and customer-facing updates use `parcel.status.changed.*` (section 2.3) instead.
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `deliveryId` | `UUID` | No | Delivery record identifier | Safe |
+| `orderId` | `UUID` | No | Order identifier | Safe |
+| `courierId` | `UUID` | Yes | Assigned courier | Safe |
+| `previousState` | `DeliveryState` | Yes | State before the transition | Safe |
+| `newState` | `DeliveryState` | No | State after the transition | Safe |
+| `notes` | `String` | Yes | Operator or courier note | Free text; do not expose publicly |
+| `timestamp` | `Instant` | No | Transition timestamp | Safe |
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "8b9c0d1e-2f3a-4b4c-9d5e-6f7a8b9c0d1e",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "deliveryId": "4c5d6e7f-8091-4a2b-b3c4-d5e6f708192a",
+  "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "courierId": "8b7c6d5e-4f3a-2b1c-0d9e-8f7a6b5c4d3e",
+  "previousState": "IN_TRANSIT",
+  "newState": "OUT_FOR_DELIVERY",
+  "notes": null,
+  "timestamp": "2026-11-16T11:20:00Z"
+}
+```
+
+---
+
+### 2.12 `delivery.location.updated` — `LocationUpdatedEvent`
+
+* **Producer:** `delivery-execution-service` (:8085), from courier location pings
+* **Routing Key:** `delivery.location.updated`
+* **Destination Queues:** `delivery.events.queue` (via `delivery.#`)
+* **Consumers:** `delivery-execution-service` (internal)
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `deliveryId` | `UUID` | No | Delivery record identifier | Safe |
+| `courierId` | `UUID` | No | Courier sending the location | Safe |
+| `latitude` | `double` | No | WGS-84 latitude | Courier location: share only through the sanitised tracking hub |
+| `longitude` | `double` | No | WGS-84 longitude | Courier location: share only through the sanitised tracking hub |
+| `bearingDegrees` | `double` | No | Heading in degrees (0 to 360) | Safe |
+| `speedKmh` | `double` | No | Speed in km/h | Safe |
+| `accuracy` | `double` | No | GPS accuracy in metres | Safe |
+| `timestamp` | `Instant` | No | Fix timestamp | Safe |
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e2f",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "deliveryId": "4c5d6e7f-8091-4a2b-b3c4-d5e6f708192a",
+  "courierId": "8b7c6d5e-4f3a-2b1c-0d9e-8f7a6b5c4d3e",
+  "latitude": 7.2906,
+  "longitude": 80.6337,
+  "bearingDegrees": 145.0,
+  "speedKmh": 32.5,
+  "accuracy": 8.0,
+  "timestamp": "2026-11-16T11:22:10Z"
+}
+```

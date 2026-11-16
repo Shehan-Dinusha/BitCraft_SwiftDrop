@@ -49,20 +49,20 @@ public class RecipientPreference {
 
     @PrePersist
     public void prePersist() {
-<span class="nc" id="L52">        Instant now = Instant.now();</span>
-<span class="nc bnc" id="L53" title="All 2 branches missed.">        if (this.createdAt == null) {</span>
-<span class="nc" id="L54">            this.createdAt = now;</span>
+<span class="fc" id="L52">        Instant now = Instant.now();</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        if (this.createdAt == null) {</span>
+<span class="fc" id="L54">            this.createdAt = now;</span>
         }
-<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (this.updatedAt == null) {</span>
-<span class="nc" id="L57">            this.updatedAt = now;</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">        if (this.updatedAt == null) {</span>
+<span class="fc" id="L57">            this.updatedAt = now;</span>
         }
-<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (this.recipientType == null) {</span>
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        if (this.recipientType == null) {</span>
 <span class="nc" id="L60">            this.recipientType = &quot;CUSTOMER&quot;;</span>
         }
-<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (this.languagePreference == null) {</span>
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">        if (this.languagePreference == null) {</span>
 <span class="nc" id="L63">            this.languagePreference = &quot;en&quot;;</span>
         }
-<span class="nc" id="L65">    }</span>
+<span class="fc" id="L65">    }</span>
 
     @PreUpdate
     public void preUpdate() {
