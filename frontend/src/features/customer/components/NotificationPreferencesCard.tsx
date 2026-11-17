@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
 import { Field } from '@/design-system/primitives/Field';
@@ -35,11 +35,8 @@ export function NotificationPreferencesCard() {
 
   const recipientId = user?.id;
 
-  useEffect(() => {
-    loadPreferencesAndLogs();
-  }, [recipientId]);
-
-  const loadPreferencesAndLogs = async () => {
+  const userEmail = user?.email;
+  const loadPreferencesAndLogs = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
@@ -47,7 +44,7 @@ export function NotificationPreferencesCard() {
         const pref = await notificationApi.getPreferences(recipientId);
         setEmailEnabled(pref.emailEnabled ?? true);
         setPushEnabled(pref.pushEnabled ?? true);
-        setEmailAddress(pref.emailAddress ?? user?.email ?? '');
+        setEmailAddress(pref.emailAddress ?? userEmail ?? '');
         setLanguagePreference(pref.languagePreference ?? 'en');
 
         // Load logs
@@ -65,7 +62,11 @@ export function NotificationPreferencesCard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [recipientId, userEmail]);
+
+  useEffect(() => {
+    void loadPreferencesAndLogs();
+  }, [loadPreferencesAndLogs]);
 
   const handleSavePreferences = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,9 +179,9 @@ export function NotificationPreferencesCard() {
         {/* Channel Toggles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Email Toggle */}
-          <div
-            onClick={() => setEmailEnabled(!emailEnabled)}
-            className={`cursor-pointer rounded-2xl border p-4 transition-all duration-200 ${
+          <label
+            htmlFor="notify-email-enabled"
+            className={`block cursor-pointer rounded-2xl border p-4 transition-all duration-200 ${
               emailEnabled
                 ? 'bg-brand-primary/5 border-brand-primary shadow-sm'
                 : 'bg-elevated/40 border-border-subtle opacity-70 hover:opacity-100'
@@ -201,21 +202,22 @@ export function NotificationPreferencesCard() {
                 </div>
               </div>
               <input
+                id="notify-email-enabled"
                 type="checkbox"
                 checked={emailEnabled}
-                onChange={() => {}}
+                onChange={(event) => setEmailEnabled(event.target.checked)}
                 className="size-4 rounded text-brand-primary cursor-pointer accent-brand-primary"
               />
             </div>
             <p className="text-[11px] text-secondary mt-3 leading-relaxed">
               Full electronic waybills, breakdown receipts, and digital Proof of Delivery attachments sent directly to your inbox.
             </p>
-          </div>
+          </label>
 
           {/* Push Notifications Toggle */}
-          <div
-            onClick={() => setPushEnabled(!pushEnabled)}
-            className={`cursor-pointer rounded-2xl border p-4 transition-all duration-200 ${
+          <label
+            htmlFor="notify-push-enabled"
+            className={`block cursor-pointer rounded-2xl border p-4 transition-all duration-200 ${
               pushEnabled
                 ? 'bg-brand-primary/5 border-brand-primary shadow-sm'
                 : 'bg-elevated/40 border-border-subtle opacity-70 hover:opacity-100'
@@ -236,16 +238,17 @@ export function NotificationPreferencesCard() {
                 </div>
               </div>
               <input
+                id="notify-push-enabled"
                 type="checkbox"
                 checked={pushEnabled}
-                onChange={() => {}}
+                onChange={(event) => setPushEnabled(event.target.checked)}
                 className="size-4 rounded text-brand-primary cursor-pointer accent-brand-primary"
               />
             </div>
             <p className="text-[11px] text-secondary mt-3 leading-relaxed">
               Desktop and mobile push banners when the courier is within a 2 km radius of the delivery address.
             </p>
-          </div>
+          </label>
         </div>
 
         {/* Contact Coordinates & Language */}

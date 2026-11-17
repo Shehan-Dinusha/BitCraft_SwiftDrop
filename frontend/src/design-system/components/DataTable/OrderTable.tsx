@@ -110,7 +110,15 @@ export function OrderTableRow({
       role="row"
       aria-selected={selected}
       data-selected={selected || undefined}
+      tabIndex={onOpen ? 0 : undefined}
       onClick={onOpen}
+      onKeyDown={(event) => {
+        // Only the row itself; keys pressed on the checkbox or menu button stay with them.
+        if (onOpen && event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
       className={cn(
         rowGrid,
         'border-b border-border-subtle py-2.5 transition-colors',
@@ -119,10 +127,11 @@ export function OrderTableRow({
         className
       )}
     >
-      <div role="cell" onClick={(event) => event.stopPropagation()}>
+      <div role="cell">
         <Checkbox
           aria-label={`Select ${order.trackingNumber}`}
           checked={selected}
+          onClick={(event) => event.stopPropagation()}
           onChange={(event) => onSelectedChange?.(event.target.checked)}
         />
       </div>
@@ -149,10 +158,13 @@ export function OrderTableRow({
       <div role="cell">
         <MoneyAmount amount={order.fee} />
       </div>
-      <div role="cell" onClick={(event) => event.stopPropagation()}>
+      <div role="cell">
         <button
           type="button"
-          onClick={onMore}
+          onClick={(event) => {
+            event.stopPropagation(); // the row's own click would open the order
+            onMore?.();
+          }}
           aria-label={`More actions for ${order.trackingNumber}`}
           className="inline-flex size-8 items-center justify-center rounded-lg text-secondary hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
         >

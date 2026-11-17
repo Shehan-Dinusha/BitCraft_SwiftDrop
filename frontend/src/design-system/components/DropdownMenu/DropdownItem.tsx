@@ -48,6 +48,9 @@ export function DropdownItem({
   const recipe = densityRecipes[density ?? contextDensity];
 
   return (
+    // Keyboard selection is handled by the owning listbox through aria-activedescendant,
+    // so options are not tab stops and have no key handlers of their own.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus
     <div
       role="option"
       id={id}

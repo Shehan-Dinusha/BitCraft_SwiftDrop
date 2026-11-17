@@ -443,10 +443,10 @@ export function FleetControlTowerPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">
+              <label htmlFor="fleet-assign-courier" className="font-semibold text-slate-700">
                 Select Courier to Assign
               </label>
-              <select
+              <select id="fleet-assign-courier"
                 value={selectedCourierId}
                 onChange={(e) => setSelectedCourierId(e.target.value)}
                 className="w-full rounded border border-slate-300 bg-white p-2 text-xs"
@@ -464,10 +464,10 @@ export function FleetControlTowerPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">
+              <label htmlFor="fleet-reassign-reason" className="font-semibold text-slate-700">
                 Override Reason
               </label>
-              <input
+              <input id="fleet-reassign-reason"
                 type="text"
                 placeholder="e.g. VIP express customer, area re-route"
                 value={overrideReason}

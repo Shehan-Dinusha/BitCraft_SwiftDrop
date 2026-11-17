@@ -168,6 +168,8 @@ export function ModalDrawerShell({
   }
 
   return (
+    // Clicking the scrim closes the dialog; keyboard users close it with Escape (handled above).
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       className={cn(
         'fixed inset-0 z-50',

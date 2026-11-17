@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   lint-typecheck-build:
-    name: Lint, Type-Check & Build
+    name: Lint, Type-Check, Test & Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -38,8 +38,12 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Lint and type check
+      - name: Lint (ESLint) and type check
         run: npm run lint
+        working-directory: frontend
+
+      - name: Unit tests (Vitest)
+        run: npm test
         working-directory: frontend
 
       - name: Build (Vite + Tailwind)
