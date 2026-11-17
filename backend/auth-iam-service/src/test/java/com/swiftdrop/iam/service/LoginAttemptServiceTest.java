@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import org.springframework.data.redis.RedisConnectionFailureException;
 import com.swiftdrop.iam.exception.TooManyLoginAttemptsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -96,7 +97,7 @@ class LoginAttemptServiceTest {
 
     @Test
     void redisOutageFailsOpen() {
-        when(valueOps.get(anyString())).thenThrow(new IllegalStateException("redis down"));
+        when(valueOps.get(anyString())).thenThrow(new RedisConnectionFailureException("redis down"));
 
         assertThatCode(() -> service.assertAllowed("alice", "198.51.100.1")).doesNotThrowAnyException();
     }

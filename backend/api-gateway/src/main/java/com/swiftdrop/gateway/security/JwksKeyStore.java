@@ -1,5 +1,7 @@
 package com.swiftdrop.gateway.security;
 
+import java.security.GeneralSecurityException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -167,7 +169,7 @@ public class JwksKeyStore {
                 }
             }
             return Map.copyOf(parsed);
-        } catch (Exception exception) {
+        } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Unable to parse JWKS document", exception);
         }
     }
@@ -192,7 +194,8 @@ public class JwksKeyStore {
             BigInteger e = new BigInteger(1, Base64.getUrlDecoder().decode(exponent));
             return (RSAPublicKey) KeyFactory.getInstance("RSA")
                     .generatePublic(new RSAPublicKeySpec(n, e));
-        } catch (Exception exception) {
+        } catch (IllegalArgumentException | GeneralSecurityException exception) {
+            // Bad base64 or an invalid RSA modulus/exponent: ignore this key, keep the rest.
             log.warn("Skipping malformed JWK: {}", exception.getMessage());
             return null;
         }

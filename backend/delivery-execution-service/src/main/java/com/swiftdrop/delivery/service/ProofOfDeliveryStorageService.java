@@ -116,7 +116,9 @@ public class ProofOfDeliveryStorageService {
                 log.info("Proof-of-delivery photo successfully uploaded to Azure Blob: {}", blobUrl);
                 pod.setPhotoUrl(blobUrl);
                 return toResponse(repository.save(pod));
-            } catch (Exception ex) {
+            } catch (RuntimeException | IOException ex) {
+                // Graceful degradation: Azure SDK, network and auth failures are all unchecked; any of
+                // them falls back to local storage so the courier can still complete the delivery.
                 log.warn("Azure Blob upload failed, falling back to local filesystem storage: {}", ex.getMessage());
             }
         }

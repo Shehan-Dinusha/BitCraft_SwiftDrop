@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.controller;
 
+import java.io.IOException;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.merchant.dto.BulkBatchItemResponse;
 import com.swiftdrop.merchant.dto.BulkIngestBatchResponse;
@@ -67,11 +68,11 @@ public class MerchantOrderIngestController {
             BulkIngestRequest request = new BulkIngestRequest(file.getOriginalFilename(), items);
             BulkIngestBatchResponse batch = ingestionService.processBulkIngest(merchantId, request, correlationId);
             return ApiResponse.success(batch, "CSV orders processed successfully");
-        } catch (org.springframework.web.server.ResponseStatusException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to process CSV file upload for merchant: {}", merchantId, e);
-            throw new IllegalArgumentException("Failed to process CSV upload: " + e.getMessage(), e);
+        } catch (IOException e) {
+            // Only the upload stream itself; validation errors (400) and server errors (500) keep their
+            // own handling instead of all becoming a 400 that echoes internal messages.
+            log.error("Failed to read CSV file upload for merchant: {}", merchantId, e);
+            throw new IllegalArgumentException("The uploaded CSV file could not be read", e);
         }
     }
 

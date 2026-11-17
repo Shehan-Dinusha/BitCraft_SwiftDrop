@@ -83,7 +83,8 @@ public class MultiChannelNotificationDispatcher {
                 status = "SENT";
                 sentAt = Instant.now();
                 log.info("Notification successfully dispatched to {} via {}", PiiMasker.maskDestination(destination), channel);
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
+                // Graceful degradation: a provider failure is logged as FAILED for this channel only.
                 log.error("Failed to transmit notification via {}: {}", channel, e.getMessage());
                 status = "FAILED";
                 failureReason = e.getMessage();

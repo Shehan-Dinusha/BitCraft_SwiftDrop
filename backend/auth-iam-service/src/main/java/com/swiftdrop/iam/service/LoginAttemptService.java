@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import org.springframework.dao.DataAccessException;
 import com.swiftdrop.iam.exception.TooManyLoginAttemptsException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -43,7 +44,7 @@ public class LoginAttemptService {
             }
         } catch (TooManyLoginAttemptsException exception) {
             throw exception;
-        } catch (RuntimeException exception) {
+        } catch (DataAccessException exception) {
             log.warn("Login attempt limiter unavailable: {}", exception.getMessage());
         }
     }
@@ -52,7 +53,7 @@ public class LoginAttemptService {
         try {
             increment(key(identifier, ipAddress));
             increment(accountKey(identifier));
-        } catch (RuntimeException exception) {
+        } catch (DataAccessException exception) {
             log.warn("Unable to record login failure: {}", exception.getMessage());
         }
     }
@@ -64,7 +65,7 @@ public class LoginAttemptService {
     public void clear(String identifier, String ipAddress) {
         try {
             redisTemplate.delete(key(identifier, ipAddress));
-        } catch (RuntimeException exception) {
+        } catch (DataAccessException exception) {
             log.warn("Unable to clear login failures: {}", exception.getMessage());
         }
     }

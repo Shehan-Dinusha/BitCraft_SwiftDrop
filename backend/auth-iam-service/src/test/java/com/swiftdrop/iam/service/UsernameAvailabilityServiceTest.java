@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import org.springframework.data.redis.RedisConnectionFailureException;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.UsernameAvailabilityResponse;
 import com.swiftdrop.iam.exception.AuthException;
@@ -86,7 +87,7 @@ class UsernameAvailabilityServiceTest {
 
     @Test
     void redisOutageFailsOpen() {
-        when(valueOps.increment(anyString())).thenThrow(new IllegalStateException("redis down"));
+        when(valueOps.increment(anyString())).thenThrow(new RedisConnectionFailureException("redis down"));
         when(userAccountRepository.existsByUsernameIgnoreCase("nimal.perera")).thenReturn(false);
 
         assertThat(service.check("nimal.perera", "198.51.100.1").available()).isTrue();

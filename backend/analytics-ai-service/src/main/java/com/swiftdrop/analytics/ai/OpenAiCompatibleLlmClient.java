@@ -1,5 +1,6 @@
 package com.swiftdrop.analytics.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.analytics.ai.tools.ToolExecutor;
 import org.springframework.http.HttpStatus;
@@ -45,7 +46,7 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
             String reply = message.path("content").asText("");
             if (calls.isEmpty() && reply.isBlank()) throw new IllegalArgumentException();
             return new Turn(reply, List.copyOf(calls));
-        } catch (Exception ex) {
+        } catch (JsonHttpClient.Failure | JsonProcessingException | IllegalArgumentException ex) {
             // Provider responses/exceptions can contain credentials, prompts or model text.
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI provider unavailable; please try again later");
         }

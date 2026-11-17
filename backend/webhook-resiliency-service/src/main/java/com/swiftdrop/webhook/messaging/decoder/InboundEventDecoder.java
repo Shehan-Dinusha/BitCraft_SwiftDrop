@@ -1,5 +1,7 @@
 package com.swiftdrop.webhook.messaging.decoder;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -62,7 +64,7 @@ public class InboundEventDecoder {
         JsonNode tree;
         try {
             tree = objectMapper.readTree(message.getBody());
-        } catch (Exception malformed) {
+        } catch (IOException malformed) {
             throw new NonRetryableIngestionException("Malformed JSON body for " + type.eventType());
         }
         if (tree == null || !tree.isObject()) {
@@ -80,7 +82,7 @@ public class InboundEventDecoder {
         Record event;
         try {
             event = objectMapper.treeToValue(object, type.contract());
-        } catch (Exception invalidShape) {
+        } catch (JsonProcessingException | IllegalArgumentException invalidShape) {
             throw new NonRetryableIngestionException("Event " + type.eventType() + " does not match its contract");
         }
 

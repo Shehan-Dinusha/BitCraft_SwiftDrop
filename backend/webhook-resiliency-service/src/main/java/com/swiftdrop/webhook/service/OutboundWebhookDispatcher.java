@@ -1,5 +1,6 @@
 package com.swiftdrop.webhook.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.webhook.domain.entity.AttemptErrorClass;
 import com.swiftdrop.webhook.domain.entity.DeadLetterWebhookRecord;
@@ -144,7 +145,9 @@ public class OutboundWebhookDispatcher {
                     .timeout(ATTEMPT_TIMEOUT)
                     .block();
             errorClass = statusCode == null ? AttemptErrorClass.INVALID_RESPONSE : classifyStatus(statusCode);
-        } catch (Exception failure) {
+        } catch (RuntimeException failure) {
+            // WebClient/Reactor failures (connect, TLS, timeout) are unchecked; classifyException maps
+            // each type to a retryable or permanent attempt result.
             errorClass = classifyException(failure);
         }
         int latencyMs = elapsedMs(started);
@@ -214,7 +217,7 @@ public class OutboundWebhookDispatcher {
         }
         try {
             return objectMapper.writeValueAsString(payloadObj);
-        } catch (Exception serialisationFailure) {
+        } catch (JsonProcessingException serialisationFailure) {
             return "{}";
         }
     }

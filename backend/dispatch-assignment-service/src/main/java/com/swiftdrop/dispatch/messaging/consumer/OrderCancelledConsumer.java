@@ -25,6 +25,7 @@ public class OrderCancelledConsumer {
         try {
             dispatchAssignmentService.handleOrderCancelled(event);
         } catch (RuntimeException ex) {
+            // Log with the order context, then rethrow so the retry policy and DLQ take over.
             log.error("Failed to process order cancellation in dispatch for order: {}", event.orderId(), ex);
             throw ex;
         }

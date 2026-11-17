@@ -1,5 +1,6 @@
 package com.swiftdrop.analytics.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import java.util.*;
@@ -29,7 +30,7 @@ public class MockLlmClient implements LlmClient {
                 return Turn.answer("Estimated STANDARD delivery fee: " + result.path("currency").asText()
                         + " " + result.path("estimatedFee").asText()
                         + ". This estimate uses actual weight only; dimensions may change the final price.");
-            } catch (Exception ex) {
+            } catch (JsonProcessingException ex) {
                 return Turn.answer("The requested service returned an invalid result. Please try again later.");
             }
         }
