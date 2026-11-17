@@ -438,7 +438,7 @@ services:
     container_name: swiftdrop-frontend
     profiles: ["apps", "frontend"]
     ports:
-      - "5173:80"
+      - "5173:8080"
     depends_on:
       api-gateway:
         condition: service_started
