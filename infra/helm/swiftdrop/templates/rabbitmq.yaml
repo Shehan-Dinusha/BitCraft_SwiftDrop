@@ -95,10 +95,16 @@ spec:
         runAsNonRoot: true
         runAsUser: 999
         fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: rabbitmq
           image: {{ $r.image }}
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - { name: amqp, containerPort: 5672 }
             - { name: management, containerPort: 15672 }

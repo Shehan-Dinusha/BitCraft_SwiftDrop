@@ -63,10 +63,16 @@ spec:
         runAsNonRoot: true
         runAsUser: 70
         fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
           image: {{ $.Values.postgres.image }}
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - name: postgresql
               containerPort: 5432

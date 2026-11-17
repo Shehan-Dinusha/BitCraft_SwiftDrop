@@ -1,0 +1,12 @@
+# Accepted Trivy findings. Every entry needs a reason; keep this list short.
+misconfigurations:
+  # Read-only root filesystem: PostgreSQL, RabbitMQ and Redis write runtime files
+  # (sockets, pid/cookie files, config rendered by the image entrypoint) outside
+  # their data volume. They already run as non-root with all capabilities dropped.
+  # All SwiftDrop application pods do use a read-only root filesystem.
+  - id: AVD-KSV-0014
+    paths:
+      - "infra/helm/swiftdrop/templates/postgres.yaml"
+      - "infra/helm/swiftdrop/templates/rabbitmq.yaml"
+      - "infra/helm/swiftdrop/templates/redis.yaml"
+    statement: Third-party data stores need a writable root filesystem.
