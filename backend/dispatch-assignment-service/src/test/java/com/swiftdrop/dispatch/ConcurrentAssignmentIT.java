@@ -45,6 +45,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.swiftdrop.dispatch.support.TestCallers.dispatcher;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -184,7 +185,7 @@ class ConcurrentAssignmentIT {
     }
 
     private MvcResult assign(UUID orderId, UUID courierId, String dispatcher) throws Exception {
-        return mockMvc.perform(post("/api/v1/dispatch/assign")
+        return mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new ManualAssignRequest(orderId, courierId, dispatcher, null))))

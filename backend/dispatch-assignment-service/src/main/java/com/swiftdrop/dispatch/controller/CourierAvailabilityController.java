@@ -8,10 +8,12 @@ import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
+import com.swiftdrop.dispatch.security.DispatchAccess;
 import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import com.swiftdrop.dispatch.service.CourierShiftService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,11 +48,14 @@ public class CourierAvailabilityController {
     }
 
     @GetMapping
-    @Operation(summary = "List couriers with optional district and shift status filters")
+    @Operation(summary = "List couriers with optional district and shift status filters",
+            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<List<CourierShiftResponse>> getCouriers(
             @RequestParam(required = false) SriLankanDistrict district,
-            @RequestParam(required = false) ShiftStatus status
+            @RequestParam(required = false) ShiftStatus status,
+            HttpServletRequest httpRequest
     ) {
+        DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
                 courierShiftService.getCouriers(district, status),
                 "Couriers retrieved"
@@ -67,8 +72,10 @@ public class CourierAvailabilityController {
     }
 
     @GetMapping("/workload")
-    @Operation(summary = "List current courier workloads")
-    public ApiResponse<List<CourierWorkloadResponse>> getWorkloads() {
+    @Operation(summary = "List current courier workloads",
+            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
+    public ApiResponse<List<CourierWorkloadResponse>> getWorkloads(HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
                 courierShiftService.getWorkloads(),
                 "Courier workloads retrieved"

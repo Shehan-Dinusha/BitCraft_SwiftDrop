@@ -8,12 +8,14 @@ import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
+import com.swiftdrop.dispatch.security.DispatchAccess;
 import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,11 +63,14 @@ public class DispatchController {
     @PostMapping("/assign")
     @Operation(summary = "Assign a courier to an unassigned order",
             description = "Dispatcher confirms a courier for an order in the unassigned queue. "
-                    + "Returns 409 if the order already has a courier; use /reassign to change it.")
+                    + "Returns 409 if the order already has a courier; use /reassign to change it. "
+                    + "Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<DispatchAssignmentResponse> manualAssign(
             @Valid @RequestBody ManualAssignRequest request,
             @Parameter(description = "Request correlation ID, propagated to the published events when it is a UUID")
-            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId) {
+            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         UUID eventCorrelationId = correlationIdOrNull(correlationId);
         var assignment = courierConflictRetry.run("Assignment",
                 () -> manualOverrideService.manualAssign(request, eventCorrelationId));
@@ -78,11 +83,14 @@ public class DispatchController {
     @PostMapping("/reassign")
     @Operation(summary = "Reassign an order to a different courier",
             description = "Explicitly moves an assigned order to another courier. The request must name the courier "
-                    + "currently assigned; returns 409 if the assignment changed since it was viewed.")
+                    + "currently assigned; returns 409 if the assignment changed since it was viewed. "
+                    + "Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<DispatchAssignmentResponse> reassign(
             @Valid @RequestBody ReassignCourierRequest request,
             @Parameter(description = "Request correlation ID, propagated to the published events when it is a UUID")
-            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId) {
+            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         UUID eventCorrelationId = correlationIdOrNull(correlationId);
         var assignment = courierConflictRetry.run("Reassignment",
                 () -> manualOverrideService.reassign(request, eventCorrelationId));
@@ -93,12 +101,15 @@ public class DispatchController {
     }
 
     @GetMapping("/assignments")
-    @Operation(summary = "List dispatch assignments with pagination and optional status filter")
+    @Operation(summary = "List dispatch assignments with pagination and optional status filter",
+            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<PagedResult<DispatchAssignmentResponse>> getAssignments(
             @RequestParam(required = false) AssignmentStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest httpRequest
     ) {
+        DispatchAccess.requireOperations(httpRequest);
         Page<DispatchAssignmentResponse> paged = dispatchAssignmentService.getAssignments(
                 status,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
@@ -132,8 +143,10 @@ public class DispatchController {
     }
 
     @GetMapping("/unassigned")
-    @Operation(summary = "List unassigned orders pending dispatch")
-    public ApiResponse<List<DispatchAssignmentResponse>> getUnassignedParcels() {
+    @Operation(summary = "List unassigned orders pending dispatch",
+            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
+    public ApiResponse<List<DispatchAssignmentResponse>> getUnassignedParcels(HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
                 dispatchAssignmentService.getUnassignedParcels(),
                 "Unassigned orders retrieved"
@@ -154,8 +167,12 @@ public class DispatchController {
 
     @GetMapping("/orders/{orderId}/suggestions")
     @Operation(summary = "Suggest available couriers for an order",
-            description = "Returns up to three available couriers, preferring the pickup district and then lowest workload.")
-    public ApiResponse<List<CourierSuggestionResponse>> getCourierSuggestions(@PathVariable UUID orderId) {
+            description = "Returns up to three available couriers, preferring the pickup district and then lowest workload. "
+                    + "Requires the DISPATCHER or SYSTEM_ADMIN role.")
+    public ApiResponse<List<CourierSuggestionResponse>> getCourierSuggestions(
+            @PathVariable UUID orderId,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
                 dispatchAssignmentService.getSuggestions(orderId),
                 "Courier suggestions retrieved"

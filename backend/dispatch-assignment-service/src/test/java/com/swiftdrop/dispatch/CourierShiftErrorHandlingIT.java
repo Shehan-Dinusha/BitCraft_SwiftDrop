@@ -46,6 +46,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.swiftdrop.dispatch.support.TestCallers.dispatcher;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.eq;
@@ -234,7 +235,7 @@ class CourierShiftErrorHandlingIT {
     }
 
     private MvcResult assign(UUID orderId, UUID courierId) throws Exception {
-        return mockMvc.perform(post("/api/v1/dispatch/assign")
+        return mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new ManualAssignRequest(orderId, courierId, "IT_DISPATCHER", null))))

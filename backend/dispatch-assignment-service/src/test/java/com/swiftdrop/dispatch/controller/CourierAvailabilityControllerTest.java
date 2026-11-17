@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.List;
 
+import static com.swiftdrop.dispatch.support.TestCallers.dispatcher;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -187,7 +188,7 @@ class CourierAvailabilityControllerTest {
         );
         when(courierShiftService.getWorkloads()).thenReturn(List.of(workload));
 
-        mockMvc.perform(get("/api/v1/dispatch/couriers/workload"))
+        mockMvc.perform(get("/api/v1/dispatch/couriers/workload").with(dispatcher()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].courierId").value(courierId.toString()))
