@@ -20,6 +20,40 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+/**
+ * A 409 from assign or reassign carries a specific reason (order already assigned,
+ * assignment changed since it was viewed, picked up, courier not available), so the
+ * backend's error title and message are shown instead of a single generic text.
+ */
+function getDispatchActionErrorMessage(error: unknown, reassigning: boolean) {
+  const fallback = reassigning ? 'Courier reassignment failed.' : 'Courier assignment failed.';
+  if (isAxiosError(error) && error.response?.status === 409) {
+    const data = error.response.data as { message?: string; error?: string } | undefined;
+    const message =
+      data?.message ??
+      'This order or courier changed in another dispatch session. Refresh and try again.';
+    return data?.error ? `${data.error}: ${message}` : message;
+  }
+  return getErrorMessage(error, fallback);
+}
+
+/**
+ * Orders that currently hold a courier are ASSIGNED or, after a reassignment,
+ * REASSIGNED. The assignments endpoint filters by one status at a time, so the two
+ * pages are merged here, keeping one entry per assignment and newest first (the
+ * order the endpoint itself returns).
+ */
+function mergeActiveAssignments(...pages: DispatchAssignmentResponse[][]) {
+  const byKey = new Map<string, DispatchAssignmentResponse>();
+  for (const assignment of pages.flat()) {
+    const key = assignment.assignmentId ?? assignment.orderId;
+    if (key && !byKey.has(key)) byKey.set(key, assignment);
+  }
+  const createdTime = (assignment: DispatchAssignmentResponse) =>
+    Date.parse(assignment.createdAt ?? '') || 0;
+  return [...byKey.values()].sort((a, b) => createdTime(b) - createdTime(a));
+}
+
 export function DispatchBoardPage() {
   const [unassigned, setUnassigned] = useState<DispatchAssignmentResponse[]>([]);
   const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
@@ -40,16 +74,18 @@ export function DispatchBoardPage() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const [unassignedOrders, courierList, workloadList, assignmentPage] = await Promise.all([
-        dispatchApi.getUnassignedParcels(),
-        dispatchApi.getCouriers(),
-        dispatchApi.getCourierWorkloads(),
-        dispatchApi.getAssignments({ status: 'ASSIGNED', page: 0, size: 100 })
-      ]);
+      const [unassignedOrders, courierList, workloadList, assignedPage, reassignedPage] =
+        await Promise.all([
+          dispatchApi.getUnassignedParcels(),
+          dispatchApi.getCouriers(),
+          dispatchApi.getCourierWorkloads(),
+          dispatchApi.getAssignments({ status: 'ASSIGNED', page: 0, size: 100 }),
+          dispatchApi.getAssignments({ status: 'REASSIGNED', page: 0, size: 100 })
+        ]);
       setUnassigned(unassignedOrders);
       setCouriers(courierList);
       setWorkloads(workloadList);
-      setAssignments(assignmentPage.content);
+      setAssignments(mergeActiveAssignments(assignedPage.content, reassignedPage.content));
     } catch (error) {
       setErrorMessage(getErrorMessage(error, 'Dispatch data could not be loaded.'));
     } finally {
@@ -77,27 +113,39 @@ export function DispatchBoardPage() {
 
   const handleAssign = async (courierId: string, reason: string) => {
     if (!selectedOrder?.orderId) return;
+    // An order that already has a courier is moved with /reassign, naming the courier the
+    // dispatcher saw so the backend can reject the change if the assignment moved meanwhile.
+    const currentCourierId = selectedOrder.courierId;
+    if (currentCourierId && courierId === currentCourierId) {
+      setErrorMessage('Choose a different courier: this order is already assigned to that courier.');
+      return;
+    }
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      await dispatchApi.manualAssign({
-        orderId: selectedOrder.orderId,
-        courierId,
-        assignedBy: 'DISPATCHER',
-        reason
-      });
+      if (currentCourierId) {
+        await dispatchApi.reassign({
+          orderId: selectedOrder.orderId,
+          expectedCurrentCourierId: currentCourierId,
+          newCourierId: courierId,
+          assignedBy: 'DISPATCHER',
+          reason
+        });
+      } else {
+        await dispatchApi.manualAssign({
+          orderId: selectedOrder.orderId,
+          courierId,
+          assignedBy: 'DISPATCHER',
+          reason
+        });
+      }
       setSelectedOrder(null);
       setSuccessMessage(
-        `${selectedOrder.trackingNumber ?? 'Order'} was assigned. The queue and workload have been refreshed.`
+        `${selectedOrder.trackingNumber ?? 'Order'} was ${currentCourierId ? 'reassigned' : 'assigned'}. The queue and workload have been refreshed.`
       );
       await loadData();
     } catch (error) {
-      const conflict = isAxiosError(error) && error.response?.status === 409;
-      setErrorMessage(
-        conflict
-          ? 'Assignment conflict: this order or courier changed in another dispatch session. Refresh and try again.'
-          : getErrorMessage(error, 'Courier assignment failed.')
-      );
+      setErrorMessage(getDispatchActionErrorMessage(error, Boolean(currentCourierId)));
     } finally {
       setSubmitting(false);
     }
@@ -311,7 +359,9 @@ export function DispatchBoardPage() {
           </span>
         </div>
         {assignments.length === 0 ? (
-          <p className="py-8 text-center text-caption text-muted">No assigned orders returned.</p>
+          <p className="py-8 text-center text-caption text-muted">
+            No assigned or reassigned orders returned.
+          </p>
         ) : (
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {assignments.map((assignment) => (
@@ -325,7 +375,13 @@ export function DispatchBoardPage() {
                   <span className="font-mono text-caption font-semibold text-primary">
                     {assignment.trackingNumber ?? assignment.orderId}
                   </span>
-                  <span className="text-overline uppercase text-secondary">
+                  <span
+                    className={
+                      assignment.status === 'REASSIGNED'
+                        ? 'rounded-full bg-status-info-bg px-2 py-0.5 text-[10px] font-semibold uppercase text-status-info-fg'
+                        : 'rounded-full bg-canvas px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary'
+                    }
+                  >
                     {assignment.status}
                   </span>
                 </div>

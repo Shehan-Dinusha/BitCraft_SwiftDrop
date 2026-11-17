@@ -31,10 +31,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Manual courier assignment override
-         * @description Allows dispatcher or supervisor to manually assign or reassign a courier to an order.
+         * Assign a courier to an unassigned order
+         * @description Dispatcher confirms a courier for an order in the unassigned queue. An order that already has a courier is never replaced by this operation; use /api/v1/dispatch/reassign. Requires the DISPATCHER or SYSTEM_ADMIN role.
          */
         post: operations["manualAssign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reassign an order to a different courier
+         * @description Explicitly moves an assigned order to another courier. The request must name the courier currently assigned, so a reassignment based on a stale view is rejected instead of overwriting another dispatcher's decision. Not allowed once dispatch has recorded the parcel as picked up. Publishes dispatch.courier.assigned only; the public status is unchanged. Requires the DISPATCHER or SYSTEM_ADMIN role.
+         */
+        post: operations["reassign"];
         delete?: never;
         options?: never;
         head?: never;
@@ -48,7 +68,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List dispatch assignments with pagination and optional status filter */
+        /**
+         * List dispatch assignments with pagination and optional status filter
+         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         */
         get: operations["getAssignments"];
         put?: never;
         post?: never;
@@ -65,7 +88,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get dispatch assignment by UUID */
+        /**
+         * Get dispatch assignment by UUID
+         * @description A COURIER sees only an assignment they currently hold; DISPATCHER and SYSTEM_ADMIN see any, including UNASSIGNED orders.
+         */
         get: operations["getAssignmentById"];
         put?: never;
         post?: never;
@@ -82,7 +108,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get dispatch assignment by order UUID */
+        /**
+         * Get dispatch assignment by order UUID
+         * @description A COURIER sees only an assignment they currently hold; DISPATCHER and SYSTEM_ADMIN see any, including UNASSIGNED orders.
+         */
         get: operations["getAssignmentByOrderId"];
         put?: never;
         post?: never;
@@ -99,7 +128,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List unassigned orders pending dispatch */
+        /**
+         * List unassigned orders pending dispatch
+         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         */
         get: operations["getUnassignedParcels"];
         put?: never;
         post?: never;
@@ -118,7 +150,7 @@ export interface paths {
         };
         /**
          * Suggest available couriers for an order
-         * @description Returns up to three available couriers, preferring the pickup district and then lowest workload.
+         * @description Returns up to three AVAILABLE couriers below capacity, preferring the pickup district, then lower active workload, then the most recent heartbeat (couriers without one last), then courier ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or REASSIGNED order they are reassignment suggestions and leave out the courier currently holding the order. An empty list means no courier is eligible. Requires the DISPATCHER or SYSTEM_ADMIN role.
          */
         get: operations["getCourierSuggestions"];
         put?: never;
@@ -136,7 +168,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List active assignments for a courier */
+        /**
+         * List active assignments for a courier
+         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         */
         get: operations["getCourierAssignments"];
         put?: never;
         post?: never;
@@ -170,7 +205,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List couriers with optional district and shift status filters */
+        /**
+         * List couriers with optional district and shift status filters
+         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         */
         get: operations["getCouriers"];
         put?: never;
         post?: never;
@@ -187,7 +225,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List current courier workloads */
+        /**
+         * List current courier workloads
+         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         */
         get: operations["getWorkloads"];
         put?: never;
         post?: never;
@@ -204,7 +245,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get courier shift status and live metrics */
+        /**
+         * Get courier shift status and live metrics
+         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         */
         get: operations["getCourier"];
         put?: never;
         post?: never;
@@ -223,7 +267,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Start or register courier shift */
+        /**
+         * Start or register courier shift
+         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         */
         post: operations["startShift"];
         delete?: never;
         options?: never;
@@ -240,7 +287,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** End courier shift */
+        /**
+         * End courier shift
+         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         */
         post: operations["endShift"];
         delete?: never;
         options?: never;
@@ -256,7 +306,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update courier shift status */
+        /**
+         * Update courier shift status
+         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         */
         put: operations["updateShiftStatus"];
         post?: never;
         delete?: never;
@@ -273,7 +326,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Record courier GPS location heartbeat ping */
+        /**
+         * Record courier GPS location heartbeat ping
+         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         */
         put: operations["updateLocation"];
         post?: never;
         delete?: never;
@@ -301,6 +357,20 @@ export interface components {
             orderId: string;
             /** Format: uuid */
             courierId: string;
+            /** @example DISPATCHER_ADMIN */
+            assignedBy?: string;
+            reason?: string;
+        };
+        ReassignCourierRequest: {
+            /** Format: uuid */
+            orderId: string;
+            /**
+             * Format: uuid
+             * @description Courier the dispatcher believes is currently assigned
+             */
+            expectedCurrentCourierId: string;
+            /** Format: uuid */
+            newCourierId: string;
             /** @example DISPATCHER_ADMIN */
             assignedBy?: string;
             reason?: string;
@@ -393,6 +463,31 @@ export interface components {
             activeParcels?: number;
             maxCapacity?: number;
             shiftStatus?: components["schemas"]["ShiftStatus"];
+        };
+        /** @description Error body returned by the global exception handler (com.swiftdrop.contracts.dto.ApiErrorResponse). Null fields are omitted. */
+        ApiErrorResponse: {
+            /** @example 409 */
+            status: number;
+            /**
+             * @description Error label, for example Conflict, Assignment Conflict, Shift Conflict or Data Conflict
+             * @example Shift Conflict
+             */
+            error: string;
+            /** @example Cannot end shift: the courier still has 2 active parcel(s). Complete or reassign them first. */
+            message: string;
+            /** @example /api/v1/dispatch/couriers/shifts/11111111-2222-4333-8444-555555555555/end */
+            path: string;
+            /**
+             * @description Request correlation ID, included on 500 responses when the X-Correlation-Id header is a UUID
+             * @example 0f5e8c4a-2c6d-4a58-9c8f-4c2c4e7b8a11
+             */
+            correlationId?: string;
+            /** @description Field name mapped to its validation messages, when present */
+            fieldErrors?: {
+                [key: string]: string[];
+            };
+            /** Format: date-time */
+            timestamp: string;
         };
         ApiResponseString: {
             success?: boolean;
@@ -490,7 +585,10 @@ export interface operations {
     manualAssign: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Request correlation ID, propagated to the published events when it is a UUID */
+                "X-Correlation-Id"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -509,6 +607,31 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseDispatchAssignmentResponse"];
                 };
             };
+            /** @description Validation failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
             /** @description Assignment or order not found */
             404: {
                 headers: {
@@ -516,12 +639,82 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Courier not available */
+            /** @description Order already assigned (Assignment Conflict), courier not available, assignment in a terminal state, or the record was changed by a concurrent operation (Conflict). A conflict on the courier's record only, such as a location update, is retried automatically up to three times before a 409 is returned. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    reassign: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Request correlation ID, propagated to the published events when it is a UUID */
+                "X-Correlation-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignCourierRequest"];
+            };
+        };
+        responses: {
+            /** @description Order reassigned successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDispatchAssignmentResponse"];
+                };
+            };
+            /** @description Validation failed, or the new courier is the current courier */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Assignment or order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Order has no courier yet or is no longer assigned to the expected courier (Assignment Conflict), order already picked up (Reassignment Not Allowed), courier not available, assignment in a terminal state, or the record was changed by a concurrent operation (Conflict). A conflict on the courier's record only, such as a location update, is retried automatically up to three times before a 409 is returned. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
         };
     };
@@ -547,6 +740,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponsePagedResultDispatchAssignmentResponse"];
                 };
             };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
         };
     };
     getAssignmentById: {
@@ -567,6 +778,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseDispatchAssignmentResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier who does not hold this assignment (including UNASSIGNED orders) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
             /** @description Assignment not found */
@@ -598,6 +827,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseDispatchAssignmentResponse"];
                 };
             };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier who does not hold this assignment (including UNASSIGNED orders) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
             /** @description Assignment not found */
             404: {
                 headers: {
@@ -625,6 +872,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
                 };
             };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
         };
     };
     getCourierSuggestions: {
@@ -647,12 +912,39 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListCourierSuggestionResponse"];
                 };
             };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
             /** @description Assignment or order not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Invalid Assignment Transition: the order is COMPLETED or CANCELLED, so it cannot be assigned or reassigned and no suggestions are returned. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
         };
     };
@@ -676,6 +968,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
@@ -721,6 +1031,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListCourierShiftResponse"];
                 };
             };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
         };
     };
     getWorkloads: {
@@ -739,6 +1067,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseListCourierWorkloadResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
@@ -761,6 +1107,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
             /** @description Courier not found */
@@ -794,6 +1158,33 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
                 };
             };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Data Conflict: the shift record was created by a concurrent request for the same courier (unique-key violation). Database details are not returned. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
         };
     };
     endShift: {
@@ -814,6 +1205,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Shift Conflict: the courier still has active parcels, so the shift is left unchanged. Also returned as Courier Not Available for an unknown courier, or Conflict when the courier's record was changed by a concurrent operation. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
@@ -840,6 +1258,24 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
                 };
             };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
         };
     };
     updateLocation: {
@@ -862,6 +1298,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict: the courier's record kept changing concurrently (for example during an assignment) after up to three automatic attempts, or Courier Not Available for an unknown courier. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
