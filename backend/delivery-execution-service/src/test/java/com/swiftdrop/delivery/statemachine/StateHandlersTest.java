@@ -114,6 +114,24 @@ class StateHandlersTest {
     }
 
     @Test
+    @DisplayName("OutForDeliveryState validate: DELIVERED fails closed without a guard or delivery id")
+    void testOutForDeliveryStateFailsClosedWithoutProofContext() {
+        TransitionDeliveryRequest request = new TransitionDeliveryRequest(
+                DeliveryState.DELIVERED, "Delivered", null, null, null, "COURIER");
+        DeliverySession session = new DeliverySession();
+        session.setDeliveryId(UUID.randomUUID());
+
+        assertThatThrownBy(() -> new OutForDeliveryState().validate(request, session))
+                .isInstanceOf(InvalidStateTransitionException.class);
+
+        ProofOfDeliveryGuard guard = mock(ProofOfDeliveryGuard.class);
+        assertThatThrownBy(() -> new OutForDeliveryState(guard).validate(request, new DeliverySession()))
+                .isInstanceOf(InvalidStateTransitionException.class);
+        assertThatThrownBy(() -> new OutForDeliveryState(guard).validate(request, null))
+                .isInstanceOf(InvalidStateTransitionException.class);
+    }
+
+    @Test
     @DisplayName("OutForDeliveryState validate: FAILED requires a DeliveryFailureReason")
     void testOutForDeliveryStateRequiresReasonForFailed() {
         OutForDeliveryState state = new OutForDeliveryState();

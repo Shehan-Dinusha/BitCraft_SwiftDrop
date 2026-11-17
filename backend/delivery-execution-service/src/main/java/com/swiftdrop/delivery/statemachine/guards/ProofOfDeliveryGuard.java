@@ -5,6 +5,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
+/**
+ * Guard for OUT_FOR_DELIVERY -> DELIVERED. A parcel only counts as delivered once the recipient
+ * confirmed it (OTP or signature) and that proof was stored and verified; this protects customers
+ * and merchants from "delivered" parcels that never arrived, and is the evidence for disputes.
+ */
 @Component
 public class ProofOfDeliveryGuard {
     private final ProofOfDeliveryStorageService storageService;
@@ -13,6 +18,7 @@ public class ProofOfDeliveryGuard {
         this.storageService = storageService;
     }
 
+    /** @return true only when verified proof exists for the delivery; false for a null id */
     public boolean isSatisfied(UUID deliveryId) {
         if (deliveryId == null) {
             return false;

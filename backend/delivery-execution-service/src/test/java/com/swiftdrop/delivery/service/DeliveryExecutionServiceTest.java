@@ -1,5 +1,7 @@
 package com.swiftdrop.delivery.service;
 
+import static org.mockito.Mockito.doReturn;
+import com.swiftdrop.delivery.statemachine.states.OutForDeliveryState;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
@@ -138,6 +140,8 @@ class DeliveryExecutionServiceTest {
 
         when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
         when(proofOfDeliveryGuard.isSatisfied(deliveryId)).thenReturn(false);
+        doReturn(new OutForDeliveryState(proofOfDeliveryGuard))
+                .when(stateMachine).getHandler(DeliveryState.OUT_FOR_DELIVERY);
 
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.DELIVERED,
@@ -167,6 +171,9 @@ class DeliveryExecutionServiceTest {
         when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
         when(proofOfDeliveryGuard.isSatisfied(deliveryId)).thenReturn(true);
         when(deliverySessionRepository.save(any(DeliverySession.class))).thenAnswer(inv -> inv.getArgument(0));
+        // The default test state machine has no guard and therefore rejects DELIVERED (fail closed).
+        doReturn(new OutForDeliveryState(proofOfDeliveryGuard))
+                .when(stateMachine).getHandler(DeliveryState.OUT_FOR_DELIVERY);
 
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.DELIVERED,
