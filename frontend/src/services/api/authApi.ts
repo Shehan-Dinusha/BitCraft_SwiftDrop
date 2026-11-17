@@ -8,8 +8,23 @@ export type UserStatus = NonNullable<components['schemas']['UserStatus']>;
 /** Alias used by admin pages to reference a user list entry. */
 export type UserProfileItem = components['schemas']['UserProfileResponse'];
 
-export async function loginUser(username: string, password: string): Promise<AuthTokenResponse> {
-  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/login', { username, password });
+export type MfaChallenge = components['schemas']['MfaChallengeResponse'];
+
+/** Either a signed-in session, or (admins and dispatchers with MFA on) a second-factor challenge. */
+export type LoginResult = AuthTokenResponse | MfaChallenge;
+
+export function isMfaChallenge(result: LoginResult): result is MfaChallenge {
+  return (result as MfaChallenge).mfaRequired === true;
+}
+
+export async function loginUser(username: string, password: string): Promise<LoginResult> {
+  const { data } = await apiClient.post<LoginResult>('/v1/auth/login', { username, password });
+  return data;
+}
+
+/** Second step of an MFA sign-in: the emailed 6-digit code for the challenge from {@link loginUser}. */
+export async function completeMfaLogin(challengeId: string, code: string): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/login/mfa', { challengeId, code });
   return data;
 }
 

@@ -36,6 +36,15 @@ export interface paths {
                         "application/json": components["schemas"]["TokenResponse"];
                     };
                 };
+                /** @description Password accepted but a second factor is required (SYSTEM_ADMIN and DISPATCHER when AUTH_MFA_ENABLED=true). A 6-digit code was emailed; finish with POST /api/v1/auth/login/mfa. */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaChallengeResponse"];
+                    };
+                };
                 /** @description Invalid credentials */
                 401: {
                     headers: {
@@ -55,6 +64,76 @@ export interface paths {
                     };
                 };
                 /** @description Too many failed login attempts */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a sign-in with the emailed second-factor code
+         * @description Exchanges the challenge from a 202 /login response plus the emailed code for a token pair. The refresh token is set as the HttpOnly swiftdrop_refresh cookie. After 5 wrong codes the code is destroyed and the user must sign in again.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LoginMfaRequest"];
+                };
+            };
+            responses: {
+                /** @description Token pair issued */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TokenResponse"];
+                    };
+                };
+                /** @description Wrong or expired code */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Unknown or expired challenge; sign in again */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many incorrect codes */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -979,6 +1058,25 @@ export interface components {
              * @example SwiftDrop123
              */
             password: string;
+        };
+        MfaChallengeResponse: {
+            /**
+             * @description Always true; lets clients tell this body apart from a TokenResponse.
+             * @example true
+             */
+            mfaRequired: boolean;
+            /** @description Opaque, single-use id of this sign-in attempt. Send it to /login/mfa. */
+            challengeId: string;
+            /**
+             * Format: int32
+             * @example 10
+             */
+            expiresInMinutes: number;
+        };
+        LoginMfaRequest: {
+            challengeId: string;
+            /** @example 123456 */
+            code: string;
         };
         RegisterUserRequest: {
             /** @example customer.one */

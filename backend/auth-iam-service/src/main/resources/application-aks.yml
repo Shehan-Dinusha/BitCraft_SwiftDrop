@@ -36,6 +36,10 @@ swiftdrop:
     refresh-cookie:
       # Secure flag on the HttpOnly refresh-token cookie. Only set false for plain-HTTP local setups.
       secure: ${AUTH_REFRESH_COOKIE_SECURE:true}
+    mfa:
+      # Emailed second sign-in factor for SYSTEM_ADMIN and DISPATCHER. Needs a real email provider
+      # (NOTIFICATION_EMAIL_PROVIDER=azure) or the code never reaches the user.
+      enabled: ${AUTH_MFA_ENABLED:false}
   jwt:
     algorithm: ${JWT_ALGORITHM:RS256}
     private-key: ${JWT_PRIVATE_KEY:}

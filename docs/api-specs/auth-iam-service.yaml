@@ -29,6 +29,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
+        '202':
+          description: >-
+            Password accepted but a second factor is required (SYSTEM_ADMIN and DISPATCHER when
+            AUTH_MFA_ENABLED=true). A 6-digit code was emailed; finish with POST /api/v1/auth/login/mfa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaChallengeResponse'
         '401':
           description: Invalid credentials
           content:
@@ -43,6 +51,46 @@ paths:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '429':
           description: Too many failed login attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/login/mfa:
+    post:
+      tags: [Auth]
+      summary: Complete a sign-in with the emailed second-factor code
+      description: >-
+        Exchanges the challenge from a 202 /login response plus the emailed code for a token pair.
+        The refresh token is set as the HttpOnly swiftdrop_refresh cookie. After 5 wrong codes the
+        code is destroyed and the user must sign in again.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginMfaRequest'
+      responses:
+        '200':
+          description: Token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Wrong or expired code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Unknown or expired challenge; sign in again
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many incorrect codes
           content:
             application/json:
               schema:
@@ -557,6 +605,32 @@ components:
           maxLength: 72
           format: password
           example: SwiftDrop123
+    MfaChallengeResponse:
+      type: object
+      required: [mfaRequired, challengeId, expiresInMinutes]
+      properties:
+        mfaRequired:
+          type: boolean
+          description: Always true; lets clients tell this body apart from a TokenResponse.
+          example: true
+        challengeId:
+          type: string
+          description: Opaque, single-use id of this sign-in attempt. Send it to /login/mfa.
+        expiresInMinutes:
+          type: integer
+          format: int32
+          example: 10
+    LoginMfaRequest:
+      type: object
+      required: [challengeId, code]
+      properties:
+        challengeId:
+          type: string
+          maxLength: 64
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: '123456'
     RegisterUserRequest:
       type: object
       required: [username, email, firstName, lastName, password, role, district]
