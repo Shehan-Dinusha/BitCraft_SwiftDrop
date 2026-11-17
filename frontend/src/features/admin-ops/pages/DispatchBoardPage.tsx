@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { AlertTriangle, Bike, Package, RefreshCw, Search, UserCheck } from 'lucide-react';
 import { Button, EmptyState, StatusBanner, SurfaceCard } from '@/design-system';
@@ -54,6 +54,12 @@ function mergeActiveAssignments(...pages: DispatchAssignmentResponse[][]) {
   return [...byKey.values()].sort((a, b) => createdTime(b) - createdTime(a));
 }
 
+/** How often the courier workload panel refreshes in the background. */
+const WORKLOAD_REFRESH_INTERVAL_MS = 10_000;
+
+const formatTime = (date: Date) =>
+  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
 export function DispatchBoardPage() {
   const [unassigned, setUnassigned] = useState<DispatchAssignmentResponse[]>([]);
   const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
@@ -69,8 +75,19 @@ export function DispatchBoardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [workloadUpdatedAt, setWorkloadUpdatedAt] = useState<Date | null>(null);
+  const [workloadRefreshFailed, setWorkloadRefreshFailed] = useState(false);
+
+  // Background refresh bookkeeping. Each request that can replace the workload list takes
+  // a sequence number, and only the newest one may write, so a slow poll can never
+  // overwrite the result of a later full load (or the other way round).
+  const workloadSequence = useRef(0);
+  const fullLoadInFlight = useRef(false);
+  const pollInFlight = useRef(false);
 
   const loadData = useCallback(async () => {
+    const sequence = ++workloadSequence.current;
+    fullLoadInFlight.current = true;
     setLoading(true);
     setErrorMessage(null);
     try {
@@ -84,11 +101,16 @@ export function DispatchBoardPage() {
         ]);
       setUnassigned(unassignedOrders);
       setCouriers(courierList);
-      setWorkloads(workloadList);
+      if (sequence === workloadSequence.current) {
+        setWorkloads(workloadList);
+        setWorkloadUpdatedAt(new Date());
+        setWorkloadRefreshFailed(false);
+      }
       setAssignments(mergeActiveAssignments(assignedPage.content, reassignedPage.content));
     } catch (error) {
       setErrorMessage(getErrorMessage(error, 'Dispatch data could not be loaded.'));
     } finally {
+      fullLoadInFlight.current = false;
       setLoading(false);
     }
   }, []);
@@ -96,6 +118,36 @@ export function DispatchBoardPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  // Refresh courier workloads every 10 seconds without touching the rest of the page:
+  // no loading spinner, no banner changes, and the queue, search and open modal are left
+  // as they are. A tick is skipped while another request is still running or the tab is
+  // hidden. A failed refresh keeps the last data and is shown next to the panel title.
+  useEffect(() => {
+    let active = true;
+    const refreshWorkloads = async () => {
+      if (pollInFlight.current || fullLoadInFlight.current || document.hidden) return;
+      pollInFlight.current = true;
+      const sequence = ++workloadSequence.current;
+      try {
+        const workloadList = await dispatchApi.getCourierWorkloads();
+        if (active && sequence === workloadSequence.current) {
+          setWorkloads(workloadList);
+          setWorkloadUpdatedAt(new Date());
+          setWorkloadRefreshFailed(false);
+        }
+      } catch {
+        if (active && sequence === workloadSequence.current) setWorkloadRefreshFailed(true);
+      } finally {
+        pollInFlight.current = false;
+      }
+    };
+    const timer = window.setInterval(() => void refreshWorkloads(), WORKLOAD_REFRESH_INTERVAL_MS);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const openAssignment = async (order: DispatchAssignmentResponse) => {
     setSelectedOrder(order);
@@ -293,9 +345,21 @@ export function DispatchBoardPage() {
         </SurfaceCard>
 
         <SurfaceCard className="p-4">
-          <div className="flex items-center gap-2">
-            <Bike className="size-4 text-brand-primary" />
-            <h2 className="text-label font-semibold text-primary">Courier workload</h2>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Bike className="size-4 text-brand-primary" />
+              <h2 className="text-label font-semibold text-primary">Courier workload</h2>
+            </div>
+            <span
+              className={`text-caption ${workloadRefreshFailed ? 'text-status-warning-fg' : 'text-muted'}`}
+              aria-live="polite"
+            >
+              {workloadRefreshFailed
+                ? 'Auto-refresh failed, retrying'
+                : workloadUpdatedAt
+                  ? `Auto-refresh every 10s · updated ${formatTime(workloadUpdatedAt)}`
+                  : 'Auto-refresh every 10s'}
+            </span>
           </div>
           <div className="mt-4 space-y-2">
             {workloads.length === 0 ? (
