@@ -90,6 +90,12 @@
              them up through late replacement so tests still run uninstrumented
              when coverage is skipped. -->
         <argLine></argLine>
+
+        <!-- Coverage gate (jacoco:check in verify). The project target is 70% line / 50% branch;
+             modules still below it override these with their current baseline in their own
+             pom.xml, so coverage can only go up. Raise a module's numbers as tests are added. -->
+        <jacoco.line.minimum>0.70</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.50</jacoco.branch.minimum>
     </properties>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -327,6 +333,32 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.line.minimum}</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.branch.minimum}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

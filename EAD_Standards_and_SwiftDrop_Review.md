@@ -546,3 +546,33 @@ Most gaps are **hardening and consistency** issues, not design flaws. The most i
 | Testing and CI/CD | ✅ Thorough CI/CD; ❌ no coverage gate (G7), no frontend tests (G8) |
 
 **Suggested order of work:** G1 → G2 → G3 → G4 → G5 → G9 → G7 → G8 → G6 → G10–G13.
+
+---
+
+# PART C: Implementation Status (branch `shehan/chore/ead-standards-hardening`)
+
+Every gap from Part B was worked on. Each row says what changed and where; "Follow-up" lists what is deliberately left for later and why.
+
+| Gap | Status | What changed |
+|---|---|---|
+| **G1** Root containers | ✅ Done | All 9 service Dockerfiles now match the gateway: `swiftdrop` user (UID 1001), `USER`, `HEALTHCHECK`, ZGC + `MaxRAMPercentage`. Helm pods: `runAsNonRoot`, seccomp `RuntimeDefault`, `allowPrivilegeEscalation: false`, all capabilities dropped, **read-only root filesystem** with an `emptyDir` at `/tmp` (`podSecurity` in `values.yaml`). Frontend uses `nginx-unprivileged` on 8080. PostgreSQL/RabbitMQ/Redis also drop all capabilities. |
+| **G2** Vulnerability scanning | ✅ Done | `.github/workflows/security-scan.yml` (CodeQL for Java + TypeScript, Trivy dependency and Dockerfile/Helm misconfiguration scans; on PRs, dev/main pushes and weekly). `cd-aks-deploy.yml` scans every image with Trivy and blocks the push on a fixable HIGH/CRITICAL CVE. `.github/dependabot.yml` for Maven, npm, Docker base images and Actions. |
+| **G3** Token storage / CSP | ✅ Done | Refresh token moved to an **HttpOnly, Secure, SameSite=Strict cookie** (`swiftdrop_refresh`, path `/api/v1/auth`) set by `auth-iam-service` (`RefreshTokenCookies`); it is no longer in the JSON body or in browser storage. Content-Security-Policy added to both nginx configs; the Helm nginx config now also sends the hardening headers (it sent none before) and HSTS when TLS is on. |
+| **G4** Fail-open config | ✅ Done | `aks` profiles no longer default DB/RabbitMQ passwords or the dev JWT secret; `JWT_ALGORITHM` defaults to RS256. `JwtKeyProvider` (IAM) and `ProductionJwtGuard` (gateway) refuse to start under `aks` without RS256. |
+| **G5** Placeholder code | ✅ Done | Deleted the 9 placeholder classes, including the always-true `GeofenceProximityGuard`. Also found and fixed a similar latent issue: `OutForDeliveryState` now **fails closed** if its proof-of-delivery guard or the delivery id is missing. |
+| **G6** Broad catches | ✅ Done | ~45 broad catches narrowed to concrete types (`DataAccessException` for Redis, `JsonProcessingException`, `IOException`, `RestClientException`, `JwtException`, `GeneralSecurityException`, OpenPDF `DocumentException`, zxing `WriterException`, ...). The few deliberate boundaries (poison-message decoder, scheduler loops, per-row batch ingestion, provider fallbacks) keep a broad catch with a comment saying why. Found on the way: `CourierAssignedConsumer` silently swallowed failures (now rejects the message), and the webhook HMAC check used a non-constant-time comparison (now `MessageDigest.isEqual`). The merchant CSV endpoint no longer echoes internal exception messages to clients. |
+| **G7** Coverage gate | ✅ Done | `jacoco:check` runs in `verify` (so in CI). Target 70% line / 50% branch; modules below it have a baseline set just under today's coverage in their own `pom.xml` (ratchet: coverage can only go up). New tests: `LoginMfaServiceTest`, `RefreshTokenCookiesTest`, fail-closed FSM test, `aks` HS256 rejection, and the first tests for `webhook-resiliency-service` (retry policy, webhook signer, HMAC). Finding: that service had **no test sources at all**; the 45% in Part B came from a stale build folder. Unit-test baselines today: analytics 49/39, auth 53/46, common-contracts 42/29, delivery 63/55, webhook 10/13 (line/branch %); gateway, order, pricing, dispatch, merchant and notification already meet 70/50. |
+| **G8** Frontend tests / lint | ✅ Done | Vitest + React Testing Library (RoleGuard, API-client cookie refresh, booking validation, password policy, MFA type guard). ESLint 9 with typescript-eslint, react-hooks and **jsx-a11y**; fixing its findings repaired 15 unlabeled form controls and several mouse-only controls. Both run in `ci-frontend.yml`. |
+| **G9** Entity in API | ✅ Done | `GET /api/v1/pricing/zones` returns `ZoneResponse` records; spec and generated types updated. |
+| **G10** Oversized classes | ✅ Done | `AuthController` split into `SessionController`, `RegistrationController`, `PasswordController`, `GoogleOAuthController` (+ `ClientRequests` helper). `GoogleOAuthService` → HTTP calls moved to `GoogleApiClient` (Adapter). `OrderPdfGeneratorService` → formatting moved to `PdfFormat`, barcode/QR to `PdfCodes`. `JwtAuthenticationGlobalFilter` → path rules moved to `GatewayPathPolicy`, which also removes a duplicated API-key path list (DRY). |
+| **G11** MFA | ✅ Done (opt-in) | Emailed one-time code as a second factor for `SYSTEM_ADMIN` and `DISPATCHER`: `/login` answers **202** with a challenge, `/login/mfa` completes it (`LoginMfaService`, reuses the OTP pipeline; new `LOGIN_MFA` purpose, email template and Flyway `V7`). Frontend login page has the code step; the seed script prompts for the code. **Off by default** (`AUTH_MFA_ENABLED=false`) because the cluster still uses the mock email sender; turning it on without real email would lock admins out. |
+| **G12** Doc drift | ✅ Done | `jwt-lifecycle-spec.md` matches the code; refresh lifetime cut from 30 to 14 days. |
+| **G13** Javadoc | ✅ Done for the named areas | "Why" Javadoc for the pricing strategies, the proof-of-delivery guard and FSM state, and all new classes. The matching engine was already documented. |
+
+## Follow-up (not done on purpose)
+
+1. **Turn on MFA** once `NOTIFICATION_EMAIL_PROVIDER=azure` is configured: set `AUTH_MFA_ENABLED: "true"` for `auth-iam-service` in Helm. Google sign-in does not ask for the SwiftDrop code (Google has its own 2-step verification).
+2. **Dead-letter queue for `delivery.dispatch-assigned.queue`.** It has no DLX, so a rejected courier assignment is dropped (it used to be dropped silently). Adding a DLX changes the queue's arguments, so existing brokers must delete and recreate the queue; plan it as its own change with `definitions.json`.
+3. **First CI run of the scanners** may report existing CVEs or misconfigurations; that is their purpose. Fix them or add a justified entry to `.trivyignore.yaml`.
+4. **Local Docker volume:** the `pod_photos` volume created before this change is root-owned. Run `docker volume rm swiftdrop_pod_photos` once (only if it already exists) so the non-root delivery service can write to it.
+5. **Raise the coverage baselines** in each module's `pom.xml` as tests are added, until every module meets 70% / 50%.
