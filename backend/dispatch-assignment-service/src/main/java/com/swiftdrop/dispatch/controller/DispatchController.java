@@ -2,6 +2,7 @@ package com.swiftdrop.dispatch.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.dto.PagedResult;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
@@ -125,21 +126,29 @@ public class DispatchController {
     }
 
     @GetMapping("/assignments/{assignmentId}")
-    @Operation(summary = "Get dispatch assignment by UUID")
-    public ApiResponse<DispatchAssignmentResponse> getAssignmentById(@PathVariable UUID assignmentId) {
-        return ApiResponse.success(
-                dispatchAssignmentService.getAssignmentById(assignmentId),
-                "Dispatch assignment retrieved"
-        );
+    @Operation(summary = "Get dispatch assignment by UUID",
+            description = "A COURIER sees only an assignment they currently hold (403 otherwise, "
+                    + "including UNASSIGNED orders); DISPATCHER and SYSTEM_ADMIN see any.")
+    public ApiResponse<DispatchAssignmentResponse> getAssignmentById(
+            @PathVariable UUID assignmentId,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = DispatchAccess.requireCourierResourceRole(httpRequest);
+        DispatchAssignmentResponse assignment = dispatchAssignmentService.getAssignmentById(assignmentId);
+        DispatchAccess.requireAssignmentAccess(caller, assignment.courierId());
+        return ApiResponse.success(assignment, "Dispatch assignment retrieved");
     }
 
     @GetMapping("/assignments/order/{orderId}")
-    @Operation(summary = "Get dispatch assignment by order UUID")
-    public ApiResponse<DispatchAssignmentResponse> getAssignmentByOrderId(@PathVariable UUID orderId) {
-        return ApiResponse.success(
-                dispatchAssignmentService.getAssignmentByOrderId(orderId),
-                "Dispatch assignment retrieved"
-        );
+    @Operation(summary = "Get dispatch assignment by order UUID",
+            description = "A COURIER sees only an assignment they currently hold (403 otherwise, "
+                    + "including UNASSIGNED orders); DISPATCHER and SYSTEM_ADMIN see any.")
+    public ApiResponse<DispatchAssignmentResponse> getAssignmentByOrderId(
+            @PathVariable UUID orderId,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = DispatchAccess.requireCourierResourceRole(httpRequest);
+        DispatchAssignmentResponse assignment = dispatchAssignmentService.getAssignmentByOrderId(orderId);
+        DispatchAccess.requireAssignmentAccess(caller, assignment.courierId());
+        return ApiResponse.success(assignment, "Dispatch assignment retrieved");
     }
 
     @GetMapping("/unassigned")
@@ -154,11 +163,14 @@ public class DispatchController {
     }
 
     @GetMapping("/couriers/{courierId}/assignments")
-    @Operation(summary = "List active assignments for a courier")
+    @Operation(summary = "List active assignments for a courier",
+            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
     public ApiResponse<List<DispatchAssignmentResponse>> getCourierAssignments(
             @PathVariable UUID courierId,
-            @RequestParam(required = false) AssignmentStatus status
+            @RequestParam(required = false) AssignmentStatus status,
+            HttpServletRequest httpRequest
     ) {
+        DispatchAccess.requireCourierSelfOrOperations(httpRequest, courierId);
         return ApiResponse.success(
                 dispatchAssignmentService.getAssignmentsForCourier(courierId, status),
                 "Courier assignments retrieved"

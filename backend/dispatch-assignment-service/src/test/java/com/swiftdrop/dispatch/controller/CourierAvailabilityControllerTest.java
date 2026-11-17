@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.List;
 
+import static com.swiftdrop.dispatch.support.TestCallers.courier;
 import static com.swiftdrop.dispatch.support.TestCallers.dispatcher;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -95,7 +96,7 @@ class CourierAvailabilityControllerTest {
 
         when(courierShiftService.startShift(any(StartShiftRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start")
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start").with(courier(courierId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -128,7 +129,7 @@ class CourierAvailabilityControllerTest {
 
         when(courierShiftService.updateStatus(eq(courierId), eq(ShiftStatus.ON_BREAK))).thenReturn(response);
 
-        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/status")
+        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/status").with(courier(courierId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -165,7 +166,7 @@ class CourierAvailabilityControllerTest {
 
         when(courierShiftService.updateLocation(any(CourierLocationPingRequest.class))).thenReturn(response);
 
-        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location")
+        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location").with(courier(courierId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -202,7 +203,7 @@ class CourierAvailabilityControllerTest {
         when(courierShiftService.endShift(courierId)).thenThrow(new ShiftEndNotAllowedException(
                 "Cannot end shift: the courier still has 2 active parcel(s). Complete or reassign them first."));
 
-        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId))
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId).with(courier(courierId)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.error").value("Shift Conflict"))
@@ -217,7 +218,7 @@ class CourierAvailabilityControllerTest {
                 "could not execute statement [duplicate key value violates unique constraint \"courier_shifts_courier_id_key\"]",
                 new SQLException("duplicate key value violates unique constraint", "23505")));
 
-        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start")
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(startShiftRequest())))
                 .andExpect(status().isConflict())
@@ -234,7 +235,7 @@ class CourierAvailabilityControllerTest {
                 "null value in column \"courier_name\" violates not-null constraint",
                 new SQLException("null value in column", "23502")));
 
-        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start")
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(startShiftRequest())))
                 .andExpect(status().isInternalServerError())
@@ -252,7 +253,7 @@ class CourierAvailabilityControllerTest {
                 .thenThrow(new ObjectOptimisticLockingFailureException(CourierShift.class, 1L))
                 .thenReturn(response);
 
-        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location")
+        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new CourierLocationPingRequest(
                                 UUID.randomUUID(), SriLankanDistrict.COLOMBO, null, null))))

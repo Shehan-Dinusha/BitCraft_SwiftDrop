@@ -19,8 +19,17 @@ public final class TestCallers {
         return as(UserRole.DISPATCHER);
     }
 
+    /** The courier signed in as {@code courierId}: their IAM user ID is their courier ID. */
+    public static RequestPostProcessor courier(UUID courierId) {
+        return as(courierId, UserRole.COURIER);
+    }
+
     public static RequestPostProcessor as(UserRole role) {
-        return withIdentity(UUID.randomUUID().toString(), role.name());
+        return as(UUID.randomUUID(), role);
+    }
+
+    public static RequestPostProcessor as(UUID userId, UserRole role) {
+        return withIdentity(userId.toString(), role.name());
     }
 
     /** Raw header values, for tests that send malformed identities. */

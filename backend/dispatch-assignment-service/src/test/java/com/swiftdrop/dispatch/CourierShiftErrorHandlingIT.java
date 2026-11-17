@@ -14,6 +14,7 @@ import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
+import com.swiftdrop.dispatch.support.TestCallers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -112,7 +113,8 @@ class CourierShiftErrorHandlingIT {
         UUID courierId = courier(2, ShiftStatus.BUSY);
         CourierShift before = courierShiftRepository.findByCourierId(courierId).orElseThrow();
 
-        MvcResult result = mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId))
+        MvcResult result = mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId)
+                        .with(TestCallers.courier(courierId)))
                 .andReturn();
 
         assertThat(result.getResponse().getStatus()).isEqualTo(409);
@@ -138,7 +140,7 @@ class CourierShiftErrorHandlingIT {
                 jdbcTemplate.update("INSERT INTO courier_shifts (courier_id, courier_name, current_district, shift_status) "
                         + "VALUES (?, 'Registered first', 'KANDY', 'AVAILABLE')", courierId);
                 Future<MvcResult> request = courierApp.submit(() -> mockMvc.perform(
-                                post("/api/v1/dispatch/couriers/shifts/start")
+                                post("/api/v1/dispatch/couriers/shifts/start").with(TestCallers.courier(courierId))
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(new StartShiftRequest(courierId,
                                                 "Registered second", null, null, SriLankanDistrict.COLOMBO, 5))))
@@ -243,7 +245,7 @@ class CourierShiftErrorHandlingIT {
     }
 
     private MvcResult ping(UUID courierId) throws Exception {
-        return mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location")
+        return mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location").with(TestCallers.courier(courierId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new CourierLocationPingRequest(courierId,
                                 SriLankanDistrict.GAMPAHA, new BigDecimal("6.9000000"), new BigDecimal("79.8500000")))))
