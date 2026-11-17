@@ -16,8 +16,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Action that broadcasts delivery state change events to internal and public event topics.
- * Defers publishing until the active transaction commits to prevent ghost events on rollback.
+ * Action that broadcasts delivery state change events to internal and public
+ * event topics.
+ * Defers publishing until the active transaction commits to prevent ghost
+ * events on rollback.
  */
 @Component
 public class PublishStateTransitionAction {
@@ -29,9 +31,9 @@ public class PublishStateTransitionAction {
     }
 
     public void execute(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, UUID customerId,
-                        DeliveryState previousState, DeliveryState newState, String notes,
-                        SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
-                        DeliveryFailureReason failureReason) {
+            DeliveryState previousState, DeliveryState newState, String notes,
+            SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
+            DeliveryFailureReason failureReason) {
 
         Runnable publishTask = () -> doPublish(deliveryId, orderId, trackingNumber, courierId, customerId,
                 previousState, newState, notes, pickupDistrict, deliveryDistrict, failureReason);
@@ -52,17 +54,17 @@ public class PublishStateTransitionAction {
      * Backward-compatible overload for callers without customerId.
      */
     public void execute(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId,
-                        DeliveryState previousState, DeliveryState newState, String notes,
-                        SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
-                        DeliveryFailureReason failureReason) {
+            DeliveryState previousState, DeliveryState newState, String notes,
+            SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
+            DeliveryFailureReason failureReason) {
         execute(deliveryId, orderId, trackingNumber, courierId, null,
                 previousState, newState, notes, pickupDistrict, deliveryDistrict, failureReason);
     }
 
     private void doPublish(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, UUID customerId,
-                           DeliveryState previousState, DeliveryState newState, String notes,
-                           SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
-                           DeliveryFailureReason failureReason) {
+            DeliveryState previousState, DeliveryState newState, String notes,
+            SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
+            DeliveryFailureReason failureReason) {
 
         // 1. Publish internal delivery state changed event
         eventPublisher.publishStateChanged(new DeliveryStateChangedEvent(
@@ -74,8 +76,7 @@ public class PublishStateTransitionAction {
                 previousState,
                 newState,
                 notes,
-                Instant.now()
-        ));
+                Instant.now()));
 
         // 2. Map and publish public tracking event for Gateway / Customer streams
         PublicOrderStatus publicStatus = PublicOrderStatus.fromDeliveryState(newState);
@@ -94,7 +95,6 @@ public class PublishStateTransitionAction {
                 pickupDistrict,
                 deliveryDistrict,
                 failureReason,
-                Instant.now()
-        ));
+                Instant.now()));
     }
 }
