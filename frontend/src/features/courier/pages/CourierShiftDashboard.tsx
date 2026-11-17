@@ -80,10 +80,19 @@ export function CourierShiftDashboard() {
         console.warn('Could not load deliveries from /deliveries/me:', err);
       }
 
-      // Fetch active dispatch assignments
+      // Fetch active dispatch assignments: an order moved to this courier by a dispatcher
+      // has status REASSIGNED, so both statuses are requested and merged, one entry each.
       try {
-        const assignedOrders = await dispatchApi.getCourierAssignments(courierId, 'ASSIGNED');
-        setAssignments(assignedOrders || []);
+        const [assignedOrders, reassignedOrders] = await Promise.all([
+          dispatchApi.getCourierAssignments(courierId, 'ASSIGNED'),
+          dispatchApi.getCourierAssignments(courierId, 'REASSIGNED')
+        ]);
+        const activeOrders = new Map<string, DispatchAssignmentResponse>();
+        for (const item of [...(assignedOrders || []), ...(reassignedOrders || [])]) {
+          const key = item.assignmentId ?? item.orderId;
+          if (key && !activeOrders.has(key)) activeOrders.set(key, item);
+        }
+        setAssignments([...activeOrders.values()]);
       } catch {
         setAssignments([]);
       }

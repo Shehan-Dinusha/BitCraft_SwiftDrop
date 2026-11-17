@@ -4,6 +4,7 @@ import type { components } from '@/types/generated/dispatch-assignment-service';
 export type DispatchAssignmentResponse = components['schemas']['DispatchAssignmentResponse'];
 export type CourierShiftResponse = components['schemas']['CourierShiftResponse'];
 export type ManualAssignRequest = components['schemas']['ManualAssignRequest'];
+export type ReassignCourierRequest = components['schemas']['ReassignCourierRequest'];
 export type CourierWorkloadResponse = components['schemas']['CourierWorkloadResponse'];
 export type CourierSuggestionResponse = components['schemas']['CourierSuggestionResponse'];
 export type StartShiftRequest = components['schemas']['StartShiftRequest'];
@@ -64,6 +65,14 @@ export const dispatchApi = {
   manualAssign: async (request: ManualAssignRequest) => {
     const { data } = await apiClient.post<{ success: boolean; data: DispatchAssignmentResponse }>(
       '/v1/dispatch/assign',
+      request
+    );
+    return data.data;
+  },
+
+  reassign: async (request: ReassignCourierRequest) => {
+    const { data } = await apiClient.post<{ success: boolean; data: DispatchAssignmentResponse }>(
+      '/v1/dispatch/reassign',
       request
     );
     return data.data;
