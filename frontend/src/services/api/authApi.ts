@@ -71,13 +71,15 @@ export async function resetPassword(identifier: string, code: string, newPasswor
   await apiClient.post('/v1/auth/reset-password', { identifier, code, newPassword });
 }
 
-export async function refreshTokens(refreshToken: string): Promise<AuthTokenResponse> {
-  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/refresh', { refreshToken });
+/** Rotates the session. The refresh token is the HttpOnly cookie, so nothing is sent in the body. */
+export async function refreshTokens(): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/refresh', {});
   return data;
 }
 
-export async function logoutUser(refreshToken?: string | null): Promise<void> {
-  await apiClient.post('/v1/auth/logout', refreshToken ? { refreshToken } : {});
+/** Revokes the refresh-token cookie's session and blacklists the current access token. */
+export async function logoutUser(): Promise<void> {
+  await apiClient.post('/v1/auth/logout', {});
 }
 
 export async function fetchCurrentUser(): Promise<AuthUserProfile> {

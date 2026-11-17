@@ -431,7 +431,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rotate a refresh token and issue a new access token */
+        /**
+         * Rotate a refresh token and issue a new access token
+         * @description Browsers send no body; the refresh token is read from the HttpOnly swiftdrop_refresh cookie (Path=/api/v1/auth, SameSite=Strict). Non-browser clients may send it in the body. The rotated token is returned as a new Set-Cookie, never in the JSON body.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -439,7 +442,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody: {
+            requestBody?: {
                 content: {
                     "application/json": components["schemas"]["RefreshTokenRequest"];
                 };
@@ -1017,7 +1020,8 @@ export interface components {
             merchantId?: string | null;
         };
         RefreshTokenRequest: {
-            refreshToken: string;
+            /** @description Optional when the swiftdrop_refresh cookie is sent. */
+            refreshToken?: string;
         };
         LogoutRequest: {
             /** @description Optional refresh token to revoke. */
@@ -1074,7 +1078,8 @@ export interface components {
         };
         TokenResponse: {
             accessToken?: string;
-            refreshToken?: string;
+            /** @description Always null for /login, /refresh and /oauth2/exchange: the refresh token is set as the HttpOnly swiftdrop_refresh cookie instead. */
+            refreshToken?: string | null;
             /** @example Bearer */
             tokenType?: string;
             /**

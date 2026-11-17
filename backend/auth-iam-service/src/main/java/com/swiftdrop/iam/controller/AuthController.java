@@ -16,6 +16,7 @@ import com.swiftdrop.iam.dto.TokenResponse;
 import com.swiftdrop.iam.dto.UserProfileResponse;
 import com.swiftdrop.iam.dto.UsernameAvailabilityResponse;
 import com.swiftdrop.iam.dto.VerifyEmailRequest;
+import com.swiftdrop.iam.security.RefreshTokenCookies;
 import com.swiftdrop.iam.security.SecurityPrincipal;
 import com.swiftdrop.iam.service.AuthenticationService;
 import com.swiftdrop.iam.service.EmailVerificationService;
@@ -30,6 +31,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -56,6 +58,7 @@ public class AuthController {
         private final EmailVerificationService emailVerificationService;
         private final PasswordResetService passwordResetService;
         private final UsernameAvailabilityService usernameAvailabilityService;
+        private final RefreshTokenCookies refreshTokenCookies;
 
         public AuthController(AuthenticationService authenticationService,
                         UserAccountService userAccountService,
@@ -63,7 +66,9 @@ public class AuthController {
                         RegistrationService registrationService,
                         EmailVerificationService emailVerificationService,
                         PasswordResetService passwordResetService,
-                        UsernameAvailabilityService usernameAvailabilityService) {
+                        UsernameAvailabilityService usernameAvailabilityService,
+                        RefreshTokenCookies refreshTokenCookies) {
+                this.refreshTokenCookies = refreshTokenCookies;
                 this.usernameAvailabilityService = usernameAvailabilityService;
                 this.authenticationService = authenticationService;
                 this.userAccountService = userAccountService;
@@ -76,14 +81,16 @@ public class AuthController {
         // ─── Password-based auth ────────────────────────────────────────────────────
 
         @PostMapping("/login")
-        @Operation(summary = "Authenticate and issue access and refresh tokens")
-        public TokenResponse login(@Valid @RequestBody LoginRequest request,
+        @Operation(summary = "Authenticate and issue access and refresh tokens",
+                        description = "The refresh token is set as the HttpOnly swiftdrop_refresh cookie "
+                                        + "and is not included in the response body.")
+        public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request,
                         HttpServletRequest httpRequest) {
-                return authenticationService.login(
+                return refreshTokenCookies.issue(authenticationService.login(
                                 request.username(),
                                 request.password(),
                                 clientIp(httpRequest),
-                                httpRequest.getHeader("User-Agent"));
+                                httpRequest.getHeader("User-Agent")));
         }
 
         @PostMapping("/register")
@@ -152,25 +159,32 @@ public class AuthController {
         }
 
         @PostMapping("/refresh")
-        @Operation(summary = "Rotate a refresh token and issue a new access token")
-        public TokenResponse refresh(@Valid @RequestBody RefreshTokenRequest request,
+        @Operation(summary = "Rotate a refresh token and issue a new access token",
+                        description = "Reads the refresh token from the swiftdrop_refresh cookie, or from the "
+                                        + "body for non-browser clients. The rotated token is set as a new cookie.")
+        public ResponseEntity<TokenResponse> refresh(@RequestBody(required = false) RefreshTokenRequest request,
                         HttpServletRequest httpRequest) {
-                return authenticationService.refresh(
-                                request.refreshToken(),
+                String refreshToken = refreshTokenCookies.resolve(
+                                request == null ? null : request.refreshToken(), httpRequest);
+                return refreshTokenCookies.issue(authenticationService.refresh(
+                                refreshToken,
                                 clientIp(httpRequest),
-                                httpRequest.getHeader("User-Agent"));
+                                httpRequest.getHeader("User-Agent")));
         }
 
         @PostMapping("/logout")
         @Operation(summary = "Revoke the current refresh token and access token")
         @SecurityRequirement(name = OpenApiConstants.BEARER_AUTH_SCHEME)
-        public ApiResponse<Void> logout(
+        public ResponseEntity<ApiResponse<Void>> logout(
                         @RequestBody(required = false) LogoutRequest request,
-                        @RequestHeader(value = JwtHeaderConstants.AUTHORIZATION, required = false) String authorization) {
+                        @RequestHeader(value = JwtHeaderConstants.AUTHORIZATION, required = false) String authorization,
+                        HttpServletRequest httpRequest) {
                 authenticationService.logout(
-                                request == null ? null : request.refreshToken(),
+                                refreshTokenCookies.resolve(request == null ? null : request.refreshToken(), httpRequest),
                                 bearerToken(authorization));
-                return ApiResponse.success("Logged out");
+                return ResponseEntity.ok()
+                                .header(HttpHeaders.SET_COOKIE, refreshTokenCookies.clearHeader())
+                                .body(ApiResponse.success("Logged out"));
         }
 
         @PostMapping("/change-password")
@@ -259,13 +273,13 @@ public class AuthController {
         @Operation(summary = "Exchange OAuth one-time code for SwiftDrop tokens", description = "Accepts the short-lived code issued by the Google callback and "
                         + "returns a standard TokenResponse. The code is immediately consumed "
                         + "and cannot be reused.")
-        public TokenResponse googleExchange(
+        public ResponseEntity<TokenResponse> googleExchange(
                         @Valid @RequestBody OAuthExchangeRequest request,
                         HttpServletRequest httpRequest) {
-                return googleOAuthService.exchangeCode(
+                return refreshTokenCookies.issue(googleOAuthService.exchangeCode(
                                 request.code(),
                                 clientIp(httpRequest),
-                                httpRequest.getHeader("User-Agent"));
+                                httpRequest.getHeader("User-Agent")));
         }
 
         // ─── Helpers ────────────────────────────────────────────────────────────────
