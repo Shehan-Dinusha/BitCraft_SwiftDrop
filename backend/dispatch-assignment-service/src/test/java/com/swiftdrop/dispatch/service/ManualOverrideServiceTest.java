@@ -441,6 +441,85 @@ class ManualOverrideServiceTest {
         return captor.getValue();
     }
 
+    // ── Capacity ──────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Assign: taking the last capacity slot marks the courier BUSY")
+    void testManualAssign_LastSlotMarksCourierBusy() {
+        CourierShift courier = courier(newCourierId, "New Courier", 4); // capacity 5
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
+        when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(courier));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        manualOverrideService.manualAssign(new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_ONE", null));
+
+        assertThat(courier.getActiveParcelsCount()).isEqualTo(5);
+        assertThat(courier.getShiftStatus()).isEqualTo(ShiftStatus.BUSY);
+    }
+
+    @Test
+    @DisplayName("Assign: a courier at capacity is rejected and nothing changes")
+    void testManualAssign_FullCourierRejected() {
+        DispatchAssignment assignment = unassignedOrder();
+        CourierShift full = courier(newCourierId, "Full Courier", 5); // AVAILABLE, but 5 of 5
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(full));
+
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(
+                new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_ONE", null)))
+                .isInstanceOf(CourierNotAvailableException.class)
+                .hasMessageContaining("reached capacity");
+
+        assertThat(full.getActiveParcelsCount()).isEqualTo(5);
+        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        verify(courierShiftRepository, never()).save(any());
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Reassign: a new courier at capacity is rejected and neither workload changes")
+    void testReassign_FullNewCourierRejected() {
+        DispatchAssignment assignment = assignedOrder(AssignmentStatus.ASSIGNED);
+        CourierShift full = courier(newCourierId, "Full Courier", 5);
+        full.setShiftStatus(ShiftStatus.BUSY);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(full));
+
+        assertThatThrownBy(() -> manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null)))
+                .isInstanceOf(CourierNotAvailableException.class);
+
+        assertThat(assignment.getCourierId()).isEqualTo(oldCourierId);
+        assertThat(full.getActiveParcelsCount()).isEqualTo(5);
+        verify(courierShiftRepository, never()).findByCourierId(oldCourierId);
+        verify(courierShiftRepository, never()).save(any());
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Reassign: an OFFLINE new courier is rejected and neither workload changes")
+    void testReassign_OfflineNewCourierRejected() {
+        DispatchAssignment assignment = assignedOrder(AssignmentStatus.ASSIGNED);
+        CourierShift offline = courier(newCourierId, "Offline Courier", 0);
+        offline.setShiftStatus(ShiftStatus.OFFLINE);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(offline));
+
+        assertThatThrownBy(() -> manualOverrideService.reassign(new ReassignCourierRequest(
+                orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null)))
+                .isInstanceOf(CourierNotAvailableException.class)
+                .hasMessageContaining("OFFLINE");
+
+        assertThat(assignment.getCourierId()).isEqualTo(oldCourierId);
+        assertThat(offline.getActiveParcelsCount()).isZero();
+        verify(courierShiftRepository, never()).findByCourierId(oldCourierId);
+        verify(courierShiftRepository, never()).save(any());
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
     private DispatchAssignment unassignedOrder() {
         DispatchAssignment assignment = new DispatchAssignment();
         assignment.setOrderId(orderId);

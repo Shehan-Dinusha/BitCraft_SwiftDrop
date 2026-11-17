@@ -1,6 +1,7 @@
 package com.swiftdrop.dispatch.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.security.CallerContextException;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,6 +28,18 @@ public class GlobalExceptionHandler {
     static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
 
     static final String GENERIC_ERROR_MESSAGE = "An unexpected error occurred";
+
+    /** Missing/invalid gateway identity headers -> 401; caller not allowed -> 403. */
+    @ExceptionHandler(CallerContextException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallerContext(
+            CallerContextException ex,
+            HttpServletRequest request) {
+        log.warn("Access denied on {}: {}", request.getRequestURI(), ex.getMessage());
+        int status = ex.statusCode();
+        String errorName = status == 403 ? "Forbidden" : "Unauthorized";
+        return ResponseEntity.status(status)
+                .body(ApiErrorResponse.of(status, errorName, ex.getMessage(), request.getRequestURI()));
+    }
 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiErrorResponse> handleOptimisticLocking(

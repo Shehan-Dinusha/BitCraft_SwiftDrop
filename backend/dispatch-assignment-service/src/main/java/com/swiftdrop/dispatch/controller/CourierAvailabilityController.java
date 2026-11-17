@@ -8,10 +8,12 @@ import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
+import com.swiftdrop.dispatch.security.DispatchAccess;
 import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import com.swiftdrop.dispatch.service.CourierShiftService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,11 +48,14 @@ public class CourierAvailabilityController {
     }
 
     @GetMapping
-    @Operation(summary = "List couriers with optional district and shift status filters")
+    @Operation(summary = "List couriers with optional district and shift status filters",
+            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<List<CourierShiftResponse>> getCouriers(
             @RequestParam(required = false) SriLankanDistrict district,
-            @RequestParam(required = false) ShiftStatus status
+            @RequestParam(required = false) ShiftStatus status,
+            HttpServletRequest httpRequest
     ) {
+        DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
                 courierShiftService.getCouriers(district, status),
                 "Couriers retrieved"
@@ -58,8 +63,12 @@ public class CourierAvailabilityController {
     }
 
     @GetMapping("/{courierId}")
-    @Operation(summary = "Get courier shift status and live metrics")
-    public ApiResponse<CourierShiftResponse> getCourier(@PathVariable UUID courierId) {
+    @Operation(summary = "Get courier shift status and live metrics",
+            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> getCourier(
+            @PathVariable UUID courierId,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireCourierSelfOrOperations(httpRequest, courierId);
         return ApiResponse.success(
                 courierShiftService.getCourier(courierId),
                 "Courier retrieved"
@@ -67,8 +76,10 @@ public class CourierAvailabilityController {
     }
 
     @GetMapping("/workload")
-    @Operation(summary = "List current courier workloads")
-    public ApiResponse<List<CourierWorkloadResponse>> getWorkloads() {
+    @Operation(summary = "List current courier workloads",
+            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
+    public ApiResponse<List<CourierWorkloadResponse>> getWorkloads(HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
                 courierShiftService.getWorkloads(),
                 "Courier workloads retrieved"
@@ -76,8 +87,12 @@ public class CourierAvailabilityController {
     }
 
     @PostMapping("/shifts/start")
-    @Operation(summary = "Start or register courier shift")
-    public ApiResponse<CourierShiftResponse> startShift(@Valid @RequestBody StartShiftRequest request) {
+    @Operation(summary = "Start or register courier shift",
+            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> startShift(
+            @Valid @RequestBody StartShiftRequest request,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
         return ApiResponse.success(
                 courierShiftService.startShift(request),
                 "Courier shift started successfully"
@@ -85,8 +100,12 @@ public class CourierAvailabilityController {
     }
 
     @PostMapping("/shifts/{courierId}/end")
-    @Operation(summary = "End courier shift")
-    public ApiResponse<CourierShiftResponse> endShift(@PathVariable UUID courierId) {
+    @Operation(summary = "End courier shift",
+            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> endShift(
+            @PathVariable UUID courierId,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireCourierSelfOrOperations(httpRequest, courierId);
         return ApiResponse.success(
                 courierShiftService.endShift(courierId),
                 "Courier shift ended successfully"
@@ -94,8 +113,12 @@ public class CourierAvailabilityController {
     }
 
     @PutMapping("/shifts/status")
-    @Operation(summary = "Update courier shift status (e.g., AVAILABLE, ON_BREAK, BUSY, OFFLINE)")
-    public ApiResponse<CourierShiftResponse> updateShiftStatus(@Valid @RequestBody UpdateShiftStatusRequest request) {
+    @Operation(summary = "Update courier shift status (e.g., AVAILABLE, ON_BREAK, BUSY, OFFLINE)",
+            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> updateShiftStatus(
+            @Valid @RequestBody UpdateShiftStatusRequest request,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
         return ApiResponse.success(
                 courierShiftService.updateStatus(request.courierId(), request.status()),
                 "Shift status updated successfully"
@@ -103,8 +126,12 @@ public class CourierAvailabilityController {
     }
 
     @PutMapping("/shifts/location")
-    @Operation(summary = "Record courier GPS location heartbeat ping")
-    public ApiResponse<CourierShiftResponse> updateLocation(@Valid @RequestBody CourierLocationPingRequest request) {
+    @Operation(summary = "Record courier GPS location heartbeat ping",
+            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> updateLocation(
+            @Valid @RequestBody CourierLocationPingRequest request,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
         return ApiResponse.success(
                 courierConflictRetry.run("Location update", () -> courierShiftService.updateLocation(request)),
                 "Location updated successfully"

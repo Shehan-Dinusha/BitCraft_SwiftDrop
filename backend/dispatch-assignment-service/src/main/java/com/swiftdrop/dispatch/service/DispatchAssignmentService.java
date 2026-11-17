@@ -93,10 +93,23 @@ public class DispatchAssignmentService {
         return list.stream().map(DispatchAssignmentResponse::fromEntity).toList();
     }
 
+    /**
+     * Up to three AVAILABLE couriers below capacity for an order: for a new
+     * assignment when it is UNASSIGNED, or for a reassignment when it is ASSIGNED
+     * or REASSIGNED, in which case the courier currently holding it is left out. A
+     * COMPLETED or CANCELLED order cannot be (re)assigned, so it gets no suggestions.
+     */
     @Transactional(readOnly = true)
     public List<CourierSuggestionResponse> getSuggestions(UUID orderId) {
         DispatchAssignment assignment = assignmentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new AssignmentNotFoundException("Assignment not found for order: " + orderId));
+        if (assignment.getStatus().isTerminal()) {
+            throw new InvalidAssignmentTransitionException(
+                    "Cannot suggest couriers for an assignment in state " + assignment.getStatus());
+        }
+        UUID currentCourierId = assignment.getStatus() == AssignmentStatus.UNASSIGNED
+                ? null
+                : assignment.getCourierId();
 
         var candidates = courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE);
         Comparator<CourierShift> ranking =
@@ -108,6 +121,7 @@ public class DispatchAssignmentService {
                         .thenComparing(CourierShift::getCourierId);
 
         return candidates.stream()
+                .filter(courier -> !courier.getCourierId().equals(currentCourierId))
                 .sorted(ranking)
                 .limit(3)
                 .map(courier -> CourierSuggestionResponse.fromEntity(courier, assignment.getPickupDistrict()))
@@ -234,7 +248,7 @@ public class DispatchAssignmentService {
                 courier.setShiftStatus(ShiftStatus.AVAILABLE);
             }
             courierShiftRepository.save(courier);
-            log.info("Decremented courier {} active parcels count to {}", courier.getCourierName(), count);
+            log.info("Decremented courier {} active parcels count to {}", courierId, count);
         });
     }
 }
