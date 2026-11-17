@@ -184,6 +184,87 @@ class ConcurrentAssignmentIT {
         assertExactlyOneCourierAssignedEvent(orderId, courierA);
     }
 
+    /**
+     * Two different orders compete for one courier's last capacity slot. A row lock
+     * on the courier's shift record holds both requests at their versioned courier
+     * update, so both have already seen the courier as AVAILABLE with a free slot.
+     * The first commit takes the slot; the second fails its version check, is retried
+     * by CourierConflictRetry, re-reads the now full courier and is refused.
+     */
+    @Test
+    @DisplayName("Two orders racing for a courier's last slot: one assigned, one Courier Not Available, workload = capacity")
+    void concurrentAssignmentsForLastCapacitySlot() throws Exception {
+        UUID firstOrder = unassignedOrder();
+        UUID secondOrder = unassignedOrder();
+        UUID courierId = courierWithOneFreeSlot();
+        ExecutorService dispatchers = Executors.newFixedThreadPool(2);
+
+        try {
+            List<Future<MvcResult>> requests = new TransactionTemplate(transactionManager).execute(status -> {
+                jdbcTemplate.queryForObject(
+                        "SELECT id FROM courier_shifts WHERE courier_id = ? FOR UPDATE", Long.class, courierId);
+
+                Future<MvcResult> first = dispatchers.submit(() -> assign(firstOrder, courierId, "DISPATCHER_A"));
+                Future<MvcResult> second = dispatchers.submit(() -> assign(secondOrder, courierId, "DISPATCHER_B"));
+
+                await().atMost(Duration.ofSeconds(20))
+                        .until(() -> blockedCourierUpdates() == 2);
+                return List.of(first, second);
+            }); // committing the lock-holding transaction releases both requests
+
+            MvcResult first = requests.get(0).get(30, TimeUnit.SECONDS);
+            MvcResult second = requests.get(1).get(30, TimeUnit.SECONDS);
+            assertThat(List.of(first.getResponse().getStatus(), second.getResponse().getStatus()))
+                    .containsExactlyInAnyOrder(200, 409);
+
+            boolean firstWon = first.getResponse().getStatus() == 200;
+            UUID winningOrder = firstWon ? firstOrder : secondOrder;
+            UUID losingOrder = firstWon ? secondOrder : firstOrder;
+            JsonNode refusal = body(firstWon ? second : first);
+            assertThat(refusal.get("error").asText()).isEqualTo("Courier Not Available");
+
+            // Persisted state, read back from PostgreSQL
+            CourierShift courier = courierShiftRepository.findByCourierId(courierId).orElseThrow();
+            assertThat(courier.getActiveParcelsCount()).as("workload equals capacity").isEqualTo(courier.getMaxCapacity());
+            assertThat(courier.getShiftStatus()).isEqualTo(ShiftStatus.BUSY);
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM dispatch_assignments WHERE courier_id = ? AND status = 'ASSIGNED'",
+                    Integer.class, courierId)).as("only the winning order holds the courier").isEqualTo(1);
+            DispatchAssignment won = assignmentRepository.findByOrderId(winningOrder).orElseThrow();
+            assertThat(won.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
+            assertThat(won.getCourierId()).isEqualTo(courierId);
+            DispatchAssignment lost = assignmentRepository.findByOrderId(losingOrder).orElseThrow();
+            assertThat(lost.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+            assertThat(lost.getCourierId()).isNull();
+            assertThat(lost.getVersion()).as("the refused order was never written").isZero();
+            assertExactlyOneCourierAssignedEvent(winningOrder, courierId);
+        } finally {
+            dispatchers.shutdownNow();
+        }
+    }
+
+    private int blockedCourierUpdates() {
+        Integer blocked = jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM pg_stat_activity
+                WHERE datname = current_database()
+                  AND wait_event_type = 'Lock'
+                  AND query ILIKE 'update courier_shifts%'
+                """, Integer.class);
+        return blocked == null ? 0 : blocked;
+    }
+
+    /** Capacity 2 with one parcel already held: exactly one free slot. */
+    private UUID courierWithOneFreeSlot() {
+        CourierShift courier = new CourierShift();
+        courier.setCourierId(UUID.randomUUID());
+        courier.setCourierName("IT Courier");
+        courier.setCurrentDistrict(SriLankanDistrict.COLOMBO);
+        courier.setShiftStatus(ShiftStatus.AVAILABLE);
+        courier.setActiveParcelsCount(1);
+        courier.setMaxCapacity(2);
+        return courierShiftRepository.saveAndFlush(courier).getCourierId();
+    }
+
     private MvcResult assign(UUID orderId, UUID courierId, String dispatcher) throws Exception {
         return mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)

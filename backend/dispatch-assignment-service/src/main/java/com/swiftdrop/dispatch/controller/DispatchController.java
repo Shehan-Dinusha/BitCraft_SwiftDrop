@@ -180,7 +180,8 @@ public class DispatchController {
     @GetMapping("/orders/{orderId}/suggestions")
     @Operation(summary = "Suggest available couriers for an order",
             description = "Returns up to three available couriers, preferring the pickup district and then lowest workload. "
-                    + "Requires the DISPATCHER or SYSTEM_ADMIN role.")
+                    + "For an assigned order the current courier is left out (reassignment suggestions); "
+                    + "a completed or cancelled order returns 409. Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<List<CourierSuggestionResponse>> getCourierSuggestions(
             @PathVariable UUID orderId,
             HttpServletRequest httpRequest) {

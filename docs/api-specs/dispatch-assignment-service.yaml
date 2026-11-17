@@ -293,7 +293,12 @@ paths:
       tags:
         - Dispatch
       summary: Suggest available couriers for an order
-      description: Returns up to three available couriers, preferring the pickup district and then lowest workload. Requires the DISPATCHER or SYSTEM_ADMIN role.
+      description: >-
+        Returns up to three AVAILABLE couriers below capacity, preferring the pickup district, then
+        lower active workload, then the most recent heartbeat (couriers without one last), then courier
+        ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or
+        REASSIGNED order they are reassignment suggestions and leave out the courier currently holding
+        the order. An empty list means no courier is eligible. Requires the DISPATCHER or SYSTEM_ADMIN role.
       operationId: getCourierSuggestions
       parameters:
         - name: orderId
@@ -323,6 +328,14 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "404":
           description: Assignment or order not found
+        "409":
+          description: >-
+            Invalid Assignment Transition: the order is COMPLETED or CANCELLED, so it cannot be
+            assigned or reassigned and no suggestions are returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/couriers/{courierId}/assignments:
     get:

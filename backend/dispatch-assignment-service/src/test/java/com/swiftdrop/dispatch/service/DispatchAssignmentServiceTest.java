@@ -10,6 +10,7 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
+import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
 import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -324,6 +325,208 @@ class DispatchAssignmentServiceTest {
         dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.CREATED));
 
         verifyNoInteractions(assignmentRepository, courierShiftRepository);
+    }
+
+    // ── Workload release ──────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Workload never goes below zero when a terminal event releases a courier already at 0")
+    void testDecrement_NeverBelowZero() {
+        CourierShift courier = courierWithWorkload(0, ShiftStatus.AVAILABLE, 5);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignedAssignment()));
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(courier));
+
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.DELIVERED));
+
+        assertThat(courier.getActiveParcelsCount()).isZero();
+        assertThat(courier.getShiftStatus()).isEqualTo(ShiftStatus.AVAILABLE);
+    }
+
+    @Test
+    @DisplayName("A terminal event for a reassigned order releases only the new courier's workload")
+    void testTerminalEventOnReassignedOrder_ReleasesOnlyNewCourier() {
+        UUID previousCourier = UUID.randomUUID();
+        DispatchAssignment assignment = assignedAssignment();
+        assignment.setStatus(AssignmentStatus.REASSIGNED); // courierId is now the new courier
+        CourierShift newCourier = courierWithWorkload(2, ShiftStatus.AVAILABLE, 5);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(newCourier));
+
+        dispatchAssignmentService.handleParcelStatusChanged(parcelStatus(PublicOrderStatus.DELIVERED));
+
+        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.COMPLETED);
+        assertThat(newCourier.getActiveParcelsCount()).isEqualTo(1);
+        verify(courierShiftRepository, never()).findByCourierId(previousCourier);
+        verify(courierShiftRepository, times(1)).save(any(CourierShift.class));
+    }
+
+    // ── Suggestions ───────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Suggestions: an UNASSIGNED order gets suggestions for a new assignment")
+    void testSuggestions_UnassignedOrder() {
+        CourierShift candidate = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1);
+        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE)).thenReturn(List.of(candidate));
+
+        assertThat(dispatchAssignmentService.getSuggestions(orderId))
+                .extracting(s -> s.courierId())
+                .containsExactly(candidate.getCourierId());
+    }
+
+    @Test
+    @DisplayName("Suggestions: the courier holding an ASSIGNED or REASSIGNED order is left out")
+    void testSuggestions_ExcludeCurrentCourier() {
+        for (AssignmentStatus status : List.of(AssignmentStatus.ASSIGNED, AssignmentStatus.REASSIGNED)) {
+            UUID current = UUID.randomUUID();
+            CourierShift currentCourier = courier(current, SriLankanDistrict.COLOMBO, 0);
+            CourierShift other = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 3);
+            stubSuggestionOrder(status, current, SriLankanDistrict.COLOMBO);
+            when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE))
+                    .thenReturn(List.of(currentCourier, other));
+
+            assertThat(dispatchAssignmentService.getSuggestions(orderId))
+                    .as(status + " order")
+                    .extracting(s -> s.courierId())
+                    .containsExactly(other.getCourierId());
+        }
+    }
+
+    @Test
+    @DisplayName("Suggestions: a COMPLETED or CANCELLED order is rejected and no couriers are queried")
+    void testSuggestions_TerminalOrderRejected() {
+        for (AssignmentStatus status : List.of(AssignmentStatus.COMPLETED, AssignmentStatus.CANCELLED)) {
+            stubSuggestionOrder(status, UUID.randomUUID(), SriLankanDistrict.COLOMBO);
+
+            assertThatThrownBy(() -> dispatchAssignmentService.getSuggestions(orderId))
+                    .isInstanceOf(InvalidAssignmentTransitionException.class)
+                    .hasMessageContaining(status.name());
+        }
+        verify(courierShiftRepository, never()).findAvailableCandidates(any());
+    }
+
+    @Test
+    @DisplayName("Suggestions: an unknown order is reported as not found")
+    void testSuggestions_UnknownOrder() {
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> dispatchAssignmentService.getSuggestions(orderId))
+                .isInstanceOf(AssignmentNotFoundException.class);
+        verifyNoInteractions(courierShiftRepository);
+    }
+
+    @Test
+    @DisplayName("Suggestions: no eligible courier gives an empty list")
+    void testSuggestions_NoEligibleCourier() {
+        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE)).thenReturn(List.of());
+
+        assertThat(dispatchAssignmentService.getSuggestions(orderId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Suggestions: the only eligible courier being the current one gives an empty list")
+    void testSuggestions_OnlyCurrentCourierEligible() {
+        UUID current = UUID.randomUUID();
+        stubSuggestionOrder(AssignmentStatus.ASSIGNED, current, SriLankanDistrict.COLOMBO);
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE))
+                .thenReturn(List.of(courier(current, SriLankanDistrict.COLOMBO, 0)));
+
+        assertThat(dispatchAssignmentService.getSuggestions(orderId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Suggestions: within the pickup district, lower active workload ranks first")
+    void testSuggestions_LowerWorkloadFirstInDistrict() {
+        CourierShift busier = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 4);
+        CourierShift lighter = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1);
+        CourierShift middle = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 2);
+        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE))
+                .thenReturn(List.of(busier, lighter, middle));
+
+        assertThat(dispatchAssignmentService.getSuggestions(orderId))
+                .extracting(s -> s.courierId())
+                .containsExactly(lighter.getCourierId(), middle.getCourierId(), busier.getCourierId());
+    }
+
+    @Test
+    @DisplayName("Suggestions: equal workload ranks the most recent heartbeat first and no heartbeat last")
+    void testSuggestions_HeartbeatOrdering() {
+        Instant now = Instant.now();
+        CourierShift older = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1);
+        older.setLastHeartbeatAt(now.minusSeconds(600));
+        CourierShift recent = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1);
+        recent.setLastHeartbeatAt(now.minusSeconds(10));
+        CourierShift never = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1);
+        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE))
+                .thenReturn(List.of(never, older, recent));
+
+        assertThat(dispatchAssignmentService.getSuggestions(orderId))
+                .extracting(s -> s.courierId())
+                .containsExactly(recent.getCourierId(), older.getCourierId(), never.getCourierId());
+    }
+
+    @Test
+    @DisplayName("Suggestions: with equal district, workload and heartbeat, courier ID decides the order")
+    void testSuggestions_CourierIdTieBreak() {
+        Instant heartbeat = Instant.now();
+        UUID lowId = UUID.fromString("00000000-0000-4000-8000-000000000001");
+        UUID highId = UUID.fromString("00000000-0000-4000-8000-000000000002");
+        CourierShift high = courier(highId, SriLankanDistrict.COLOMBO, 1);
+        high.setLastHeartbeatAt(heartbeat);
+        CourierShift low = courier(lowId, SriLankanDistrict.COLOMBO, 1);
+        low.setLastHeartbeatAt(heartbeat);
+        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
+
+        for (List<CourierShift> input : List.of(List.of(high, low), List.of(low, high))) {
+            when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE)).thenReturn(input);
+            assertThat(dispatchAssignmentService.getSuggestions(orderId))
+                    .extracting(s -> s.courierId())
+                    .containsExactly(lowId, highId);
+        }
+    }
+
+    @Test
+    @DisplayName("Suggestions: at most three couriers are returned")
+    void testSuggestions_LimitedToThree() {
+        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
+        List<CourierShift> five = List.of(
+                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 4),
+                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 0),
+                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 3),
+                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1),
+                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 2));
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE)).thenReturn(five);
+
+        assertThat(dispatchAssignmentService.getSuggestions(orderId))
+                .extracting(s -> s.activeParcels())
+                .containsExactly(0, 1, 2);
+    }
+
+    @Test
+    @DisplayName("Suggestions: an order without a pickup district ranks every courier by workload alone")
+    void testSuggestions_NoPickupDistrict() {
+        CourierShift kandy = courier(UUID.randomUUID(), SriLankanDistrict.KANDY, 0);
+        CourierShift colombo = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 2);
+        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, null);
+        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE)).thenReturn(List.of(colombo, kandy));
+
+        var suggestions = dispatchAssignmentService.getSuggestions(orderId);
+
+        assertThat(suggestions).extracting(s -> s.courierId())
+                .containsExactly(kandy.getCourierId(), colombo.getCourierId());
+        assertThat(suggestions).allSatisfy(s -> assertThat(s.samePickupDistrict()).isFalse());
+    }
+
+    private void stubSuggestionOrder(AssignmentStatus status, UUID currentCourier, SriLankanDistrict pickupDistrict) {
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(orderId);
+        assignment.setStatus(status);
+        assignment.setCourierId(currentCourier);
+        assignment.setPickupDistrict(pickupDistrict);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
     }
 
     private DispatchAssignment assignedAssignment() {
