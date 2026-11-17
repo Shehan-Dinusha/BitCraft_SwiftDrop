@@ -77,13 +77,13 @@ sequenceDiagram
 
     U->>GW: POST /api/v1/auth/login
     GW->>A: forward
-    A-->>U: accessToken (JWT) + refreshToken
+    A-->>U: accessToken (JWT) + HttpOnly refresh cookie
     U->>GW: any call with Authorization: Bearer accessToken
     GW->>GW: validate JWT, check blacklist (Redis)
     GW-->>U: response from the target service
     U->>GW: POST /api/v1/auth/refresh (when the access token expires)
     GW->>A: forward
-    A-->>U: new access token, rotated refresh token
+    A-->>U: new access token, rotated refresh cookie
 ```
 
 - Access tokens are signed JWTs (1 hour by default). Refresh tokens are opaque, stored hashed, rotated on every use, and last 30 days by default.
