@@ -1,13 +1,13 @@
 package com.swiftdrop.pricing.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
-import com.swiftdrop.pricing.domain.entity.PricingZone;
-import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
 import com.swiftdrop.pricing.dto.EstimateRequest;
 import com.swiftdrop.pricing.dto.EstimateResponse;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
+import com.swiftdrop.pricing.dto.ZoneResponse;
 import com.swiftdrop.pricing.service.DynamicPricingEngine;
+import com.swiftdrop.pricing.service.ZoneAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,7 +27,7 @@ import java.util.List;
 public class PricingQuoteController {
 
     private final DynamicPricingEngine dynamicPricingEngine;
-    private final PricingZoneRepository pricingZoneRepository;
+    private final ZoneAdminService zoneAdminService;
 
     @GetMapping("/health")
     @Operation(summary = "Check pricing service health")
@@ -50,7 +50,7 @@ public class PricingQuoteController {
 
     @GetMapping("/zones")
     @Operation(summary = "List all pricing geofence zones")
-    public ApiResponse<List<PricingZone>> listZones() {
-        return ApiResponse.success(pricingZoneRepository.findAll(), "Pricing zones retrieved successfully");
+    public ApiResponse<List<ZoneResponse>> listZones() {
+        return ApiResponse.success(zoneAdminService.listZones(), "Pricing zones retrieved successfully");
     }
 }

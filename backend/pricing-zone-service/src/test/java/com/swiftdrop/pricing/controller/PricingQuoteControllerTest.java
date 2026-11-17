@@ -4,10 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.pricing.domain.entity.PricingZone;
-import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
+import com.swiftdrop.pricing.dto.ZoneResponse;
 import com.swiftdrop.pricing.service.DynamicPricingEngine;
+import com.swiftdrop.pricing.service.ZoneAdminService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +40,7 @@ class PricingQuoteControllerTest {
     private DynamicPricingEngine dynamicPricingEngine;
 
     @MockitoBean
-    private PricingZoneRepository pricingZoneRepository;
+    private ZoneAdminService zoneAdminService;
 
     @Test
     @DisplayName("GET /api/v1/pricing/health returns 200 OK")
@@ -92,7 +93,7 @@ class PricingQuoteControllerTest {
                 .baseFee(new BigDecimal("350.00"))
                 .build();
 
-        when(pricingZoneRepository.findAll()).thenReturn(List.of(zone));
+        when(zoneAdminService.listZones()).thenReturn(List.of(ZoneResponse.from(zone)));
 
         mockMvc.perform(get("/api/v1/pricing/zones"))
                 .andExpect(status().isOk())

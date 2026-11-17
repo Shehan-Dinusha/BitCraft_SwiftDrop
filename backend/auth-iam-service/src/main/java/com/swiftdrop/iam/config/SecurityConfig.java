@@ -53,7 +53,6 @@ public class SecurityConfig {
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/username-availability",
                                 "/api/v1/auth/.well-known/jwks.json",
-                                "/api/v1/health",
                                 "/actuator/health",
                                 "/actuator/health/**",
                                 "/actuator/info",
