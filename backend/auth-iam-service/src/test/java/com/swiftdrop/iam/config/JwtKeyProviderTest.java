@@ -117,6 +117,17 @@ class JwtKeyProviderTest {
     }
 
     @Test
+    void aksProfileRejectsHs256() {
+        var config = new JwtConfig();
+        config.setAlgorithm("HS256");
+        var aks = new MockEnvironment();
+        aks.setActiveProfiles("aks");
+        assertThatThrownBy(() -> new JwtKeyProvider(config, aks))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("RS256");
+    }
+
+    @Test
     void explicitDevGeneratesAnEphemeralPair() {
         var config = new JwtConfig();
         config.setAlgorithm("RS256");

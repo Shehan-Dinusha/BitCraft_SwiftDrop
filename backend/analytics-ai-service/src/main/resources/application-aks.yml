@@ -6,7 +6,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://analytics-postgres-0.analytics-postgres-hl.swiftdrop-data.svc.cluster.local:5432/swiftdrop_analytics}
     username: ${DB_USERNAME:swiftdrop}
-    password: ${DB_PASSWORD:changeme_pg}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -16,7 +16,7 @@ spring:
     host: ${RABBITMQ_HOST:rabbitmq.default.svc.cluster.local}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:swiftdrop}
-    password: ${RABBITMQ_PASSWORD:changeme_rabbit}
+    password: ${RABBITMQ_PASSWORD}
 management:
   endpoints:
     web:

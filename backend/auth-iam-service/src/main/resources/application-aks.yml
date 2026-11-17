@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://iam-postgres-headless.swiftdrop-data.svc.cluster.local:5432/swiftdrop_iam}
     username: ${DB_USERNAME:swiftdrop}
-    password: ${DB_PASSWORD:changeme_pg}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
@@ -22,7 +22,7 @@ spring:
     host: ${RABBITMQ_HOST:rabbitmq.swiftdrop-messaging.svc.cluster.local}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:swiftdrop}
-    password: ${RABBITMQ_PASSWORD:changeme_rabbit}
+    password: ${RABBITMQ_PASSWORD}
   data:
     redis:
       host: ${REDIS_HOST:redis.swiftdrop-messaging.svc.cluster.local}
@@ -37,10 +37,10 @@ swiftdrop:
       # Secure flag on the HttpOnly refresh-token cookie. Only set false for plain-HTTP local setups.
       secure: ${AUTH_REFRESH_COOKIE_SECURE:true}
   jwt:
-    algorithm: ${JWT_ALGORITHM:HS256}
+    algorithm: ${JWT_ALGORITHM:RS256}
     private-key: ${JWT_PRIVATE_KEY:}
     public-key: ${JWT_PUBLIC_KEY:}
-    secret: ${JWT_SECRET:swiftdrop-local-dev-secret-key-must-be-at-least-256-bits-long!!}
+    secret: ${JWT_SECRET:}
     issuer: ${JWT_ISSUER:swiftdrop-iam}
     audience: ${JWT_AUDIENCE:swiftdrop}
     access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:${JWT_EXPIRATION_MS:3600000}}
