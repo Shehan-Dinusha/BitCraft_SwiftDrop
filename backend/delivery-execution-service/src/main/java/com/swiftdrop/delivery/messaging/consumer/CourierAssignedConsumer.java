@@ -1,6 +1,5 @@
 package com.swiftdrop.delivery.messaging.consumer;
 
-import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.delivery.config.RabbitMQConfig;
 import com.swiftdrop.delivery.service.DeliveryExecutionService;
@@ -26,12 +25,11 @@ public class CourierAssignedConsumer {
         try {
             deliveryExecutionService.handleCourierAssigned(event);
         } catch (RuntimeException ex) {
-            // Previously swallowed, which acked and silently lost the assignment. Reject without
-            // requeue instead: the failure is visible to the listener container, and once the queue
-            // gets a dead-letter exchange the message is kept there for replay. (Requeueing would
-            // loop forever because this queue has no retry policy.)
-            log.error("Failed to process courier assignment in delivery service for order: {}", event.orderId(), ex);
-            throw new AmqpRejectAndDontRequeueException("Courier assignment could not be processed", ex);
+            // Rethrow the original exception (never swallow it, which would ack and lose the
+            // assignment). ListenerRetryPolicyConfig retries transient failures; once it gives up,
+            // the message is rejected and dead-lettered to dlq.delivery.events.queue.
+            log.error("Failed to process courier assignment for order: {}", event.orderId(), ex);
+            throw ex;
         }
     }
 }

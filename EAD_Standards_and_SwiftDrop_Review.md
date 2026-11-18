@@ -572,7 +572,7 @@ Every gap from Part B was worked on. Each row says what changed and where; "Foll
 ## Follow-up (not done on purpose)
 
 1. **Turn on MFA** once `NOTIFICATION_EMAIL_PROVIDER=azure` is configured: set `AUTH_MFA_ENABLED: "true"` for `auth-iam-service` in Helm. Google sign-in does not ask for the SwiftDrop code (Google has its own 2-step verification).
-2. **Dead-letter queue for `delivery.dispatch-assigned.queue`.** It has no DLX, so a rejected courier assignment is dropped (it used to be dropped silently). Adding a DLX changes the queue's arguments, so existing brokers must delete and recreate the queue; plan it as its own change with `definitions.json`.
+2. ~~**Dead-letter queue for `delivery.dispatch-assigned.queue`.**~~ ✅ Done afterwards. The delivery service now declares the queue exactly as `definitions.json` does (quorum, dead-letters to `dlq.delivery.events.queue`), declares that DLQ itself (the AKS broker does not import `definitions.json`), and retries transient failures 3 times before dead-lettering (`ListenerRetryPolicyConfig`). A broker that already holds the old plain queue must delete it once before the new version starts, because a queue's type and arguments cannot change in place.
 3. **First CI run of the scanners** may report existing CVEs or misconfigurations; that is their purpose. Fix them or add a justified entry to `.trivyignore.yaml`.
 4. **Local Docker volume:** the `pod_photos` volume created before this change is root-owned. Run `docker volume rm swiftdrop_pod_photos` once (only if it already exists) so the non-root delivery service can write to it.
 5. **Raise the coverage baselines** in each module's `pom.xml` as tests are added, until every module meets 70% / 50%.
