@@ -59,7 +59,7 @@
         <openapi.server.port>8080</openapi.server.port>
 
         <!-- Database -->
-        <postgresql.version>42.7.4</postgresql.version>
+        <postgresql.version>42.7.12</postgresql.version>
         <flyway.version>10.20.1</flyway.version>
 
         <!-- Messaging -->
