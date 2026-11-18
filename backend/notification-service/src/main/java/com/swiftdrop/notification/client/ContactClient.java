@@ -1,5 +1,6 @@
 package com.swiftdrop.notification.client;
 
+import org.springframework.web.client.RestClientException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.swiftdrop.notification.dto.RecipientContact;
 import com.swiftdrop.notification.util.PiiMasker;
@@ -121,7 +122,8 @@ public class ContactClient {
                 log.warn("IAM contact lookup failed for user {} with status {}", userId, ex.getStatusCode());
             }
             return Optional.empty();
-        } catch (Exception ex) {
+        } catch (RestClientException ex) {
+            // IAM down or timed out: send without a contact rather than failing the notification.
             log.warn("IAM contact lookup failed for user {}: {}", userId, ex.getMessage());
             return Optional.empty();
         }

@@ -42,8 +42,20 @@ public class AuthenticationService {
         this.loginAttemptService = loginAttemptService;
     }
 
+    /** Password sign-in without a second factor (see {@link LoginMfaService} for privileged roles). */
     @Transactional
     public TokenResponse login(String identifier, String password, String ipAddress, String userAgent) {
+        return issueSession(authenticate(identifier, password, ipAddress), ipAddress, userAgent);
+    }
+
+    /**
+     * Checks the password, account status and email verification, applying the login throttle.
+     * Issues nothing: the caller decides whether a second factor is needed first.
+     *
+     * @return the authenticated account
+     */
+    @Transactional
+    public UserAccount authenticate(String identifier, String password, String ipAddress) {
         loginAttemptService.assertAllowed(identifier, ipAddress);
 
         Optional<UserAccount> candidate = userAccountRepository
@@ -70,6 +82,12 @@ public class AuthenticationService {
         }
 
         loginAttemptService.clear(identifier, ipAddress);
+        return user;
+    }
+
+    /** Records the sign-in and issues an access token plus a new refresh token. */
+    @Transactional
+    public TokenResponse issueSession(UserAccount user, String ipAddress, String userAgent) {
         user.setLastLoginAt(Instant.now());
         userAccountRepository.save(user);
 

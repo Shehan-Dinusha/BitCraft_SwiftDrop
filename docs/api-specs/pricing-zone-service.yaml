@@ -82,7 +82,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiResponseListPricingZone"
+                $ref: "#/components/schemas/ApiResponseListZoneResponse"
 
   /api/v1/geofence-zone/health:
     get:
@@ -620,48 +620,6 @@ components:
           description: Pricing strategy used (STANDARD, EXPRESS or SAME_DAY)
           example: EXPRESS
 
-    PricingZone:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-          example: 1
-        zoneCode:
-          type: string
-          example: ZONE_WESTERN
-        zoneName:
-          type: string
-          example: Western Province Metro
-        tier:
-          type: string
-          example: METRO
-        baseFee:
-          type: number
-          format: double
-          example: 350.0
-        perKgFee:
-          type: number
-          format: double
-          example: 80.0
-        expressMultiplier:
-          type: number
-          format: double
-          example: 1.5
-        sameDayMultiplier:
-          type: number
-          format: double
-          example: 2.0
-        status:
-          type: string
-          example: ACTIVE
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-
     ApiErrorResponse:
       type: object
       description: Error body returned by the global exception handler for 400 responses
@@ -735,23 +693,6 @@ components:
           example: Estimate calculated successfully
         data:
           $ref: "#/components/schemas/EstimateResponse"
-        timestamp:
-          type: string
-          format: date-time
-
-    ApiResponseListPricingZone:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: Pricing zones retrieved successfully
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/PricingZone"
         timestamp:
           type: string
           format: date-time

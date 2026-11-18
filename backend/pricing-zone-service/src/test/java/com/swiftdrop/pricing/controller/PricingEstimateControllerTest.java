@@ -2,10 +2,10 @@ package com.swiftdrop.pricing.controller;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
 import com.swiftdrop.pricing.service.DynamicPricingEngine;
+import com.swiftdrop.pricing.service.ZoneAdminService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,7 +40,7 @@ class PricingEstimateControllerTest {
     private DynamicPricingEngine dynamicPricingEngine;
 
     @MockitoBean
-    private PricingZoneRepository pricingZoneRepository;
+    private ZoneAdminService zoneAdminService;
 
     private static String validRequest(String extraFields) {
         return """

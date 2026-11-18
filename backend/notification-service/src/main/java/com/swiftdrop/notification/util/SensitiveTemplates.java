@@ -14,11 +14,12 @@ public final class SensitiveTemplates {
 
     public static final String EMAIL_VERIFICATION = "EMAIL_VERIFICATION";
     public static final String PASSWORD_RESET = "PASSWORD_RESET";
+    public static final String LOGIN_MFA = "LOGIN_MFA";
 
     /** What is stored in {@code notification_dispatch_logs.content} instead of the real body. */
     public static final String REDACTED_CONTENT = "[redacted: contains a one-time security code]";
 
-    private static final Set<String> CODES = Set.of(EMAIL_VERIFICATION, PASSWORD_RESET);
+    private static final Set<String> CODES = Set.of(EMAIL_VERIFICATION, PASSWORD_RESET, LOGIN_MFA);
 
     private SensitiveTemplates() {
     }

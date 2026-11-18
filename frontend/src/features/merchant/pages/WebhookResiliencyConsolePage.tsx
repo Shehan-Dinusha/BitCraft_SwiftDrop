@@ -471,8 +471,8 @@ export function WebhookResiliencyConsolePage() {
           )}
 
           <div>
-            <label className="block font-medium text-primary">Target Endpoint URL (HTTPS)</label>
-            <input
+            <label htmlFor="webhook-target-url" className="block font-medium text-primary">Target Endpoint URL (HTTPS)</label>
+            <input id="webhook-target-url"
               type="url"
               required
               placeholder="https://api.yourdomain.com/webhooks/swiftdrop"
@@ -487,8 +487,8 @@ export function WebhookResiliencyConsolePage() {
           </div>
 
           <div>
-            <label className="block font-medium text-primary">Subscribed Event Patterns</label>
-            <input
+            <label htmlFor="webhook-events" className="block font-medium text-primary">Subscribed Event Patterns</label>
+            <input id="webhook-events"
               type="text"
               required
               placeholder="parcel.status.changed,order.created"
@@ -502,8 +502,8 @@ export function WebhookResiliencyConsolePage() {
           </div>
 
           <div>
-            <label className="block font-medium text-primary">Description (Optional)</label>
-            <input
+            <label htmlFor="webhook-description" className="block font-medium text-primary">Description (Optional)</label>
+            <input id="webhook-description"
               type="text"
               placeholder="e.g. Production ERP System Webhook Listener"
               value={description}

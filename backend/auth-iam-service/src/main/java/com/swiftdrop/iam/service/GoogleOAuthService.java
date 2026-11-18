@@ -10,16 +10,17 @@ import com.swiftdrop.iam.exception.AuthException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+
+
+
+
 
 import java.net.URI;
 import java.net.URLEncoder;
+
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -59,8 +60,6 @@ import java.util.UUID;
 public class GoogleOAuthService {
 
     private static final String GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
-    private static final String GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
-    private static final String GOOGLE_USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v3/userinfo";
 
     /** Redis key prefix for CSRF state tokens (5-minute TTL). */
     private static final String STATE_PREFIX = "oauth2:google:state:";
@@ -78,20 +77,20 @@ public class GoogleOAuthService {
     private final UserAccountRepository userAccountRepository;
     private final TokenIssuanceService tokenIssuanceService;
     private final RefreshTokenService refreshTokenService;
-    private final RestTemplate restTemplate;
+    private final GoogleApiClient googleApiClient;
 
     public GoogleOAuthService(GoogleOAuthConfig oauthConfig,
             StringRedisTemplate redis,
             UserAccountRepository userAccountRepository,
             TokenIssuanceService tokenIssuanceService,
             RefreshTokenService refreshTokenService,
-            RestTemplate restTemplate) {
+            GoogleApiClient googleApiClient) {
         this.oauthConfig = oauthConfig;
         this.redis = redis;
         this.userAccountRepository = userAccountRepository;
         this.tokenIssuanceService = tokenIssuanceService;
         this.refreshTokenService = refreshTokenService;
-        this.restTemplate = restTemplate;
+        this.googleApiClient = googleApiClient;
     }
 
     // ─── Stage 12: Authorize ────────────────────────────────────────────────────
@@ -156,11 +155,10 @@ public class GoogleOAuthService {
         validateState(state);
 
         // Exchange authorization code for Google tokens.
-        Map<String, Object> googleTokens = exchangeCodeWithGoogle(code);
-        String googleAccessToken = (String) googleTokens.get("access_token");
+        String googleAccessToken = googleApiClient.exchangeCode(code);
 
         // Fetch user profile from Google.
-        GoogleUserInfo userInfo = fetchGoogleUserInfo(googleAccessToken);
+        GoogleApiClient.GoogleUserInfo userInfo = googleApiClient.fetchUserInfo(googleAccessToken);
 
         // Upsert the user account.
         UpsertResult upsert = upsertGoogleUser(userInfo);
@@ -289,64 +287,6 @@ public class GoogleOAuthService {
         redis.delete(key);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> exchangeCodeWithGoogle(String code) {
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("code", code);
-        body.add("client_id", oauthConfig.getClientId());
-        body.add("client_secret", oauthConfig.getClientSecret());
-        body.add("redirect_uri", oauthConfig.getRedirectUri());
-        body.add("grant_type", "authorization_code");
-
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(GOOGLE_TOKEN_ENDPOINT, body, Map.class);
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new AuthException(HttpStatus.BAD_GATEWAY,
-                        "Failed to exchange authorization code with Google");
-            }
-            return response.getBody();
-        } catch (RestClientException ex) {
-            log.warn("Google token exchange failed: {}", ex.getMessage());
-            throw new AuthException(HttpStatus.BAD_GATEWAY,
-                    "Failed to reach Google's token endpoint");
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private GoogleUserInfo fetchGoogleUserInfo(String googleAccessToken) {
-        try {
-            ResponseEntity<Map> response = restTemplate.getForEntity(
-                    GOOGLE_USERINFO_ENDPOINT + "?access_token=" + encode(googleAccessToken),
-                    Map.class);
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new AuthException(HttpStatus.BAD_GATEWAY,
-                        "Failed to fetch user info from Google");
-            }
-            Map<String, Object> body = response.getBody();
-            String sub = (String) body.get("sub"); // unique Google user ID
-            String email = (String) body.get("email");
-            String name = (String) body.getOrDefault("name", "");
-            String givenName = (String) body.getOrDefault("given_name", "");
-            String familyName = (String) body.getOrDefault("family_name", "");
-            if (email == null || email.isBlank()) {
-                throw new AuthException(HttpStatus.BAD_GATEWAY,
-                        "Google did not return an email address");
-            }
-            Object verifiedClaim = body.get("email_verified");
-            boolean emailVerified = Boolean.TRUE.equals(verifiedClaim)
-                    || "true".equalsIgnoreCase(String.valueOf(verifiedClaim));
-            if (!emailVerified) {
-                throw new AuthException(HttpStatus.FORBIDDEN,
-                        "Your Google email address is not verified", "email_unverified");
-            }
-            return new GoogleUserInfo(sub, email, name, givenName, familyName, true);
-        } catch (RestClientException ex) {
-            log.warn("Google userinfo fetch failed: {}", ex.getMessage());
-            throw new AuthException(HttpStatus.BAD_GATEWAY,
-                    "Failed to reach Google's userinfo endpoint");
-        }
-    }
-
     /**
      * Finds an existing account by email or creates a new CUSTOMER account.
      * Existing non-OAuth accounts are accepted as-is (allows linking Google sign-in
@@ -356,7 +296,7 @@ public class GoogleOAuthService {
     private record UpsertResult(UserAccount user, boolean created) {
     }
 
-    private UpsertResult upsertGoogleUser(GoogleUserInfo userInfo) {
+    private UpsertResult upsertGoogleUser(GoogleApiClient.GoogleUserInfo userInfo) {
         String normalizedEmail = userInfo.email().trim().toLowerCase(Locale.ROOT);
 
         Optional<UserAccount> existing = userAccountRepository.findByEmailIgnoreCase(normalizedEmail);
@@ -412,10 +352,5 @@ public class GoogleOAuthService {
 
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
-
-    /** Value object for the Google user-info response fields we care about. */
-    record GoogleUserInfo(String sub, String email, String name,
-            String givenName, String familyName, boolean emailVerified) {
     }
 }

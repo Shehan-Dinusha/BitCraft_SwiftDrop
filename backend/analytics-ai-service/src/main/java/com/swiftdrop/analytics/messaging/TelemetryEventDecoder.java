@@ -77,6 +77,8 @@ public class TelemetryEventDecoder {
             }
             return Optional.of(new TelemetryEvent(key, eventId, orderId, correlationId, occurredAt, payload));
         } catch (Exception invalid) {
+            // Deliberately broad: whatever makes the payload undecodable (JSON, UUID, date, cast or
+            // record validation errors), the message is poison and goes to the DLQ, never requeued.
             // No raw JSON, customer identifiers or parser excerpts in the exception.
             throw new AmqpRejectAndDontRequeueException("Invalid supported analytics event: " + key);
         }

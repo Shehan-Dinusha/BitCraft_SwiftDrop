@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.service;
 
+import java.io.IOException;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.merchant.dto.BulkOrderIngestItem;
 import lombok.extern.slf4j.Slf4j;
@@ -82,9 +83,9 @@ public class BulkCsvOrderProcessor {
                         column(tokens, 11) == null ? null : declaration(column(tokens, 11))
                 ));
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.error("Failed to parse merchant CSV order batch", e);
-            throw new IllegalArgumentException("Failed to parse CSV file: " + e.getMessage(), e);
+            throw new IllegalArgumentException("Failed to parse CSV file", e);
         }
         return items;
     }

@@ -141,7 +141,8 @@ jobs:
 
       # Backend Dockerfiles copy backend/pom.xml and common-contracts, so the build
       # context must be backend/ (the Maven build runs inside the image).
-      - name: Build & push image
+      - name: Build image
+        id: build
         env:
           SERVICE: ${{ matrix.service }}
         run: |
@@ -153,7 +154,23 @@ jobs:
           fi
           image="${ACR_NAME}.azurecr.io/${SERVICE}"
           docker build -t "${image}:${IMAGE_TAG}" -t "${image}:latest" -f "$dockerfile" "$context"
-          docker push --all-tags "$image"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+
+      # Security gate: an image with a fixable HIGH/CRITICAL CVE is never pushed.
+      - name: Scan image (Trivy)
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.58.1 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            "${IMAGE}:${IMAGE_TAG}"
+
+      - name: Push image
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: docker push --all-tags "$IMAGE"
 
   deploy:
     name: Helm Deploy to AKS

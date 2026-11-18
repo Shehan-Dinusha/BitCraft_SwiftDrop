@@ -8,6 +8,13 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
     <artifactId>webhook-resiliency-service</artifactId>
+
+    <!-- Coverage ratchet: current baseline, below the project target of 70% line / 50% branch.
+         Raise these as tests are added (see jacoco:check in backend/pom.xml). -->
+    <properties>
+        <jacoco.line.minimum>0.08</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.10</jacoco.branch.minimum>
+    </properties>
     <packaging>jar</packaging>
     <name>SwiftDrop :: WebhookResiliency</name>
     <dependencies>

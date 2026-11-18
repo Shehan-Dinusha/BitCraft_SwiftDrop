@@ -20,6 +20,16 @@ global:
   # Dockerfile still take precedence over this.
   javaToolOptions: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
 
+# Least privilege for every application pod (backend services and frontend).
+# The backend images create a non-root "swiftdrop" user with UID/GID 1001.
+podSecurity:
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  # The container filesystem is read-only; /tmp is an emptyDir of this size.
+  readOnlyRootFilesystem: true
+  tmpSizeLimit: 256Mi
+
 # Optional image pull secrets (not needed on AKS when the cluster is attached to ACR).
 imagePullSecrets: []
 
@@ -196,7 +206,12 @@ services:
       JWT_ISSUER: swiftdrop-iam
       JWT_AUDIENCE: swiftdrop
       JWT_ACCESS_TOKEN_EXPIRATION_MS: "3600000"
-      JWT_REFRESH_TOKEN_EXPIRATION_DAYS: "30"
+      JWT_REFRESH_TOKEN_EXPIRATION_DAYS: "14"
+      # The refresh token travels in an HttpOnly cookie; Secure whenever the site is served over TLS.
+      AUTH_REFRESH_COOKIE_SECURE: '{{ .Values.ingress.tls.enabled }}'
+      # Emailed second factor for SYSTEM_ADMIN/DISPATCHER. Turn on once notification-service
+      # sends real email (NOTIFICATION_EMAIL_PROVIDER=azure), otherwise admins cannot sign in.
+      AUTH_MFA_ENABLED: "false"
       JWT_BLACKLIST_PREFIX: "jwt:blacklist:"
       GOOGLE_REDIRECT_URI: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}/api/v1/auth/oauth2/google/callback'
       FRONTEND_URL: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}'
@@ -380,9 +395,19 @@ frontend:
   # blocks keep the pod usable on its own (kubectl port-forward).
   nginxConfig: |
     server {
-      listen 80;
+      listen 8080;
       root /usr/share/nginx/html;
       index index.html;
+
+      # Browser hardening; keep in sync with frontend/nginx.conf.
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Permissions-Policy "camera=(self), geolocation=(self), microphone=()" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' wss:; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'" always;
+      {{- if .Values.ingress.tls.enabled }}
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+      {{- end }}
 
       location = /healthz {
         access_log off;

@@ -129,7 +129,6 @@ function MobileBrand({ to }: { to: string }) {
 export function AppShell() {
   const role = useAuthStore((state) => state.role);
   const user = useAuthStore((state) => state.user);
-  const refreshToken = useAuthStore((state) => state.refreshToken);
   const signOut = useAuthStore((state) => state.signOut);
   const isDevSession = useAuthStore((state) => state.isDevSession);
   const navigate = useNavigate();
@@ -165,7 +164,7 @@ export function AppShell() {
     void (async () => {
       try {
         // Revokes the refresh token and blacklists the access token on the server.
-        await logoutUser(refreshToken);
+        await logoutUser();
       } catch {
         // Already expired or the API is unreachable: the local session is still cleared below.
       } finally {

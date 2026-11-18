@@ -120,8 +120,8 @@ export function AiDeliveryAssistantPanel() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <div>
-              <label className="text-[11px] text-slate-500">Origin District</label>
-              <select
+              <label htmlFor="ai-origin-district" className="text-[11px] text-slate-500">Origin District</label>
+              <select id="ai-origin-district"
                 value={origin}
                 onChange={(e) => setOrigin(e.target.value)}
                 className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
@@ -135,8 +135,8 @@ export function AiDeliveryAssistantPanel() {
             </div>
 
             <div>
-              <label className="text-[11px] text-slate-500">Destination</label>
-              <select
+              <label htmlFor="ai-destination-district" className="text-[11px] text-slate-500">Destination</label>
+              <select id="ai-destination-district"
                 value={dest}
                 onChange={(e) => setDest(e.target.value)}
                 className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
@@ -150,8 +150,8 @@ export function AiDeliveryAssistantPanel() {
             </div>
 
             <div>
-              <label className="text-[11px] text-slate-500">Delivery Speed</label>
-              <select
+              <label htmlFor="ai-delivery-speed" className="text-[11px] text-slate-500">Delivery Speed</label>
+              <select id="ai-delivery-speed"
                 value={speed}
                 onChange={(e) => setSpeed(e.target.value)}
                 className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
@@ -163,8 +163,8 @@ export function AiDeliveryAssistantPanel() {
             </div>
 
             <div>
-              <label className="text-[11px] text-slate-500">Weather Condition</label>
-              <select
+              <label htmlFor="ai-weather" className="text-[11px] text-slate-500">Weather Condition</label>
+              <select id="ai-weather"
                 value={weather}
                 onChange={(e) => setWeather(e.target.value)}
                 className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
@@ -176,8 +176,8 @@ export function AiDeliveryAssistantPanel() {
             </div>
 
             <div>
-              <label className="text-[11px] text-slate-500">Traffic Congestion</label>
-              <select
+              <label htmlFor="ai-traffic" className="text-[11px] text-slate-500">Traffic Congestion</label>
+              <select id="ai-traffic"
                 value={traffic}
                 onChange={(e) => setTraffic(e.target.value)}
                 className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"

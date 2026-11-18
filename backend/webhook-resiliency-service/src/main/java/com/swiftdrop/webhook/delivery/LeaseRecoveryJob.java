@@ -34,6 +34,7 @@ public class LeaseRecoveryJob {
                 log.warn("Recovered {} delivery attempt(s) with expired leases", recovered);
             }
         } catch (RuntimeException failure) {
+            // Scheduler boundary: keep the job alive; the next run retries.
             log.error("Lease recovery failed ({}); will retry", failure.getClass().getSimpleName());
         }
     }

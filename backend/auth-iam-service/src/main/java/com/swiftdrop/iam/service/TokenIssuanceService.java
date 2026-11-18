@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import org.springframework.dao.DataAccessException;
 import com.swiftdrop.contracts.security.JwtSessionRevocation;
 import com.swiftdrop.iam.config.JwtConfig;
 import com.swiftdrop.iam.config.JwtKeyProvider;
@@ -135,7 +136,7 @@ public class TokenIssuanceService {
             return jwtId != null && !jwtId.isBlank()
                     && Boolean.TRUE.equals(redisTemplate.hasKey(
                     jwtConfig.getBlacklistPrefix() + "jti:" + jwtId));
-        } catch (RuntimeException exception) {
+        } catch (DataAccessException exception) {
             log.warn("Redis blacklist check unavailable: {}", exception.getMessage());
             return false;
         }
@@ -154,7 +155,7 @@ public class TokenIssuanceService {
                 redisTemplate.opsForValue().set(
                         jwtConfig.getBlacklistPrefix() + "jti:" + jwtId, "1", ttl);
             }
-        } catch (RuntimeException exception) {
+        } catch (DataAccessException exception) {
             log.warn("Unable to blacklist access token: {}", exception.getMessage());
         }
     }
@@ -167,7 +168,7 @@ public class TokenIssuanceService {
                     Instant.now().toString(),
                     Duration.ofMillis(Math.max(1_000L, jwtConfig.getAccessTokenExpirationMs()))
             );
-        } catch (RuntimeException exception) {
+        } catch (DataAccessException exception) {
             log.warn("Unable to blacklist user sessions: {}", exception.getMessage());
         }
     }

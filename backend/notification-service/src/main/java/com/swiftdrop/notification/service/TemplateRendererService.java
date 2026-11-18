@@ -84,6 +84,10 @@ public class TemplateRendererService {
                     subjectTmpl = "Your SwiftDrop verification code";
                     bodyTmpl = "Your SwiftDrop verification code is {{code}}. It expires in {{expiresInMinutes}} minutes. If you did not create a SwiftDrop account, you can ignore this email.";
                 }
+                case "LOGIN_MFA" -> {
+                    subjectTmpl = "Your SwiftDrop sign-in code";
+                    bodyTmpl = "Your SwiftDrop sign-in code is {{code}}. It expires in {{expiresInMinutes}} minutes. If you did not just try to sign in, change your password now.";
+                }
                 case "PASSWORD_RESET" -> {
                     subjectTmpl = "Reset your SwiftDrop password";
                     bodyTmpl = "Your SwiftDrop password reset code is {{code}}. It expires in {{expiresInMinutes}} minutes. If you did not request a password reset, ignore this email and your password will stay the same.";

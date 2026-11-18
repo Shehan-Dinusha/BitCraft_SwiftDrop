@@ -104,7 +104,8 @@ public class BulkOrderIngestionService {
                 batchItemRepository.save(batchItem);
 
                 successCount++;
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
+                // Deliberately per row: one bad row is recorded as failed and the rest of the batch continues.
                 log.error("Failed to process row {} in batch {}", rowIndex, batchId, e);
                 failedCount++;
                 errors.add("Row " + rowIndex + ": " + e.getMessage());

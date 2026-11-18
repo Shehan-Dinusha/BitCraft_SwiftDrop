@@ -9,11 +9,12 @@ export const apiClient = axios.create({ baseURL: '/api' });
 // Refresh tokens are single use, and the API treats a reused one as theft (it revokes every session of
 // the user). A page fires several requests at once, so when the access token is stale they all get a
 // 401 together. They must share ONE refresh instead of each spending the same refresh token.
+// The refresh token itself is the HttpOnly `swiftdrop_refresh` cookie; the browser attaches it.
 let inFlightRefresh: Promise<string> | null = null;
 
-function refreshSession(refreshToken: string): Promise<string> {
+function refreshSession(): Promise<string> {
   inFlightRefresh ??= axios
-    .post<AuthTokenResponse>('/api/v1/auth/refresh', { refreshToken })
+    .post<AuthTokenResponse>('/api/v1/auth/refresh', {}, { withCredentials: true })
     .then(({ data }) => {
       useAuthStore.getState().setAuth(data);
       return data.accessToken ?? '';
@@ -76,20 +77,18 @@ apiClient.interceptors.response.use(
     request._retry = true; // never retry the same request twice
     if (currentToken && sentWith !== currentToken) {
       request.headers.Authorization = `Bearer ${currentToken}`;
-      withCurrentRefreshTokenForLogout(request);
       return apiClient(request);
     }
 
-    const refreshToken = useAuthStore.getState().refreshToken;
-    if (!refreshToken) {
+    // No signed-in user means there is no session cookie worth trying.
+    if (!useAuthStore.getState().user) {
       useAuthStore.getState().signOut();
       return Promise.reject(error);
     }
 
     try {
-      const accessToken = await refreshSession(refreshToken);
+      const accessToken = await refreshSession();
       request.headers.Authorization = `Bearer ${accessToken}`;
-      withCurrentRefreshTokenForLogout(request);
       return apiClient(request);
     } catch {
       // Refresh token is expired or revoked — force a clean sign-out.
@@ -98,17 +97,6 @@ apiClient.interceptors.response.use(
     }
   }
 );
-
-/**
- * A refresh rotates the refresh token. A logout being retried after one still carries the old token in
- * its body, which is already revoked, so the new one would stay valid on the server after the user
- * signed out. Send the current one instead.
- */
-function withCurrentRefreshTokenForLogout(request: RetryableRequest) {
-  if (!request.url?.includes('/v1/auth/logout')) return;
-  const refreshToken = useAuthStore.getState().refreshToken;
-  request.data = refreshToken ? { refreshToken } : {};
-}
 
 // ─── Forbidden toast helper ─────────────────────────────────────────────────
 // A lightweight, dependency-free toast.  Replace with your design-system

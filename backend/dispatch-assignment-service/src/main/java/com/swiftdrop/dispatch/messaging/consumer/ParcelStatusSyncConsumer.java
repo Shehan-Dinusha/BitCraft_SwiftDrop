@@ -26,6 +26,7 @@ public class ParcelStatusSyncConsumer {
         try {
             dispatchAssignmentService.handleParcelStatusChanged(event);
         } catch (RuntimeException ex) {
+            // Log with the order context, then rethrow so the retry policy and DLQ take over.
             log.error("Failed to sync parcel status in dispatch service: {}", event.trackingNumber(), ex);
             throw ex;
         }

@@ -1,5 +1,6 @@
 package com.swiftdrop.webhook.resiliency;
 
+import java.security.MessageDigest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -48,8 +49,11 @@ public class HmacSignatureGenerator {
         }
         try {
             String actual = calculateSignature(payload, secretKey);
-            return actual.equals(expectedHeader);
-        } catch (Exception e) {
+            // Constant-time comparison so response timing does not reveal how much of a guess matched.
+            return MessageDigest.isEqual(actual.getBytes(StandardCharsets.UTF_8),
+                    expectedHeader.getBytes(StandardCharsets.UTF_8));
+        } catch (IllegalStateException e) {
+            // HMAC unavailable: fail closed.
             return false;
         }
     }

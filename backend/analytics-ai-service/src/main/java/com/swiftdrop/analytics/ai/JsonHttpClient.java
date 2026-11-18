@@ -1,5 +1,6 @@
 package com.swiftdrop.analytics.ai;
 
+import java.io.IOException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -35,7 +36,8 @@ public class JsonHttpClient {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new Failure(503);
-        } catch (Exception ex) {
+        } catch (IOException | IllegalArgumentException ex) {
+            // Network/serialisation failure or an invalid URL; the cause may hold secrets, so drop it.
             throw new Failure(503);
         }
     }

@@ -14,8 +14,9 @@ export function usePageTitle(title: string | undefined, { focusHeading = true } 
     };
   }, [title]);
 
+  const hasTitle = Boolean(title);
   useEffect(() => {
-    if (!focusHeading || !title) return;
+    if (!focusHeading || !hasTitle) return;
     const heading = document.querySelector<HTMLElement>('h1');
     if (heading && !heading.contains(document.activeElement)) {
       heading.tabIndex = -1;
@@ -23,6 +24,6 @@ export function usePageTitle(title: string | undefined, { focusHeading = true } 
       heading.classList.add('outline-none');
       heading.focus({ preventScroll: true });
     }
-    // Only on first render of a page: later title changes are not navigations.
-  }, [Boolean(title)]);
+    // Only when the page first gets a title: later title changes are not navigations.
+  }, [focusHeading, hasTitle]);
 }

@@ -1,5 +1,6 @@
 package com.swiftdrop.notification.messaging.consumer;
 
+import org.springframework.dao.DataAccessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.notification.config.RabbitMQConfig;
 import com.swiftdrop.notification.domain.entity.ProcessedEvent;
@@ -133,7 +134,8 @@ public class NotificationEventConsumer {
         if (eventId != null) {
             try {
                 processedEventRepository.save(new ProcessedEvent(eventId, envelope.routingKey(), Instant.now()));
-            } catch (Exception e) {
+            } catch (DataAccessException e) {
+                // Best effort: the notification was already sent; a missing marker only risks a duplicate.
                 log.warn("Could not record processed event {}: {}", eventId, e.getMessage());
             }
         }

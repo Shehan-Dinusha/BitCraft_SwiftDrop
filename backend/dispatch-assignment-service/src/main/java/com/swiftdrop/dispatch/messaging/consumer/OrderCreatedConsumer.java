@@ -44,6 +44,7 @@ public class OrderCreatedConsumer {
             }
             throw ex;
         } catch (RuntimeException ex) {
+            // Log with the order context, then rethrow so the retry policy and DLQ take over.
             log.error("Failed to process order creation in dispatch engine for order: {}", event.orderId(), ex);
             throw ex;
         }

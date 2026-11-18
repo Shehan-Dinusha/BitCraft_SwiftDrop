@@ -448,7 +448,15 @@ export function CourierShiftDashboard() {
             {todayDeliveries.map((delivery) => (
               <div
                 key={delivery.deliveryId}
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate(`/courier/delivery/${delivery.deliveryId}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate(`/courier/delivery/${delivery.deliveryId}`);
+                  }
+                }}
                 className="group flex min-h-[56px] h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm transition-all hover:border-indigo-300 hover:bg-slate-50/80 active:scale-[0.99] touch-manipulation cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">

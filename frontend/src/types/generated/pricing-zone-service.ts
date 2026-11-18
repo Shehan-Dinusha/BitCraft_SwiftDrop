@@ -396,45 +396,6 @@ export interface components {
              */
             strategy?: string;
         };
-        PricingZone: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            id?: number;
-            /** @example ZONE_WESTERN */
-            zoneCode?: string;
-            /** @example Western Province Metro */
-            zoneName?: string;
-            /** @example METRO */
-            tier?: string;
-            /**
-             * Format: double
-             * @example 350
-             */
-            baseFee?: number;
-            /**
-             * Format: double
-             * @example 80
-             */
-            perKgFee?: number;
-            /**
-             * Format: double
-             * @example 1.5
-             */
-            expressMultiplier?: number;
-            /**
-             * Format: double
-             * @example 2
-             */
-            sameDayMultiplier?: number;
-            /** @example ACTIVE */
-            status?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
         /** @description Error body returned by the global exception handler for 400 responses */
         ApiErrorResponse: {
             /** Format: date-time */
@@ -482,15 +443,6 @@ export interface components {
             /** @example Estimate calculated successfully */
             message?: string;
             data?: components["schemas"]["EstimateResponse"];
-            /** Format: date-time */
-            timestamp?: string;
-        };
-        ApiResponseListPricingZone: {
-            /** @example true */
-            success?: boolean;
-            /** @example Pricing zones retrieved successfully */
-            message?: string;
-            data?: components["schemas"]["PricingZone"][];
             /** Format: date-time */
             timestamp?: string;
         };
@@ -776,7 +728,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiResponseListPricingZone"];
+                    "application/json": components["schemas"]["ApiResponseListZoneResponse"];
                 };
             };
         };

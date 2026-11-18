@@ -37,12 +37,6 @@ import java.util.UUID;
 @Component
 public class MerchantApiKeyGlobalFilter implements GlobalFilter, Ordered {
 
-    private static final List<String> API_KEY_PATHS = List.of(
-            "/api/v1/merchant/",
-            "/api/v1/merchant-order-ingest/",
-            "/api/v1/b2b/"
-    );
-
     private final WebClient webClient;
     private final ReactiveStringRedisTemplate redisTemplate;
     private final GatewayErrorWriter errorWriter;
@@ -165,7 +159,7 @@ public class MerchantApiKeyGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isProtectedPath(String path) {
-        return API_KEY_PATHS.stream().anyMatch(path::startsWith);
+        return GatewayPathPolicy.isApiKeyPath(path);
     }
 
     private String firstNonBlank(String first, String second) {

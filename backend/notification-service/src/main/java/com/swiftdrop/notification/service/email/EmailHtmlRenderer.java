@@ -37,7 +37,8 @@ public class EmailHtmlRenderer {
             "PARCEL_DELIVERED", new StatusStyle("Delivered", "Your parcel has been delivered", "#d1fae5", "#065f46", "#a7f3d0"),
             "PARCEL_FAILED", new StatusStyle("Delivery attempt failed", "We could not deliver your parcel", "#fee2e2", "#991b1b", "#fecaca"),
             SensitiveTemplates.EMAIL_VERIFICATION, new StatusStyle("Verify your email", "Confirm your email address", "#eef2ff", "#3730a3", "#c7d2fe"),
-            SensitiveTemplates.PASSWORD_RESET, new StatusStyle("Password reset", "Reset your password", "#fef3c7", "#92400e", "#fde68a"));
+            SensitiveTemplates.PASSWORD_RESET, new StatusStyle("Password reset", "Reset your password", "#fef3c7", "#92400e", "#fde68a"),
+            SensitiveTemplates.LOGIN_MFA, new StatusStyle("Sign-in code", "Confirm it's you signing in", "#eef2ff", "#3730a3", "#c7d2fe"));
 
     private static final Pattern SAFE_CODE = Pattern.compile("[0-9]{4,10}");
     private static final Pattern SAFE_MINUTES = Pattern.compile("[0-9]{1,3}");
