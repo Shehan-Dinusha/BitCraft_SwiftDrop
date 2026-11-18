@@ -12,7 +12,6 @@ import com.swiftdrop.notification.messaging.trigger.NotificationTrigger;
 import com.swiftdrop.notification.service.InAppNotificationService;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
 import com.swiftdrop.notification.util.SensitiveTemplates;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

@@ -126,7 +126,7 @@ class OrderStatusSyncServiceTest {
     @DisplayName("A redelivered event for an order that was unknown is processed once the order exists")
     void unknownOrderEventIsRetried() {
         ParcelStatusChangedEvent event = event(PublicOrderStatus.PICKED_UP, PublicOrderStatus.IN_TRANSIT, null, T1);
-        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.empty(), Optional.of(order));
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.empty()).thenReturn(Optional.of(order));
         when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.empty());
         when(processedEventRepository.claim(event.eventId())).thenReturn(1);
         when(historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.empty());
@@ -140,7 +140,7 @@ class OrderStatusSyncServiceTest {
     @DisplayName("The order is found by tracking number when the order id is unknown, and locked by its id")
     void fallsBackToTrackingNumber() {
         claimed();
-        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.empty(), Optional.of(order));
+        when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.empty()).thenReturn(Optional.of(order));
         when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.of(order));
         when(historyRepository.findFirstByOrderIdAndEventIdIsNotNullOrderByOccurredAtDescIdDesc(orderId)).thenReturn(Optional.empty());
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));

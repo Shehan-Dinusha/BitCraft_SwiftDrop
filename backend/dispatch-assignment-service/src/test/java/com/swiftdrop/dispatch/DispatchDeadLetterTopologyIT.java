@@ -38,6 +38,8 @@ class DispatchDeadLetterTopologyIT {
     private static final Path DEFINITIONS = Path.of("..", "..", "infra", "local", "rabbitmq", "definitions.json");
 
     @Container
+    // Closed by the Testcontainers JUnit extension (@Container), not by this class.
+    @SuppressWarnings("resource")
     static RabbitMQContainer broker = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withCopyFileToContainer(MountableFile.forHostPath(DEFINITIONS), "/etc/rabbitmq/definitions.json")
             .withCopyToContainer(Transferable.of("management.load_definitions = /etc/rabbitmq/definitions.json\n"),

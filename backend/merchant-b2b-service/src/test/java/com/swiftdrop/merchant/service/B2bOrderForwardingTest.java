@@ -36,7 +36,7 @@ class B2bOrderForwardingTest {
         when(orders.create(any(), eq(correlation))).thenReturn(new B2bOrderResult("SHOP-001", orderId, "SD-ABCD-EFGH", true, null));
         var receipt = MerchantOrderReceipt.builder().orderId(orderId).trackingNumber("SD-ABCD-EFGH").build();
         when(receipts.findByMerchantIdAndExternalRef(merchant, "SHOP-001"))
-                .thenReturn(Optional.empty(), Optional.of(receipt));
+                .thenReturn(Optional.empty()).thenReturn(Optional.of(receipt));
         assertThat(service.submit(merchant, B2bTestData.order(), correlation).created()).isTrue();
         var duplicate = service.submit(merchant, B2bTestData.order(), correlation);
         assertThat(duplicate.created()).isFalse();

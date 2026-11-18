@@ -227,6 +227,7 @@ class OrderPdfGeneratorServiceTest {
         int height = stream.getAsNumber(PdfName.HEIGHT).intValue();
         int components = PdfName.DEVICERGB.equals(stream.get(PdfName.COLORSPACE)) ? 3 : 1;
         byte[] samples = PdfReader.getStreamBytes(stream);
+        reader.close();
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {

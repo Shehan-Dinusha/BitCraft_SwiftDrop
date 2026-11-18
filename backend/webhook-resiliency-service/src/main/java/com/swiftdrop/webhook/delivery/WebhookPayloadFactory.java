@@ -45,7 +45,7 @@ public class WebhookPayloadFactory {
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .disable(SerializationFeature.INDENT_OUTPUT)
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .setSerializationInclusion(JsonInclude.Include.ALWAYS);
+                .setDefaultPropertyInclusion(JsonInclude.Include.ALWAYS);
     }
 
     public WebhookPayloadV1 build(PayloadSource source) {

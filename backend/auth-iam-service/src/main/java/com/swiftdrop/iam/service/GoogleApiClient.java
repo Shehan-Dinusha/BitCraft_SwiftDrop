@@ -41,7 +41,8 @@ public class GoogleApiClient {
      * @return Google's access token
      * @throws AuthException 502 when Google rejects the code or cannot be reached
      */
-    @SuppressWarnings("unchecked")
+    // RestTemplate maps the JSON body to a raw Map when given Map.class.
+    @SuppressWarnings("rawtypes")
     public String exchangeCode(String code) {
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("code", code);
@@ -74,7 +75,7 @@ public class GoogleApiClient {
      * @throws AuthException 502 when Google cannot be reached; 403 ({@code email_unverified}) for an
      *                       unverified email
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public GoogleUserInfo fetchUserInfo(String googleAccessToken) {
         try {
             ResponseEntity<Map> response = restTemplate.getForEntity(
