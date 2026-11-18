@@ -10,3 +10,11 @@ misconfigurations:
       - "infra/helm/swiftdrop/templates/rabbitmq.yaml"
       - "infra/helm/swiftdrop/templates/redis.yaml"
     statement: Third-party data stores need a writable root filesystem.
+
+  # False positive: the rule matches "TOKEN" in the key names. These two keys hold
+  # token lifetimes (milliseconds / days), not secret values. Real secrets (DB
+  # passwords, JWT keys, OAuth client secret) come from Kubernetes Secrets.
+  - id: AVD-KSV-0109
+    paths:
+      - "infra/helm/swiftdrop/templates/backend-services.yaml"
+    statement: JWT_*_TOKEN_EXPIRATION_* are durations, not secrets.
