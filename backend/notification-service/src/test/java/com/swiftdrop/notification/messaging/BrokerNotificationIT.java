@@ -1,6 +1,5 @@
 package com.swiftdrop.notification.messaging;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.notification.domain.entity.InAppNotification;
 import com.swiftdrop.notification.domain.entity.NotificationDispatchLog;
 import com.swiftdrop.notification.domain.entity.RecipientPreference;
@@ -69,9 +68,6 @@ class BrokerNotificationIT {
 
     @Autowired
     private RecipientPreferenceRepository preferenceRepository;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Test
     @DisplayName("Publishing DELIVERED event to RabbitMQ broker should produce dispatch log in PostgreSQL")

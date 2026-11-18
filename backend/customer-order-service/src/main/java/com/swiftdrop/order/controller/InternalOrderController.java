@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
 
 /**
  * Service-to-service endpoints. They carry no user context (no {@code X-User-Id}) and are not routed

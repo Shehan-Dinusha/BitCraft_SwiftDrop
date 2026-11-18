@@ -1,7 +1,6 @@
 package com.swiftdrop.dispatch.service;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
-import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;

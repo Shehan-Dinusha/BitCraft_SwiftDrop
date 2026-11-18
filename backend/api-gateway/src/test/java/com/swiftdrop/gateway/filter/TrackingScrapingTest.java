@@ -27,6 +27,7 @@ class TrackingScrapingTest {
     @Test
     void sequentialGuessedTrackingNumbersAreThrottled() {
         ReactiveStringRedisTemplate redisTemplate = mock(ReactiveStringRedisTemplate.class);
+        @SuppressWarnings("unchecked") // Mockito cannot mock a parameterised type directly
         ReactiveValueOperations<String, String> valueOperations = mock(ReactiveValueOperations.class);
         Map<String, AtomicLong> counters = new ConcurrentHashMap<>();
 

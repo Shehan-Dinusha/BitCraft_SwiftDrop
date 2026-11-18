@@ -12,7 +12,6 @@ import com.lowagie.text.DocumentException;
 import com.google.zxing.WriterException;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
@@ -26,7 +25,6 @@ import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.BaseFont;
-import com.lowagie.text.pdf.Barcode;
 import com.lowagie.text.pdf.Barcode128;
 import com.lowagie.text.pdf.ColumnText;
 import com.lowagie.text.pdf.PdfContentByte;
@@ -47,15 +45,8 @@ import org.springframework.stereotype.Service;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Renders the customer's A5 documents with OpenPDF:
@@ -96,7 +87,6 @@ public class OrderPdfGeneratorService {
 
     private final BaseFont sans;
     private final BaseFont sansBold;
-    private final BaseFont mono;
     private final BaseFont monoBold;
 
     public OrderPdfGeneratorService(
@@ -110,7 +100,6 @@ public class OrderPdfGeneratorService {
         try {
             this.sans = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
             this.sansBold = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
-            this.mono = BaseFont.createFont(BaseFont.COURIER, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
             this.monoBold = BaseFont.createFont(BaseFont.COURIER_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
         } catch (DocumentException | IOException e) {
             throw new IllegalStateException("Built-in PDF fonts are unavailable", e);

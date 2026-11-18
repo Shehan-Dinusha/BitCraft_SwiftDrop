@@ -34,9 +34,9 @@ public class InboundEventConsumer {
             containerFactory = RabbitMQConfig.INGESTION_LISTENER_FACTORY)
     public void onMessage(Message message) {
         DecodedInboundEvent event = decoder.decode(message);
-        try (var ignoredEvent = MDC.putCloseable("eventId", event.eventId().toString());
-             var ignoredCorrelation = MDC.putCloseable("correlationId", event.correlationId().toString());
-             var ignoredType = MDC.putCloseable("eventType", event.type().eventType())) {
+        try (var _ = MDC.putCloseable("eventId", event.eventId().toString());
+             var _ = MDC.putCloseable("correlationId", event.correlationId().toString());
+             var _ = MDC.putCloseable("eventType", event.type().eventType())) {
             IngestionResult result = ingestionService.ingest(event);
             log.info("Ingested eventId={} eventType={} correlationId={} orderId={} outcome={} deliveries={} "
                             + "releasedParkedEvents={} releasedDeliveries={}",

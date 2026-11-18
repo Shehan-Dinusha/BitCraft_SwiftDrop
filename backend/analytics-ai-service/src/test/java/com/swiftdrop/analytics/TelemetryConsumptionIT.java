@@ -48,6 +48,8 @@ class TelemetryConsumptionIT {
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
     @Container
+    // Closed by the Testcontainers JUnit extension (@Container), not by this class.
+    @SuppressWarnings("resource")
     static RabbitMQContainer rabbit = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withCopyFileToContainer(MountableFile.forHostPath(
                     Path.of("../../infra/local/rabbitmq/definitions.json").toAbsolutePath()),
