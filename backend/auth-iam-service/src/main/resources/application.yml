@@ -43,6 +43,16 @@ swiftdrop:
       # Emailed second sign-in factor for SYSTEM_ADMIN and DISPATCHER. Needs a real email provider
       # (NOTIFICATION_EMAIL_PROVIDER=azure) or the code never reaches the user.
       enabled: ${AUTH_MFA_ENABLED:false}
+    otp:
+      ttl-minutes: 10
+      max-attempts: 5
+      resend-cooldown-seconds: 60
+      max-sends-per-hour: 5
+      ip-max-requests-per-hour: 30
+      # DEV ONLY: log the plaintext code so the flow can be tried without an email provider.
+      log-code: ${AUTH_OTP_LOG_CODE:false}
+      # Never-verified self-service sign-ups are deleted after this many hours.
+      unverified-retention-hours: 72
   jwt:
     algorithm: ${JWT_ALGORITHM:HS256}
     private-key: ${JWT_PRIVATE_KEY:}
@@ -69,17 +79,6 @@ swiftdrop:
       frontend-url: ${FRONTEND_URL:http://localhost:5173}
       # TTL (seconds) for the CSRF state token stored in Redis (5 minutes).
       state-ttl-seconds: 300
-  auth:
-    otp:
-      ttl-minutes: 10
-      max-attempts: 5
-      resend-cooldown-seconds: 60
-      max-sends-per-hour: 5
-      ip-max-requests-per-hour: 30
-      # DEV ONLY: log the plaintext code so the flow can be tried without an email provider.
-      log-code: ${AUTH_OTP_LOG_CODE:false}
-      # Never-verified self-service sign-ups are deleted after this many hours.
-      unverified-retention-hours: 72
 
 management:
   endpoints:
