@@ -317,8 +317,30 @@ helm upgrade --install swiftdrop infra/helm/swiftdrop -n default \
 | Gateway health | `kubectl port-forward -n swiftdrop-apps svc/api-gateway 8080:8080`, then open `http://localhost:8080/actuator/health` |
 | RabbitMQ UI | `kubectl port-forward -n swiftdrop-messaging svc/rabbitmq 15672:15672` |
 | Database shell | `kubectl exec -it -n swiftdrop-data order-postgres-0 -- psql -U swiftdrop -d swiftdrop_order` |
+| pgAdmin | `kubectl port-forward -n swiftdrop-data svc/order-postgres-headless 5434:5432`, then connect to `localhost:5434`, user `swiftdrop`, password from `secrets.postgres.order.password` |
+| Back up all databases | `bash scripts/db/backup-aks.sh` → `backups/<timestamp>/` (see [Backups](#backups)) |
+| Restore | `bash scripts/db/restore-aks.sh backups/<timestamp>` (asks you to type `restore`) |
 | Stop / start (save credit) | `az aks stop -g $RG -n $AKS` · `az aks start -g $RG -n $AKS` |
 | Remove the app | `helm uninstall swiftdrop -n default`. Namespaces and database volumes are kept on purpose |
+
+### Backups
+
+On the student profile the databases live on the node's own disk (`local-path`). The data survives pod restarts, deploys, `helm uninstall` and `az aks stop`/`start`, but **not** a node replacement: a cluster or node-image upgrade, scaling the node pool, or Azure repairing the node gives a fresh disk. There are no automatic backups, so take one before anything risky and before a demo:
+
+```bash
+bash scripts/db/backup-aks.sh                 # all 9 databases → backups/<UTC timestamp>/
+bash scripts/db/backup-aks.sh iam order       # or just some
+```
+
+Each database becomes a compressed `pg_dump` file. The dump runs inside the postgres pod, so it needs no port-forward or password, and it is safe while the app is live. `backups/` is git-ignored because the files contain real user data; copy them somewhere safe.
+
+To restore, use the **same** backup folder for all databases (the services reference each other's ids):
+
+```bash
+bash scripts/db/restore-aks.sh backups/20261120T101500Z
+```
+
+For each database it scales the owning service to 0, replaces the data in a single transaction (a failed restore leaves the database unchanged), then scales the service back.
 
 ### Adding an environment variable to a service
 

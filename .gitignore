@@ -73,3 +73,6 @@ coverage/
 # Secret local application config (never commit to git)
 **/application-secret.yml
 **/application-secret.properties
+
+# Database dumps from scripts/db/backup-aks.sh (real user data)
+backups/
