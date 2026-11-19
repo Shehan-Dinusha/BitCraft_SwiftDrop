@@ -23,7 +23,7 @@
 
 ## Contents
 
-[Overview](#overview) · [Architecture](#architecture) · [Services and databases](#services-and-databases) · [Events](#event-driven-messaging) · [Parcel lifecycle](#parcel-lifecycle) · [Frontend](#frontend) · [Repository layout](#repository-layout) · [Quick start](#quick-start) · [CI/CD](#cicd) · [Documentation](#documentation) · [Contributing](#contributing)
+[Overview](#overview) · [Live demo](#live-demo) · [Architecture](#architecture) · [Services and databases](#services-and-databases) · [Events](#event-driven-messaging) · [Parcel lifecycle](#parcel-lifecycle) · [Frontend](#frontend) · [Repository layout](#repository-layout) · [Quick start](#quick-start) · [CI/CD](#cicd) · [Documentation](#documentation) · [Contributing](#contributing)
 
 ## Overview
 
@@ -36,6 +36,23 @@ SwiftDrop manages the full life of a courier parcel across Sri Lanka: booking, p
 | **Data** | PostgreSQL, one physically separate database per service. Redis for JWT blacklist and rate limits |
 | **Frontend** | React 18, TypeScript, Vite, Tailwind. One app for five roles, built on the Velocity design system |
 | **Platform** | Docker Compose locally, Azure Kubernetes Service (AKS) in production |
+
+## Live demo
+
+**https://swiftdrop.bitcraft.biz**: the full system on AKS (Helm chart, Traefik ingress, Let's Encrypt TLS), filled with a month of synthetic demo data.
+
+All demo accounts use the password **`Password@123`**:
+
+| Role | Username |
+|---|---|
+| Dispatcher | `dispatcher.colombo` (one per district: `dispatcher.<district>`) |
+| Courier | `courier.colombo.1` (two per district: `courier.<district>.1` / `.2`) |
+| Customer | `fazil.hameed` (40 customers) |
+| Merchant | `merchant.kandy-valley-spice` (approved), `merchant.pettah-gadget-hub` (pending), `merchant.lagoon-catch-exports` (rejected) |
+
+Every account (25 dispatchers, 50 couriers, 40 customers, 6 merchants) is listed in [docs/deployment/DEMO-ACCOUNTS.md](docs/deployment/DEMO-ACCOUNTS.md). The system administrator account is shared privately with assessors.
+
+> The cluster runs on a student subscription and may be paused outside demo times to save credit.
 
 ## Architecture
 
