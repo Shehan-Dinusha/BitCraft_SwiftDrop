@@ -1,0 +1,8 @@
+# CodeQL configuration (used by .github/workflows/security-scan.yml).
+name: SwiftDrop CodeQL config
+
+# Not shipped code: one-off scripts a team member ran locally to verify UI/AI evidence for
+# the M10 design docs (Playwright checks, diagram rendering, demo publishing). They never run
+# in the product or in CI, so their findings are noise in the security tab.
+paths-ignore:
+  - docs/**/fixtures/**

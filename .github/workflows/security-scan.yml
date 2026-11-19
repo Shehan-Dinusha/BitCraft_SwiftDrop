@@ -52,6 +52,7 @@ jobs:
           # No compile step needed: CodeQL extracts Java sources directly.
           build-mode: none
           queries: security-extended
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Analyze
         uses: github/codeql-action/analyze@v3

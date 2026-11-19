@@ -1,5 +1,6 @@
 package com.swiftdrop.gateway.trackinghub.client;
 
+import com.swiftdrop.contracts.logging.LogSanitizer;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.dto.tracking.InternalTrackingView;
 import com.swiftdrop.gateway.config.GatewayRouteProperties;
@@ -33,7 +34,7 @@ public class OrderTrackingClient {
                 .timeout(Duration.ofSeconds(2))
                 .onErrorResume(NotFoundException.class, e -> Mono.just(Optional.<InternalTrackingView>empty()))
                 .onErrorResume(e -> {
-                    log.warn("Order tracking lookup failed for {}: {}", trackingNumber, e.getMessage());
+                    log.warn("Order tracking lookup failed for {}: {}", LogSanitizer.clean(trackingNumber), LogSanitizer.clean(e.getMessage()));
                     return Mono.just(Optional.<InternalTrackingView>empty());
                 });
     }
