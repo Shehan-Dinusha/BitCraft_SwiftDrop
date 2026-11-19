@@ -61,8 +61,8 @@ umask 077
   echo "    district: COLOMBO"
   echo "  googleOAuth: { clientId: \"\", clientSecret: \"\" }"
   echo "  podStorage: { azureConnectionString: \"\" }"
-  echo "  aiProvider: { apiKey: \"\" }"
-  echo "  acsEmail: { accessKey: \"\" }"
+  echo "  aiProvider: { provider: \"\", model: \"\", endpoint: \"\", apiKey: \"\" }"
+  echo "  acsEmail: { endpoint: \"\", senderAddress: \"\", accessKey: \"\" }"
   echo "certManager:"
   echo "  clusterIssuer:"
   echo "    email: \"${ACME_EMAIL}\""
@@ -70,4 +70,4 @@ umask 077
 
 echo "Wrote $OUT"
 echo "Bootstrap admin login: admin / $(grep -A2 'bootstrapAdmin:' "$OUT" | sed -n 's/.*password: "\(.*\)"/\1/p')"
-echo "Next: gh secret set HELM_SECRETS_VALUES < infra/helm/swiftdrop/values-secrets.yaml"
+echo "Next: gh secret set HELM_SECRETS_VALUES --env production < infra/helm/swiftdrop/values-secrets.yaml"

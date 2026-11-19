@@ -88,8 +88,23 @@ secrets:
   googleOAuth:
     clientId: ""
     clientSecret: ""
+  # Optional — Azure Blob for proof-of-delivery photos (else the delivery volume).
+  podStorage:
+    azureConnectionString: ""
+  # Optional — analytics AI assistant. Empty apiKey = AI_PROVIDER=mock.
+  # provider: openai | azure-openai. For Azure, model is the deployment name and
+  # endpoint is https://<resource>.openai.azure.com/openai/v1 (openai may leave it empty).
   aiProvider:
+    provider: ""
+    model: ""
+    endpoint: ""
     apiKey: ""
+  # Optional — Azure Communication Services Email. Empty accessKey = mock (sends nothing).
+  # endpoint and senderAddress are not secret; they sit here so one file holds the setup.
+  acsEmail:
+    endpoint: ""
+    senderAddress: ""
+    accessKey: ""
 
 # ── Shared config (ConfigMap "swiftdrop-common-config", mounted into every backend service) ──
 commonConfig:
@@ -353,6 +368,12 @@ services:
       AUTH_SERVICE_URL: "http://auth-iam-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       CONTACT_MODE: iam
       CONTACT_CACHE_TTL_MINUTES: "10"
+      # Real e-mail (OTP codes, order notices) once secrets.acsEmail.accessKey is set.
+      NOTIFICATION_EMAIL_PROVIDER: '{{ if .Values.secrets.acsEmail.accessKey }}azure{{ else }}mock{{ end }}'
+      ACS_EMAIL_ENDPOINT: '{{ if .Values.secrets.acsEmail.accessKey }}{{ required "secrets.acsEmail.endpoint is required when acsEmail.accessKey is set" .Values.secrets.acsEmail.endpoint }}{{ end }}'
+      ACS_EMAIL_SENDER_ADDRESS: '{{ if .Values.secrets.acsEmail.accessKey }}{{ required "secrets.acsEmail.senderAddress is required when acsEmail.accessKey is set" .Values.secrets.acsEmail.senderAddress }}{{ end }}'
+    secretEnv:
+      - { name: ACS_EMAIL_ACCESS_KEY, secretName: notification-acs-email, key: access-key, optional: true }
 
   analytics-ai-service:
     enabled: true
@@ -368,9 +389,10 @@ services:
       readinessInitialDelaySeconds: 30
       livenessInitialDelaySeconds: 60
     config:
-      AI_PROVIDER: mock
-      AI_MODEL: ""
-      AI_ENDPOINT: ""
+      # mock unless secrets.aiProvider.apiKey is set; then provider and model are required.
+      AI_PROVIDER: '{{ if .Values.secrets.aiProvider.apiKey }}{{ required "secrets.aiProvider.provider (openai | azure-openai) is required when aiProvider.apiKey is set" .Values.secrets.aiProvider.provider }}{{ else }}mock{{ end }}'
+      AI_MODEL: '{{ if .Values.secrets.aiProvider.apiKey }}{{ required "secrets.aiProvider.model is required when aiProvider.apiKey is set" .Values.secrets.aiProvider.model }}{{ end }}'
+      AI_ENDPOINT: '{{ if .Values.secrets.aiProvider.apiKey }}{{ .Values.secrets.aiProvider.endpoint }}{{ end }}'
       GATEWAY_URL: "http://api-gateway.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
     secretEnv:
       - {
