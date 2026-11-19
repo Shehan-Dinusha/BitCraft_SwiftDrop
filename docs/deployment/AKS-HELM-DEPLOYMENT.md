@@ -94,7 +94,7 @@ A few extras come with the chart:
 | Database storage | Azure Managed Disks (Premium/Standard SSD) | `local-path` (the node's own disk) |
 | Requested CPU / memory | ~14.5 vCPU / ~15 GiB | ~1.7 vCPU / ~6 GiB |
 
-**Why the student profile uses `local-path`:** a 4-vCPU Azure VM can attach at most **8** managed disks. SwiftDrop needs **11** volumes: 9 PostgreSQL, RabbitMQ and Redis. With local-path, the databases are still StatefulSets with PersistentVolumeClaims, but the data lives on the node's disk. That data survives pod restarts and node reboots. It is **lost if AKS replaces the node**, which is why the cluster below is created with automatic node upgrades turned off.
+**Why the student profile uses `local-path`:** a 4-vCPU Azure VM can attach at most **8** managed disks. SwiftDrop needs **11** volumes: 9 PostgreSQL, RabbitMQ and Redis. With local-path, the databases are still StatefulSets with PersistentVolumeClaims, but the data lives on the node's disk. That data survives pod restarts and node reboots. It is **lost whenever AKS replaces the node**, and `az aks start` does that: on 19 Nov 2026 a stop/start brought the cluster back on a new VM. Automatic node upgrades are turned off below, and `scripts/aks/pause.sh` / `resume.sh` back up and restore the databases around a stop.
 
 CD uses the student profile by default. To switch, set the GitHub repository variable `DEPLOY_PROFILE` to `production`.
 
@@ -166,7 +166,7 @@ What the important flags do:
 - **`--auto-upgrade-channel none --node-os-upgrade-channel Unmanaged`** stops AKS from re-imaging the node automatically, which would wipe `local-path` data. The OS still installs its own security updates. Upgrade the cluster deliberately when you choose to.
 
 > [!TIP]
-> **Saving credit.** The cluster costs money for every hour it runs. Stop it when you're not using it with `az aks stop -g $RG -n $AKS`, and start it again with `az aks start -g $RG -n $AKS`. Do one stop/start test early and confirm the database data is still there, before you rely on it for a demo.
+> **Saving credit.** The cluster costs money for every hour it runs. Once SwiftDrop is deployed, **don't use plain `az aks stop`**: `az aks start` can return a new node, and the databases on the old node's disk are gone. Use `bash scripts/aks/pause.sh` (backs up all databases, then stops) and `bash scripts/aks/resume.sh` (starts, rebuilds the volumes on the new node, restores the newest backup). Before SwiftDrop is deployed, plain stop/start is fine.
 
 If your ACR name is not `swiftdropacr`, set it as a repository variable:
 
@@ -338,12 +338,12 @@ helm upgrade --install swiftdrop infra/helm/swiftdrop -n default \
 | pgAdmin | `kubectl port-forward -n swiftdrop-data svc/order-postgres-headless 5434:5432`, then connect to `localhost:5434`, user `swiftdrop`, password from `secrets.postgres.order.password` |
 | Back up all databases | `bash scripts/db/backup-aks.sh` → `backups/<timestamp>/` (see [Backups](#backups)) |
 | Restore | `bash scripts/db/restore-aks.sh backups/<timestamp>` (asks you to type `restore`) |
-| Stop / start (save credit) | `az aks stop -g $RG -n $AKS` · `az aks start -g $RG -n $AKS` |
+| Pause / resume (save credit) | `bash scripts/aks/pause.sh` · `bash scripts/aks/resume.sh` (backup → stop; start → repair volumes → restore). Plain `az aks stop` loses the databases if the node is replaced |
 | Remove the app | `helm uninstall swiftdrop -n default`. Namespaces and database volumes are kept on purpose |
 
 ### Backups
 
-On the student profile the databases live on the node's own disk (`local-path`). The data survives pod restarts, deploys, `helm uninstall` and `az aks stop`/`start`, but **not** a node replacement: a cluster or node-image upgrade, scaling the node pool, or Azure repairing the node gives a fresh disk. There are no automatic backups, so take one before anything risky and before a demo:
+On the student profile the databases live on the node's own disk (`local-path`). The data survives pod restarts, deploys and `helm uninstall`, but **not** a node replacement: `az aks start` after a stop (observed), a cluster or node-image upgrade, scaling the node pool, or Azure repairing the node all give a fresh disk. There are no automatic backups, so take one before anything risky and before a demo:
 
 ```bash
 bash scripts/db/backup-aks.sh                 # all 9 databases → backups/<UTC timestamp>/

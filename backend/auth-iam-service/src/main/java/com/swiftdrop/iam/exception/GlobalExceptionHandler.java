@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.exception;
 
+import com.swiftdrop.contracts.logging.LogSanitizer;
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,8 +69,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException exception,
                                                                 HttpServletRequest request) {
-        log.warn("Data integrity violation at {}: {}", request.getRequestURI(),
-                exception.getMostSpecificCause().getMessage());
+        log.warn("Data integrity violation at {}: {}", LogSanitizer.clean(request.getRequestURI()),
+                LogSanitizer.clean(exception.getMostSpecificCause().getMessage()));
         return build(HttpStatus.CONFLICT, "Request conflicts with existing data", request, null);
     }
 
@@ -82,7 +83,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiErrorResponse> handleRuntimeException(RuntimeException exception,
                                                                    HttpServletRequest request) {
-        log.error("Unhandled auth/IAM error at {}", request.getRequestURI(), exception);
+        log.error("Unhandled auth/IAM error at {}", LogSanitizer.clean(request.getRequestURI()), exception);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", request, null);
     }
 

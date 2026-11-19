@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.controller;
 
+import com.swiftdrop.contracts.logging.LogSanitizer;
 import java.io.IOException;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.merchant.dto.BulkBatchItemResponse;
@@ -58,7 +59,7 @@ public class MerchantOrderIngestController {
             @RequestHeader(value = com.swiftdrop.contracts.security.JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
             @RequestParam("file") MultipartFile file) {
         approvalGuard.requireApproved(merchantId);
-        log.info("Received CSV order ingestion upload for merchant: {}, file: {}", merchantId, file.getOriginalFilename());
+        log.info("Received CSV order ingestion upload for merchant: {}, file: {}", LogSanitizer.clean(merchantId), LogSanitizer.clean(file.getOriginalFilename()));
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Uploaded CSV file cannot be empty");
         }

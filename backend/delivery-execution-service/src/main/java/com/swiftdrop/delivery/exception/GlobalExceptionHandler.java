@@ -1,5 +1,6 @@
 package com.swiftdrop.delivery.exception;
 
+import com.swiftdrop.contracts.logging.LogSanitizer;
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import com.swiftdrop.contracts.security.CallerContextException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,7 +35,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CallerContextException.class)
     public ResponseEntity<ApiErrorResponse> handleCallerContext(CallerContextException ex, HttpServletRequest request) {
-        log.warn("Security authorisation exception on {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Security authorisation exception on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
         int status = ex.statusCode();
         String errorName = status == 403 ? "Forbidden" : "Unauthorized";
         return ResponseEntity.status(status)
@@ -46,21 +47,21 @@ public class GlobalExceptionHandler {
         String errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining("; "));
-        log.warn("Validation error on {}: {}", request.getRequestURI(), errors);
+        log.warn("Validation error on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(errors));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(400, "Validation Failed", errors, request.getRequestURI()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
-        log.warn("Illegal argument on {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Illegal argument on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(400, "Bad Request", ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
-        log.error("Internal error on {}", request.getRequestURI(), ex);
+        log.error("Internal error on {}", LogSanitizer.clean(request.getRequestURI()), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiErrorResponse.of(500, "Internal Server Error", ex.getMessage(), request.getRequestURI()));
     }
