@@ -6,9 +6,12 @@
 
 **Event-driven microservices monorepo • Azure Kubernetes Service • Database-per-Service**
 
-[![CI Backend](https://github.com/BitCraft-Org/SwiftDrop/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/BitCraft-Org/SwiftDrop/actions/workflows/ci-backend.yml)
-[![CI Frontend](https://github.com/BitCraft-Org/SwiftDrop/actions/workflows/ci-frontend.yml/badge.svg)](https://github.com/BitCraft-Org/SwiftDrop/actions/workflows/ci-frontend.yml)
-[![CD AKS](https://github.com/BitCraft-Org/SwiftDrop/actions/workflows/cd-aks-deploy.yml/badge.svg)](https://github.com/BitCraft-Org/SwiftDrop/actions/workflows/cd-aks-deploy.yml)
+**Live:** [swiftdrop.bitcraft.biz](https://swiftdrop.bitcraft.biz)
+
+[![CI Backend](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/actions/workflows/ci-backend.yml)
+[![CI Frontend](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/actions/workflows/ci-frontend.yml/badge.svg)](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/actions/workflows/ci-frontend.yml)
+[![CD AKS](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/actions/workflows/cd-aks-deploy.yml/badge.svg)](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/actions/workflows/cd-aks-deploy.yml)
+[![Security scan](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/actions/workflows/security-scan.yml/badge.svg)](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/actions/workflows/security-scan.yml)
 
 ![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white)
@@ -23,7 +26,7 @@
 
 ## Contents
 
-[Overview](#overview) · [Architecture](#architecture) · [Services and databases](#services-and-databases) · [Events](#event-driven-messaging) · [Parcel lifecycle](#parcel-lifecycle) · [Frontend](#frontend) · [Repository layout](#repository-layout) · [Quick start](#quick-start) · [CI/CD](#cicd) · [Documentation](#documentation) · [Contributing](#contributing)
+[Overview](#overview) · [Live demo](#live-demo) · [Architecture](#architecture) · [Services and databases](#services-and-databases) · [Events](#event-driven-messaging) · [Parcel lifecycle](#parcel-lifecycle) · [Frontend](#frontend) · [Repository layout](#repository-layout) · [Quick start](#quick-start) · [CI/CD](#cicd) · [Documentation](#documentation) · [Contributing](#contributing)
 
 ## Overview
 
@@ -35,7 +38,21 @@ SwiftDrop manages the full life of a courier parcel across Sri Lanka: booking, p
 | **Messaging** | RabbitMQ topic exchange with dead-letter queues |
 | **Data** | PostgreSQL, one physically separate database per service. Redis for JWT blacklist and rate limits |
 | **Frontend** | React 18, TypeScript, Vite, Tailwind. One app for five roles, built on the Velocity design system |
-| **Platform** | Docker Compose locally, Azure Kubernetes Service (AKS) in production |
+| **Platform** | Docker Compose locally; Azure Kubernetes Service (AKS) in production, deployed with a Helm chart behind Traefik and Let's Encrypt TLS |
+
+## Live demo
+
+| | |
+|---|---|
+| **App** | https://swiftdrop.bitcraft.biz (frontend, plus same-origin `/api` and `/ws`) |
+| **API** | https://api.swiftdrop.bitcraft.biz (gateway only; `/actuator` is not exposed) |
+| **Runs on** | One AKS node (Standard_B4ms, Azure for Students): 10 Spring services, 9 PostgreSQL StatefulSets, RabbitMQ, Redis, the frontend |
+| **Data** | A month of synthetic demo data from [`scripts/seed`](scripts/seed/README.md): about 120 accounts across every role and 240 parcels in every state |
+
+Demo sign-ins are shared with the team in [docs/deployment/DEMO-ACCOUNTS.md](docs/deployment/DEMO-ACCOUNTS.md) and with assessors separately.
+
+> [!NOTE]
+> The cluster runs on a student subscription and is paused outside demo times to save credit, so the site may be offline. It is paused and resumed with `scripts/aks/pause.sh` / `resume.sh`, which back up and restore the databases.
 
 ## Architecture
 
@@ -49,7 +66,7 @@ flowchart TB
         PUB["Public parcel tracking"]
     end
 
-    ING["NGINX Ingress<br/>/api/* · /ws/*"]
+    ING["Traefik ingress · Let's Encrypt TLS<br/>swiftdrop.bitcraft.biz · api.swiftdrop.bitcraft.biz"]
     GW["<b>api-gateway</b> :8080<br/>JWT · CORS · rate limiting<br/>tracking hub (SSE / WebSocket)"]
     REDIS[("Redis<br/>JWT blacklist · rate limits")]
 
@@ -85,7 +102,7 @@ flowchart TB
 ```
 
 > [!NOTE]
-> The browser only ever talks to the gateway (`http://localhost:8080/api/v1/...`). Downstream service ports are for local debugging, not for the frontend.
+> The browser only ever talks to the gateway: `http://localhost:8080/api/v1/...` locally, and same-origin `/api/v1/...` on https://swiftdrop.bitcraft.biz. Downstream service ports are for local debugging, not for the frontend.
 
 ## Services and databases
 
@@ -101,6 +118,8 @@ flowchart TB
 | `webhook-resiliency-service` | 8087 | `swiftdrop_webhook` | 5438 | `webhook-postgres` | 30Gi Prem SSD | Webhook subscriptions, retries, dead-letter replay |
 | `notification-service` | 8088 | `swiftdrop_notify` | 5439 | `notify-postgres` | 20Gi Std SSD | Notification preferences and logs |
 | `analytics-ai-service` | 8089 | `swiftdrop_analytics` | 5440 | `analytics-postgres` | 50Gi Prem SSD | Operational KPIs, AI delivery assistant |
+
+Storage sizes are the production Helm profile (Azure managed disks). The student profile used for the live demo gives every database a 2Gi `local-path` volume on the node's own disk, because a 4-vCPU VM can attach only 8 managed disks and SwiftDrop needs 11 volumes.
 
 Shared event records, DTO wrappers, enums and security headers live in [`backend/common-contracts`](backend/common-contracts). See [ADR-001](docs/architecture/ADR-001-physical-db-statefulsets.md) for why every database is its own StatefulSet.
 
@@ -185,9 +204,9 @@ One React app serves five roles. After sign-in, `AppShell` picks the matching la
 |---|---|---|---|
 | Customer | Comfortable (44px controls) | Side nav, mobile tabs | Book, track |
 | Courier | Kinetic (56px thumb targets) | Side nav, mobile tabs | Shift, active delivery |
-| Merchant | Compact (34px) | Side nav | Dashboard, webhooks |
-| Dispatcher | Compact | Side nav | Control tower, webhook dead letters |
-| System admin | Compact | Side nav | Same ops screens today; admin screens are designed in Figma, not built yet |
+| Merchant | Compact (34px) | Side nav | Dashboard, API keys, B2B orders, webhooks, registration |
+| Dispatcher | Compact | Side nav | Control tower, dispatch board, webhook dead letters |
+| System admin | Compact | Side nav | The ops area (`/ops`) plus merchant approvals, users, zone and tariff pricing, analytics dashboard, notification console |
 
 ### Velocity design system
 
@@ -238,7 +257,11 @@ SwiftDrop/
 │   ├── local/rabbitmq/          Queue, exchange and binding definitions
 │   ├── helm/swiftdrop/          Helm chart for AKS (all services, DBs, broker, ingress)
 │   └── cluster/                 One-time cluster add-on values (Traefik)
-├── docs/                        API specs, ADRs, local guide, design system
+├── scripts/
+│   ├── seed/                    Demo-data seeder (drives the public APIs) and timeshift
+│   ├── db/                      AKS database backup / restore
+│   └── aks/                     Pause / resume the student cluster without losing data
+├── docs/                        API specs, ADRs, deployment guides, design system
 ├── .github/workflows/           CI and CD pipelines
 ├── docker-compose.yml           Local infrastructure and optional app containers
 └── .env.example                 Environment variable template
@@ -284,12 +307,20 @@ flowchart LR
     PR["Pull request"] --> CB["CI Backend<br/>Java 25 · compile · test · verify"]
     PR --> CF["CI Frontend<br/>Node 20 · type-check · lint · build"]
     PR --> CH["CI Helm<br/>lint · template · schema validation"]
+    PR --> SEC["Security scan<br/>CodeQL · Trivy deps and config"]
     MAIN["Push to main"] --> DET["Detect changed components"]
-    DET --> BP["Build and push images to ACR<br/>(one job per component)"]
-    BP --> DEP["helm upgrade --install<br/>on AKS"]
+    DET --> BP["Build images on GitHub runners<br/>Trivy gate (HIGH/CRITICAL) · push to ACR"]
+    BP --> APP{{"Approval<br/>production environment"}}
+    APP --> DEP["helm upgrade --install --wait<br/>on AKS"]
 ```
 
-Workflows are in [`.github/workflows`](.github/workflows). Deployment is incremental: only the components that changed are rebuilt, and unchanged ones keep the image they are running. A manual run can target one component, `all` (needed for the first deploy), or `none` (config only). The full setup, from creating the Azure resources to the first deploy, is in the [AKS Helm deployment guide](docs/deployment/AKS-HELM-DEPLOYMENT.md).
+Workflows are in [`.github/workflows`](.github/workflows).
+- **Builds run on GitHub runners**, never on the cluster. AKS only pulls the finished images from ACR.
+- **Deployment is incremental**: only changed components are rebuilt, and the rest keep the image they are running. A manual run can target one component, `all` (needed for the first deploy), or `none` (config only).
+- **Security gates**: an image with a fixable HIGH or CRITICAL CVE is never pushed. Accepted exceptions live in [`.trivyignore.yaml`](.trivyignore.yaml), each with a reason and an expiry date.
+- **Access**: GitHub logs in to Azure with OIDC (no stored password). The Helm secrets are a `production` environment secret, so only `main` can deploy, and every deploy waits for a reviewer.
+
+The full setup, from creating the Azure resources to the first deploy, is in the [AKS Helm deployment guide](docs/deployment/AKS-HELM-DEPLOYMENT.md).
 
 ## Documentation
 
@@ -298,6 +329,8 @@ Workflows are in [`.github/workflows`](.github/workflows). Deployment is increme
 | [Local Development Guide](docs/LOCAL-DEVELOPMENT.md) | Run one service, its database and the frontend |
 | [AKS Helm Deployment Guide](docs/deployment/AKS-HELM-DEPLOYMENT.md) | Deploy the full system to Azure Kubernetes Service with the Helm chart |
 | [Local Kubernetes Guide](docs/deployment/LOCAL-KUBERNETES.md) | Run the same chart for free on Docker Desktop's Kubernetes |
+| [Demo data seeder](scripts/seed/README.md) | Fill a cluster with a month of realistic data through the public APIs |
+| [Demo accounts](docs/deployment/DEMO-ACCOUNTS.md) | Seeded sign-ins per role, for the team |
 | [API contracts](docs/api-specs/README.md) | OpenAPI documents, gateway routes, generating frontend types |
 | [ADR-001](docs/architecture/ADR-001-physical-db-statefulsets.md) | Why every database is a separate StatefulSet |
 | [Component guide](frontend/COMPONENTS.md) | Design system rules, components, catalog routes |
@@ -306,7 +339,8 @@ Workflows are in [`.github/workflows`](.github/workflows). Deployment is increme
 
 ## Contributing
 
-- Branch from `dev` and open pull requests into `dev`.
+- Branch from `dev` and open pull requests into `dev`. Never commit to `dev` or `main` directly.
+- Releases are a `dev` → `main` pull request. Pushing to `main` starts the CD pipeline; the deploy waits for approval.
 - Keep database ownership strict: no cross-service foreign keys, shared tables or direct database access.
 - Changing a REST contract, event or database entity has required follow-up steps; see the matrix in [`AGENTS.md`](AGENTS.md).
 - Before opening a frontend PR: `npm run lint` and `npm run build`.
