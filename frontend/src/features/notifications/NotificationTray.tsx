@@ -12,6 +12,7 @@ export interface TrayItem {
   message: string;
   createdAt?: string;
   unread: boolean;
+  trackingNumber?: string;
 }
 
 export interface NotificationTrayProps {
@@ -21,6 +22,8 @@ export interface NotificationTrayProps {
   onItemClick: (item: TrayItem) => void;
   onMarkAllRead: () => void;
   onOpenSettings: () => void;
+  /** `page` shows the full list without the popover height limit. */
+  variant?: 'popover' | 'page';
 }
 
 type Filter = 'all' | 'unread';
@@ -51,7 +54,8 @@ export function NotificationTray({
   loading = false,
   onItemClick,
   onMarkAllRead,
-  onOpenSettings
+  onOpenSettings,
+  variant = 'popover'
 }: NotificationTrayProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -132,7 +136,10 @@ export function NotificationTray({
   return (
     <section
       aria-label="Notifications"
-      className="w-full overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-ambient"
+      className={cn(
+        'w-full overflow-hidden rounded-2xl border border-border-subtle bg-card',
+        variant === 'popover' && 'shadow-ambient'
+      )}
     >
       <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
         <div className="flex items-center gap-2">
@@ -211,7 +218,7 @@ export function NotificationTray({
         ))}
       </div>
 
-      <div className="max-h-[420px] overflow-y-auto border-t border-border-subtle">
+      <div className={cn('border-t border-border-subtle', variant === 'popover' && 'max-h-[420px] overflow-y-auto')}>
         {loading && items.length === 0 ? (
           <p className="p-8 text-center text-caption text-secondary">Loading notifications…</p>
         ) : visible.length === 0 ? (

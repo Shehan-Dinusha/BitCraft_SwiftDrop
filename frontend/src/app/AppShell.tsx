@@ -14,7 +14,8 @@ import {
   type ShellRole
 } from '@/design-system';
 import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
-import { NotificationBell } from '@/features/notifications/NotificationBell';
+import { NOTIFICATIONS_PATH } from '@/features/notifications/notificationTypes';
+import { useUnreadNotificationCount } from '@/features/notifications/useNotificationInbox';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
 import { logoutUser } from '@/services/api/authApi';
@@ -139,14 +140,26 @@ export function AppShell() {
   const spec = roleShellSpec[shellRole];
   const hasTabs = shellRole === 'customer' || shellRole === 'courier';
 
-  const groups = useMemo<NavGroup[]>(
-    // The design catalog is a developer tool, so real users never see it in their menu.
-    () =>
-      import.meta.env.DEV && isDevSession
-        ? [...routedNav[shellRole], { label: 'Design system', items: [catalogEntry] }]
-        : routedNav[shellRole],
-    [shellRole, isDevSession]
+  const unreadCount = useUnreadNotificationCount();
+  // Every workspace has a Notifications page in its own "Updates" section, with the unread count.
+  const notificationsEntry = useMemo<NavEntry>(
+    () => ({
+      id: 'notifications',
+      label: 'Notifications',
+      icon: 'bell',
+      to: NOTIFICATIONS_PATH[role],
+      count: unreadCount > 0 ? unreadCount : undefined
+    }),
+    [role, unreadCount]
   );
+
+  const groups = useMemo<NavGroup[]>(() => {
+    const withUpdates = [...routedNav[shellRole], { label: 'Updates', items: [notificationsEntry] }];
+    // The design catalog is a developer tool, so real users never see it in their menu.
+    return import.meta.env.DEV && isDevSession
+      ? [...withUpdates, { label: 'Design system', items: [catalogEntry] }]
+      : withUpdates;
+  }, [shellRole, isDevSession, notificationsEntry]);
   const entries = groups.flatMap((group) => group.items);
   const activeEntry = entries
     .filter((entry) => entry.to && (pathname === entry.to || pathname.startsWith(`${entry.to}/`)))
@@ -214,7 +227,8 @@ export function AppShell() {
           page={pageTitle}
           showUtilities={role !== 'ADMIN_OPS'}
           district={shellRole === 'dispatcher' ? user?.district : undefined}
-          notificationSlot={<NotificationBell />}
+          // Notifications live in the left navigation; an empty slot hides the top bar's default bell.
+          notificationSlot={<></>}
           leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}
         >
           {hasTabs ? (
@@ -238,7 +252,7 @@ export function AppShell() {
       {hasTabs ? (
         <BottomNav
           role={shellRole}
-          tabs={groups[0].items}
+          tabs={[...groups[0].items, notificationsEntry]}
           activeId={activeEntry?.id}
           renderTab={(entry, active, content, tabClassName) => (
             <Link

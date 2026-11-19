@@ -8,7 +8,7 @@ import { Toggle } from '@/design-system/components/Toggle/Toggle';
 import { notificationApi, type RecipientPreferenceResponse } from '@/services/api/notificationApi';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/utils/cn';
-import { NOTIFICATION_TYPES, NOTIFICATION_TYPE_ORDER, notificationTone } from './notificationTypes';
+import { NOTIFICATION_TYPES, NOTIFICATION_TYPES_BY_ROLE, notificationTone } from './notificationTypes';
 
 interface FormState {
   emailEnabled: boolean;
@@ -85,6 +85,7 @@ function ChannelRow({
  */
 export function NotificationSettings({ className }: { className?: string }) {
   const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
   const isDevSession = useAuthStore((s) => s.isDevSession);
   const queryClient = useQueryClient();
   const userId = user?.id;
@@ -210,10 +211,13 @@ export function NotificationSettings({ className }: { className?: string }) {
         </div>
       </Section>
 
-      <Section title="What you'll be notified about" description="Every stage of your parcel's journey.">
+      <Section
+        title="What you'll be notified about"
+        description={role === 'CUSTOMER' ? "Every stage of your parcel's journey." : 'Updates for your work on SwiftDrop.'}
+      >
         <ul className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-card">
-          {NOTIFICATION_TYPE_ORDER.map((type) => {
-            const { label, description, Icon } = NOTIFICATION_TYPES[type];
+          {NOTIFICATION_TYPES_BY_ROLE[role].map((type) => {
+            const { label, description, Icon, emailed } = NOTIFICATION_TYPES[type];
             return (
               <li key={type} className="flex items-center gap-3 px-4 py-3">
                 <span
@@ -227,8 +231,8 @@ export function NotificationSettings({ className }: { className?: string }) {
                   <p className="text-caption text-secondary">{description}</p>
                 </div>
                 <div className="flex shrink-0 gap-1.5" aria-label={`${label} channels`}>
-                  <ChannelChip on={form.emailEnabled}>Email</ChannelChip>
-                  <ChannelChip on={form.pushEnabled}>In-app</ChannelChip>
+                  {emailed ? <ChannelChip on={form.emailEnabled}>Email</ChannelChip> : null}
+                  <ChannelChip on={form.pushEnabled || !emailed}>In-app</ChannelChip>
                 </div>
               </li>
             );
@@ -236,8 +240,8 @@ export function NotificationSettings({ className }: { className?: string }) {
         </ul>
         <p className="flex items-start gap-2 rounded-xl bg-elevated px-3 py-2.5 text-caption text-secondary">
           <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand-primary" />
-          Security emails (email verification, password reset and sign-in codes) are always sent to your
-          account email, even when email notifications are off.
+          Security emails (verification and sign-in codes, password resets and sign-in alerts) are always
+          sent to your account email, even when email notifications are off.
         </p>
       </Section>
 

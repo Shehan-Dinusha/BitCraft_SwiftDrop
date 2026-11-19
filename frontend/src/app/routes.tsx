@@ -26,6 +26,7 @@ import { NotificationConsolePage } from '@/features/admin-ops/pages/Notification
 import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
 import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
 import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
+import { NotificationsPage } from '@/features/notifications/NotificationsPage';
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
@@ -38,6 +39,39 @@ export const routes: RouteObject[] = [
   {
     element: <AppShell />,
     children: [
+      // Notifications inbox and settings, one per workspace (left navigation).
+      {
+        path: '/customer/notifications',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/courier/notifications',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/notifications',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/inbox',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
       {
         path: '/customer',
         element: (
