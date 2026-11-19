@@ -70,4 +70,4 @@ umask 077
 
 echo "Wrote $OUT"
 echo "Bootstrap admin login: admin / $(grep -A2 'bootstrapAdmin:' "$OUT" | sed -n 's/.*password: "\(.*\)"/\1/p')"
-echo "Next: gh secret set HELM_SECRETS_VALUES < infra/helm/swiftdrop/values-secrets.yaml"
+echo "Next: gh secret set HELM_SECRETS_VALUES --env production < infra/helm/swiftdrop/values-secrets.yaml"
