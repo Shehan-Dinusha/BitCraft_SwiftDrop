@@ -150,12 +150,12 @@ class PodUploadTest {
         ProofOfDeliveryResponse response = new ProofOfDeliveryResponse(
                 55L,
                 deliveryId,
-                false,
+                true,
                 Instant.now(),
-                null
+                Instant.now()
         );
 
-        when(storageService.storeMultipart(eq(deliveryId), any(), eq("Kamal Perera"), any(), any()))
+        when(storageService.storeMultipart(eq(deliveryId), any(), eq("Kamal Perera"), any()))
                 .thenReturn(response);
 
         mockMvc.perform(multipart("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")
@@ -164,7 +164,7 @@ class PodUploadTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.deliveryId").value(deliveryId.toString()))
-                .andExpect(jsonPath("$.data.verified").value(false));
+                .andExpect(jsonPath("$.data.verified").value(true));
     }
 
     @Test
@@ -187,7 +187,7 @@ class PodUploadTest {
                 null
         );
 
-        when(storageService.storeMultipart(eq(deliveryId), any(), eq("Nimal Fernando"), any(), any()))
+        when(storageService.storeMultipart(eq(deliveryId), any(), eq("Nimal Fernando"), any()))
                 .thenReturn(response);
 
         mockMvc.perform(multipart("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")

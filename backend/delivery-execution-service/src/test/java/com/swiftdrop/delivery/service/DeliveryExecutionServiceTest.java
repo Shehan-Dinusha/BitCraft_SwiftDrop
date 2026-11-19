@@ -177,7 +177,7 @@ class DeliveryExecutionServiceTest {
 
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.DELIVERED,
-                "Handed over with signature & OTP",
+                "Handed over with photo & signature",
                 BigDecimal.valueOf(6.9271),
                 BigDecimal.valueOf(79.8612),
                 null,

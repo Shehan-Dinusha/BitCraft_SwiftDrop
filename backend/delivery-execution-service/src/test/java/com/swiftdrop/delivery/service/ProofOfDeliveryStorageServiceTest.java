@@ -37,12 +37,11 @@ class ProofOfDeliveryStorageServiceTest {
     }
 
     @Test
-    @DisplayName("Store PoD: successfully persists photo, signature, and confirmation OTP")
+    @DisplayName("Store PoD: persists photo and signature and marks the proof verified")
     void testStorePod_Success() {
         ProofOfDeliveryUploadRequest request = new ProofOfDeliveryUploadRequest(
                 "https://storage.swiftdrop.lk/pod/photo1.jpg",
-                "base64-encoded-signature",
-                "984215"
+                "base64-encoded-signature"
         );
 
         when(repository.save(any(ProofOfDelivery.class))).thenAnswer(inv -> {
@@ -56,47 +55,36 @@ class ProofOfDeliveryStorageServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(101L);
         assertThat(response.deliveryId()).isEqualTo(deliveryId);
-        assertThat(response.verified()).isFalse();
+        assertThat(response.verified()).isTrue();
+        assertThat(response.verifiedAt()).isNotNull();
 
         verify(repository).save(argThat(p ->
                 p.getDeliveryId().equals(deliveryId)
-                        && p.getConfirmationOtp().equals("984215")
-                        && !p.isVerified()
+                        && p.getRecipientSignature().equals("base64-encoded-signature")
+                        && p.isVerified()
         ));
     }
 
     @Test
-    @DisplayName("Verify PoD: successfully verifies with valid recipient OTP")
-    void testVerifyPod_Success() {
-        ProofOfDelivery pod = new ProofOfDelivery();
-        pod.setId(101L);
-        pod.setDeliveryId(deliveryId);
-        pod.setConfirmationOtp("984215");
-        pod.setVerified(false);
+    @DisplayName("Store PoD: rejects a request without a signature")
+    void testStorePod_MissingSignature() {
+        ProofOfDeliveryUploadRequest request = new ProofOfDeliveryUploadRequest(
+                "https://storage.swiftdrop.lk/pod/photo1.jpg", " ");
 
-        when(repository.findTopByDeliveryIdOrderByCreatedAtDesc(deliveryId)).thenReturn(Optional.of(pod));
-        when(repository.save(any(ProofOfDelivery.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        ProofOfDeliveryResponse response = storageService.verify(deliveryId, "984215");
-
-        assertThat(response.verified()).isTrue();
-        assertThat(response.verifiedAt()).isNotNull();
-        verify(repository).save(argThat(ProofOfDelivery::isVerified));
+        assertThatThrownBy(() -> storageService.store(deliveryId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("signature");
     }
 
     @Test
-    @DisplayName("Verify PoD: throws IllegalArgumentException with wrong OTP")
-    void testVerifyPod_InvalidOtp() {
+    @DisplayName("isVerified: true once a proof has been stored")
+    void testIsVerified_AfterStore() {
         ProofOfDelivery pod = new ProofOfDelivery();
         pod.setDeliveryId(deliveryId);
-        pod.setConfirmationOtp("984215");
-        pod.setVerified(false);
-
+        pod.setVerified(true);
         when(repository.findTopByDeliveryIdOrderByCreatedAtDesc(deliveryId)).thenReturn(Optional.of(pod));
 
-        assertThatThrownBy(() -> storageService.verify(deliveryId, "000000"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("OTP is invalid");
+        assertThat(storageService.isVerified(deliveryId)).isTrue();
     }
 
     @Test
@@ -113,11 +101,13 @@ class ProofOfDeliveryStorageServiceTest {
 
         when(repository.save(any(ProofOfDelivery.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ProofOfDeliveryResponse response = customStorage.storeMultipart(deliveryId, file, "Sunil Perera", "sig-123", "998877");
+        ProofOfDeliveryResponse response = customStorage.storeMultipart(deliveryId, file, "Sunil Perera", "sig-123");
 
         assertThat(response).isNotNull();
         verify(repository).save(argThat(pod -> {
             assertThat(pod.getRecipientName()).isEqualTo("Sunil Perera");
+            assertThat(pod.isVerified()).isTrue();
+            assertThat(pod.getVerifiedAt()).isNotNull();
             assertThat(pod.getPhotoUrl()).startsWith(tempDir.toString());
             assertThat(pod.getPhotoUrl()).doesNotContain("malicious");
             assertThat(pod.getPhotoUrl()).endsWith(".jpg");
@@ -145,7 +135,7 @@ class ProofOfDeliveryStorageServiceTest {
 
         when(repository.save(any(ProofOfDelivery.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ProofOfDeliveryResponse response = azureStorage.storeMultipart(deliveryId, file, "Kamal Silva", "sig-456", "112233");
+        ProofOfDeliveryResponse response = azureStorage.storeMultipart(deliveryId, file, "Kamal Silva", "sig-456");
 
         assertThat(response).isNotNull();
         verify(repository).save(argThat(pod -> {

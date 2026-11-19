@@ -10,7 +10,7 @@ Fills SwiftDrop with realistic demo data **through the public APIs**, the way re
 | Couriers | Start their shifts |
 | Customers | Cancel ~10% of parcels before dispatch |
 | Dispatchers | Assign ~80% of parcels to a courier in the pickup district; ~10% stay unassigned so the board has work |
-| Couriers | Move parcels along: ~58% delivered (photo + OTP proof of delivery), ~7% out for delivery, ~10% failed with a reason, the rest picked up / in transit |
+| Couriers | Move parcels along: ~58% delivered (photo proof of delivery), ~7% out for delivery, ~10% failed with a reason, the rest picked up / in transit |
 | Customers | Read the older ~60% of their in-app notifications |
 
 Nothing is written with SQL. Dispatch, delivery, notification and analytics fill themselves from the

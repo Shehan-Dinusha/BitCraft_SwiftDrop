@@ -7,8 +7,6 @@ public record ProofOfDeliveryUploadRequest(
         @Schema(description = "Object-storage URL for the delivery photo.", example = "https://storage.example/pod/123.jpg")
         String photoUrl,
         @Schema(description = "Recipient signature encoded as a portable string.", example = "base64-signature")
-        String recipientSignature,
-        @Schema(description = "One-time confirmation code supplied by the recipient.", example = "482913")
-        String confirmationOtp
+        String recipientSignature
 ) {
 }

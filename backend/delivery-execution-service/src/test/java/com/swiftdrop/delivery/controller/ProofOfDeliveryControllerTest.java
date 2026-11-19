@@ -42,16 +42,15 @@ class ProofOfDeliveryControllerTest {
         UUID deliveryId = UUID.randomUUID();
         ProofOfDeliveryUploadRequest request = new ProofOfDeliveryUploadRequest(
                 "https://storage.swiftdrop.lk/pod/photo.jpg",
-                "signature-base64",
-                "123456"
+                "signature-base64"
         );
 
         ProofOfDeliveryResponse response = new ProofOfDeliveryResponse(
                 1L,
                 deliveryId,
-                false,
+                true,
                 Instant.now(),
-                null
+                Instant.now()
         );
 
         when(storageService.store(eq(deliveryId), any(ProofOfDeliveryUploadRequest.class))).thenReturn(response);
@@ -62,27 +61,6 @@ class ProofOfDeliveryControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.deliveryId").value(deliveryId.toString()))
-                .andExpect(jsonPath("$.data.verified").value(false));
-    }
-
-    @Test
-    @DisplayName("POST /api/v1/deliveries/{deliveryId}/proof-of-delivery/verify verifies OTP")
-    void testVerifyPod() throws Exception {
-        UUID deliveryId = UUID.randomUUID();
-        ProofOfDeliveryResponse response = new ProofOfDeliveryResponse(
-                1L,
-                deliveryId,
-                true,
-                Instant.now(),
-                Instant.now()
-        );
-
-        when(storageService.verify(eq(deliveryId), eq("123456"))).thenReturn(response);
-
-        mockMvc.perform(post("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery/verify")
-                        .param("otp", "123456"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.verified").value(true));
     }
 
@@ -100,22 +78,21 @@ class ProofOfDeliveryControllerTest {
         ProofOfDeliveryResponse response = new ProofOfDeliveryResponse(
                 2L,
                 deliveryId,
-                false,
+                true,
                 Instant.now(),
-                null
+                Instant.now()
         );
 
-        when(storageService.storeMultipart(eq(deliveryId), any(), eq("Kamal Silva"), eq("sig-data"), eq("654321")))
+        when(storageService.storeMultipart(eq(deliveryId), any(), eq("Kamal Silva"), eq("sig-data")))
                 .thenReturn(response);
 
         mockMvc.perform(multipart("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")
                         .file(photo)
                         .param("recipientName", "Kamal Silva")
-                        .param("signature", "sig-data")
-                        .param("otp", "654321"))
+                        .param("signature", "sig-data"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.deliveryId").value(deliveryId.toString()))
-                .andExpect(jsonPath("$.data.verified").value(false));
+                .andExpect(jsonPath("$.data.verified").value(true));
     }
 }

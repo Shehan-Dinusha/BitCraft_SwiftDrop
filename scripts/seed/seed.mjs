@@ -609,14 +609,12 @@ async function ensureProof(token, delivery, courier) {
   const r = rng(`pod:${delivery.deliveryId}`);
   const photo = photos()[hash(delivery.deliveryId) % photos().length];
   const who = personName(r, courier.district);
-  const otp = String(r.int(1000, 9999));
   const form = new FormData();
   form.append('photo', new Blob([photo.bytes], { type: photo.type }), photo.name);
   form.append('recipientName', `${who.first} ${who.last}`);
   form.append('signature', `Signed by ${who.first} ${who.last}`);
-  form.append('otp', otp);
+  // A successful upload marks the proof verified, which unlocks the DELIVERED transition.
   await api('POST', `/api/v1/deliveries/${delivery.deliveryId}/proof-of-delivery`, { token, form });
-  await api('POST', `/api/v1/deliveries/${delivery.deliveryId}/proof-of-delivery/verify?otp=${otp}`, { token });
   count('proof photos uploaded');
 }
 

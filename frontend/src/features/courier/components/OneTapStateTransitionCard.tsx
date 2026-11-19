@@ -159,13 +159,13 @@ export function OneTapStateTransitionCard({
                   className="min-h-[40px] text-xs"
                   onClick={onOpenPoD}
                 >
-                  {isPoDVerified ? 'View / Update PoD' : 'Capture PoD (OTP / Photo)'}
+                  {isPoDVerified ? 'View / Update PoD' : 'Capture PoD (Photo)'}
                 </Button>
               </div>
               <p className="mt-2 text-xs text-slate-600">
                 {isPoDVerified
                   ? 'Proof of delivery verified! You can now complete the final delivery handover.'
-                  : 'Recipient OTP or photographic/signature evidence must be captured before handover can be completed.'}
+                  : 'A photo of the delivered package and the recipient name must be captured before handover can be completed.'}
               </p>
             </div>
 

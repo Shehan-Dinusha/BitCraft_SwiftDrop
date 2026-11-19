@@ -57,7 +57,7 @@ public class OutForDeliveryState implements DeliveryStateHandler {
                     && proofOfDeliveryGuard.isSatisfied(session.getDeliveryId());
             if (!proven) {
                 throw new InvalidStateTransitionException(
-                        "Proof of delivery must be verified with recipient OTP or signature before marking delivery as DELIVERED");
+                        "Proof of delivery must be verified with an uploaded photo or signature before marking delivery as DELIVERED");
             }
         } else if (target == DeliveryState.FAILED) {
             if (request.failureReason() == null) {

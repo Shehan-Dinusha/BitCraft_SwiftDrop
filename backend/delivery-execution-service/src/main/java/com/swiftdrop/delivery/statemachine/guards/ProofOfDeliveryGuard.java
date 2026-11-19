@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Guard for OUT_FOR_DELIVERY -> DELIVERED. A parcel only counts as delivered once the recipient
- * confirmed it (OTP or signature) and that proof was stored and verified; this protects customers
+ * confirmed it (photo + recipient name, or signature) and that proof was stored; this protects customers
  * and merchants from "delivered" parcels that never arrived, and is the evidence for disputes.
  */
 @Component
