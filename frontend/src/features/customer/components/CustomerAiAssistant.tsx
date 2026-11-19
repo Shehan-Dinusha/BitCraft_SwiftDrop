@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { AssistantLauncher, AssistantPanel, Button, type AssistantMessage } from '@/design-system';
+import { useHideOnScrollDown } from '@/hooks/useHideOnScrollDown';
 import { analyticsAiApi } from '@/services/api/analyticsAiApi';
+import { cn } from '@/utils/cn';
 
 export function CustomerAiAssistant() {
   const [open, setOpen] = useState(false);
+  const scrollingDown = useHideOnScrollDown();
   const [conversationId, setConversationId] = useState<string>();
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [pending, setPending] = useState(false);
@@ -155,7 +158,16 @@ export function CustomerAiAssistant() {
           )}
         </>
       ) : (
-        <AssistantLauncher label="Ask SwiftDrop" expanded={open} onClick={() => setOpen(true)} />
+        // Slides out of the way while the page scrolls down, and returns on scroll up. `invisible`
+        // also takes it out of the tab order and the accessibility tree while it is away.
+        <div
+          className={cn(
+            'transition-all duration-200 motion-reduce:transition-none',
+            scrollingDown && 'invisible translate-y-24 opacity-0'
+          )}
+        >
+          <AssistantLauncher label="Ask SwiftDrop" expanded={open} onClick={() => setOpen(true)} />
+        </div>
       )}
     </div>
   );
