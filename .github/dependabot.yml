@@ -29,6 +29,15 @@ updates:
       # springdoc 3 requires Spring Boot 4.
       - dependency-name: "org.springdoc:*"
         update-types: [version-update:semver-major]
+      # Majors that rename modules or packages and need migration work (CI fails on them):
+      # Testcontainers 2 (module renames), mockwebserver 5 (new package), openpdf 3
+      # (com.lowagie -> org.openpdf). Minor/patch updates still arrive.
+      - dependency-name: "org.testcontainers:*"
+        update-types: [version-update:semver-major]
+      - dependency-name: "com.squareup.okhttp3:mockwebserver"
+        update-types: [version-update:semver-major]
+      - dependency-name: "com.github.librepdf:openpdf"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /frontend
