@@ -86,15 +86,17 @@ export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps)
           onBlur={() => onBlur('actualWeightKg')}
         />
 
+        {/* The caption sits under the fields, so the Weight and size labels share one row and the
+            boxes line up. */}
         <div role="group" aria-labelledby="parcel-size-label" className="flex flex-col gap-2">
-          <span id="parcel-size-label" className="text-label font-semibold text-primary">
-            Size of the packed parcel
-          </span>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 items-start gap-3">
             {sizeField('lengthCm', 'Length')}
             {sizeField('widthCm', 'Width')}
             {sizeField('heightCm', 'Height')}
           </div>
+          <span id="parcel-size-label" className="text-caption text-secondary">
+            Size of the packed parcel, in centimetres
+          </span>
         </div>
       </div>
 
