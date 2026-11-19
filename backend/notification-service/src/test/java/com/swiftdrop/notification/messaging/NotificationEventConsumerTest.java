@@ -81,7 +81,7 @@ class NotificationEventConsumerTest {
         assertThat(request.channel()).isEqualTo("EMAIL");
         assertThat(request.referenceId()).isEqualTo("SD-1111");
         assertThat(request.templateParams()).containsEntry("courierName", "Kamal Perera");
-        verify(inAppNotificationService).saveNotification(eq(customerId), any(), any(), eq("SD-1111"));
+        verify(inAppNotificationService).saveNotification(eq(customerId), eq("PARCEL_PICKED_UP"), any(), any(), eq("SD-1111"));
     }
 
     @Test
@@ -112,7 +112,7 @@ class NotificationEventConsumerTest {
             assertThat(request.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
             assertThat(request.templateParams()).containsEntry("courierName", "Sunil Shantha");
         });
-        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), any(), any(), eq("SD-3333"));
+        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), eq("PARCEL_OUT_FOR_DELIVERY"), any(), any(), eq("SD-3333"));
     }
 
     @Test
@@ -172,7 +172,7 @@ class NotificationEventConsumerTest {
             assertThat(request.templateCode()).isEqualTo("PARCEL_FAILED");
             assertThat(request.templateParams()).containsEntry("failureReason", "Customer unavailable at delivery address");
         });
-        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), any(), any(), eq("SD-4444"));
+        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), eq("PARCEL_FAILED"), any(), any(), eq("SD-4444"));
     }
 
     @Test

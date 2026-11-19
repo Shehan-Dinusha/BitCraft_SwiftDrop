@@ -1,7 +1,9 @@
 package com.swiftdrop.notification.service;
 
 import com.swiftdrop.notification.domain.entity.InAppNotification;
+import com.swiftdrop.notification.domain.entity.RecipientPreference;
 import com.swiftdrop.notification.domain.repository.InAppNotificationRepository;
+import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,8 +25,36 @@ class InAppNotificationServiceTest {
     @Mock
     private InAppNotificationRepository repository;
 
+    @Mock
+    private RecipientPreferenceRepository preferenceRepository;
+
     @InjectMocks
     private InAppNotificationService service;
+
+    @Test
+    @DisplayName("Stores the notification type so the inbox can show the right icon")
+    void storesNotificationType() {
+        UUID userId = UUID.randomUUID();
+        when(repository.save(any(InAppNotification.class))).thenAnswer(i -> i.getArgument(0));
+
+        InAppNotification saved = service.saveNotification(userId, "PARCEL_DELIVERED", "Parcel Delivered",
+                "Your parcel SD-001 was delivered.", "SD-001");
+
+        assertThat(saved.getNotificationType()).isEqualTo("PARCEL_DELIVERED");
+    }
+
+    @Test
+    @DisplayName("Does not store an inbox row when the user turned in-app notifications off")
+    void respectsInAppOffPreference() {
+        UUID userId = UUID.randomUUID();
+        when(preferenceRepository.findByRecipientId(userId)).thenReturn(Optional.of(
+                RecipientPreference.builder().recipientId(userId).pushEnabled(false).build()));
+
+        InAppNotification saved = service.saveNotification(userId, "PARCEL_DELIVERED", "Parcel Delivered", "Body", "SD-001");
+
+        assertThat(saved).isNull();
+        verify(repository, never()).save(any());
+    }
 
     @Test
     @DisplayName("Should save in-app notification with default unread state")

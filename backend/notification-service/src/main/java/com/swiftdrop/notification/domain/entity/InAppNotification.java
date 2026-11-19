@@ -31,6 +31,10 @@ public class InAppNotification {
     @Column(name = "tracking_number", length = 64)
     private String trackingNumber;
 
+    /** Template code, e.g. {@code PARCEL_DELIVERED}; drives the icon in the inbox. Null for legacy rows. */
+    @Column(name = "notification_type", length = 64)
+    private String notificationType;
+
     @Column(name = "read", nullable = false)
     @Builder.Default
     private boolean read = false;

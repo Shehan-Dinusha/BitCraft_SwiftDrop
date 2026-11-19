@@ -111,12 +111,12 @@ public class NotificationEventConsumer {
                                     : envelope.extractTrackingNumber();
 
                             if (inAppNotificationService != null && inboxRecipients.add(request.recipientId())) {
-                                inAppNotificationService.saveNotification(request.recipientId(), title, body, trackingNumber);
+                                inAppNotificationService.saveNotification(request.recipientId(), request.templateCode(), title, body, trackingNumber);
 
                                 // For merchant orders, also write to merchant owner inbox if distinct
                                 Optional<UUID> merchantOwnerId = envelope.extractMerchantOwnerId();
                                 if (merchantOwnerId.isPresent() && inboxRecipients.add(merchantOwnerId.get())) {
-                                    inAppNotificationService.saveNotification(merchantOwnerId.get(), title, body, trackingNumber);
+                                    inAppNotificationService.saveNotification(merchantOwnerId.get(), request.templateCode(), title, body, trackingNumber);
                                 }
                             }
                         }

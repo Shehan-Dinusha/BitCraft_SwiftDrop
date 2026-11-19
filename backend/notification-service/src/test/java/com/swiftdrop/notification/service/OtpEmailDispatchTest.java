@@ -59,7 +59,7 @@ class OtpEmailDispatchTest {
     @Mock
     private EmailSender emailSender;
     @Spy
-    private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer("https://swiftdrop.lk");
+    private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer();
 
     @InjectMocks
     private MultiChannelNotificationDispatcher dispatcher;
@@ -177,7 +177,7 @@ class OtpEmailDispatchTest {
         ArgumentCaptor<DispatchNotificationRequest> dispatched = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
         verify(mockDispatcher).dispatch(dispatched.capture());
         assertThat(dispatched.getValue().templateCode()).isEqualTo("EMAIL_VERIFICATION");
-        verify(inbox, never()).saveNotification(any(), any(), any(), any());
+        verify(inbox, never()).saveNotification(any(), any(), any(), any(), any());
         verify(processed).save(any());
     }
 }

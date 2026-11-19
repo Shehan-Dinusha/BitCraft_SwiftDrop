@@ -23,6 +23,12 @@ public record InAppNotificationResponse(
         @Schema(description = "Associated parcel tracking number", example = "SD-1234")
         String trackingNumber,
 
+        @Schema(description = "Notification type (template code); null for older notifications",
+                example = "PARCEL_OUT_FOR_DELIVERY",
+                allowableValues = {"PARCEL_CREATED", "PARCEL_PICKED_UP", "PARCEL_OUT_FOR_DELIVERY",
+                        "PARCEL_DELIVERED", "PARCEL_FAILED"})
+        String notificationType,
+
         @Schema(description = "Whether the notification has been read", example = "false")
         boolean read,
 

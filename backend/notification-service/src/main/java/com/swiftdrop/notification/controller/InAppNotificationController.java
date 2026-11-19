@@ -111,6 +111,7 @@ public class InAppNotificationController {
                 entity.getTitle(),
                 entity.getBody(),
                 entity.getTrackingNumber(),
+                entity.getNotificationType(),
                 entity.isRead(),
                 entity.getCreatedAt()
         );

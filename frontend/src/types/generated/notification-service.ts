@@ -658,6 +658,11 @@ export interface components {
             title?: string;
             body?: string;
             trackingNumber?: string;
+            /**
+             * @description Template code of the notification; null for older notifications
+             * @enum {string|null}
+             */
+            notificationType?: "PARCEL_CREATED" | "PARCEL_PICKED_UP" | "PARCEL_OUT_FOR_DELIVERY" | "PARCEL_DELIVERED" | "PARCEL_FAILED" | null;
             read?: boolean;
             /** Format: date-time */
             createdAt?: string;
