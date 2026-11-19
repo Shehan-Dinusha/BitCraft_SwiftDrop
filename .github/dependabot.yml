@@ -1,5 +1,13 @@
 # Dependabot opens PRs against `dev` when a dependency has a newer or patched version.
 # Minor/patch updates are grouped per ecosystem to keep the PR count manageable.
+#
+# The ignore rules keep Dependabot on the platform lines the project is built on. Moving
+# off one of them is a planned migration, not a dependency bump:
+#   - Spring Boot 3.5 / Spring Framework 6.2 / Spring Cloud 2025.0 (Spring Boot 4 = Spring
+#     Cloud 2025.1+ and springdoc 3; tracked with the Trivy exceptions in .trivyignore.yaml)
+#   - Java 25 LTS for builds and runtime (26 and 27 are short-term releases)
+#   - Tailwind CSS 3, ESLint 9, Vite 6 on the frontend
+# Security updates still arrive: Dependabot security PRs are not limited by these rules.
 version: 2
 updates:
   - package-ecosystem: maven
@@ -12,6 +20,15 @@ updates:
     groups:
       maven-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "org.springframework.boot:*"
+        update-types: [version-update:semver-major]
+      # 2025.1.x is the Spring Boot 4 release train.
+      - dependency-name: "org.springframework.cloud:spring-cloud-dependencies"
+        versions: [">= 2025.1.0"]
+      # springdoc 3 requires Spring Boot 4.
+      - dependency-name: "org.springdoc:*"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /frontend
@@ -23,8 +40,25 @@ updates:
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # tailwind-merge 3 requires Tailwind CSS 4.
+      - dependency-name: "tailwindcss"
+        update-types: [version-update:semver-major]
+      - dependency-name: "tailwind-merge"
+        update-types: [version-update:semver-major]
+      # @eslint/js 10 requires ESLint 10.
+      - dependency-name: "eslint"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@eslint/js"
+        update-types: [version-update:semver-major]
+      # @vitejs/plugin-react majors follow Vite majors: upgrade the two together, deliberately.
+      - dependency-name: "vite"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@vitejs/plugin-react"
+        update-types: [version-update:semver-major]
 
-  # Base images of every Dockerfile (eclipse-temurin, maven, node, nginx-unprivileged).
+  # Base images of every Dockerfile (eclipse-temurin, maven, node, nginx-unprivileged),
+  # grouped into ONE pull request instead of one per service.
   - package-ecosystem: docker
     directories:
       - /backend/*
@@ -34,6 +68,15 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    groups:
+      base-images:
+        patterns: ["*"]
+    ignore:
+      # Stay on Java 25 LTS: the tags encode the Java version (25 -> 26/27 are non-LTS).
+      - dependency-name: "maven"
+        versions: ["3-eclipse-temurin-26", "3-eclipse-temurin-27", "3-eclipse-temurin-28"]
+      - dependency-name: "eclipse-temurin"
+        versions: ["26-jre-alpine", "27-jre-alpine", "28-jre-alpine"]
 
   - package-ecosystem: github-actions
     directory: /
