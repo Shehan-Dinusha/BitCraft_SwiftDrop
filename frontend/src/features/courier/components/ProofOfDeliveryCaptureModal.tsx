@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Modal } from '@/design-system/primitives/Modal';
 import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
@@ -25,12 +25,38 @@ export function ProofOfDeliveryCaptureModal({
   const [recipientName, setRecipientName] = useState('');
   const [recipientSignature, setRecipientSignature] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Draw the preview onto a canvas from the decoded file instead of handing a URL derived
+  // from user input to <img src>, so no DOM-sourced string ever reaches a URL/HTML sink.
+  useEffect(() => {
+    if (!photoFile) return;
+    let cancelled = false;
+    createImageBitmap(photoFile)
+      .then((bitmap) => {
+        const canvas = previewCanvasRef.current;
+        if (cancelled || !canvas) {
+          bitmap.close();
+          return;
+        }
+        const scale = Math.min(1, 640 / bitmap.width);
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close();
+      })
+      .catch(() => {
+        if (!cancelled) setErrorMsg('Could not read the selected photo. Please choose another image.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [photoFile]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -48,16 +74,10 @@ export function ProofOfDeliveryCaptureModal({
 
     setErrorMsg(null);
     setPhotoFile(file);
-    const objectUrl = URL.createObjectURL(file);
-    setPhotoPreview(objectUrl);
   };
 
   const handleClearPhoto = () => {
     setPhotoFile(null);
-    if (photoPreview) {
-      URL.revokeObjectURL(photoPreview);
-      setPhotoPreview(null);
-    }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -162,7 +182,7 @@ export function ProofOfDeliveryCaptureModal({
                 onChange={handleFileChange}
               />
 
-              {!photoPreview ? (
+              {!photoFile ? (
                 <label
                   htmlFor="pod-photo-file-input"
                   className="flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/40 p-4 text-center transition-colors hover:bg-indigo-50 active:bg-indigo-100"
@@ -177,9 +197,10 @@ export function ProofOfDeliveryCaptureModal({
                 </label>
               ) : (
                 <div className="relative overflow-hidden rounded-xl border border-indigo-200 bg-slate-50 p-2">
-                  <img
-                    src={photoPreview}
-                    alt="Proof of Delivery preview"
+                  <canvas
+                    ref={previewCanvasRef}
+                    role="img"
+                    aria-label="Proof of Delivery preview"
                     className="max-h-48 w-full rounded-lg object-contain bg-black/5"
                   />
                   <div className="mt-2 flex items-center justify-between px-1">
