@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { LogOut, Package } from 'lucide-react';
+import { LogOut, Package, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  AccountMenu,
   BottomNav,
   IconButton,
   NavItem,
@@ -51,6 +52,10 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
         { id: 'parcels', label: 'My parcels', icon: 'package', to: '/customer/orders' },
         { id: 'track', label: 'Track a parcel', icon: 'route', to: '/customer/tracking' }
       ]
+    },
+    {
+      label: 'Account',
+      items: [{ id: 'profile', label: 'Profile', icon: 'user', to: '/customer/profile' }]
     }
   ],
   courier: [
@@ -213,11 +218,42 @@ export function AppShell() {
           section={spec.label}
           page={pageTitle}
           showUtilities={role !== 'ADMIN_OPS'}
+          // Nothing handles search or language yet, and the customer assistant has its own button,
+          // so none of them are shown rather than left as controls that do nothing.
+          showSearch={false}
+          showLanguage={false}
+          showAssistant={false}
           district={shellRole === 'dispatcher' ? user?.district : undefined}
           notificationSlot={<NotificationBell />}
           leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}
+          trailing={
+            shellRole === 'customer' ? (
+              <AccountMenu
+                name={user?.username ?? 'Account'}
+                email={user?.email}
+                onSignOut={handleSignOut}
+                items={[
+                  {
+                    id: 'profile',
+                    label: 'Profile and security',
+                    icon: <UserRound aria-hidden="true" className="size-4" />,
+                    render: ({ className, onClick, children }) => (
+                      <Link
+                        to="/customer/profile"
+                        role="menuitem"
+                        className={className}
+                        onClick={onClick}
+                      >
+                        {children}
+                      </Link>
+                    )
+                  }
+                ]}
+              />
+            ) : undefined
+          }
         >
-          {hasTabs ? (
+          {shellRole === 'courier' ? (
             // Phones hide the sidebar (and its account footer), so sign-out lives in the top bar there.
             <IconButton
               variant="ghost"
