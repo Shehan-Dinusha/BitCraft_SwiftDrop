@@ -10,8 +10,8 @@ describe('notification types per role', () => {
   it('gives every workspace its own notification types', () => {
     expect(NOTIFICATION_TYPES_BY_ROLE.CUSTOMER).toContain('PARCEL_DELIVERED');
     expect(NOTIFICATION_TYPES_BY_ROLE.COURIER).toEqual(['COURIER_ASSIGNED']);
-    expect(NOTIFICATION_TYPES_BY_ROLE.MERCHANT).toEqual(['MERCHANT_ORDER_CREATED', 'MERCHANT_COURIER_ASSIGNED']);
-    expect(NOTIFICATION_TYPES_BY_ROLE.ADMIN_OPS).toEqual(['DISPATCH_FAILED']);
+    expect(NOTIFICATION_TYPES_BY_ROLE.MERCHANT).toEqual(['MERCHANT_COURIER_ASSIGNED', 'MERCHANT_DELIVERY_FAILED']);
+    expect(NOTIFICATION_TYPES_BY_ROLE.ADMIN_OPS).toEqual(['OPS_DELIVERY_FAILED', 'DISPATCH_FAILED']);
   });
 
   it('uses a distinct icon for every type', () => {
@@ -21,7 +21,8 @@ describe('notification types per role', () => {
 
   it('marks team alerts as in-app only', () => {
     expect(NOTIFICATION_TYPES.DISPATCH_FAILED.emailed).toBe(false);
-    expect(NOTIFICATION_TYPES.MERCHANT_ORDER_CREATED.emailed).toBe(false);
+    expect(NOTIFICATION_TYPES.MERCHANT_DELIVERY_FAILED.emailed).toBe(false);
+    expect(NOTIFICATION_TYPES.OPS_DELIVERY_FAILED.emailed).toBe(false);
     expect(NOTIFICATION_TYPES.COURIER_ASSIGNED.emailed).toBe(true);
   });
 
@@ -37,7 +38,8 @@ describe('notification types per role', () => {
   it('opens the right screen when a notification is clicked', () => {
     expect(notificationTarget('CUSTOMER', 'PARCEL_DELIVERED', 'SD-AAAA-BBBB')).toBe('/customer/tracking/SD-AAAA-BBBB');
     expect(notificationTarget('COURIER', 'COURIER_ASSIGNED', 'SD-AAAA-BBBB')).toBe('/courier');
-    expect(notificationTarget('MERCHANT', 'MERCHANT_ORDER_CREATED', 'SD-AAAA-BBBB')).toBe('/merchant');
+    expect(notificationTarget('MERCHANT', 'MERCHANT_DELIVERY_FAILED', 'SD-AAAA-BBBB')).toBe('/merchant');
+    expect(notificationTarget('ADMIN_OPS', 'OPS_DELIVERY_FAILED', 'SD-AAAA-BBBB')).toBe('/ops/dispatch');
     expect(notificationTarget('ADMIN_OPS', 'DISPATCH_FAILED', null)).toBe('/ops/dispatch');
     expect(notificationTarget('CUSTOMER', 'PARCEL_DELIVERED', null)).toBeNull();
   });

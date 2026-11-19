@@ -1,11 +1,12 @@
 import {
   Bell,
   ClipboardCheck,
+  OctagonAlert,
   PackageCheck,
   PackageOpen,
   PackagePlus,
+  PackageX,
   Siren,
-  Store,
   TriangleAlert,
   Truck,
   UserCheck,
@@ -22,8 +23,9 @@ export type NotificationType =
   | 'PARCEL_DELIVERED'
   | 'PARCEL_FAILED'
   | 'COURIER_ASSIGNED'
-  | 'MERCHANT_ORDER_CREATED'
   | 'MERCHANT_COURIER_ASSIGNED'
+  | 'MERCHANT_DELIVERY_FAILED'
+  | 'OPS_DELIVERY_FAILED'
   | 'DISPATCH_FAILED';
 
 export interface NotificationTypeMeta {
@@ -81,23 +83,30 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
     status: 'PICKUP_ASSIGNED',
     emailed: true
   },
-  MERCHANT_ORDER_CREATED: {
-    label: 'New order',
-    description: 'When an order is created for your business',
-    Icon: Store,
-    status: 'CREATED',
-    emailed: false
-  },
   MERCHANT_COURIER_ASSIGNED: {
     label: 'Courier assigned',
-    description: 'When a courier is assigned to one of your orders',
+    description: 'When a courier is on the way to collect one of your parcels',
     Icon: UserCheck,
     status: 'PICKUP_ASSIGNED',
     emailed: false
   },
+  MERCHANT_DELIVERY_FAILED: {
+    label: 'Delivery failed',
+    description: 'When one of your parcels could not be delivered',
+    Icon: PackageX,
+    status: 'FAILED',
+    emailed: false
+  },
+  OPS_DELIVERY_FAILED: {
+    label: 'Delivery failed',
+    description: 'When a parcel could not be delivered and needs a new attempt or a return',
+    Icon: OctagonAlert,
+    status: 'FAILED',
+    emailed: false
+  },
   DISPATCH_FAILED: {
     label: 'Dispatch needs attention',
-    description: 'When no courier could be assigned to an order',
+    description: 'When automatic dispatch gives up on an order',
     Icon: Siren,
     status: 'FAILED',
     emailed: false
@@ -108,8 +117,8 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
 export const NOTIFICATION_TYPES_BY_ROLE: Record<PersonaRole, NotificationType[]> = {
   CUSTOMER: ['PARCEL_CREATED', 'PARCEL_PICKED_UP', 'PARCEL_OUT_FOR_DELIVERY', 'PARCEL_DELIVERED', 'PARCEL_FAILED'],
   COURIER: ['COURIER_ASSIGNED'],
-  MERCHANT: ['MERCHANT_ORDER_CREATED', 'MERCHANT_COURIER_ASSIGNED'],
-  ADMIN_OPS: ['DISPATCH_FAILED']
+  MERCHANT: ['MERCHANT_COURIER_ASSIGNED', 'MERCHANT_DELIVERY_FAILED'],
+  ADMIN_OPS: ['OPS_DELIVERY_FAILED', 'DISPATCH_FAILED']
 };
 
 const FALLBACK: NotificationTypeMeta = {
@@ -134,7 +143,7 @@ export function resolveNotificationType(type?: string | null, title?: string | n
   if (text.includes('picked up')) return 'PARCEL_PICKED_UP';
   if (text.includes('out for delivery')) return 'PARCEL_OUT_FOR_DELIVERY';
   if (text.includes('delivered')) return 'PARCEL_DELIVERED';
-  if (text.includes('exception') || text.includes('fail')) return 'PARCEL_FAILED';
+  if (text.includes('exception') || text.includes('fail') || text.includes('could not deliver')) return 'PARCEL_FAILED';
   return null;
 }
 
@@ -162,7 +171,11 @@ export function notificationTarget(
     case 'MERCHANT':
       return '/merchant';
     case 'ADMIN_OPS':
-      return type === 'DISPATCH_FAILED' ? '/ops/dispatch' : trackingNumber ? `/track/${trackingNumber}` : null;
+      return type === 'DISPATCH_FAILED' || type === 'OPS_DELIVERY_FAILED'
+        ? '/ops/dispatch'
+        : trackingNumber
+          ? `/track/${trackingNumber}`
+          : null;
     default:
       return null;
   }

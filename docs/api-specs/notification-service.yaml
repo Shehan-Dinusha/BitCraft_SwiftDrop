@@ -442,7 +442,8 @@ components:
           nullable: true
           description: Template code of the notification; null for older notifications
           enum: [PARCEL_CREATED, PARCEL_PICKED_UP, PARCEL_OUT_FOR_DELIVERY, PARCEL_DELIVERED, PARCEL_FAILED,
-                 COURIER_ASSIGNED, MERCHANT_ORDER_CREATED, MERCHANT_COURIER_ASSIGNED, DISPATCH_FAILED]
+                 COURIER_ASSIGNED, MERCHANT_COURIER_ASSIGNED, MERCHANT_DELIVERY_FAILED, OPS_DELIVERY_FAILED,
+                 DISPATCH_FAILED]
         read:
           type: boolean
         createdAt:

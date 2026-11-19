@@ -505,7 +505,7 @@ These templates cannot be triggered through `POST /api/v1/notifications/logs/dis
 
 ### 2.13 `notification.auth.login` — `AuthLoginEvent`
 
-* **Producer:** `auth-iam-service` (:8081): after a successful sign-in (password, second factor or Google), and after a wrong password for an **existing** account
+* **Producer:** `auth-iam-service` (:8081): after a successful sign-in (password, second factor or Google), and after a wrong password for an **existing** account. notification-service emails a success alert only for a device and network not used in the last 30 days
 * **Routing Key:** `notification.auth.login` (under `notification.` so the existing `notification.#` binding delivers it)
 * **Destination Queues:** `notification.events.queue`
 * **Consumers:** `notification-service` (`AuthLoginTrigger`)
@@ -546,14 +546,32 @@ registered address, and never copies them to the in-app inbox.
 
 ## 3. Who receives which notification
 
-| Event | Customer | Courier | Merchant company (team inbox) | Operations team (dispatchers and admins) |
+Rule: a notification goes only to the person or team the event is about, and only when it tells
+them something new or asks them to act. Routine steps nobody acts on (in transit, a retry that
+dispatch makes by itself, an order the merchant created themselves) send nothing.
+
+| Event | Customer (own orders) | Courier | Merchant company (team inbox) | Operations team (dispatchers and admins) |
 |---|---|---|---|---|
-| `order.created` | Email + in-app "Order confirmed" | | In-app "New order" (merchant orders) | |
-| `dispatch.courier.assigned` | | Email + in-app "New delivery" | In-app "Courier assigned" (merchant orders) | |
-| `dispatch.failed` | | | | In-app "Dispatch needs attention" |
-| `parcel.status.changed.*` | Email + in-app per stage | | | |
-| `notification.auth.otp` | Email only (security) | Email only (security) | Email only (security) | Email only (security) |
-| `notification.auth.login` | Email only (security) | Email only (security) | Email only (security) | Email only (security) |
+| `order.created` | Email + in-app "Order confirmed" | | (nothing: they created it) | |
+| `dispatch.courier.assigned` | | Email + in-app "New delivery" (the assigned courier only) | In-app "Courier assigned" (have the parcel ready) | |
+| `parcel.status.changed` PICKED_UP | Email + in-app "Picked up" | | | |
+| `parcel.status.changed` OUT_FOR_DELIVERY | Email + in-app "Out for delivery" | | | |
+| `parcel.status.changed` DELIVERED | Email + in-app "Delivered" | | | |
+| `parcel.status.changed` FAILED | Email + in-app "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" (arrange a new attempt or a return) |
+| `dispatch.failed` (retryable = false only) | | | | In-app "Dispatch needs attention" |
+| `notification.auth.otp` | Email only | Email only | Email only (to the signing-in user) | Email only |
+| `notification.auth.login` SUCCESS (new device or network only) | Email only | Email only | Email only (to the signing-in user) | Email only |
+| `notification.auth.login` FAILED (max 1 per 15 min) | Email only | Email only | Email only (to the account owner) | Email only |
+
+Merchant orders: customer-order-service stores the merchant id in `customerId`, so parcel events for
+a merchant order name the company, not a person. notification-service records merchant ids from
+`order.created` events where `merchantId` = `customerId` (`merchant_accounts`, V10). Customer
+notifications addressed to a merchant id are not sent (nothing is emailed to a company id); the
+merchant team inbox gets the merchant rows instead. A merchant row is written only for a known
+merchant company.
+
+A successful sign-in is emailed only when the device and network (`"Chrome on Windows · 203.94.x.x"`,
+kept in the dispatch log `reference_id`) were not used by that account in the last 30 days.
 
 Team inboxes (`in_app_notifications.audience`): `OPERATIONS` is shown to every DISPATCHER and
 SYSTEM_ADMIN; `MERCHANT:<merchantId>` to every user of that merchant company. A team

@@ -2,8 +2,6 @@ package com.swiftdrop.notification.messaging.trigger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
-import com.swiftdrop.notification.util.DisplayText;
-import com.swiftdrop.notification.util.InboxAudience;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +22,6 @@ public class OrderCreatedTrigger implements NotificationTrigger {
 
     public static final String ROUTING_KEY = "order.created";
     public static final String TEMPLATE_CODE = "PARCEL_CREATED";
-    public static final String MERCHANT_TYPE = "MERCHANT_ORDER_CREATED";
 
     @Override
     public boolean matches(EventEnvelope envelope) {
@@ -64,20 +61,5 @@ public class OrderCreatedTrigger implements NotificationTrigger {
         }
 
         return NotificationTrigger.email(recipientIdOpt.get(), TEMPLATE_CODE, params, trackingNumber);
-    }
-
-    /** Orders placed for a merchant also appear in that merchant company's team inbox. */
-    @Override
-    public List<TeamNotification> teamNotifications(EventEnvelope envelope) {
-        JsonNode payload = envelope.payload();
-        String audience = InboxAudience.merchant(CourierAssignedTrigger.uuid(payload, "merchantId"));
-        if (audience == null) {
-            return List.of();
-        }
-        String trackingNumber = envelope.extractTrackingNumber();
-        String speed = DisplayText.title(CourierAssignedTrigger.text(payload, "speed"));
-        String body = "Order " + (trackingNumber == null ? "" : trackingNumber + " ") + "was created"
-                + CourierAssignedTrigger.route(payload) + (speed == null ? "" : ", " + speed + " delivery") + ".";
-        return List.of(new TeamNotification(audience, MERCHANT_TYPE, "New order received", body, trackingNumber));
     }
 }

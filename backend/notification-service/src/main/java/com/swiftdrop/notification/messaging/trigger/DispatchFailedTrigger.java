@@ -31,10 +31,13 @@ public class DispatchFailedTrigger implements NotificationTrigger {
     @Override
     public List<TeamNotification> teamNotifications(EventEnvelope envelope) {
         JsonNode payload = envelope.payload();
+        // A failure that dispatch retries by itself needs nobody: only the final one is worth an alert.
+        if (payload == null || payload.path("retryable").asBoolean(false)) {
+            return List.of();
+        }
         String orderId = CourierAssignedTrigger.text(payload, "orderId");
         String reason = CourierAssignedTrigger.text(payload, "failureReason");
         String attempts = CourierAssignedTrigger.text(payload, "attemptCount");
-        boolean retrying = payload != null && payload.path("retryable").asBoolean(false);
 
         StringBuilder body = new StringBuilder("No courier could be assigned to order ")
                 .append(orderId == null ? "(unknown)" : shortId(orderId));
@@ -45,7 +48,7 @@ public class DispatchFailedTrigger implements NotificationTrigger {
         if (attempts != null) {
             body.append(" Attempt ").append(attempts).append('.');
         }
-        body.append(retrying ? " Dispatch will try again automatically." : " Please assign a courier manually.");
+        body.append(" Please assign a courier manually.");
 
         return List.of(new TeamNotification(InboxAudience.OPERATIONS, TYPE, "Dispatch needs attention",
                 body.toString(), envelope.extractTrackingNumber()));

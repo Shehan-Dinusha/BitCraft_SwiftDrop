@@ -316,7 +316,7 @@ public class EmailHtmlRenderer {
             case "PARCEL_FAILED" -> {
                 String reason = clean(p.get("failureReason"));
                 if (reason != null) {
-                    rows.add(new String[]{"Reason", reason, null});
+                    rows.add(new String[]{"Reason", reason.substring(0, 1).toUpperCase(Locale.ROOT) + reason.substring(1), null});
                 }
             }
             default -> {

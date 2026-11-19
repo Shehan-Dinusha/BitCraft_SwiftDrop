@@ -75,13 +75,15 @@ function EmailRow({ log }: { log: NotificationDispatchLogResponse }) {
 function RecentEmails() {
   const user = useAuthStore((s) => s.user);
   const isDevSession = useAuthStore((s) => s.isDevSession);
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: allLogs = [], isLoading } = useQuery({
     queryKey: ['notifications', 'email-activity', user?.id],
     queryFn: () => notificationApi.listLogs({ recipientId: user?.id, channel: 'EMAIL' }),
     enabled: !!user?.id && !isDevSession,
     staleTime: 30_000,
     retry: false
   });
+  // A sign-in from a recognised device is logged as "not sent" on purpose; it is not news to the user.
+  const logs = allLogs.filter((log) => !(log.status === 'SUPPRESSED' && log.templateCode === 'LOGIN_SUCCESS'));
 
   return (
     <section className="flex flex-col gap-3 border-t border-border-subtle pt-6">
@@ -161,7 +163,7 @@ export function NotificationsPage() {
         <section role="tabpanel" aria-label="Settings" className="max-w-3xl">
           <SurfaceCard className="flex flex-col gap-8">
             <NotificationSettings />
-            {role === 'CUSTOMER' || role === 'COURIER' ? <RecentEmails /> : null}
+            <RecentEmails />
           </SurfaceCard>
         </section>
       )}

@@ -18,7 +18,7 @@ import java.util.UUID;
 public final class InboxAudience {
 
     public static final String OPERATIONS = "OPERATIONS";
-    private static final String MERCHANT_PREFIX = "MERCHANT:";
+    public static final String MERCHANT_PREFIX = "MERCHANT:";
 
     private InboxAudience() {
     }

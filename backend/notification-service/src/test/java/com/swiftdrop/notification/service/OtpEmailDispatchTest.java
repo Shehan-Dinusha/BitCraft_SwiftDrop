@@ -182,6 +182,28 @@ class OtpEmailDispatchTest {
     }
 
     @Test
+    @DisplayName("A sign-in from a device and network used in the last 30 days sends no alert; a new one does")
+    void successAlertOnlyForANewDevice() {
+        UUID recipient = UUID.randomUUID();
+        stubLoginAlert(recipient, "LOGIN_SUCCESS");
+        String known = "Chrome on Windows · 203.94.x.x";
+        when(logRepository.existsByRecipientIdAndTemplateCodeAndReferenceIdAndStatusNotAndCreatedAtAfter(
+                eq(recipient), eq("LOGIN_SUCCESS"), any(), eq("FAILED"), any()))
+                .thenAnswer(i -> known.equals(i.getArgument(2)));
+
+        NotificationDispatchLogResponse again = dispatcher.dispatch(new DispatchNotificationRequest(recipient,
+                "EMAIL", "LOGIN_SUCCESS", null, Map.of(), known));
+        assertThat(again.status()).isEqualTo("SUPPRESSED");
+        assertThat(again.failureReason()).contains("30 days");
+        verify(emailSender, never()).send(any(), any(), any(), any());
+
+        NotificationDispatchLogResponse fresh = dispatcher.dispatch(new DispatchNotificationRequest(recipient,
+                "EMAIL", "LOGIN_SUCCESS", null, Map.of(), "Safari on iOS · 112.134.x.x"));
+        assertThat(fresh.status()).isEqualTo("SENT");
+        verify(emailSender).send(eq("alice@example.com"), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("Stores a redacted body in the dispatch log, never the code")
     void redactsTheAuditLog() {
         UUID recipient = UUID.randomUUID();

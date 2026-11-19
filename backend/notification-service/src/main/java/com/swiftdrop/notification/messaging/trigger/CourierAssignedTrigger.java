@@ -43,7 +43,7 @@ public class CourierAssignedTrigger implements NotificationTrigger {
         }
         String trackingNumber = envelope.extractTrackingNumber();
         Map<String, String> params = new HashMap<>();
-        params.put("trackingNumber", trackingNumber);
+        put(params, "trackingNumber", trackingNumber);
         put(params, "pickupDistrict", DisplayText.title(text(payload, "pickupDistrict")));
         put(params, "deliveryDistrict", DisplayText.title(text(payload, "deliveryDistrict")));
         put(params, "estimatedPickupMinutes", text(payload, "estimatedPickupMinutes"));
@@ -52,16 +52,17 @@ public class CourierAssignedTrigger implements NotificationTrigger {
 
     @Override
     public List<TeamNotification> teamNotifications(EventEnvelope envelope) {
-        JsonNode payload = envelope.payload();
-        String audience = InboxAudience.merchant(uuid(payload, "merchantId"));
+        // Only the merchant that placed the order, so it can have the parcel ready for pickup.
+        String audience = envelope.merchantOrderMerchantId().map(InboxAudience::merchant).orElse(null);
         if (audience == null) {
             return List.of();
         }
+        JsonNode payload = envelope.payload();
         String trackingNumber = envelope.extractTrackingNumber();
         String courier = text(payload, "courierName");
         String who = courier == null ? "A courier" : courier;
         String parcel = trackingNumber == null ? "your parcel" : "parcel " + trackingNumber;
-        String body = who + " has been assigned to collect " + parcel + route(payload) + ".";
+        String body = who + " will collect " + parcel + route(payload) + ". Please have it packed and ready for pickup.";
         return List.of(new TeamNotification(audience, MERCHANT_TYPE, "Courier assigned", body, trackingNumber));
     }
 

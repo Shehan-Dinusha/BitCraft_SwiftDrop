@@ -41,6 +41,31 @@ public final class DisplayText {
         }
     }
 
+    /**
+     * A delivery failure code as a short phrase that reads after "We could not deliver parcel X: ".
+     * {@code RECIPIENT_UNAVAILABLE} -> "the recipient was not available"; unknown codes become plain words.
+     */
+    public static String failureReason(String code) {
+        if (code == null || code.isBlank()) {
+            return "the delivery attempt was not successful";
+        }
+        return switch (code.trim().toUpperCase(Locale.ROOT)) {
+            case "CUSTOMER_UNAVAILABLE", "RECIPIENT_UNAVAILABLE" -> "the recipient was not available";
+            case "WRONG_ADDRESS", "INCORRECT_ADDRESS" -> "the delivery address could not be found";
+            case "REFUSED_BY_CUSTOMER", "RECIPIENT_REJECTED" -> "the recipient refused the parcel";
+            case "ACCESS_RESTRICTED" -> "the courier could not reach the address";
+            case "PAYMENT_FAILED" -> "the cash on delivery payment could not be collected";
+            case "DAMAGED", "DAMAGED_IN_TRANSIT" -> "the parcel was damaged";
+            case "WEATHER_DELAY", "ADVERSE_WEATHER" -> "bad weather prevented the delivery";
+            case "OTHER" -> "the delivery attempt was not successful";
+            default -> {
+                String words = code.trim().replace('_', ' ').toLowerCase(Locale.ROOT);
+                // Free text from older producers is kept as written.
+                yield code.contains("_") || code.equals(code.toUpperCase(Locale.ROOT)) ? words : code.trim();
+            }
+        };
+    }
+
     /** "Chrome on Windows" from a browser user-agent string; "an unknown device" when it cannot tell. */
     public static String device(String userAgent) {
         if (userAgent == null || userAgent.isBlank()) {

@@ -26,7 +26,7 @@ public record InAppNotificationResponse(
         @Schema(description = "Notification type (template code); null for older notifications",
                 example = "PARCEL_OUT_FOR_DELIVERY",
                 allowableValues = {"PARCEL_CREATED", "PARCEL_PICKED_UP", "PARCEL_OUT_FOR_DELIVERY",
-                        "PARCEL_DELIVERED", "PARCEL_FAILED", "COURIER_ASSIGNED", "MERCHANT_ORDER_CREATED",
+                        "PARCEL_DELIVERED", "PARCEL_FAILED", "COURIER_ASSIGNED", "MERCHANT_DELIVERY_FAILED", "OPS_DELIVERY_FAILED",
                         "MERCHANT_COURIER_ASSIGNED", "DISPATCH_FAILED"})
         String notificationType,
 

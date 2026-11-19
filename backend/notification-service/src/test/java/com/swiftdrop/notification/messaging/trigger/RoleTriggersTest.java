@@ -81,19 +81,79 @@ class RoleTriggersTest {
     }
 
     @Test
-    @DisplayName("A merchant order also appears in the merchant company's team inbox")
-    void merchantOrderCreated() {
+    @DisplayName("A customer order that merely names a merchant does not notify that merchant")
+    void courierAssignedForCustomerOrderNamingAMerchant() {
+        EventEnvelope env = envelope("dispatch.courier.assigned", """
+                {"courierId":"%s","customerId":"%s","merchantId":"%s","trackingNumber":"SD-AAAA-BBBB"}
+                """.formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()));
+
+        assertThat(new CourierAssignedTrigger().teamNotifications(env)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("A dispatch failure that dispatch retries by itself alerts nobody")
+    void retryableDispatchFailureIsSilent() {
+        EventEnvelope env = envelope("dispatch.failed",
+                "{\"orderId\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\"attemptCount\":1,\"retryable\":true}");
+
+        assertThat(new DispatchFailedTrigger().teamNotifications(env)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Merchants are not told about orders they created themselves")
+    void merchantOrderCreatedHasNoTeamRow() {
         UUID merchantId = UUID.randomUUID();
         EventEnvelope env = envelope("order.created", """
-                {"customerId":"%s","merchantId":"%s","trackingNumber":"SD-CCCC-DDDD",
-                 "pickupDistrict":"COLOMBO","deliveryDistrict":"KANDY","speed":"EXPRESS"}
-                """.formatted(UUID.randomUUID(), merchantId));
+                {"customerId":"%s","merchantId":"%s","trackingNumber":"SD-CCCC-DDDD"}
+                """.formatted(merchantId, merchantId));
 
-        assertThat(new OrderCreatedTrigger().teamNotifications(env)).singleElement().satisfies(team -> {
-            assertThat(team.audience()).isEqualTo("MERCHANT:" + merchantId);
-            assertThat(team.notificationType()).isEqualTo("MERCHANT_ORDER_CREATED");
-            assertThat(team.body()).isEqualTo("Order SD-CCCC-DDDD was created (Colombo → Kandy), Express delivery.");
-        });
+        assertThat(new OrderCreatedTrigger().teamNotifications(env)).isEmpty();
+        assertThat(env.merchantOrderMerchantId()).contains(merchantId);
+    }
+
+    @Test
+    @DisplayName("A failed delivery tells the customer, the operations team and the merchant, in plain words")
+    void deliveryFailed() {
+        UUID customerId = UUID.randomUUID();
+        EventEnvelope env = envelope("parcel.status.changed", """
+                {"customerId":"%s","trackingNumber":"SD-EEEE-FFFF","newPublicStatus":"FAILED",
+                 "failureReason":"RECIPIENT_UNAVAILABLE"}
+                """.formatted(customerId));
+        FailedTrigger trigger = new FailedTrigger();
+
+        assertThat(trigger.build(env)).singleElement().satisfies(r ->
+                assertThat(r.templateParams()).containsEntry("failureReason", "the recipient was not available"));
+        List<TeamNotification> rows = trigger.teamNotifications(env);
+        assertThat(rows).extracting(TeamNotification::audience)
+                .containsExactly("OPERATIONS", "MERCHANT:" + customerId); // the consumer keeps the merchant row only for a merchant company
+        assertThat(rows.get(0).notificationType()).isEqualTo("OPS_DELIVERY_FAILED");
+        assertThat(rows.get(0).body()).isEqualTo("Parcel SD-EEEE-FFFF could not be delivered: the recipient was not available."
+                + " Arrange a new attempt or a return to the sender.");
+        assertThat(rows.get(1).notificationType()).isEqualTo("MERCHANT_DELIVERY_FAILED");
+    }
+
+    @Test
+    @DisplayName("Delivered shows a readable time and picked-up never invents a courier name")
+    void readableStatusParams() {
+        UUID customerId = UUID.randomUUID();
+        EventEnvelope delivered = envelope("parcel.status.changed", """
+                {"customerId":"%s","trackingNumber":"SD-EEEE-FFFF","newPublicStatus":"DELIVERED",
+                 "timestamp":"2026-11-19T15:56:00Z"}
+                """.formatted(customerId));
+        assertThat(new DeliveredTrigger().build(delivered)).singleElement().satisfies(r ->
+                assertThat(r.templateParams()).containsEntry("deliveredAt", "19 Nov 2026, 9:26 p.m."));
+
+        EventEnvelope pickedUp = envelope("parcel.status.changed", """
+                {"customerId":"%s","trackingNumber":"SD-EEEE-FFFF","newPublicStatus":"PICKED_UP"}
+                """.formatted(customerId));
+        assertThat(new PickedUpTrigger().build(pickedUp)).singleElement().satisfies(r ->
+                assertThat(r.templateParams()).doesNotContainKey("courierName"));
+    }
+
+    @Test
+    @DisplayName("No placeholder tracking number is made up when an event has none")
+    void noPlaceholderTrackingNumber() {
+        assertThat(envelope("dispatch.failed", "{\"orderId\":\"x\"}").extractTrackingNumber()).isNull();
     }
 
     @Test
@@ -115,6 +175,8 @@ class RoleTriggersTest {
             assertThat(r.templateParams()).containsEntry("occurredAt", "19 Nov 2026, 9:26 p.m.")
                     .containsEntry("device", "Chrome on Windows")
                     .containsEntry("ipAddress", "203.94.x.x");
+            // The device key the dispatcher uses to alert only for a new device or network.
+            assertThat(r.referenceId()).isEqualTo("Chrome on Windows · 203.94.x.x");
         });
     }
 

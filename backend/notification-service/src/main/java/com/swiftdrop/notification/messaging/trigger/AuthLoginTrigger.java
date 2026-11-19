@@ -47,12 +47,20 @@ public class AuthLoginTrigger implements NotificationTrigger {
         Map<String, String> params = new HashMap<>();
         String when = DisplayText.when(text(payload, "occurredAt"));
         params.put("occurredAt", when != null ? when : "just now");
-        params.put("device", DisplayText.device(text(payload, "userAgent")));
+        String device = DisplayText.device(text(payload, "userAgent"));
+        params.put("device", device);
         String ip = DisplayText.maskIp(text(payload, "ipAddress"));
         if (ip != null) {
             params.put("ipAddress", ip);
         }
-        return NotificationTrigger.email(recipientId.get(), template, params, null);
+        // The device and network the sign-in came from ("Chrome on Windows · 203.94.x.x"): the dispatcher
+        // sends a successful sign-in alert only for one it has not seen recently.
+        return NotificationTrigger.email(recipientId.get(), template, params, signInDevice(device, ip));
+    }
+
+    static String signInDevice(String device, String maskedIp) {
+        String key = maskedIp == null ? device : device + " · " + maskedIp;
+        return key.length() > 64 ? key.substring(0, 64) : key;
     }
 
     private static String text(JsonNode payload, String field) {

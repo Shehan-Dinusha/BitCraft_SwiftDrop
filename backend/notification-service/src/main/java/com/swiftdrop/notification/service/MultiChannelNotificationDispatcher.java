@@ -81,6 +81,12 @@ public class MultiChannelNotificationDispatcher {
             status = "SUPPRESSED";
             failureReason = "A failed sign-in alert was already sent in the last "
                     + FAILED_LOGIN_ALERT_WINDOW.toMinutes() + " minutes";
+        } else if (recognisedSignIn(request)) {
+            // Signing in again from the same device and network is routine: alert only for a new one.
+            log.info("Sign-in for {} from a device seen in the last {} days; no alert", request.recipientId(),
+                    KNOWN_DEVICE_WINDOW.toDays());
+            status = "SUPPRESSED";
+            failureReason = "Sign-in from a device used in the last " + KNOWN_DEVICE_WINDOW.toDays() + " days";
         } else if (destination == null || destination.isBlank()) {
             log.warn("Notification dispatch failed: Missing destination for channel {}", channel);
             status = "FAILED";
@@ -164,6 +170,21 @@ public class MultiChannelNotificationDispatcher {
                 request.recipientId(), SensitiveTemplates.LOGIN_FAILED, "SENT", Instant.now().minus(FAILED_LOGIN_ALERT_WINDOW));
     }
 
+    /** A successful sign-in from a device and network seen within this window sends no alert. */
+    static final Duration KNOWN_DEVICE_WINDOW = Duration.ofDays(30);
+
+    private boolean recognisedSignIn(DispatchNotificationRequest request) {
+        if (!SensitiveTemplates.LOGIN_SUCCESS.equalsIgnoreCase(request.templateCode())
+                || request.recipientId() == null || request.referenceId() == null) {
+            return false;
+        }
+        // Any earlier sign-in from this device counts (alerted or already recognised), except one whose
+        // alert failed to send, so the window slides while the device stays in use.
+        return logRepository.existsByRecipientIdAndTemplateCodeAndReferenceIdAndStatusNotAndCreatedAtAfter(
+                request.recipientId(), SensitiveTemplates.LOGIN_SUCCESS, request.referenceId(), "FAILED",
+                Instant.now().minus(KNOWN_DEVICE_WINDOW));
+    }
+
     private String registeredEmail(String channel, UUID recipientId) {
         if (!"EMAIL".equals(channel) || contactClient == null || recipientId == null) {
             return null;
@@ -219,6 +240,9 @@ public class MultiChannelNotificationDispatcher {
     }
 
     private static String trackingNumberOf(DispatchNotificationRequest request) {
+        if (SensitiveTemplates.isSecurity(request.templateCode())) {
+            return null; // the reference of a security mail is never a tracking number
+        }
         if (request.templateParams() != null) {
             String fromParams = request.templateParams().get("trackingNumber");
             if (fromParams != null && !fromParams.isBlank()) {
