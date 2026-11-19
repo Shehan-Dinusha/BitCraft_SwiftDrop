@@ -120,6 +120,7 @@ You also need:
 Run in **Git Bash**. Change the values in the first block if needed.
 
 ```bash
+export MSYS_NO_PATHCONV=1       # stop Git Bash rewriting /subscriptions/... scopes into Windows paths
 LOCATION=indiasouthcentral      # Hyderabad; must be in your subscription's allowed list (see below)
 RG=rg-swiftdrop-prod
 AKS=swiftdrop-aks
@@ -152,7 +153,7 @@ az aks create -g $RG -n $AKS -l $LOCATION \
   --network-plugin azure --network-plugin-mode overlay --network-dataplane cilium \
   --auto-upgrade-channel none --node-os-upgrade-channel Unmanaged \
   --attach-acr $ACR \
-  --generate-ssh-keys
+  --no-ssh-key
 
 az aks get-credentials -g $RG -n $AKS
 kubectl get nodes
@@ -161,6 +162,7 @@ kubectl get nodes
 What the important flags do:
 - **`--attach-acr`** lets the cluster pull images from your registry without an image pull secret.
 - **`--network-dataplane cilium`** enforces the chart's NetworkPolicy. Without a policy engine, NetworkPolicies are ignored.
+- **`--no-ssh-key`**: nothing needs SSH on the node. `--generate-ssh-keys` failed with `Incorrect padding` on a Windows profile path containing a space.
 - **`--auto-upgrade-channel none --node-os-upgrade-channel Unmanaged`** stops AKS from re-imaging the node automatically, which would wipe `local-path` data. The OS still installs its own security updates. Upgrade the cluster deliberately when you choose to.
 
 > [!TIP]
@@ -177,7 +179,7 @@ gh variable set ACR_NAME --body "$ACR"
 
 ## 6. Step 2 — Install the cluster add-ons
 
-These are installed once per cluster and are not part of the SwiftDrop chart. Pin the versions you install by adding `--version`; `helm search repo <chart>` lists them.
+These are installed once per cluster and are not part of the SwiftDrop chart. The versions below were installed on 19 Nov 2026; `helm search repo <chart>` lists newer ones. Traefik chart v42+ rejects `service.type`, so `traefik-values.yaml` uses `service.spec.type`.
 
 ```bash
 # 1. Storage for the student profile (skip for production: it uses Azure Disks).
@@ -188,14 +190,14 @@ kubectl get storageclass local-path
 # 2. Ingress controller (Traefik).
 helm repo add traefik https://traefik.github.io/charts
 helm repo update
-helm upgrade --install traefik traefik/traefik -n traefik --create-namespace \
-  -f infra/cluster/traefik-values.yaml
+helm upgrade --install traefik traefik/traefik --version 42.4.1 -n traefik --create-namespace \
+  -f infra/cluster/traefik-values.yaml --wait
 
 # 3. cert-manager (issues the Let's Encrypt certificate).
 helm repo add jetstack https://charts.jetstack.io
 helm repo update
-helm upgrade --install cert-manager jetstack/cert-manager -n cert-manager --create-namespace \
-  --set crds.enabled=true
+helm upgrade --install cert-manager jetstack/cert-manager --version v1.21.3 -n cert-manager --create-namespace \
+  --set crds.enabled=true --wait
 
 kubectl get pods -n traefik
 kubectl get pods -n cert-manager
