@@ -15,6 +15,7 @@ import {
   type ShellRole
 } from '@/design-system';
 import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
+import { leaveToLogin } from '@/features/auth/leaveToLogin';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -173,11 +174,7 @@ export function AppShell() {
       } catch {
         // Already expired or the API is unreachable: the local session is still cleared below.
       } finally {
-        signOut();
-        navigate('/login', {
-          replace: true,
-          state: { notice: 'You have been signed out.' }
-        });
+        leaveToLogin(signOut, navigate, 'You have been signed out.');
       }
     })();
   };

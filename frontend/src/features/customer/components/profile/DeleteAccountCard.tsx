@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { Alert, Button, Field, SurfaceCard } from '@/design-system';
 import { Modal } from '@/design-system/primitives/Modal';
+import { leaveToLogin } from '@/features/auth/leaveToLogin';
 import { parseApiError } from '@/services/api/apiError';
 import { deleteOwnAccount } from '@/services/api/authApi';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -34,11 +35,7 @@ export function DeleteAccountCard() {
     setDeleting(true);
     try {
       await deleteOwnAccount(password);
-      signOut();
-      navigate('/login', {
-        replace: true,
-        state: { notice: 'Your account has been deleted.' }
-      });
+      leaveToLogin(signOut, navigate, 'Your account has been deleted.');
     } catch (requestError) {
       setError(
         parseApiError(requestError).message ?? 'We could not delete the account. Try again.'

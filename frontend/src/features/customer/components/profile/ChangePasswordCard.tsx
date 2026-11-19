@@ -5,6 +5,7 @@ import {
   PasswordMatchMeter,
   PasswordStrengthMeter
 } from '@/features/auth/components/PasswordStrengthMeter';
+import { leaveToLogin } from '@/features/auth/leaveToLogin';
 import { validatePassword } from '@/features/auth/passwordPolicy';
 import { parseApiError } from '@/services/api/apiError';
 import { changePassword } from '@/services/api/authApi';
@@ -48,11 +49,7 @@ export function ChangePasswordCard() {
     setSaving(true);
     try {
       await changePassword(current, next);
-      signOut();
-      navigate('/login', {
-        replace: true,
-        state: { notice: 'Password changed. Sign in with your new password.' }
-      });
+      leaveToLogin(signOut, navigate, 'Password changed. Sign in with your new password.');
     } catch (requestError) {
       setError(
         parseApiError(requestError).message ?? 'We could not change the password. Try again.'
