@@ -8,6 +8,7 @@ import com.swiftdrop.contracts.openapi.OpenApiConstants;
 import com.swiftdrop.iam.dto.CreateUserRequest;
 import com.swiftdrop.iam.dto.UpdateUserRoleRequest;
 import com.swiftdrop.iam.dto.UpdateUserStatusRequest;
+import com.swiftdrop.iam.dto.UpdateProfileRequest;
 import com.swiftdrop.iam.dto.UserProfileResponse;
 import com.swiftdrop.iam.security.SecurityPrincipal;
 import com.swiftdrop.iam.service.UserAccountService;
@@ -48,6 +49,17 @@ public class UserRoleController {
         return ApiResponse.success(
                 userAccountService.getProfile(SecurityPrincipal.userId(authentication)),
                 "Profile retrieved"
+        );
+    }
+
+    @PatchMapping("/me")
+    @Operation(summary = "Update the authenticated user's own profile",
+            description = "Changes first name, last name, phone and district. Username, email, role and status cannot be changed here.")
+    public ApiResponse<UserProfileResponse> updateCurrentUser(@Valid @RequestBody UpdateProfileRequest request,
+                                                              Authentication authentication) {
+        return ApiResponse.success(
+                userAccountService.updateOwnProfile(SecurityPrincipal.userId(authentication), request),
+                "Profile updated"
         );
     }
 

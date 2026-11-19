@@ -26,6 +26,7 @@ import { NotificationConsolePage } from '@/features/admin-ops/pages/Notification
 import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
 import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
 import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
+import { ProfilePage } from '@/features/profile/ProfilePage';
 import { NotificationsPage } from '@/features/notifications/NotificationsPage';
 
 export const routes: RouteObject[] = [
@@ -61,6 +62,38 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['MERCHANT']}>
             <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/profile',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/courier/profile',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/profile',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/profile',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <ProfilePage />
           </RoleGuard>
         )
       },

@@ -8,6 +8,7 @@ import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.ChangePasswordRequest;
 import com.swiftdrop.iam.dto.CreateUserRequest;
 import com.swiftdrop.iam.dto.RegisterUserRequest;
+import com.swiftdrop.iam.dto.UpdateProfileRequest;
 import com.swiftdrop.iam.exception.AuthException;
 import com.swiftdrop.iam.exception.UserAlreadyExistsException;
 import org.junit.jupiter.api.BeforeEach;
@@ -227,5 +228,45 @@ class UserAccountServiceTest {
         verify(passwordPolicy).validate("NewPass123", admin.getUsername(), admin.getEmail());
         verify(refreshTokenService).revokeAll(admin);
         verify(tokenIssuanceService).blacklistUser(admin.getPublicId());
+    }
+
+    @Test
+    void updateOwnProfileTrimsAndSavesOnlyEditableFields() {
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(i -> i.getArgument(0));
+
+        var profile = userAccountService.updateOwnProfile(admin.getPublicId(),
+                new UpdateProfileRequest(" Nimal ", " Perera ", " ", SriLankanDistrict.KANDY));
+
+        assertThat(profile.firstName()).isEqualTo("Nimal");
+        assertThat(profile.lastName()).isEqualTo("Perera");
+        assertThat(profile.phone()).isNull();
+        assertThat(profile.district()).isEqualTo(SriLankanDistrict.KANDY);
+        assertThat(profile.username()).isEqualTo("root");
+        assertThat(profile.role()).isEqualTo(UserRole.SYSTEM_ADMIN);
+    }
+
+    @Test
+    void updateOwnProfileRejectsAPhoneUsedByAnotherAccount() {
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+        when(userAccountRepository.existsByPhone("+94771234567")).thenReturn(true);
+
+        assertThatThrownBy(() -> userAccountService.updateOwnProfile(admin.getPublicId(),
+                new UpdateProfileRequest("Nimal", "Perera", "+94771234567", SriLankanDistrict.KANDY)))
+                .isInstanceOf(UserAlreadyExistsException.class);
+        verify(userAccountRepository, never()).save(any());
+    }
+
+    @Test
+    void updateOwnProfileKeepsTheCurrentPhoneWithoutAUniquenessClash() {
+        admin.setPhone("+94771234567");
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(i -> i.getArgument(0));
+
+        var profile = userAccountService.updateOwnProfile(admin.getPublicId(),
+                new UpdateProfileRequest("Nimal", "Perera", "+94771234567", SriLankanDistrict.COLOMBO));
+
+        assertThat(profile.phone()).isEqualTo("+94771234567");
+        verify(userAccountRepository, never()).existsByPhone(any());
     }
 }

@@ -702,7 +702,61 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update the authenticated user's own profile
+         * @description Changes first name, last name, phone and district. Username, email, role and status cannot be changed here.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description Profile updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Phone number is already registered */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/users": {
@@ -1166,6 +1220,19 @@ export interface components {
             currentPassword: string;
             /** Format: password */
             newPassword: string;
+        };
+        /** @description Self-service profile update. */
+        UpdateProfileRequest: {
+            /** @example Nimal */
+            firstName: string;
+            /** @example Perera */
+            lastName: string;
+            /**
+             * @description Phone number; empty removes it.
+             * @example +94771234567
+             */
+            phone?: string;
+            district: components["schemas"]["SriLankanDistrict"];
         };
         /** @description Compatibility request to verify an existing role. Account roles cannot be changed after creation. */
         UpdateUserRoleRequest: {

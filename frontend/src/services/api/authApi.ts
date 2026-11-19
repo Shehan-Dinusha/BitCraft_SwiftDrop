@@ -102,6 +102,19 @@ export async function fetchCurrentUser(): Promise<AuthUserProfile> {
   return data.data ?? {};
 }
 
+export type UpdateProfileInput = components['schemas']['UpdateProfileRequest'];
+
+/** Updates the signed-in user's own name, phone and district. Returns the saved profile. */
+export async function updateMyProfile(input: UpdateProfileInput): Promise<AuthUserProfile> {
+  const { data } = await apiClient.patch<{ data?: AuthUserProfile }>('/v1/users/me', input);
+  return data.data ?? {};
+}
+
+/** Changes the signed-in user's password. The server then signs the account out everywhere. */
+export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post('/v1/auth/change-password', { currentPassword, newPassword });
+}
+
 /**
  * Swaps the one-time OAuth exchange code (from the Google callback redirect) for a full
  * SwiftDrop token pair.  The code expires in 2 minutes and is single-use.

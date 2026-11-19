@@ -140,6 +140,27 @@ class RbacIntegrationTest {
     }
 
     @Test
+    @DisplayName("CUSTOMER token → 200 on PATCH /api/v1/users/me; a role in the body is ignored")
+    void customer_canUpdateOwnProfile() throws Exception {
+        var customer = fixture("cust", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);
+        mvc.perform(patch(USERS_API + "/me").header("Authorization", bearer(customer))
+                        .contentType("application/json")
+                        .content("{\"firstName\":\" Nimali \",\"lastName\":\"Silva\",\"phone\":\"\",\"district\":\"KANDY\",\"role\":\"SYSTEM_ADMIN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("data.firstName").value("Nimali"))
+                .andExpect(jsonPath("data.district").value("KANDY"))
+                .andExpect(jsonPath("data.role").value("CUSTOMER"));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/v1/users/me without a token → 401")
+    void unauthenticated_cannotUpdateProfile() throws Exception {
+        mvc.perform(patch(USERS_API + "/me").contentType("application/json")
+                        .content("{\"firstName\":\"A\",\"lastName\":\"B\",\"district\":\"KANDY\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("CUSTOMER token → 200 on /api/v1/users/me (own profile)")
     void customer_canAccessOwnProfile() throws Exception {
         var customer = fixture("cust", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);

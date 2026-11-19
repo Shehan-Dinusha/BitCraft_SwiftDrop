@@ -8,6 +8,7 @@ import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.ChangePasswordRequest;
 import com.swiftdrop.iam.dto.CreateUserRequest;
 import com.swiftdrop.iam.dto.RegisterUserRequest;
+import com.swiftdrop.iam.dto.UpdateProfileRequest;
 import com.swiftdrop.iam.dto.UserProfileResponse;
 import com.swiftdrop.iam.exception.AuthException;
 import com.swiftdrop.iam.exception.ResourceNotFoundException;
@@ -128,6 +129,21 @@ public class UserAccountService {
             tokenIssuanceService.blacklistUser(user.getPublicId());
         }
         return AuthMapper.toProfile(user);
+    }
+
+    /** Updates the caller's own name, phone and district. */
+    @Transactional
+    public UserProfileResponse updateOwnProfile(UUID publicId, UpdateProfileRequest request) {
+        UserAccount user = requireUser(publicId);
+        String phone = normalizeNullable(request.phone());
+        if (phone != null && !phone.equals(user.getPhone()) && userAccountRepository.existsByPhone(phone)) {
+            throw new UserAlreadyExistsException("Phone number is already registered");
+        }
+        user.setFirstName(request.firstName().trim());
+        user.setLastName(request.lastName().trim());
+        user.setPhone(phone);
+        user.setDistrict(request.district());
+        return AuthMapper.toProfile(userAccountRepository.save(user));
     }
 
     @Transactional

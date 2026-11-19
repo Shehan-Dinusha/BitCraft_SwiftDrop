@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LogOut, Package } from 'lucide-react';
+import { LogOut, Package, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BottomNav,
@@ -15,6 +15,7 @@ import {
 } from '@/design-system';
 import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
 import { NOTIFICATIONS_PATH } from '@/features/notifications/notificationTypes';
+import { PROFILE_PATH, displayName } from '@/features/profile/profileFormat';
 import { useUnreadNotificationCount } from '@/features/notifications/useNotificationInbox';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -164,7 +165,9 @@ export function AppShell() {
   const activeEntry = entries
     .filter((entry) => entry.to && (pathname === entry.to || pathname.startsWith(`${entry.to}/`)))
     .sort((left, right) => (right.to?.length ?? 0) - (left.to?.length ?? 0))[0];
-  const pageTitle = activeEntry?.label ?? spec.label;
+  const profilePath = PROFILE_PATH[role];
+  const onProfile = pathname === profilePath;
+  const pageTitle = onProfile ? 'Your profile' : activeEntry?.label ?? spec.label;
 
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -197,9 +200,14 @@ export function AppShell() {
           role={shellRole}
           groups={groups}
           workspace={spec.label}
-          activeId={activeEntry?.id}
+          activeId={onProfile ? undefined : activeEntry?.id}
           rail={!isWide}
-          account={{ name: user?.username ?? spec.label, email: user?.email }}
+          account={{
+            name: user ? displayName(user) : spec.label,
+            email: user?.email,
+            onOpen: () => navigate(profilePath),
+            active: onProfile
+          }}
           onSignOut={handleSignOut}
           renderItem={(entry, active, rail) => (
             <NavItem
@@ -232,7 +240,18 @@ export function AppShell() {
           leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}
         >
           {hasTabs ? (
-            // Phones hide the sidebar (and its account footer), so sign-out lives in the top bar there.
+            // Phones hide the sidebar (and its account footer), so the profile and sign-out live in the top bar there.
+            <IconButton
+              variant="ghost"
+              density="compact"
+              aria-label="Your profile"
+              title="Your profile"
+              icon={<UserRound aria-hidden="true" />}
+              onClick={() => navigate(profilePath)}
+              className="size-9 text-secondary md:hidden"
+            />
+          ) : null}
+          {hasTabs ? (
             <IconButton
               variant="ghost"
               density="compact"
@@ -253,7 +272,7 @@ export function AppShell() {
         <BottomNav
           role={shellRole}
           tabs={[...groups[0].items, notificationsEntry]}
-          activeId={activeEntry?.id}
+          activeId={onProfile ? undefined : activeEntry?.id}
           renderTab={(entry, active, content, tabClassName) => (
             <Link
               to={entry.to ?? pathname}

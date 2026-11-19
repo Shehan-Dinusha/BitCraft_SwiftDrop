@@ -17,6 +17,10 @@ const roleDot: Record<ShellRole, string> = {
 export interface SideNavAccount {
   name: string;
   email?: string;
+  /** Opens the user's profile; makes the avatar and name a button. */
+  onOpen?: () => void;
+  /** The profile page is the current page. */
+  active?: boolean;
 }
 
 export interface SideNavProps {
@@ -198,21 +202,46 @@ export function SideNav({
             operational && 'mt-5 rounded-xl border bg-canvas py-3'
           )}
         >
-          <div className={cn('flex items-center gap-2.5 px-2', rail && 'flex-col px-0')}>
-            <span
-              aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-caption text-brand-primary"
-            >
-              {initials(account.name)}
-            </span>
-            {rail ? null : (
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-body-strong text-primary">{account.name}</span>
-                {account.email ? (
-                  <span className="truncate text-caption text-muted">{account.email}</span>
-                ) : null}
-              </div>
-            )}
+          <div className={cn('flex items-center gap-1.5 px-1', rail && 'flex-col px-0')}>
+            {(() => {
+              const identity = (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-caption text-brand-primary"
+                  >
+                    {initials(account.name)}
+                  </span>
+                  {rail ? null : (
+                    <span className="flex min-w-0 flex-1 flex-col text-left">
+                      <span className="truncate text-body-strong text-primary">{account.name}</span>
+                      {account.email ? (
+                        <span className="truncate text-caption text-muted">{account.email}</span>
+                      ) : null}
+                    </span>
+                  )}
+                </>
+              );
+              const base = cn('flex min-w-0 items-center gap-2.5 rounded-lg p-1', rail ? 'justify-center' : 'flex-1');
+              return account.onOpen ? (
+                <button
+                  type="button"
+                  onClick={account.onOpen}
+                  aria-label={`Your profile: ${account.name}`}
+                  aria-current={account.active ? 'page' : undefined}
+                  title="Your profile"
+                  className={cn(
+                    base,
+                    'transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus',
+                    account.active && 'bg-brand-subtle'
+                  )}
+                >
+                  {identity}
+                </button>
+              ) : (
+                <div className={base}>{identity}</div>
+              );
+            })()}
             {onSignOut ? (
               <button
                 type="button"
