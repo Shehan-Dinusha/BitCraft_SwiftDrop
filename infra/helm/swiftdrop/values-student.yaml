@@ -26,6 +26,11 @@ serviceOverrides:
     minReplicas: 1
     maxReplicas: 2
     scaleUpPods: 1
+    # Utilization is measured against the 448Mi request. An idle Spring Boot JVM already
+    # uses more than the default 80% (~358Mi), which would double every service right
+    # after a deploy: 20 JVMs on one 16 GiB node. 160% (~717Mi) only scales a service that
+    # is genuinely close to its 768Mi limit. CPU scaling (70%) still drives the HPA demo.
+    memoryUtilization: 160
   probes:
     # Ten JVMs boot at once on four vCPUs — allow up to 5 minutes to start.
     startupFailureThreshold: 60
