@@ -132,8 +132,7 @@ class CourierHorizontalAuthTest {
 
         ProofOfDeliveryUploadRequest request = new ProofOfDeliveryUploadRequest(
                 "https://storage.swiftdrop.lk/pod/photo.jpg",
-                "signature-base64",
-                "123456"
+                "signature-base64"
         );
 
         mockMvc.perform(post("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")
@@ -147,18 +146,17 @@ class CourierHorizontalAuthTest {
     }
 
     @Test
-    @DisplayName("Courier A verifying POD OTP for Courier B delivery returns 403 Forbidden")
-    void testCourierACannotVerifyPodForCourierBDelivery() throws Exception {
+    @DisplayName("Courier A reading POD for Courier B delivery returns 403 Forbidden")
+    void testCourierACannotReadPodForCourierBDelivery() throws Exception {
         UUID deliveryId = UUID.randomUUID();
         UUID courierA = UUID.randomUUID();
 
         doThrow(new ForbiddenException("Courier does not own this delivery session"))
                 .when(deliveryService).assertCanAccess(eq(deliveryId), any());
 
-        mockMvc.perform(post("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery/verify")
+        mockMvc.perform(get("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")
                         .header(JwtHeaderConstants.X_USER_ID, courierA.toString())
-                        .header(JwtHeaderConstants.X_USER_ROLE, UserRole.COURIER.name())
-                        .param("otp", "123456"))
+                        .header(JwtHeaderConstants.X_USER_ROLE, UserRole.COURIER.name()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.error").value("Forbidden"));

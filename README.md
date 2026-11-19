@@ -128,7 +128,7 @@ The queue, exchange and binding definitions for local development are in [`infra
 
 ## Parcel lifecycle
 
-The delivery service owns the state machine. Only allowed transitions are accepted, and `DELIVERED` needs verified proof of delivery (recipient OTP or signature).
+The delivery service owns the state machine. Only allowed transitions are accepted, and `DELIVERED` needs verified proof of delivery (a photo plus recipient name, or a signature).
 
 ```mermaid
 stateDiagram-v2

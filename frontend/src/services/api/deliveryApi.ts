@@ -83,27 +83,16 @@ export const deliveryApi = {
     deliveryId: string,
     photo: File | Blob,
     recipientName: string,
-    signature?: string,
-    otp?: string
+    signature?: string
   ) => {
     const formData = new FormData();
     formData.append('photo', photo);
     formData.append('recipientName', recipientName);
     if (signature) formData.append('signature', signature);
-    if (otp) formData.append('otp', otp);
 
     const { data } = await apiClient.post<{ success: boolean; data: ProofOfDeliveryResponse }>(
       `/v1/deliveries/${deliveryId}/proof-of-delivery`,
       formData
-    );
-    return data.data;
-  },
-
-  verifyProofOfDelivery: async (deliveryId: string, otp: string) => {
-    const { data } = await apiClient.post<{ success: boolean; data: ProofOfDeliveryResponse }>(
-      `/v1/deliveries/${deliveryId}/proof-of-delivery/verify`,
-      null,
-      { params: { otp } }
     );
     return data.data;
   },

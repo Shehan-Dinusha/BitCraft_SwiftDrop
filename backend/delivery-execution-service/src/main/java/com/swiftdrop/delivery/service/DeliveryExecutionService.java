@@ -162,7 +162,7 @@ public class DeliveryExecutionService {
         if (toState == DeliveryState.DELIVERED) {
             if (!proofOfDeliveryGuard.isSatisfied(deliveryId)) {
                 throw new InvalidStateTransitionException(
-                        "Proof of delivery must be verified with recipient OTP or signature before marking delivery as DELIVERED");
+                        "Proof of delivery must be verified with an uploaded photo or signature before marking delivery as DELIVERED");
             }
             session.setDeliveredAt(Instant.now());
             session.setStatus("COMPLETED");
