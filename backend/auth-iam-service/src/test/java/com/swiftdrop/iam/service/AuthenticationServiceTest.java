@@ -44,6 +44,8 @@ class AuthenticationServiceTest {
     private RefreshTokenService refreshTokenService;
     @Mock
     private LoginAttemptService loginAttemptService;
+    @Mock
+    private AuthLoginPublisher loginPublisher;
 
     @InjectMocks
     private AuthenticationService authenticationService;
@@ -84,6 +86,8 @@ class AuthenticationServiceTest {
         assertThat(response.userId()).isEqualTo(user.getPublicId().toString());
         verify(loginAttemptService).clear("alice", "127.0.0.1");
         verify(userAccountRepository).save(user);
+        verify(loginPublisher).publishSuccess(user, "127.0.0.1", "agent");
+        verify(loginPublisher, never()).publishFailure(any(), any(), any());
     }
 
     @Test
@@ -97,6 +101,9 @@ class AuthenticationServiceTest {
 
         verify(loginAttemptService).recordFailure("alice", "127.0.0.1");
         verify(refreshTokenService, never()).create(any(), any(), any());
+        // The account owner is warned about the failed attempt; no success alert is sent.
+        verify(loginPublisher).publishFailure(user, "127.0.0.1", "agent");
+        verify(loginPublisher, never()).publishSuccess(any(), any(), any());
     }
 
     @Test
@@ -114,6 +121,8 @@ class AuthenticationServiceTest {
         verify(passwordEncoder, org.mockito.Mockito.times(2)).matches("Secret123", "dummy-hash");
         verify(passwordEncoder, org.mockito.Mockito.times(1)).encode(any()); // hashed once, then reused
         verify(loginAttemptService, org.mockito.Mockito.times(2)).recordFailure("ghost", "127.0.0.1");
+        // Unknown usernames have no account to warn, and nothing reveals whether they exist.
+        verify(loginPublisher, never()).publishFailure(any(), any(), any());
     }
 
     @Test
