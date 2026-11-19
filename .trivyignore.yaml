@@ -17,6 +17,31 @@ vulnerabilities:
     statement: spring-webflux fix only in 7.0.9 (Boot 4); migration tracked separately.
     expired_at: 2026-12-31
 
+  # nginx 1.30.6 in the frontend image (nginxinc/nginx-unprivileged:1.30.6-alpine3.24, the
+  # newest published tag on 2026-11-19). Fixed in nginx 1.30.7, but no image ships it yet.
+  # None is reachable: the frontend nginx (frontend/nginx.conf and the Helm frontend.nginxConfig)
+  # only listens with plain HTTP/1.1 on 8080 behind Traefik, which terminates TLS/HTTP2; it
+  # enables no HTTP/2, HTTP/3, TLS listener, mail proxy or `resolver`. Short expiry: take the
+  # 1.30.7+ base image (Dependabot) and delete these entries.
+  - id: CVE-2026-121810
+    statement: nginx HTTP/3 use-after-free; HTTP/3 not enabled in the frontend nginx.
+    expired_at: 2026-12-15
+  - id: CVE-2026-123007
+    statement: nginx HTTP/2 flow-control overflow; HTTP/2 not enabled (Traefik terminates it).
+    expired_at: 2026-12-15
+  - id: CVE-2026-123633
+    statement: nginx HTTP/2 issue; HTTP/2 not enabled in the frontend nginx.
+    expired_at: 2026-12-15
+  - id: CVE-2026-118899
+    statement: nginx `listen ... ssl` issue; the frontend nginx has no TLS listener.
+    expired_at: 2026-12-15
+  - id: CVE-2026-113425
+    statement: nginx mail proxy issue; the mail module is not configured.
+    expired_at: 2026-12-15
+  - id: CVE-2026-123634
+    statement: nginx resolver use-after-free; no `resolver` directive is configured.
+    expired_at: 2026-12-15
+
 misconfigurations:
   # Read-only root filesystem: PostgreSQL, RabbitMQ and Redis write runtime files
   # (sockets, pid/cookie files, config rendered by the image entrypoint) outside
