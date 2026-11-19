@@ -12,7 +12,8 @@
 #   (blank)      same detection as a push
 #
 # Required repository secrets:   AZURE_CLIENT_ID, AZURE_TENANT_ID,
-#   AZURE_SUBSCRIPTION_ID (OIDC), HELM_SECRETS_VALUES (values-secrets.yaml content)
+#   AZURE_SUBSCRIPTION_ID (OIDC). Environment secret on "production":
+#   HELM_SECRETS_VALUES (values-secrets.yaml content)
 # Optional repository variables: ACR_NAME, AKS_CLUSTER, AKS_RESOURCE_GROUP,
 #   DEPLOY_PROFILE (student | production; default student)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -209,7 +210,7 @@ jobs:
           HELM_SECRETS_VALUES: ${{ secrets.HELM_SECRETS_VALUES }}
         run: |
           if [ -z "$HELM_SECRETS_VALUES" ]; then
-            echo "::error::Repository secret HELM_SECRETS_VALUES is not set (see docs/deployment/AKS-HELM-DEPLOYMENT.md)."
+            echo "::error::Environment secret HELM_SECRETS_VALUES (production) is not set (see docs/deployment/AKS-HELM-DEPLOYMENT.md)."
             exit 1
           fi
           umask 077

@@ -268,14 +268,23 @@ az role assignment create --assignee-object-id $PRINCIPAL_ID --assignee-principa
 az role assignment create --assignee-object-id $PRINCIPAL_ID --assignee-principal-type ServicePrincipal \
   --role "Azure Kubernetes Service Cluster User Role" --scope $(az aks show -g $RG -n $AKS --query id -o tsv)
 
-# GitHub secrets.
+# GitHub secrets (these three are IDs, not passwords; Azure only trusts tokens from main/production).
 gh secret set AZURE_CLIENT_ID --body "$CLIENT_ID"
 gh secret set AZURE_TENANT_ID --body "$(az account show --query tenantId -o tsv)"
 gh secret set AZURE_SUBSCRIPTION_ID --body "$(az account show --query id -o tsv)"
-gh secret set HELM_SECRETS_VALUES < infra/helm/swiftdrop/values-secrets.yaml
+
+# "production" environment: you approve every deploy, and only main may use it.
+ME_ID=$(gh api user --jq .id)
+gh api -X PUT repos/$REPO/environments/production --input - <<EOF
+{"reviewers":[{"type":"User","id":$ME_ID}],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+EOF
+gh api -X POST repos/$REPO/environments/production/deployment-branch-policies -f name=main -f type=branch
+
+# The real passwords and keys live ONLY on the environment, never as a repository secret.
+gh secret set HELM_SECRETS_VALUES --env production < infra/helm/swiftdrop/values-secrets.yaml
 ```
 
-Finally, create the `production` environment. In GitHub, go to **Settings → Environments → New environment** and name it `production`. Adding yourself as a required reviewer is a good idea, so every deploy waits for your approval.
+**Why an environment secret:** the repository is public and has many collaborators with write access. A repository secret is readable by any workflow on any branch, so anyone who can push could print it. An environment secret is only handed to jobs that run in `production`, which only `main` can do, and only after the required reviewer approves.
 
 ## 10. Step 6 — First deployment
 
@@ -320,7 +329,7 @@ helm upgrade --install swiftdrop infra/helm/swiftdrop -n default \
 | Deploy after a merge | Automatic on push to `main`. Only the changed components are rebuilt |
 | Re-apply config only | Run the workflow with `target_service=none` |
 | Change a non-secret setting | Edit `services.<name>.config` in `values.yaml` and merge. Pods roll automatically because of a checksum annotation |
-| Rotate a secret | Edit `values-secrets.yaml`, run `gh secret set HELM_SECRETS_VALUES < …`, then run the workflow with `none` |
+| Rotate a secret | Edit `values-secrets.yaml`, run `gh secret set HELM_SECRETS_VALUES --env production < …`, then run the workflow with `none` |
 | Release history / rollback | `helm history swiftdrop -n default` · `helm rollback swiftdrop <revision> -n default` |
 | Logs | `kubectl logs -n swiftdrop-apps deploy/customer-order-service -f` |
 | Gateway health | `kubectl port-forward -n swiftdrop-apps svc/api-gateway 8080:8080`, then open `http://localhost:8080/actuator/health` |
