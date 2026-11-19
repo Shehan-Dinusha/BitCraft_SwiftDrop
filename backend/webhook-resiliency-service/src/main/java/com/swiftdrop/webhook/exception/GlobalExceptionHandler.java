@@ -1,5 +1,6 @@
 package com.swiftdrop.webhook.exception;
 
+import com.swiftdrop.contracts.logging.LogSanitizer;
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
@@ -57,7 +58,7 @@ public class GlobalExceptionHandler {
     /** Missing or malformed gateway identity headers. */
     @ExceptionHandler(UnauthenticatedCallerException.class)
     public ResponseEntity<ApiErrorResponse> handleUnauthenticated(UnauthenticatedCallerException ex, HttpServletRequest request) {
-        log.warn("Rejected request without verified caller identity path={} reason={}", request.getRequestURI(), ex.getMessage());
+        log.warn("Rejected request without verified caller identity path={} reason={}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), "Unauthorized",
                         "Authentication is required", request.getRequestURI()));
@@ -74,7 +75,7 @@ public class GlobalExceptionHandler {
     /** Raised, for example, when deleting an endpoint that delivery jobs still reference. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
-        log.warn("Request conflicts with stored data path={} cause={}", request.getRequestURI(), ex.getClass().getSimpleName());
+        log.warn("Request conflicts with stored data path={} cause={}", LogSanitizer.clean(request.getRequestURI()), ex.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(HttpStatus.CONFLICT.value(), "Conflict",
                         "The request conflicts with existing records. An endpoint with delivery history cannot be deleted; deactivate it instead.",
@@ -84,7 +85,7 @@ public class GlobalExceptionHandler {
     /** Internal exception messages can contain SQL, hostnames or payload fragments, so they are logged, not returned. */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(RuntimeException ex, HttpServletRequest request) {
-        log.error("Unhandled error path={}", request.getRequestURI(), ex);
+        log.error("Unhandled error path={}", LogSanitizer.clean(request.getRequestURI()), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error",
                         "An unexpected error occurred", request.getRequestURI()));

@@ -1,5 +1,6 @@
 package com.swiftdrop.notification.exception;
 
+import com.swiftdrop.contracts.logging.LogSanitizer;
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
 import com.swiftdrop.contracts.security.CallerContextException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +21,7 @@ public class GlobalExceptionHandler {
     /** Missing/invalid gateway identity headers -> 401; caller not allowed -> 403. */
     @ExceptionHandler(CallerContextException.class)
     public ResponseEntity<ApiErrorResponse> handleCallerContext(CallerContextException ex, HttpServletRequest request) {
-        log.warn("Access denied on {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Access denied on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
         int status = ex.statusCode();
         String errorName = status == 403 ? "Forbidden" : "Unauthorized";
         return ResponseEntity.status(status)
@@ -49,7 +50,7 @@ public class GlobalExceptionHandler {
         String details = ex.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
-        log.warn("Validation error on {}: {}", request.getRequestURI(), details);
+        log.warn("Validation error on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(details));
         return ResponseEntity.badRequest()
                 .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "Validation Failed", details, request.getRequestURI()));
     }

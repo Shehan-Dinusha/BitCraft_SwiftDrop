@@ -69,9 +69,10 @@ secrets:
   # Per-database credentials, keyed like postgres.databases (iam, order, ...).
   # Each becomes "<key>-postgres-credentials" in the data AND apps namespaces.
   postgres: {}
+  # Passwords have no default on purpose: they must come from values-secrets.yaml.
+  # The chart fails to render without secrets.rabbitmq.password (templates/secrets.yaml).
   rabbitmq:
     username: swiftdrop
-    password: ""
     erlangCookie: ""
   jwt:
     # HS256 shared secret (>= 32 chars). Still read by the gateway and auth-iam.
@@ -80,9 +81,9 @@ secrets:
     # auth-iam-service refuses to start in the aks profile without both keys.
     privateKey: ""
     publicKey: ""
+  # The admin account is only created when values-secrets.yaml sets username AND password.
   bootstrapAdmin:
     username: ""
-    password: ""
     email: ""
     district: COLOMBO
   googleOAuth:
