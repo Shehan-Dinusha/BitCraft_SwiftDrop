@@ -31,7 +31,6 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'pickupStreet',
     'pickupArea',
     'pickupLandmark',
-    'pickupProvince',
     'pickupCity',
     'pickupDistrict',
     'pickupPostalCode'
@@ -45,7 +44,6 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'deliveryStreet',
     'deliveryArea',
     'deliveryLandmark',
-    'deliveryProvince',
     'deliveryCity',
     'deliveryDistrict',
     'deliveryPostalCode',
@@ -175,10 +173,6 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
     case 'pickupLandmark':
     case 'deliveryLandmark':
       return part(form[field], { label: 'the landmark', required: false, max: 100 });
-    case 'pickupProvince':
-      return form.pickupProvince || form.pickupDistrict ? undefined : 'Choose a province';
-    case 'deliveryProvince':
-      return form.deliveryProvince || form.deliveryDistrict ? undefined : 'Choose a province';
     case 'pickupCity':
     case 'deliveryCity':
       return city(form[field]);

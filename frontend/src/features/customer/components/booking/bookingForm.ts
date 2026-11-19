@@ -19,7 +19,7 @@ export interface BookingForm {
   pickupStreet: string;
   pickupArea: string;
   pickupLandmark: string;
-  /** Only narrows the district list; the order stores the district. */
+  /** Filled in from the district and read-only; the order stores the district. */
   pickupProvince: ProvinceId | '';
   pickupCity: string;
   pickupDistrict: SriLankanDistrict | '';
@@ -149,6 +149,12 @@ export const PROVINCES: { id: ProvinceId; label: string; districts: SriLankanDis
 
 export function provinceOf(district: SriLankanDistrict | '' | undefined): ProvinceId | '' {
   return PROVINCES.find((province) => district && province.districts.includes(district))?.id ?? '';
+}
+
+/** "Western" for COLOMBO; empty while no district is chosen. */
+export function provinceLabelOf(district: SriLankanDistrict | '' | undefined): string {
+  const id = provinceOf(district);
+  return PROVINCES.find((province) => province.id === id)?.label ?? '';
 }
 
 /**
