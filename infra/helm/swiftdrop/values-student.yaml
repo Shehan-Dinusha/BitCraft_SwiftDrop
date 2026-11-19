@@ -2,35 +2,45 @@
 # SwiftDrop — STUDENT profile (Azure for Students: ~4 vCPU regional quota)
 #
 # Target: ONE node, Standard_B4ms (4 vCPU / 16 GiB).
-#   Requests ≈ 1.7 vCPU / 6 GiB for all 22 SwiftDrop pods, leaving headroom for
-#   kube-system, Traefik and cert-manager.
+#   Requests ≈ 1.7 vCPU / 8.3 GiB for all 22 SwiftDrop pods (memory sized from the
+#   first deploy, 19 Nov 2026), leaving headroom for kube-system, Traefik, cert-manager.
 #
 # Storage: a 4-vCPU VM can attach at most 8 Azure managed disks, but SwiftDrop
 # needs 11 volumes (9 PostgreSQL + RabbitMQ + Redis). This profile therefore uses
 # the "local-path" StorageClass (rancher/local-path-provisioner, installed by the
 # deployment guide): still PersistentVolumeClaims + StatefulSets, but backed by
 # the node's own disk. Data survives pod restarts and node reboots, and is LOST
-# if AKS replaces the node — keep node auto-upgrades disabled (see the guide).
+# whenever AKS replaces the node, which `az aks start` does: use scripts/aks/pause.sh
+# and resume.sh (backup/restore) instead of a plain stop/start (see the guide).
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Do not create Azure Disk StorageClasses; local-path is installed separately.
 storageClasses: []
 
+global:
+  # Fixed heap instead of a percentage: the Dockerfiles pass -XX:MaxRAMPercentage=75, which
+  # would grow the heap with every limit increase. An explicit -Xmx wins over the percentage.
+  # Measured after the first deploy: ~640-730 MiB resident with a ~540 MiB heap, i.e. ~200 MiB
+  # of metaspace, threads, code cache and buffers on top of the heap.
+  javaToolOptions: "-Xmx512m -XX:+ExitOnOutOfMemoryError"
+
 serviceOverrides:
   replicas: 1
+  # Request ~= measured idle use, so the scheduler sees the real memory (the node was 220%
+  # overcommitted on limits with 448Mi requests). Limit leaves ~250 MiB above the 512m heap.
   resources:
-    requests: { cpu: 100m, memory: 448Mi }
-    limits: { cpu: "1", memory: 768Mi }
+    requests: { cpu: 100m, memory: 704Mi }
+    limits: { cpu: "1", memory: 1Gi }
   # HPA stays on (it is part of the assignment demo) but scales 1 → 2.
   hpa:
     minReplicas: 1
     maxReplicas: 2
     scaleUpPods: 1
-    # Utilization is measured against the 448Mi request. An idle Spring Boot JVM already
-    # uses more than the default 80% (~358Mi), which would double every service right
-    # after a deploy: 20 JVMs on one 16 GiB node. 160% (~717Mi) only scales a service that
-    # is genuinely close to its 768Mi limit. CPU scaling (70%) still drives the HPA demo.
-    memoryUtilization: 160
+    # Utilization is measured against the 704Mi request. 130% (~915Mi) only scales a service
+    # that is genuinely close to its 1Gi limit; idle JVMs (~100%) stay at one replica. CPU
+    # scaling (70%) drives the HPA demo. A second replica that does not fit stays Pending
+    # instead of overcommitting the node.
+    memoryUtilization: 130
   probes:
     # Ten JVMs boot at once on four vCPUs — allow up to 5 minutes to start.
     startupFailureThreshold: 60
