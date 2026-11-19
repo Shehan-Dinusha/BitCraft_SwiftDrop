@@ -16,6 +16,7 @@ import {
 import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
 import { NOTIFICATIONS_PATH } from '@/features/notifications/notificationTypes';
 import { PROFILE_PATH, displayName } from '@/features/profile/profileFormat';
+import { useMyAvatarUrl, useSyncCurrentUser } from '@/features/profile/avatar';
 import { useUnreadNotificationCount } from '@/features/notifications/useNotificationInbox';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -142,6 +143,8 @@ export function AppShell() {
   const hasTabs = shellRole === 'customer' || shellRole === 'courier';
 
   const unreadCount = useUnreadNotificationCount();
+  useSyncCurrentUser();
+  const avatarUrl = useMyAvatarUrl();
   // Every workspace has a Notifications page in its own "Updates" section, with the unread count.
   const notificationsEntry = useMemo<NavEntry>(
     () => ({
@@ -206,7 +209,8 @@ export function AppShell() {
             name: user ? displayName(user) : spec.label,
             email: user?.email,
             onOpen: () => navigate(profilePath),
-            active: onProfile
+            active: onProfile,
+            avatarUrl
           }}
           onSignOut={handleSignOut}
           renderItem={(entry, active, rail) => (

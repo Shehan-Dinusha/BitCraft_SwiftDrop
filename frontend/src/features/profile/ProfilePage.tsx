@@ -1,10 +1,19 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode
+} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BadgeCheck,
   Bell,
   CalendarDays,
+  Camera,
   Clock,
   KeyRound,
   Mail,
@@ -25,11 +34,14 @@ import {
   changeMyPassword,
   fetchCurrentUser,
   logoutUser,
+  removeMyAvatar,
   updateMyProfile,
+  uploadMyAvatar,
   type AuthUserProfile
 } from '@/services/api/authApi';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { useAuthStore } from '@/store/useAuthStore';
+import { cn } from '@/utils/cn';
 import { NOTIFICATIONS_PATH } from '@/features/notifications/notificationTypes';
 import {
   districtLabel,
@@ -42,6 +54,7 @@ import {
   type ProfileErrors,
   type ProfileForm
 } from './profileFormat';
+import { UserAvatar, sourceProblem, toAvatarImage, useMyAvatarUrl } from './avatar';
 
 /** Why we ask for a phone number, in each role's terms. */
 const PHONE_HINT: Record<string, string> = {
@@ -54,14 +67,6 @@ const DISTRICT_OPTIONS = SRI_LANKAN_DISTRICTS.map((value) => ({
   value,
   label: districtLabel(value)
 }));
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (
-    ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() ||
-    '?'
-  );
-}
 
 function formFrom(user: AuthUserProfile | null | undefined): ProfileForm {
   return {
@@ -116,18 +121,146 @@ function ReadOnlyRow({ label, value, note }: { label: string; value: ReactNode; 
   );
 }
 
+/** The profile picture with upload, change and remove. */
+function ProfilePhoto({
+  user,
+  onSaved
+}: {
+  user: AuthUserProfile;
+  onSaved: (user: AuthUserProfile) => void;
+}) {
+  const name = displayName(user);
+  const src = useMyAvatarUrl();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState<'upload' | 'remove' | null>(null);
+  const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
+  const hasPhoto = !!user.avatarUpdatedAt;
+
+  const choose = () => input.current?.click();
+
+  const onFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // choosing the same file again still fires a change
+    if (!file) return;
+    const problem = sourceProblem(file);
+    if (problem) {
+      setMessage({ tone: 'danger', text: problem });
+      return;
+    }
+    setBusy('upload');
+    setMessage(null);
+    try {
+      onSaved(await uploadMyAvatar(await toAvatarImage(file)));
+      setMessage({ tone: 'success', text: 'Profile picture updated.' });
+    } catch (error) {
+      setMessage({
+        tone: 'danger',
+        text: apiErrorMessage(error, 'The picture could not be uploaded. Please try again.')
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async () => {
+    setBusy('remove');
+    setMessage(null);
+    try {
+      onSaved(await removeMyAvatar());
+      setMessage({ tone: 'success', text: 'Profile picture removed.' });
+    } catch (error) {
+      setMessage({
+        tone: 'danger',
+        text: apiErrorMessage(error, 'The picture could not be removed. Please try again.')
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex shrink-0 flex-col items-start gap-2 sm:items-center">
+      <div className="relative">
+        <UserAvatar
+          name={name}
+          src={src}
+          className={cn('size-20 text-h2', busy === 'upload' && 'opacity-60')}
+        />
+        <button
+          type="button"
+          onClick={choose}
+          disabled={busy !== null}
+          aria-label={hasPhoto ? 'Change profile picture' : 'Upload a profile picture'}
+          title={hasPhoto ? 'Change photo' : 'Upload photo'}
+          className="absolute -bottom-1 -right-1 inline-flex size-8 items-center justify-center rounded-full border-2 border-card bg-brand-primary text-brand-on shadow-sm transition-colors hover:bg-brand-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus disabled:opacity-60"
+        >
+          <Camera aria-hidden="true" className="size-4" />
+        </button>
+        <input
+          ref={input}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(e) => void onFile(e)}
+        />
+      </div>
+      <div className="flex gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          density="compact"
+          onClick={choose}
+          loading={busy === 'upload'}
+          loadingLabel="Uploading…"
+          disabled={busy !== null}
+        >
+          {hasPhoto ? 'Change photo' : 'Upload photo'}
+        </Button>
+        {hasPhoto ? (
+          <Button
+            type="button"
+            variant="ghost"
+            density="compact"
+            onClick={() => void remove()}
+            loading={busy === 'remove'}
+            loadingLabel="Removing…"
+            disabled={busy !== null}
+            className="text-status-danger-fg"
+          >
+            Remove
+          </Button>
+        ) : null}
+      </div>
+      {message ? (
+        <p
+          role="status"
+          className={cn(
+            'max-w-[14rem] text-caption',
+            message.tone === 'success' ? 'text-status-success-fg' : 'text-status-danger-fg'
+          )}
+        >
+          {message.text}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /** Header card: who is signed in, at a glance. */
-function IdentityCard({ user }: { user: AuthUserProfile }) {
+function IdentityCard({
+  user,
+  onSaved
+}: {
+  user: AuthUserProfile;
+  onSaved: (user: AuthUserProfile) => void;
+}) {
   const name = displayName(user);
   return (
     <SurfaceCard>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-        <span
-          aria-hidden="true"
-          className="flex size-16 shrink-0 items-center justify-center rounded-full bg-brand-primary text-h2 font-semibold text-brand-on"
-        >
-          {initials(name)}
-        </span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+        <ProfilePhoto user={user} onSaved={onSaved} />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="truncate text-h2 text-primary">{name}</h2>
@@ -484,7 +617,7 @@ export function ProfilePage() {
           <p className="text-caption text-secondary">Loading your profile…</p>
         ) : (
           <>
-            <IdentityCard user={user} />
+            <IdentityCard user={user} onSaved={onSaved} />
             <PersonalDetails user={user} onSaved={onSaved} />
             <SignInAndSecurity user={user} />
             <Link

@@ -1,5 +1,15 @@
 package com.swiftdrop.iam.controller;
 
+import com.swiftdrop.iam.service.AvatarService;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.dto.PagedResult;
 import com.swiftdrop.contracts.enums.UserRole;
@@ -38,9 +48,11 @@ import java.util.UUID;
 public class UserRoleController {
 
     private final UserAccountService userAccountService;
+    private final AvatarService avatarService;
 
-    public UserRoleController(UserAccountService userAccountService) {
+    public UserRoleController(UserAccountService userAccountService, AvatarService avatarService) {
         this.userAccountService = userAccountService;
+        this.avatarService = avatarService;
     }
 
     @GetMapping("/me")
@@ -61,6 +73,36 @@ public class UserRoleController {
                 userAccountService.updateOwnProfile(SecurityPrincipal.userId(authentication), request),
                 "Profile updated"
         );
+    }
+
+    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Set the authenticated user's profile picture",
+            description = "PNG, JPEG or WebP up to 512 KB, sent as the multipart part 'file'. The type is checked from the file content.")
+    public ApiResponse<UserProfileResponse> uploadAvatar(@RequestPart("file") MultipartFile file,
+                                                         Authentication authentication) throws IOException {
+        return ApiResponse.success(
+                avatarService.replace(SecurityPrincipal.userId(authentication), file.getBytes()),
+                "Profile picture updated"
+        );
+    }
+
+    @DeleteMapping("/me/avatar")
+    @Operation(summary = "Remove the authenticated user's profile picture")
+    public ApiResponse<UserProfileResponse> deleteAvatar(Authentication authentication) {
+        return ApiResponse.success(avatarService.remove(SecurityPrincipal.userId(authentication)),
+                "Profile picture removed");
+    }
+
+    @GetMapping("/me/avatar")
+    @Operation(summary = "Get the authenticated user's profile picture", description = "404 when there is none.")
+    public ResponseEntity<byte[]> getAvatar(Authentication authentication) {
+        return avatarService.find(SecurityPrincipal.userId(authentication))
+                .map(avatar -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(avatar.contentType()))
+                        .cacheControl(CacheControl.noCache().cachePrivate())
+                        .header("X-Content-Type-Options", "nosniff")
+                        .body(avatar.image()))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping

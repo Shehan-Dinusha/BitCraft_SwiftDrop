@@ -21,6 +21,8 @@ export interface SideNavAccount {
   onOpen?: () => void;
   /** The profile page is the current page. */
   active?: boolean;
+  /** Profile picture URL; initials are shown when absent. */
+  avatarUrl?: string | null;
 }
 
 export interface SideNavProps {
@@ -206,12 +208,16 @@ export function SideNav({
             {(() => {
               const identity = (
                 <>
-                  <span
-                    aria-hidden="true"
-                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-caption text-brand-primary"
-                  >
-                    {initials(account.name)}
-                  </span>
+                  {account.avatarUrl ? (
+                    <img src={account.avatarUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-caption text-brand-primary"
+                    >
+                      {initials(account.name)}
+                    </span>
+                  )}
                   {rail ? null : (
                     <span className="flex min-w-0 flex-1 flex-col text-left">
                       <span className="truncate text-body-strong text-primary">{account.name}</span>

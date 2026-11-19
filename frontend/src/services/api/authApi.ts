@@ -110,6 +110,30 @@ export async function updateMyProfile(input: UpdateProfileInput): Promise<AuthUs
   return data.data ?? {};
 }
 
+/** Sets the signed-in user's profile picture (PNG, JPEG or WebP up to 512 KB). Returns the saved profile. */
+export async function uploadMyAvatar(image: Blob): Promise<AuthUserProfile> {
+  const form = new FormData();
+  form.append('file', image, 'avatar.jpg');
+  const { data } = await apiClient.put<{ data?: AuthUserProfile }>('/v1/users/me/avatar', form);
+  return data.data ?? {};
+}
+
+export async function removeMyAvatar(): Promise<AuthUserProfile> {
+  const { data } = await apiClient.delete<{ data?: AuthUserProfile }>('/v1/users/me/avatar');
+  return data.data ?? {};
+}
+
+/** The signed-in user's profile picture, or null when there is none. Fetched with the session token. */
+export async function fetchMyAvatar(): Promise<Blob | null> {
+  try {
+    const { data } = await apiClient.get<Blob>('/v1/users/me/avatar', { responseType: 'blob' });
+    return data;
+  } catch (error) {
+    if ((error as { response?: { status?: number } }).response?.status === 404) return null;
+    throw error;
+  }
+}
+
 /** Changes the signed-in user's password. The server then signs the account out everywhere. */
 export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
   await apiClient.post('/v1/auth/change-password', { currentPassword, newPassword });

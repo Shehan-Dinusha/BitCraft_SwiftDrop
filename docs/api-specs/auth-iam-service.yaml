@@ -412,6 +412,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/me/avatar:
+    get:
+      tags: [Users]
+      summary: Get the authenticated user's profile picture
+      responses:
+        '200':
+          description: The picture
+          content:
+            image/png:
+              schema: {type: string, format: binary}
+            image/jpeg:
+              schema: {type: string, format: binary}
+            image/webp:
+              schema: {type: string, format: binary}
+        '401':
+          description: Authentication required
+        '404':
+          description: No profile picture
+    put:
+      tags: [Users]
+      summary: Set the authenticated user's profile picture
+      description: PNG, JPEG or WebP up to 512 KB in the multipart part `file`. The type is checked from the file content.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile picture updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '400':
+          description: Not a PNG, JPEG or WebP image, or larger than 512 KB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Authentication required
+    delete:
+      tags: [Users]
+      summary: Remove the authenticated user's profile picture
+      responses:
+        '200':
+          description: Profile picture removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '401':
+          description: Authentication required
   /api/v1/users:
     get:
       tags: [Users]
@@ -909,6 +969,11 @@ components:
         createdAt:
           type: string
           format: date-time
+        avatarUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the profile picture last changed; null when there is none. The picture is served by GET /api/v1/users/me/avatar.
     ApiResponseUserProfile:
       type: object
       properties:
