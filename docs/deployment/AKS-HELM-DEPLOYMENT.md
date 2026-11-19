@@ -231,7 +231,16 @@ This writes `infra/helm/swiftdrop/values-secrets.yaml`, which is git-ignored. It
 > [!WARNING]
 > Keep a copy of this file somewhere safe, such as a password manager. PostgreSQL saves its password into the data volume on first start. If you regenerate the file later, the services can't log in to the existing databases.
 
-Optional: to enable Google sign-in, fill in `googleOAuth`. Then register `https://swiftdrop.bitcraft.biz/api/v1/auth/oauth2/google/callback` as a redirect URI in Google Cloud Console.
+Optional integrations: each block below stays off while it is empty.
+
+| Block | Turns on | Notes |
+|---|---|---|
+| `googleOAuth` | Google sign-in | Register `https://swiftdrop.bitcraft.biz/api/v1/auth/oauth2/google/callback` as a redirect URI in Google Cloud Console |
+| `acsEmail` | Real e-mail (`NOTIFICATION_EMAIL_PROVIDER=azure`) | Needs `endpoint`, `senderAddress` and `accessKey`. **Without it, self-registered users never receive their verification code** and cannot sign in |
+| `aiProvider` | Real AI assistant instead of `mock` | `provider` is `openai` or `azure-openai`; `model` is required; Azure needs `endpoint` = `https://<resource>.openai.azure.com/openai/v1` |
+| `podStorage` | PoD photos in Azure Blob | Full storage connection string |
+
+The chart refuses to render if a block is half filled (for example an ACS key without a sender address).
 
 ## 9. Step 5 — Connect GitHub Actions to Azure
 
