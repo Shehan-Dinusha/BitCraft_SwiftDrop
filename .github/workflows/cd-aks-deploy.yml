@@ -154,7 +154,20 @@ jobs:
             context="backend"; dockerfile="backend/${SERVICE}/Dockerfile"
           fi
           image="${ACR_NAME}.azurecr.io/${SERVICE}"
-          docker build -t "${image}:${IMAGE_TAG}" -t "${image}:latest" -f "$dockerfile" "$context"
+          # Up to 3 attempts. With 11 images building in parallel, Maven Central occasionally
+          # refuses one runner's download (seen twice: "spring-boot-starter-parent ... absent",
+          # failing in ~1 s while the other builds fetched it fine). A short pause clears it.
+          for attempt in 1 2 3; do
+            if docker build -t "${image}:${IMAGE_TAG}" -t "${image}:latest" -f "$dockerfile" "$context"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::docker build failed 3 times for ${SERVICE}"
+              exit 1
+            fi
+            echo "::warning::docker build attempt ${attempt} failed for ${SERVICE}; retrying in $((attempt * 30))s"
+            sleep $((attempt * 30))
+          done
           echo "image=${image}" >> "$GITHUB_OUTPUT"
 
       # Security gate: an image with a fixable HIGH/CRITICAL CVE is never pushed.
