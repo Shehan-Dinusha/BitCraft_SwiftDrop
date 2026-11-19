@@ -161,23 +161,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/deliveries/{deliveryId}/proof-of-delivery/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Verify proof-of-delivery with recipient OTP */
-        post: operations["verifyProofOfDelivery"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -206,7 +189,6 @@ export interface components {
         ProofOfDeliveryUploadRequest: {
             photoUrl: string;
             recipientSignature: string;
-            confirmationOtp: string;
         };
         ProofOfDeliveryResponse: {
             id?: number;
@@ -564,7 +546,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Evidence uploaded successfully */
+            /** @description Evidence uploaded successfully; the proof is marked verified, unlocking DELIVERED */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -572,37 +554,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseProofOfDeliveryResponse"];
                 };
-            };
-        };
-    };
-    verifyProofOfDelivery: {
-        parameters: {
-            query: {
-                otp: string;
-            };
-            header?: never;
-            path: {
-                deliveryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Proof-of-delivery verified */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseProofOfDeliveryResponse"];
-                };
-            };
-            /** @description Invalid OTP */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

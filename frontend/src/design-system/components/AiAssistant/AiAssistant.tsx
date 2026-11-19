@@ -47,6 +47,8 @@ export interface AssistantPanelProps {
   suggestions?: string[];
   /** Shows the animated "typing" bubble (Figma: State = Typing). */
   typing?: boolean;
+  /** Disables the composer and quick prompts without showing a typing indicator. */
+  disabled?: boolean;
   onSend: (text: string) => void;
   onClose?: () => void;
   onReset?: () => void;
@@ -61,6 +63,7 @@ export function AssistantPanel({
   messages,
   suggestions = [],
   typing = false,
+  disabled = false,
   onSend,
   onClose,
   onReset,
@@ -78,7 +81,7 @@ export function AssistantPanel({
 
   const send = (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || typing) return;
+    if (!trimmed || typing || disabled) return;
     onSend(trimmed);
     setValue('');
     window.setTimeout(() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight }), 0);
@@ -171,7 +174,7 @@ export function AssistantPanel({
             <button
               key={suggestion}
               type="button"
-              disabled={typing}
+              disabled={typing || disabled}
               onClick={() => send(suggestion)}
               className="rounded-full border border-border-subtle px-2.5 py-[5px] text-caption text-primary transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
             >
@@ -194,7 +197,7 @@ export function AssistantPanel({
         <input
           id={inputId}
           maxLength={2000}
-          disabled={typing}
+          disabled={typing || disabled}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder={placeholder}
@@ -203,7 +206,7 @@ export function AssistantPanel({
         <button
           type="submit"
           aria-label="Send"
-          disabled={typing || !value.trim()}
+          disabled={typing || disabled || !value.trim()}
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-brand-primary text-brand-on transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
         >
           <Send aria-hidden="true" className="size-[18px]" />

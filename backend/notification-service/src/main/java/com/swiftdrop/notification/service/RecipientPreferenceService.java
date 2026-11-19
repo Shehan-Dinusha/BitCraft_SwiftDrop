@@ -27,7 +27,6 @@ public class RecipientPreferenceService {
                             .recipientId(recipientId)
                             .recipientType("CUSTOMER")
                             .emailEnabled(true)
-                            .smsEnabled(true)
                             .pushEnabled(true)
                             .languagePreference("en")
                             .build();
@@ -50,17 +49,11 @@ public class RecipientPreferenceService {
         if (request.emailEnabled() != null) {
             pref.setEmailEnabled(request.emailEnabled());
         }
-        if (request.smsEnabled() != null) {
-            pref.setSmsEnabled(request.smsEnabled());
-        }
         if (request.pushEnabled() != null) {
             pref.setPushEnabled(request.pushEnabled());
         }
         if (request.emailAddress() != null && !request.emailAddress().isBlank()) {
             pref.setEmailAddress(request.emailAddress().trim());
-        }
-        if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
-            pref.setPhoneNumber(request.phoneNumber().trim());
         }
         if (request.languagePreference() != null && !request.languagePreference().isBlank()) {
             pref.setLanguagePreference(request.languagePreference().trim());
@@ -75,10 +68,8 @@ public class RecipientPreferenceService {
                 pref.getRecipientId(),
                 pref.getRecipientType(),
                 pref.isEmailEnabled(),
-                pref.isSmsEnabled(),
                 pref.isPushEnabled(),
                 pref.getEmailAddress(),
-                pref.getPhoneNumber(),
                 pref.getLanguagePreference(),
                 pref.getUpdatedAt()
         );

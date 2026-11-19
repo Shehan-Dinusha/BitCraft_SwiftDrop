@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.swiftdrop.merchant.controller.ApiKeyHeaderAuthTest" time="10.071" tests="3" errors="0" skipped="0" failures="0">
+  <testcase name="rawOrMissingApiKeyCannotReplaceTrustedGatewayIdentity" classname="com.swiftdrop.merchant.controller.ApiKeyHeaderAuthTest" time="0.941">
+  </testcase>
+  <testcase name="bulkHasPerItemErrorsAndRejectsOverLimit" classname="com.swiftdrop.merchant.controller.ApiKeyHeaderAuthTest" time="0.472">
+  </testcase>
+  <testcase name="trustedMerchantGetsCreatedThenExistingOrder" classname="com.swiftdrop.merchant.controller.ApiKeyHeaderAuthTest" time="0.026">
+  </testcase>
+</testsuite>

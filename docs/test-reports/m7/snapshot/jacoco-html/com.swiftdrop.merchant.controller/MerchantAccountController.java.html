@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantAccountController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.controller</a> &gt; <span class="el_source">MerchantAccountController.java</span></div><h1>MerchantAccountController.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.controller;
+
+import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.merchant.dto.CreateMerchantRequest;
+import com.swiftdrop.merchant.dto.MerchantAccountResponse;
+import com.swiftdrop.merchant.service.MerchantAccountService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+<span class="fc" id="L18">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/api/v1/merchants&quot;)
+@RequiredArgsConstructor
+@Tag(name = &quot;MerchantAccount&quot;, description = &quot;Merchant business profile management operations&quot;)
+public class MerchantAccountController {
+
+    private final MerchantAccountService merchantAccountService;
+
+    @GetMapping(&quot;/health&quot;)
+    @Operation(summary = &quot;Check merchant account controller health&quot;)
+    public ApiResponse&lt;String&gt; health() {
+<span class="fc" id="L30">        return ApiResponse.success(&quot;MerchantAccountController is active&quot;);</span>
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = &quot;Register a new merchant account&quot;)
+    public ApiResponse&lt;MerchantAccountResponse&gt; createMerchant(@Valid @RequestBody CreateMerchantRequest request) {
+<span class="fc" id="L37">        MerchantAccountResponse response = merchantAccountService.createMerchant(request);</span>
+<span class="fc" id="L38">        return ApiResponse.success(response, &quot;Merchant account successfully created&quot;);</span>
+    }
+
+    @GetMapping(&quot;/{merchantId}&quot;)
+    @Operation(summary = &quot;Get merchant profile by UUID&quot;)
+    public ApiResponse&lt;MerchantAccountResponse&gt; getMerchant(@PathVariable UUID merchantId) {
+<span class="fc" id="L44">        MerchantAccountResponse response = merchantAccountService.getOrCreateMerchant(merchantId, &quot;SwiftDrop Partner&quot;);</span>
+<span class="fc" id="L45">        return ApiResponse.success(response, &quot;Merchant profile retrieved&quot;);</span>
+    }
+
+    @GetMapping
+    @Operation(summary = &quot;List all merchant accounts&quot;)
+    public ApiResponse&lt;List&lt;MerchantAccountResponse&gt;&gt; listMerchants() {
+<span class="fc" id="L51">        List&lt;MerchantAccountResponse&gt; list = merchantAccountService.getAllMerchants();</span>
+<span class="fc" id="L52">        return ApiResponse.success(list, &quot;Merchants retrieved&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -75,6 +75,7 @@ class RsaSessionIntegrationTest {
         password = "RsaPassword7!" + UUID.randomUUID();
         id = users.register(new RegisterUserRequest(username, username + "@example.invalid", null,
                 "RSA", "Test", password, UserRole.CUSTOMER, SriLankanDistrict.COLOMBO, null)).id();
+        jdbc.update("update user_accounts set email_verified = true where public_id = ?", id);
     }
 
     @AfterEach

@@ -1,0 +1,49 @@
+erDiagram
+    pricing_zones ||..o{ district_zone_mappings : "zone_code"
+    pricing_zones ||..o{ surge_multiplier : "zone_code"
+    orders }o..o| tariff_rules : "rule_version_id"
+
+    pricing_zones {
+        bigserial id PK
+        varchar(32) zone_code UK
+        varchar(128) zone_name
+        varchar(32) tier
+        numeric(10,2) base_fee
+        numeric(10,2) per_kg_fee
+        numeric(4,2) express_multiplier
+        numeric(4,2) same_day_multiplier
+        varchar(64) status
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    district_zone_mappings {
+        varchar(64) district PK
+        varchar(32) zone_code "logical link, no FK constraint"
+        timestamptz created_at
+    }
+
+    tariff_rules {
+        bigserial id PK
+        varchar(64) rule_version_id "unique with from_district and to_district"
+        varchar(64) from_district
+        varchar(64) to_district "ALL / ALL row is the default rule"
+        numeric(10,2) base_price
+        numeric(6,2) weight_step_kg
+        numeric(10,2) price_per_step
+        numeric(8,2) volumetric_divisor
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    surge_multiplier {
+        bigserial id PK
+        varchar(32) zone_code "logical link, no FK constraint"
+        numeric(4,2) multiplier
+        timestamptz created_at
+    }
+
+    orders {
+        string pricing_rule_version_id "order service, logical reference only, no cross-service FK"
+    }

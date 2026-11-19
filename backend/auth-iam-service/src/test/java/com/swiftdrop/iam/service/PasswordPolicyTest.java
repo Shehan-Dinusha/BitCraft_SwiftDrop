@@ -51,4 +51,29 @@ class PasswordPolicyTest {
         assertThat(encoder.matches(raw, hash2)).isTrue();
         assertThat(encoder.matches("WrongPassword!", hash1)).isFalse();
     }
+
+    @Test
+    void rejectsVeryCommonPasswordsCaseInsensitively() {
+        assertThatThrownBy(() -> policy.validate("Password123")).hasMessageContaining("too common");
+        assertThatThrownBy(() -> policy.validate("QWERTY123")).hasMessageContaining("too common");
+    }
+
+    @Test
+    void rejectsPasswordsBuiltFromTheUsernameOrEmail() {
+        assertThatThrownBy(() -> policy.validate("Kamal2024xyz", "kamal", "someone@example.com"))
+                .hasMessageContaining("username");
+        assertThatThrownBy(() -> policy.validate("xx.nimsara.99", "other", "nimsara@gmail.com"))
+                .hasMessageContaining("email");
+    }
+
+    @Test
+    void shortIdentityFragmentsAreNotTreatedAsAMatch() {
+        assertThatCode(() -> policy.validate("Ab12cdefgh", "ab", "ab@example.com")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void demoSeedPasswordStillPasses() {
+        assertThatCode(() -> policy.validate("Demo@12345", "demo.customer", "demo.customer@example.com"))
+                .doesNotThrowAnyException();
+    }
 }

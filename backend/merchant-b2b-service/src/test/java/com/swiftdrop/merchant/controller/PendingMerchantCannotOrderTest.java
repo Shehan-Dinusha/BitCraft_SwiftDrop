@@ -29,6 +29,7 @@ class PendingMerchantCannotOrderTest {
     @MockitoBean BulkBatchItemRepository items;
     @MockitoBean BulkCsvOrderProcessor csv;
     @MockitoBean MerchantEventPublisher events;
+    @MockitoBean B2bOrderSubmissionService submissions;
     UUID id = UUID.randomUUID();
 
     @ParameterizedTest
@@ -48,7 +49,7 @@ class PendingMerchantCannotOrderTest {
         mvc.perform(multipart("/api/v1/merchants/" + id + "/ingest/csv")
                 .file(new MockMultipartFile("file", "orders.csv", "text/csv", "header\nrow".getBytes())))
                 .andExpect(status().isForbidden());
-        verifyNoInteractions(keys, batches, items, csv, events);
+        verifyNoInteractions(keys, batches, items, csv, events, submissions);
     }
 
     @Test void approvedMerchantCanGenerateKey() throws Exception {

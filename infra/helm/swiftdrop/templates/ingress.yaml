@@ -1,0 +1,99 @@
+{{- /*
+  Public entry point. Standard networking.k8s.io/v1 fields only — no controller-
+  specific rewrite annotations — so paths reach the gateway unchanged
+  (/api/v1/... stays /api/v1/..., which is what GatewayRoutesConfig matches).
+*/ -}}
+{{- if .Values.ingress.enabled }}
+{{- $ing := .Values.ingress }}
+{{- $issuer := .Values.certManager.clusterIssuer }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: swiftdrop-ingress
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ingress
+  {{- $annotations := deepCopy ($ing.annotations | default dict) }}
+  {{- if and $ing.tls.enabled $issuer.create }}
+  {{- $_ := set $annotations "cert-manager.io/cluster-issuer" $issuer.name }}
+  {{- end }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ $ing.className }}
+  {{- if $ing.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ $ing.hosts.app }}
+        - {{ $ing.hosts.api }}
+      secretName: {{ $ing.tls.secretName }}
+  {{- end }}
+  rules:
+    # Web app: frontend + same-origin API / WebSocket / SSE (no CORS round-trips).
+    - host: {{ $ing.hosts.app }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port: { name: http }
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port: { name: http }
+          {{- if .Values.frontend.enabled }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { name: http }
+          {{- end }}
+    # Public API host: gateway only. /actuator stays private on purpose.
+    - host: {{ $ing.hosts.api }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port: { name: http }
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port: { name: http }
+          - path: /swagger-ui.html
+            pathType: Exact
+            backend:
+              service:
+                name: api-gateway
+                port: { name: http }
+          - path: /swagger-ui
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port: { name: http }
+          - path: /v3/api-docs
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port: { name: http }
+          - path: /webjars
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port: { name: http }
+{{- end }}

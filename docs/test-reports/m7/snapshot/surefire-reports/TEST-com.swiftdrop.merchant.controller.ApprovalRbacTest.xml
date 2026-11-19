@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.swiftdrop.merchant.controller.ApprovalRbacTest" time="0.787" tests="7" errors="0" skipped="0" failures="0">
+  <testcase name="malformedStatusIsBadRequest" classname="com.swiftdrop.merchant.controller.ApprovalRbacTest" time="0.035">
+  </testcase>
+  <testcase name="adminCanApproveRejectAndList" classname="com.swiftdrop.merchant.controller.ApprovalRbacTest" time="0.057">
+  </testcase>
+  <testcase name="unauthenticatedCallerIsRejected" classname="com.swiftdrop.merchant.controller.ApprovalRbacTest" time="0.066">
+  </testcase>
+  <testcase name="rejectionRequiresReason" classname="com.swiftdrop.merchant.controller.ApprovalRbacTest" time="0.018">
+  </testcase>
+  <testcase name="merchantCannotUseAdminOperations" classname="com.swiftdrop.merchant.controller.ApprovalRbacTest" time="0.02">
+  </testcase>
+  <testcase name="registrationRejectsWrongRoleAndInvalidDetails" classname="com.swiftdrop.merchant.controller.ApprovalRbacTest" time="0.025">
+  </testcase>
+  <testcase name="registrationUsesAuthenticatedOwner" classname="com.swiftdrop.merchant.controller.ApprovalRbacTest" time="0.015">
+  </testcase>
+</testsuite>

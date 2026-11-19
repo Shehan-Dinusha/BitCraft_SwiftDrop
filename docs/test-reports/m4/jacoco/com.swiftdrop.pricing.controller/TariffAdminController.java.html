@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TariffAdminController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: PricingZone</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.pricing.controller</a> &gt; <span class="el_source">TariffAdminController.java</span></div><h1>TariffAdminController.java</h1><pre class="source lang-java linenums">package com.swiftdrop.pricing.controller;
+
+import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.pricing.dto.TariffRuleRequest;
+import com.swiftdrop.pricing.dto.TariffRuleResponse;
+import com.swiftdrop.pricing.security.AdminAccessGuard;
+import com.swiftdrop.pricing.service.TariffAdminService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/v1/pricing/tariffs&quot;)
+@Tag(name = &quot;Tariff Management&quot;, description = &quot;View and publish default tariff versions&quot;)
+@RequiredArgsConstructor
+public class TariffAdminController {
+
+    private final TariffAdminService tariffAdminService;
+    private final AdminAccessGuard adminAccessGuard;
+
+    @GetMapping
+    @Operation(summary = &quot;List all tariff rule versions, newest first&quot;)
+    public ApiResponse&lt;List&lt;TariffRuleResponse&gt;&gt; listRules() {
+<span class="fc" id="L33">        return ApiResponse.success(tariffAdminService.listRules(), &quot;Tariff rules retrieved successfully&quot;);</span>
+    }
+
+    @GetMapping(&quot;/active&quot;)
+    @Operation(summary = &quot;Get the active default tariff rule&quot;)
+    public ApiResponse&lt;TariffRuleResponse&gt; getActiveRule() {
+<span class="nc" id="L39">        return ApiResponse.success(tariffAdminService.getActiveRule(), &quot;Active tariff rule retrieved successfully&quot;);</span>
+    }
+
+    @PutMapping(&quot;/default&quot;)
+    @Operation(summary = &quot;Publish a new default tariff version (dispatcher or system admin only)&quot;)
+    public ApiResponse&lt;TariffRuleResponse&gt; publishNewVersion(@Valid @RequestBody TariffRuleRequest request,
+                                                             HttpServletRequest httpRequest) {
+<span class="fc" id="L46">        adminAccessGuard.requireAdmin(httpRequest);</span>
+<span class="fc" id="L47">        return ApiResponse.success(tariffAdminService.publishNewVersion(request), &quot;Tariff version published successfully&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

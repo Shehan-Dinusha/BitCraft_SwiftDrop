@@ -14,8 +14,12 @@ public record CreateWebhookEndpointRequest(
         UUID merchantId,
 
         @NotBlank(message = "Target URL is required")
-        @URL(message = "Target URL must be a valid HTTP/HTTPS endpoint")
-        @Schema(description = "Merchant receiving HTTPS endpoint", example = "https://merchant.example.com/api/v1/webhooks")
+        @URL(message = "Target URL must be a valid URL")
+        @Schema(description = "Merchant receiving endpoint. Must be a public HTTPS URL (max 500 characters): no "
+                + "username/password, no IP literal or hostname that is loopback, private, link-local or otherwise "
+                + "non-public, no internal names such as localhost or *.internal. Every address the host resolves to "
+                + "must be public. Refused URLs return 400 \"Invalid Webhook URL\".",
+                example = "https://merchant.example.com/api/v1/webhooks")
         String targetUrl,
 
         @NotBlank(message = "Subscribed events required")

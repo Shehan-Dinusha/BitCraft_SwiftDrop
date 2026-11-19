@@ -1,77 +1,41 @@
 package com.swiftdrop.webhook.resiliency;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class HmacSignatureGeneratorTest {
 
-    private HmacSignatureGenerator generator;
+    private final HmacSignatureGenerator generator = new HmacSignatureGenerator();
 
-    @BeforeEach
-    void setUp() {
-        generator = new HmacSignatureGenerator();
+    @Test
+    void producesTheKnownHmacSha256Value() {
+        // Reference: printf 'payload' | openssl dgst -sha256 -hmac key
+        assertThat(generator.calculateSignature("payload", "key"))
+                .isEqualTo("sha256=5d98b45c90a207fa998ce639fea6f02ecc8cc3f36fef81d694fb856b4d0a28ca");
     }
 
     @Test
-    @DisplayName("calculateSignature should return sha256 hex digest prefixed with sha256=")
-    void testCalculateSignature() {
-        String payload = "{\"event\":\"parcel.status.changed\",\"status\":\"DELIVERED\"}";
-        String secret = "whsec_test_secret_key_123";
-
-        String signature = generator.calculateSignature(payload, secret);
-
-        assertThat(signature).isNotNull();
-        assertThat(signature).startsWith("sha256=");
-        assertThat(signature.length()).isEqualTo(7 + 64); // "sha256=" + 64 hex characters
+    void verifiesMatchingSignaturesOnly() {
+        String signature = generator.calculateSignature("payload", "key");
+        assertThat(generator.verifySignature("payload", "key", signature)).isTrue();
+        assertThat(generator.verifySignature("payload!", "key", signature)).isFalse();
+        assertThat(generator.verifySignature("payload", "other", signature)).isFalse();
+        assertThat(generator.verifySignature("payload", "key", "md5=abc")).isFalse();
+        assertThat(generator.verifySignature("payload", "key", null)).isFalse();
+        assertThat(generator.verifySignature(null, "key", signature)).isFalse();
     }
 
     @Test
-    @DisplayName("verifySignature should return true for identical payload and secret")
-    void testVerifySignatureSuccess() {
-        String payload = "{\"trackingId\":\"SD-2026-COL-001\",\"status\":\"IN_TRANSIT\"}";
-        String secret = "whsec_secret_abc_456";
-
-        String signature = generator.calculateSignature(payload, secret);
-
-        boolean isValid = generator.verifySignature(payload, secret, signature);
-        assertThat(isValid).isTrue();
+    void emptySecretIsRejected() {
+        assertThatThrownBy(() -> generator.calculateSignature("payload", ""))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(generator.verifySignature("payload", "", "sha256=00")).isFalse();
     }
 
     @Test
-    @DisplayName("verifySignature should return false for tampered payload")
-    void testVerifySignatureTamperedPayload() {
-        String originalPayload = "{\"amount\":1000}";
-        String tamperedPayload = "{\"amount\":9999}";
-        String secret = "whsec_secret_xyz";
-
-        String signature = generator.calculateSignature(originalPayload, secret);
-
-        boolean isValid = generator.verifySignature(tamperedPayload, secret, signature);
-        assertThat(isValid).isFalse();
-    }
-
-    @Test
-    @DisplayName("verifySignature should return false for wrong secret")
-    void testVerifySignatureWrongSecret() {
-        String payload = "{\"test\":true}";
-        String secret1 = "whsec_secret_one";
-        String secret2 = "whsec_secret_two";
-
-        String signature = generator.calculateSignature(payload, secret1);
-
-        boolean isValid = generator.verifySignature(payload, secret2, signature);
-        assertThat(isValid).isFalse();
-    }
-
-    @Test
-    @DisplayName("verifySignature should return false for null or empty values")
-    void testVerifySignatureNullOrEmpty() {
-        assertThat(generator.verifySignature(null, "secret", "sha256=123")).isFalse();
-        assertThat(generator.verifySignature("payload", null, "sha256=123")).isFalse();
-        assertThat(generator.verifySignature("payload", "secret", null)).isFalse();
-        assertThat(generator.verifySignature("payload", "secret", "invalid_sig")).isFalse();
+    void nullPayloadIsSignedAsEmpty() {
+        assertThat(generator.calculateSignature(null, "key")).isEqualTo(generator.calculateSignature("", "key"));
     }
 }

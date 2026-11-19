@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantApiKey.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.domain.entity</a> &gt; <span class="el_source">MerchantApiKey.java</span></div><h1>MerchantApiKey.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = &quot;merchant_api_keys&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MerchantApiKey {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;key_id&quot;, nullable = false, unique = true, updatable = false)
+    private UUID keyId;
+
+    @Column(name = &quot;merchant_id&quot;, nullable = false)
+    private UUID merchantId;
+
+    @Column(name = &quot;key_name&quot;, nullable = false, length = 100)
+    private String keyName;
+
+    @Column(name = &quot;key_prefix&quot;, nullable = false, length = 24)
+    private String keyPrefix;
+
+    @Column(name = &quot;key_hash&quot;, nullable = false, unique = true, length = 64)
+    private String keyHash;
+
+    @Column(name = &quot;is_active&quot;, nullable = false)
+    @Builder.Default
+    private boolean active = true;
+
+    @Column(name = &quot;expires_at&quot;)
+    private Instant expiresAt;
+
+    @Column(name = &quot;last_used_at&quot;)
+    private Instant lastUsedAt;
+
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = &quot;revoked_at&quot;)
+    private Instant revokedAt;
+
+    @PrePersist
+    public void prePersist() {
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (this.keyId == null) {</span>
+<span class="fc" id="L56">            this.keyId = UUID.randomUUID();</span>
+        }
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (this.createdAt == null) {</span>
+<span class="fc" id="L59">            this.createdAt = Instant.now();</span>
+        }
+<span class="fc" id="L61">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

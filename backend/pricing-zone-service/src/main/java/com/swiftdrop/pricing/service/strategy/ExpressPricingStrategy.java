@@ -6,10 +6,12 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+/**
+ * EXPRESS delivery: the subtotal times the zone's express multiplier. The multiplier is per zone
+ * because faster delivery costs more where couriers cover longer distances.
+ */
 @Component
 public class ExpressPricingStrategy implements PricingStrategy {
-
-    private static final BigDecimal DEFAULT_MULTIPLIER = new BigDecimal("1.50");
 
     @Override
     public boolean supports(OrderSpeed speed) {
@@ -18,7 +20,6 @@ public class ExpressPricingStrategy implements PricingStrategy {
 
     @Override
     public BigDecimal apply(BigDecimal subtotal, PricingZone zone) {
-        BigDecimal multiplier = zone != null ? zone.getExpressMultiplier() : DEFAULT_MULTIPLIER;
-        return subtotal.multiply(multiplier);
+        return subtotal.multiply(zone.getExpressMultiplier());
     }
 }

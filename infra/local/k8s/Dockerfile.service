@@ -1,0 +1,9 @@
+# Local-only runtime image: wraps a jar already built on the host by
+# scripts/k8s-local-build.sh (mvn package). CD keeps using backend/<svc>/Dockerfile.
+FROM eclipse-temurin:25-jre-alpine
+RUN addgroup -g 1001 -S swiftdrop && adduser -u 1001 -S swiftdrop -G swiftdrop
+WORKDIR /app
+COPY app.jar /app/app.jar
+USER swiftdrop
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

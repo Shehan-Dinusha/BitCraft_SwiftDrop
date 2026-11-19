@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.events.delivery.ParcelFeeRevisedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.gateway.trackinghub.dto.PublicTrackingViewDto;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -97,6 +99,94 @@ class TrackingBroadcastHubServiceTest {
         assertThat(view.statusTimeline()).hasSize(2);
         assertThat(view.originDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
         assertThat(view.destinationDistrict()).isEqualTo(SriLankanDistrict.KANDY);
+    }
+
+    @Test
+    void feeRevisionReachesTheCustomerTopicWhenCustomerIdIsPresent() {
+        UUID customerId = UUID.randomUUID();
+        ParcelFeeRevisedEvent fee = feeRevision(UUID.randomUUID(), "SD-FEE-0001", customerId);
+
+        StepVerifier.create(hub.streamTopic("/topic/customer/" + customerId).take(1))
+                .then(() -> hub.onFeeRevised(fee))
+                .expectNextMatches(json -> json.contains("SD-FEE-0001"))
+                .verifyComplete();
+    }
+
+    @Test
+    void feeRevisionUsesTheKnownCustomerForATrackingNumber() {
+        UUID customerId = UUID.randomUUID();
+        hub.onStatusChanged(event(UUID.randomUUID(), "SD-FEE-0002",
+                PublicOrderStatus.PICKED_UP, customerId));
+
+        ParcelFeeRevisedEvent fee = feeRevision(UUID.randomUUID(), "SD-FEE-0002", null);
+
+        StepVerifier.create(hub.streamTopic("/topic/customer/" + customerId).take(1))
+                .then(() -> hub.onFeeRevised(fee))
+                .expectNextMatches(json -> json.contains("SD-FEE-0002"))
+                .verifyComplete();
+    }
+
+    @Test
+    void feeRevisionIsIgnoredWhenNoCustomerIsKnown() {
+        StepVerifier.create(hub.streamTopic("/topic/customer/" + UUID.randomUUID()))
+                .then(() -> {
+                    hub.onFeeRevised(null);
+                    hub.onFeeRevised(feeRevision(UUID.randomUUID(), "SD-FEE-ORPHAN", null));
+                })
+                .expectNoEvent(Duration.ofMillis(50))
+                .thenCancel()
+                .verify();
+    }
+
+    @Test
+    void feeRevisionIgnoresDuplicateEventIds() {
+        UUID eventId = UUID.randomUUID();
+        UUID customerId = UUID.randomUUID();
+        ParcelFeeRevisedEvent fee = feeRevision(eventId, "SD-FEE-DUP", customerId);
+
+        StepVerifier.create(hub.streamTopic("/topic/customer/" + customerId).take(1))
+                .then(() -> {
+                    hub.onFeeRevised(fee);
+                    hub.onFeeRevised(fee);
+                })
+                .expectNextCount(1)
+                .verifyComplete();
+    }
+
+    @Test
+    void statusEventWithoutACustomerStillUpdatesTheCachedView() {
+        UUID customerId = UUID.randomUUID();
+        hub.onStatusChanged(event(UUID.randomUUID(), "SD-NOCUST-5555",
+                PublicOrderStatus.PICKED_UP, customerId));
+
+        ParcelStatusChangedEvent withoutCustomer = new ParcelStatusChangedEvent(
+                UUID.randomUUID(), UUID.randomUUID(), "SD-NOCUST-5555", UUID.randomUUID(), null,
+                PublicOrderStatus.PICKED_UP, PublicOrderStatus.IN_TRANSIT, InternalQueueStatus.OUTBOUND,
+                SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, null, Instant.now());
+
+        StepVerifier.create(hub.stream("SD-NOCUST-5555").take(2))
+                .then(() -> hub.onStatusChanged(withoutCustomer))
+                .expectNextCount(2)
+                .verifyComplete();
+
+        assertThat(hub.current("SD-NOCUST-5555").currentPublicStatus())
+                .isEqualTo(PublicOrderStatus.IN_TRANSIT);
+    }
+
+    private ParcelFeeRevisedEvent feeRevision(UUID eventId, String trackingNumber, UUID customerId) {
+        return new ParcelFeeRevisedEvent(
+                eventId, null, trackingNumber, UUID.randomUUID(), customerId,
+                null, null, null, null, null, null);
+    }
+
+    private ParcelStatusChangedEvent event(UUID eventId,
+                                           String trackingNumber,
+                                           PublicOrderStatus status,
+                                           UUID customerId) {
+        return new ParcelStatusChangedEvent(
+                eventId, UUID.randomUUID(), trackingNumber, UUID.randomUUID(), customerId,
+                null, status, null, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY,
+                null, Instant.now());
     }
 
     private ParcelStatusChangedEvent event(UUID eventId,

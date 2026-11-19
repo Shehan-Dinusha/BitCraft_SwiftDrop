@@ -1,0 +1,131 @@
+---
+title: SwiftDrop analytics database - all dashed relationships are logical, no SQL foreign keys
+---
+erDiagram
+    direction TB
+    aiDeliveryInsights["ai_delivery_insights"] {
+        bigint id PK "NOT NULL"
+        uuid insight_id UK "NOT NULL"
+        varchar tracking_number  "NULL; varchar(64)"
+        varchar origin_district  "NOT NULL; varchar(64)"
+        varchar destination_district  "NOT NULL; varchar(64)"
+        varchar delivery_speed  "NOT NULL; varchar(64)"
+        varchar risk_level  "NOT NULL; varchar(32)"
+        numeric risk_score  "NOT NULL; numeric(5,2)"
+        integer predicted_delay_minutes  "NOT NULL"
+        varchar recommended_action  "NOT NULL; varchar(255)"
+        text reasoning  "NOT NULL"
+        varchar weather_or_traffic_factor  "NULL; varchar(255)"
+        timestamptz created_at  "NOT NULL"
+    }
+    aiToolInvocationAudit["ai_tool_invocation_audit"] {
+        bigint id PK "NOT NULL"
+        uuid audit_id UK "NOT NULL"
+        varchar tool_name  "NOT NULL; varchar(128)"
+        varchar caller_persona  "NOT NULL; varchar(64)"
+        text prompt_or_query  "NULL; raw data not stored"
+        text input_parameters  "NULL; raw data not stored"
+        text output_result  "NULL; safe outcome code only"
+        bigint execution_time_ms  "NOT NULL"
+        boolean success  "NOT NULL"
+        timestamptz created_at  "NOT NULL"
+        uuid actor_user_id  "NULL"
+        varchar correlation_id  "NULL; varchar(100)"
+        varchar outcome  "NULL; varchar(32)"
+    }
+    analyticsCouriers["analytics_couriers"] {
+        uuid courier_id PK "NOT NULL"
+        varchar courier_name  "NOT NULL; varchar(255)"
+        timestamptz last_assignment_at  "NOT NULL"
+    }
+    analyticsOrderCouriers["analytics_order_couriers"] {
+        uuid order_id PK "NOT NULL"
+        uuid courier_id PK "NOT NULL"
+    }
+    analyticsOrderProjection["analytics_order_projection"] {
+        uuid order_id PK "NOT NULL"
+        timestamptz created_at  "NULL"
+        varchar pickup_district  "NULL; varchar(64)"
+        varchar current_status  "NULL; varchar(64)"
+        timestamptz status_at  "NULL"
+        varchar district  "NULL; varchar(64)"
+        uuid courier_id  "NULL"
+        timestamptz assigned_at  "NULL"
+        varchar outcome  "NULL; varchar(64)"
+        timestamptz outcome_at  "NULL"
+        varchar outcome_district  "NULL; varchar(64)"
+        uuid outcome_courier_id  "NULL"
+        varchar conflict_reason  "NULL; varchar(255)"
+    }
+    courierDailyStats["courier_daily_stats"] {
+        uuid courier_id PK "NOT NULL"
+        date report_date PK "NOT NULL"
+        bigint delivered  "NOT NULL"
+        bigint failed  "NOT NULL"
+        bigint active  "NOT NULL"
+    }
+    courierPerformanceMetrics["courier_performance_metrics"] {
+        bigint id PK "NOT NULL"
+        uuid courier_id UK "NOT NULL"
+        varchar courier_name  "NOT NULL; varchar(255)"
+        varchar current_district  "NOT NULL; varchar(64)"
+        integer total_assigned  "NOT NULL"
+        integer delivered_count  "NOT NULL"
+        integer failed_count  "NOT NULL"
+        numeric avg_transit_minutes  "NOT NULL; numeric(8,2)"
+        numeric on_time_percentage  "NOT NULL; numeric(5,2)"
+        numeric customer_rating  "NOT NULL; numeric(3,2)"
+        varchar status  "NOT NULL; varchar(64)"
+        timestamptz last_event_at  "NULL"
+        timestamptz created_at  "NOT NULL"
+        timestamptz updated_at  "NOT NULL"
+    }
+    dailyDeliveryStats["daily_delivery_stats"] {
+        date report_date PK "NOT NULL"
+        bigint created  "NOT NULL"
+        bigint delivered  "NOT NULL"
+        bigint failed  "NOT NULL"
+    }
+    flywaySchemaHistory["flyway_schema_history"] {
+        integer installed_rank PK "NOT NULL"
+        varchar version  "NULL; varchar(50)"
+        varchar description  "NOT NULL; varchar(200)"
+        varchar type  "NOT NULL; varchar(20)"
+        varchar script  "NOT NULL; varchar(1000)"
+        integer checksum  "NULL"
+        varchar installed_by  "NOT NULL; varchar(100)"
+        timestamp installed_on  "NOT NULL"
+        integer execution_time  "NOT NULL"
+        boolean success  "NOT NULL"
+    }
+    operationalSlaSnapshots["operational_sla_snapshots"] {
+        bigint id PK "NOT NULL"
+        varchar status  "NOT NULL; varchar(64)"
+        timestamptz created_at  "NOT NULL"
+        timestamptz updated_at  "NOT NULL"
+        varchar district  "NULL; varchar(64)"
+        date snapshot_date  "NOT NULL"
+        integer total_parcels  "NOT NULL"
+        integer delivered_on_time  "NOT NULL"
+        integer breached_sla  "NOT NULL"
+        integer failed_deliveries  "NOT NULL"
+        numeric avg_transit_time_minutes  "NOT NULL; numeric(8,2)"
+        numeric on_time_rate  "NOT NULL; numeric(5,2)"
+    }
+    processedTelemetryEvents["processed_telemetry_events"] {
+        uuid event_id PK "NOT NULL"
+        varchar event_type  "NOT NULL; varchar(64)"
+        uuid order_id  "NOT NULL"
+        uuid correlation_id  "NOT NULL"
+        timestamptz occurred_at  "NOT NULL"
+        jsonb payload  "NOT NULL"
+        timestamptz processed_at  "NOT NULL"
+        boolean projection_applied  "NOT NULL"
+    }
+
+    %% Logical associations only. Daily aggregates and standalone tables have no FK edges.
+    analyticsOrderProjection ||..o{ processedTelemetryEvents : "order_id logical"
+    analyticsOrderProjection ||..o{ analyticsOrderCouriers : "order_id logical"
+    analyticsCouriers ||..o{ analyticsOrderCouriers : "courier_id logical"
+    analyticsCouriers ||..o{ courierDailyStats : "courier_id logical"
+    analyticsCouriers o|..o{ analyticsOrderProjection : "current courier_id logical"

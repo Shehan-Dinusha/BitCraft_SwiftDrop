@@ -22,7 +22,7 @@ public class AiModelConfig {
         if (key.isBlank() || model.isBlank()) throw new IllegalStateException("Real AI mode requires AI_API_KEY and AI_MODEL");
         if (endpoint.isBlank() && "openai".equals(provider)) endpoint = "https://api.openai.com/v1";
         URI uri;
-        try { uri = URI.create(endpoint); } catch (Exception ex) { throw new IllegalStateException("Invalid AI_ENDPOINT"); }
+        try { uri = URI.create(endpoint); } catch (IllegalArgumentException ex) { throw new IllegalStateException("Invalid AI_ENDPOINT"); }
         if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null
                 || uri.getQuery() != null || uri.getFragment() != null) {
             throw new IllegalStateException("AI_ENDPOINT must be an HTTPS API base URL; Azure requires /openai/v1");

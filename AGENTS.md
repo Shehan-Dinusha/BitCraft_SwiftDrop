@@ -23,7 +23,7 @@ The backend reactor modules are declared in [backend/pom.xml](backend/pom.xml): 
 | `notification-service` | Member 9 | 8088 | `swiftdrop-notify-postgres` / 5439; `swiftdrop_notify` | `notify-postgres-headless.swiftdrop-data.svc.cluster.local` | Notification preferences and logs |
 | `analytics-ai-service` | Member 10 | 8089 | `swiftdrop-analytics-postgres` / 5440; `swiftdrop_analytics` | `analytics-postgres-headless.swiftdrop-data.svc.cluster.local` | Operational KPIs and AI delivery assistance |
 
-Kubernetes namespaces are `swiftdrop-apps`, `swiftdrop-data`, and `swiftdrop-messaging`, as defined in [infra/k8s/base/namespaces.yml](infra/k8s/base/namespaces.yml). The RabbitMQ headless service is `rabbitmq-headless` in `swiftdrop-messaging`.
+Kubernetes namespaces are `swiftdrop-apps`, `swiftdrop-data`, and `swiftdrop-messaging`, as defined by `namespaces` in the Helm chart [values.yaml](infra/helm/swiftdrop/values.yaml). The RabbitMQ headless service is `rabbitmq-headless` in `swiftdrop-messaging`. The Helm chart [infra/helm/swiftdrop](infra/helm/swiftdrop) is the only Kubernetes source; see [AKS-HELM-DEPLOYMENT.md](docs/deployment/AKS-HELM-DEPLOYMENT.md).
 
 ## Mandatory Pre-Coding Inspection Protocol
 
@@ -49,7 +49,7 @@ Kubernetes namespaces are `swiftdrop-apps`, `swiftdrop-data`, and `swiftdrop-mes
 | Add/modify REST controller or DTO | Verify `@Tag`, `@Operation`, `@Schema`, Jakarta validation, and `ApiResponse<T>` usage; update the relevant `docs/api-specs` contract; run `npm run api:sync:local` against a running gateway or `npm run api:sync:specs` from static specs. |
 | Add/modify a JPA `@Entity` field | Add a new immutable Flyway migration named `V<N>__<description>.sql` in that service’s `src/main/resources/db/migration/`; never edit a committed migration. |
 | Add/modify a RabbitMQ event record | Update [common-contracts](backend/common-contracts), rebuild it with `mvn -f backend/pom.xml clean install -pl common-contracts -am`, and update `definitions.json` plus the relevant `RabbitMQConfig.java` when queues or routing keys change. |
-| Add an environment variable to `application.yml` | Update [.env.example](.env.example), [docker-compose.yml](docker-compose.yml), and the matching `infra/k8s/services/<service>.yml` manifest. |
+| Add an environment variable to `application.yml` | Update [.env.example](.env.example), [docker-compose.yml](docker-compose.yml), and the Helm chart: `services.<service>.config` in [values.yaml](infra/helm/swiftdrop/values.yaml) for non-secret values, or `services.<service>.secretEnv` plus `templates/secrets.yaml` and `values-secrets.example.yaml` for secrets. |
 | Change gateway route or public tracking stream | Update `GatewayRoutesConfig.java`, `JwtAuthenticationGlobalFilter.java`, gateway OpenAPI URLs, frontend tracking API/client, and verify WebSocket/SSE behavior. |
 | Change a frontend contract type | Regenerate under `frontend/src/types/generated/`; do not hand-edit generated files. |
 
@@ -79,6 +79,11 @@ npm run lint
 npm run build
 npm run api:sync:specs
 npm run api:sync:local
+cd ..
+
+# Helm chart (Kubernetes) — CI runs the same checks on pull requests
+helm lint infra/helm/swiftdrop -f infra/helm/swiftdrop/values-secrets.example.yaml
+helm template swiftdrop infra/helm/swiftdrop -f infra/helm/swiftdrop/values-student.yaml -f infra/helm/swiftdrop/values-secrets.example.yaml
 ```
 
 Do not claim runtime success from compilation alone. For API/gateway changes, start the relevant services and verify health, OpenAPI, RabbitMQ consumption, and the affected HTTP/SSE/WebSocket path.

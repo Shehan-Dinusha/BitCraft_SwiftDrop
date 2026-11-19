@@ -7,6 +7,7 @@ import { Modal } from '@/design-system/primitives/Modal';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
 import { BulkCsvDropzone } from '../components/BulkCsvDropzone';
 import { ApiKeyManagerCard } from '../components/ApiKeyManagerCard';
+import { MerchantOrdersTable } from '../components/MerchantOrdersTable';
 import {
   merchantApi,
   type MerchantAccountResponse,
@@ -41,6 +42,7 @@ export function MerchantPortalDashboard() {
   const [loading, setLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [ordersRevision, setOrdersRevision] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,11 +69,12 @@ export function MerchantPortalDashboard() {
       setLoading(true);
       setErrorMsg(null);
       const [acc, batchList] = await Promise.all([
-        merchantApi.getMerchant(merchantId).catch(() => null),
-        merchantApi.listBatches(merchantId).catch(() => [])
+        merchantApi.getMerchant(merchantId),
+        merchantApi.listBatches(merchantId)
       ]);
       setProfile(acc);
       setBatches(batchList || []);
+      setOrdersRevision((v) => v + 1);
     } catch (err: unknown) {
       const msg = apiErrorMessage(err, 'Failed to fetch merchant data');
       setErrorMsg(msg);
@@ -90,10 +93,11 @@ export function MerchantPortalDashboard() {
       setSelectedBatch(batch);
       setIsItemsModalOpen(true);
       setItemsLoading(true);
+      setBatchItems([]);
       const items = await merchantApi.getBatchItems(batch.batchId);
       setBatchItems(items || []);
     } catch (err) {
-      console.error('Failed to load batch items', err);
+      setErrorMsg(apiErrorMessage(err, 'Failed to load batch items'));
     } finally {
       setItemsLoading(false);
     }
@@ -117,11 +121,13 @@ export function MerchantPortalDashboard() {
               {profile?.businessName || user?.username || 'Merchant Partner Portal'}
             </h1>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-              {profile?.status || 'ACTIVE'}
+              {profile?.status || 'Status unavailable'}
             </span>
           </div>
           <p className="flex items-center gap-2 text-xs text-slate-500">
-            <span>Operating District: <strong>{profile?.operatingDistrict || 'COLOMBO'}</strong></span>
+            <span>
+              Operating District: <strong>{profile?.operatingDistrict || 'COLOMBO'}</strong>
+            </span>
             <span>?</span>
             <span>{profile?.contactEmail || 'merchants@swiftdrop.lk'}</span>
           </p>
@@ -153,6 +159,20 @@ export function MerchantPortalDashboard() {
         </StatusBanner>
       )}
 
+      {merchantId === null && !errorMsg && (
+        <StatusBanner tone="info" title="Merchant access pending">
+          If you have already applied, wait for approval and sign in again. Otherwise,{' '}
+          <Link to="/merchant/register" className="underline">
+            register your business
+          </Link>
+          .
+        </StatusBanner>
+      )}
+      {profile && profile.status !== 'APPROVED' && (
+        <StatusBanner tone="warning" title="Approval required">
+          API keys and order ingestion are available only after approval.
+        </StatusBanner>
+      )}
       {/* KPI Stats Strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <SurfaceCard className="p-3">
@@ -160,21 +180,17 @@ export function MerchantPortalDashboard() {
             <span>Total Batches</span>
             <Layers className="h-4 w-4 text-indigo-500" />
           </div>
-          <div className="mt-1 text-lg font-bold text-slate-900">
-            {batches.length}
-          </div>
+          <div className="mt-1 text-lg font-bold text-slate-900">{batches.length}</div>
           <p className="text-[11px] text-slate-400">Automated CSV / JSON files</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Dispatched Orders</span>
+            <span>Accepted Orders</span>
             <PackageCheck className="h-4 w-4 text-emerald-500" />
           </div>
-          <div className="mt-1 text-lg font-bold text-slate-900">
-            {totalOrdersDispatched}
-          </div>
-          <p className="text-[11px] text-slate-400">Injected to dispatch engine</p>
+          <div className="mt-1 text-lg font-bold text-slate-900">{totalOrdersDispatched}</div>
+          <p className="text-[11px] text-slate-400">Successfully submitted batch rows</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
@@ -182,9 +198,7 @@ export function MerchantPortalDashboard() {
             <span>Success Rate</span>
             <CheckCircle2 className="h-4 w-4 text-cyan-500" />
           </div>
-          <div className="mt-1 text-lg font-bold text-slate-900">
-            {overallSuccessRate}%
-          </div>
+          <div className="mt-1 text-lg font-bold text-slate-900">{overallSuccessRate}%</div>
           <p className="text-[11px] text-slate-400">Valid address & schema</p>
         </SurfaceCard>
 
@@ -202,18 +216,26 @@ export function MerchantPortalDashboard() {
 
       {/* Two Column Ingestion & Key Management Strip */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {merchantId ? (
+        {merchantId && profile?.status === 'APPROVED' ? (
           <>
             <BulkCsvDropzone merchantId={merchantId} onBatchIngested={fetchMerchantData} />
             <ApiKeyManagerCard merchantId={merchantId} />
           </>
         ) : merchantId === null ? (
           <SurfaceCard className="p-4 text-xs text-secondary lg:col-span-2">
-            Your account is not linked to a merchant, so bulk ingestion and API keys are unavailable.
-            Contact SwiftDrop support to link your login to your merchant account.
+            Your account is not linked to a merchant, so bulk ingestion and API keys are
+            unavailable. Contact SwiftDrop support to link your login to your merchant account.
           </SurfaceCard>
         ) : null}
       </div>
+
+      {merchantId && (
+        <MerchantOrdersTable
+          key={merchantId}
+          merchantId={merchantId}
+          refreshToken={ordersRevision}
+        />
+      )}
 
       {/* Ingestion Batches Table */}
       <SurfaceCard className="space-y-3 p-4" data-density="compact">
@@ -250,9 +272,7 @@ export function MerchantPortalDashboard() {
               ) : (
                 batches.map((b) => (
                   <tr key={b.batchId} className="hover:bg-slate-50/50">
-                    <td className="py-2.5 font-medium text-slate-900">
-                      {b.fileName}
-                    </td>
+                    <td className="py-2.5 font-medium text-slate-900">{b.fileName}</td>
                     <td className="py-2.5">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -266,17 +286,18 @@ export function MerchantPortalDashboard() {
                         {b.batchStatus}
                       </span>
                     </td>
-                    <td className="py-2.5 font-mono text-slate-700">
-                      {b.totalRecords}
-                    </td>
+                    <td className="py-2.5 font-mono text-slate-700">{b.totalRecords}</td>
                     <td className="py-2.5 font-mono font-semibold text-emerald-600">
                       {b.successCount}
                     </td>
-                    <td className="py-2.5 font-mono text-rose-600">
-                      {b.failedCount}
-                    </td>
+                    <td className="py-2.5 font-mono text-rose-600">{b.failedCount}</td>
                     <td className="py-2.5 text-slate-500">
-                      {b.createdAt ? new Date(b.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
+                      {b.createdAt
+                        ? new Date(b.createdAt).toLocaleString([], {
+                            dateStyle: 'short',
+                            timeStyle: 'short'
+                          })
+                        : 'N/A'}
                     </td>
                     <td className="py-2.5 text-right">
                       <button
@@ -330,17 +351,11 @@ export function MerchantPortalDashboard() {
                         {item.trackingNumber || 'PENDING'}
                       </td>
                       <td className="py-2">
-                        <div className="font-medium text-slate-900">
-                          {item.recipientName}
-                        </div>
+                        <div className="font-medium text-slate-900">{item.recipientName}</div>
                         <div className="text-[11px] text-slate-400">{item.recipientPhone}</div>
                       </td>
-                      <td className="py-2 font-medium text-slate-700">
-                        {item.deliveryDistrict}
-                      </td>
-                      <td className="py-2 font-semibold text-slate-600">
-                        {item.deliverySpeed}
-                      </td>
+                      <td className="py-2 font-medium text-slate-700">{item.deliveryDistrict}</td>
+                      <td className="py-2 font-semibold text-slate-600">{item.deliverySpeed}</td>
                       <td className="py-2">
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${

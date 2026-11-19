@@ -75,7 +75,7 @@ git checkout -b feature/m6-setup
 Copy-Item .env.example .env
 ```
 
-Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `infra/k8s/services/delivery-execution-service.yml` (rule from `AGENTS.md`).
+Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `services.delivery-execution-service` in `infra/helm/swiftdrop/values.yaml` (rule from `AGENTS.md`).
 
 > **Known setup traps (skip this box once `repo-fix-plan.md` is merged on `dev`):**
 > 1. `docker-compose.yml` starts Postgres with password `changeme_pg`, but services default to `swiftdrop`.
@@ -437,7 +437,7 @@ Every test below is written and committed inside a stage in Part B. Use this tab
 - [ ] DB and RabbitMQ credentials in `application.yml` come from env variables (no hard-coded values).
 - [ ] No secrets in code, no personal data (phone, address, names) in logs or error messages.
 - [ ] Your service block in `docker-compose.yml` starts and is healthy (`docker compose up -d delivery-execution-service`).
-- [ ] `infra/k8s/services/delivery-execution-service.yml` has every env variable your `application.yml` reads (bonus marks).
+- [ ] `services.delivery-execution-service` in `infra/helm/swiftdrop/values.yaml` has every env variable your `application.yml` reads (bonus marks).
 - [ ] Documentation deliverable exported (PNG/PDF + source) to `docs/design/m6/` and sent to whoever compiles the final design PDF.
 
 **E2. Test evidence for the submission.** Save `backend/delivery-execution-service/target/surefire-reports/` and the JaCoCo `index.html` (as a screenshot or PDF) into `docs/test-reports/m6/`.

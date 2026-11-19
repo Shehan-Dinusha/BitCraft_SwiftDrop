@@ -61,6 +61,7 @@ export function SideNav({
   className
 }: SideNavProps) {
   const spec = roleShellSpec[role];
+  const operational = role === 'system-admin' || role === 'dispatcher';
   const menu = groups ?? spec.groups;
   const lastGroup = menu[menu.length - 1];
   const bodyGroups = lastGroup && !lastGroup.label && menu.length > 1 ? menu.slice(0, -1) : menu;
@@ -92,28 +93,51 @@ export function SideNav({
       className={cn(
         'sticky top-0 flex h-screen shrink-0 flex-col gap-0.5 border-r border-border-subtle bg-card px-3 pb-3 pt-3.5',
         rail ? 'w-[72px]' : 'w-64',
+        operational && 'px-4 pb-4 pt-5 shadow-[4px_0_24px_rgb(15_23_42_/_3%)]',
+        operational && rail && 'px-2',
         className
       )}
     >
       <div
-        className={cn('flex items-center gap-2.5 rounded-[10px] p-2', rail && 'justify-center p-1')}
+        className={cn(
+          'flex items-center gap-2.5 rounded-[10px] p-2',
+          operational &&
+            !rail &&
+            'mb-6 gap-3 rounded-2xl border border-border-subtle bg-gradient-to-br from-brand-subtle to-card p-3',
+          rail && 'justify-center p-1',
+          operational && rail && 'mb-5'
+        )}
       >
         <span
           aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
+          className={cn(
+            'flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary text-brand-on',
+            operational && 'size-10 rounded-xl shadow-sm'
+          )}
         >
           <Package className="size-[18px]" />
         </span>
         {rail ? null : (
           <>
             <div className="flex min-w-0 flex-1 flex-col">
-              <span className="text-body-strong text-primary">SwiftDrop</span>
+              <span
+                className={cn(
+                  'text-body-strong text-primary',
+                  operational && 'text-lg font-bold tracking-tight'
+                )}
+              >
+                SwiftDrop
+              </span>
               <span className="flex items-center gap-1.5 text-caption text-secondary">
-                <span aria-hidden="true" className={cn('size-1.5 rounded-full', roleDot[role])} />
+                {!operational && (
+                  <span aria-hidden="true" className={cn('size-1.5 rounded-full', roleDot[role])} />
+                )}
                 <span className="truncate">{workspace ?? spec.workspace}</span>
               </span>
             </div>
-            <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-secondary" />
+            {!operational && (
+              <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-secondary" />
+            )}
           </>
         )}
       </div>
@@ -144,11 +168,20 @@ export function SideNav({
         {bodyGroups.map((group, index) => (
           <div key={group.label ?? index} className="flex flex-col">
             {group.label && !rail ? (
-              <p className="px-3 pb-1 pt-3 text-overline uppercase text-muted">{group.label}</p>
+              <p
+                className={cn(
+                  'px-3 pb-1 pt-3 text-overline uppercase text-muted',
+                  operational && 'pb-3 pt-0 text-[10px] font-semibold tracking-[0.16em]'
+                )}
+              >
+                {group.label}
+              </p>
             ) : (
               <div className={rail && index > 0 ? 'my-2 h-px bg-border-subtle' : undefined} />
             )}
-            <ul className="flex flex-col gap-0.5">{group.items.map(renderEntry)}</ul>
+            <ul className={cn('flex flex-col gap-0.5', operational && 'gap-2')}>
+              {group.items.map(renderEntry)}
+            </ul>
           </div>
         ))}
         {footerGroup ? (
@@ -159,7 +192,12 @@ export function SideNav({
       </nav>
 
       {account ? (
-        <div className="mt-1 border-t border-border-subtle pt-2.5">
+        <div
+          className={cn(
+            'mt-1 border-t border-border-subtle pt-2.5',
+            operational && 'mt-5 rounded-xl border bg-canvas py-3'
+          )}
+        >
           <div className={cn('flex items-center gap-2.5 px-2', rail && 'flex-col px-0')}>
             <span
               aria-hidden="true"

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantAccount.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.domain.entity</a> &gt; <span class="el_source">MerchantAccount.java</span></div><h1>MerchantAccount.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.domain.entity;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = &quot;merchant_accounts&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MerchantAccount {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;merchant_id&quot;, nullable = false, unique = true, updatable = false)
+    private UUID merchantId;
+
+    @Column(name = &quot;business_name&quot;, nullable = false, length = 150)
+    private String businessName;
+
+    @Column(name = &quot;contact_email&quot;, length = 100)
+    private String contactEmail;
+
+    @Column(name = &quot;contact_phone&quot;, length = 30)
+    private String contactPhone;
+
+    @Column(name = &quot;pickup_address&quot;, length = 255)
+    private String pickupAddress;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;operating_district&quot;, nullable = false, length = 50)
+    private SriLankanDistrict operatingDistrict;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;status&quot;, nullable = false, length = 32)
+    @Builder.Default
+    private MerchantStatus status = MerchantStatus.PENDING_APPROVAL;
+
+    @Column(name = &quot;owner_user_id&quot;)
+    private UUID ownerUserId;
+
+    @Column(name = &quot;business_reg_no&quot;, length = 64)
+    private String businessRegNo;
+
+    @Column(name = &quot;approved_by&quot;)
+    private UUID approvedBy;
+
+    @Column(name = &quot;approved_at&quot;)
+    private Instant approvedAt;
+
+    @Column(name = &quot;rejection_reason&quot;, length = 500)
+    private String rejectionReason;
+
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = &quot;updated_at&quot;, nullable = false)
+    private Instant updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (this.merchantId == null) {</span>
+<span class="nc" id="L71">            this.merchantId = UUID.randomUUID();</span>
+        }
+<span class="nc" id="L73">        Instant now = Instant.now();</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        if (this.createdAt == null) {</span>
+<span class="nc" id="L75">            this.createdAt = now;</span>
+        }
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        if (this.updatedAt == null) {</span>
+<span class="nc" id="L78">            this.updatedAt = now;</span>
+        }
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (this.status == null) {</span>
+<span class="nc" id="L81">            this.status = MerchantStatus.PENDING_APPROVAL;</span>
+        }
+<span class="nc bnc" id="L83" title="All 2 branches missed.">        if (this.operatingDistrict == null) {</span>
+<span class="nc" id="L84">            this.operatingDistrict = SriLankanDistrict.COLOMBO;</span>
+        }
+<span class="nc" id="L86">    }</span>
+
+    @PreUpdate
+    public void preUpdate() {
+<span class="nc" id="L90">        this.updatedAt = Instant.now();</span>
+<span class="nc" id="L91">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -11,8 +11,10 @@ import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBann
 import { Modal } from '@/design-system/primitives/Modal';
 import { SlaBreachAlertTicker } from '../components/SlaBreachAlertTicker';
 import { AiDeliveryAssistantPanel } from '../components/AiDeliveryAssistantPanel';
+import { NotificationLogModal } from '@/features/notifications/NotificationLogModal';
 import { analyticsAiApi, type OperationalKpiSummary } from '@/services/api/analyticsAiApi';
 import {
+  Bell,
   Bike,
   CheckCircle,
   Filter,
@@ -54,6 +56,7 @@ export function FleetControlTowerPage() {
   const [selectedCourierId, setSelectedCourierId] = useState<string>('');
   const [overrideReason, setOverrideReason] = useState<string>('');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -130,6 +133,15 @@ export function FleetControlTowerPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
+            onClick={() => setIsLogsOpen(true)}
+            className="h-8 text-xs gap-1.5"
+          >
+            <Bell className="h-3.5 w-3.5 text-indigo-600" />
+            Notification Logs
+          </Button>
+
+          <Button
+            variant="outline"
             onClick={fetchData}
             disabled={loading}
             className="h-8 text-xs"
@@ -142,8 +154,8 @@ export function FleetControlTowerPage() {
 
       {/* SLA Breach Alert Ticker */}
       <SlaBreachAlertTicker
-        breachCount={kpiSummary?.breachedSla ?? 0}
-        onTimeRate={Number(kpiSummary?.systemOnTimeRate ?? 96.5)}
+        breachCount={kpiSummary?.breachedSla}
+        onTimeRate={kpiSummary?.systemOnTimeRate}
         criticalDistricts={
           kpiSummary?.districtBreakdowns
             ?.filter((d) => (d.breachedSla ?? 0) > 0)
@@ -431,10 +443,10 @@ export function FleetControlTowerPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">
+              <label htmlFor="fleet-assign-courier" className="font-semibold text-slate-700">
                 Select Courier to Assign
               </label>
-              <select
+              <select id="fleet-assign-courier"
                 value={selectedCourierId}
                 onChange={(e) => setSelectedCourierId(e.target.value)}
                 className="w-full rounded border border-slate-300 bg-white p-2 text-xs"
@@ -452,10 +464,10 @@ export function FleetControlTowerPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-700">
+              <label htmlFor="fleet-reassign-reason" className="font-semibold text-slate-700">
                 Override Reason
               </label>
-              <input
+              <input id="fleet-reassign-reason"
                 type="text"
                 placeholder="e.g. VIP express customer, area re-route"
                 value={overrideReason}
@@ -483,6 +495,11 @@ export function FleetControlTowerPage() {
           </div>
         )}
       </Modal>
+
+      <NotificationLogModal
+        open={isLogsOpen}
+        onClose={() => setIsLogsOpen(false)}
+      />
     </main>
   );
 }

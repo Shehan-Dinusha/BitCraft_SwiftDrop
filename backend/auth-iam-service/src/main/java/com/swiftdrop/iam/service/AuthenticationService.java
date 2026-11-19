@@ -5,6 +5,7 @@ import com.swiftdrop.iam.domain.entity.UserAccount;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.TokenResponse;
 import com.swiftdrop.iam.exception.AccountNotActiveException;
+import com.swiftdrop.iam.exception.EmailNotVerifiedException;
 import com.swiftdrop.iam.exception.InvalidCredentialsException;
 import com.swiftdrop.iam.exception.InvalidRefreshTokenException;
 import io.jsonwebtoken.Claims;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthenticationService {
@@ -25,6 +27,8 @@ public class AuthenticationService {
     private final TokenIssuanceService tokenIssuanceService;
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
+    /** bcrypt hash of a random value, used only to equalize login timing for unknown users. */
+    private volatile String timingEqualizerHash;
 
     public AuthenticationService(UserAccountRepository userAccountRepository,
                                  PasswordEncoder passwordEncoder,
@@ -38,14 +42,31 @@ public class AuthenticationService {
         this.loginAttemptService = loginAttemptService;
     }
 
+    /** Password sign-in without a second factor (see {@link LoginMfaService} for privileged roles). */
     @Transactional
     public TokenResponse login(String identifier, String password, String ipAddress, String userAgent) {
+        return issueSession(authenticate(identifier, password, ipAddress), ipAddress, userAgent);
+    }
+
+    /**
+     * Checks the password, account status and email verification, applying the login throttle.
+     * Issues nothing: the caller decides whether a second factor is needed first.
+     *
+     * @return the authenticated account
+     */
+    @Transactional
+    public UserAccount authenticate(String identifier, String password, String ipAddress) {
         loginAttemptService.assertAllowed(identifier, ipAddress);
 
         Optional<UserAccount> candidate = userAccountRepository
                 .findByUsernameIgnoreCaseOrEmailIgnoreCase(identifier.trim(), identifier.trim());
 
-        if (candidate.isEmpty() || !passwordEncoder.matches(password, candidate.get().getPasswordHash())) {
+        // Always run one bcrypt comparison. Skipping it for unknown users made "no such user" answer
+        // ~100 ms faster than "wrong password", which reveals which usernames and emails exist.
+        boolean passwordMatches = candidate.isPresent()
+                ? passwordEncoder.matches(password, candidate.get().getPasswordHash())
+                : burnPasswordCheck(password);
+        if (!passwordMatches) {
             loginAttemptService.recordFailure(identifier, ipAddress);
             throw new InvalidCredentialsException();
         }
@@ -55,8 +76,18 @@ public class AuthenticationService {
             loginAttemptService.recordFailure(identifier, ipAddress);
             throw new AccountNotActiveException();
         }
+        if (!user.isEmailVerified()) {
+            // Only reached with a correct password, so this does not reveal which emails exist.
+            throw new EmailNotVerifiedException();
+        }
 
         loginAttemptService.clear(identifier, ipAddress);
+        return user;
+    }
+
+    /** Records the sign-in and issues an access token plus a new refresh token. */
+    @Transactional
+    public TokenResponse issueSession(UserAccount user, String ipAddress, String userAgent) {
         user.setLastLoginAt(Instant.now());
         userAccountRepository.save(user);
 
@@ -65,6 +96,23 @@ public class AuthenticationService {
                 refreshTokenService.create(user, userAgent, ipAddress);
 
         return AuthMapper.toTokenResponse(user, accessToken, refreshToken.rawToken());
+    }
+
+    /**
+     * Spends the same work as a real password check, against a hash no password can match, so the
+     * response time does not depend on whether the account exists. Always returns false.
+     */
+    private boolean burnPasswordCheck(String password) {
+        String dummy = timingEqualizerHash;
+        if (dummy == null) {
+            // Encoded lazily with the configured encoder so the cost factor matches real hashes.
+            dummy = passwordEncoder.encode(UUID.randomUUID().toString());
+            timingEqualizerHash = dummy;
+        }
+        if (dummy != null) {
+            passwordEncoder.matches(password, dummy);
+        }
+        return false;
     }
 
     @Transactional(noRollbackFor = {InvalidRefreshTokenException.class, AccountNotActiveException.class})

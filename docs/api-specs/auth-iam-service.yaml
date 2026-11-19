@@ -29,6 +29,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
+        '202':
+          description: >-
+            Password accepted but a second factor is required (SYSTEM_ADMIN and DISPATCHER when
+            AUTH_MFA_ENABLED=true). A 6-digit code was emailed; finish with POST /api/v1/auth/login/mfa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaChallengeResponse'
         '401':
           description: Invalid credentials
           content:
@@ -36,7 +44,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '403':
-          description: Account is not active
+          description: Account is not active, or the email is not verified yet (the ApiErrorResponse error field is EMAIL_NOT_VERIFIED; call /verify-email)
           content:
             application/json:
               schema:
@@ -47,10 +55,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/login/mfa:
+    post:
+      tags: [Auth]
+      summary: Complete a sign-in with the emailed second-factor code
+      description: >-
+        Exchanges the challenge from a 202 /login response plus the emailed code for a token pair.
+        The refresh token is set as the HttpOnly swiftdrop_refresh cookie. After 5 wrong codes the
+        code is destroyed and the user must sign in again.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginMfaRequest'
+      responses:
+        '200':
+          description: Token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Wrong or expired code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Unknown or expired challenge; sign in again
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many incorrect codes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/auth/register:
     post:
       tags: [Auth]
       summary: Register a customer or merchant account
+      description: |
+        Creates the account unverified and emails a 6-digit verification code (via notification-service).
+        The user must confirm it with `POST /api/v1/auth/verify-email` before password sign-in works.
+        Registering again with the same, still-unverified email replaces the pending sign-up.
       security: []
       requestBody:
         required: true
@@ -60,7 +112,7 @@ paths:
               $ref: '#/components/schemas/RegisterUserRequest'
       responses:
         '201':
-          description: Account registered
+          description: Account created; a verification code was emailed
           content:
             application/json:
               schema:
@@ -77,13 +129,168 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Confirm an email address with the emailed code
+      description: |
+        Marks the account verified. No session is created: the frontend shows a "registered"
+        confirmation and the user then signs in with `/login`. Codes expire after 10 minutes, are
+        single use, and are destroyed after 5 wrong attempts (HTTP 429).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '200':
+          description: Email verified; the user can now sign in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '400':
+          description: Invalid or expired code, or validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Email address is already verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many attempts or requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/username-availability:
+    get:
+      tags: [Auth]
+      summary: Check whether a username is free for a new account
+      description: >-
+        Used by the sign-up form while the user types. Case-insensitive; a pending (unverified) sign-up
+        also holds its username. Rate limited to 60 checks per minute per client IP. The database unique
+        index remains the authority, so /register still answers 409 for a taken username.
+      security: []
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+          example: nimal.perera
+      responses:
+        '200':
+          description: Availability of the username
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUsernameAvailability'
+        '429':
+          description: Too many checks from this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Send a new email verification code
+      description: Always answers 200 so it cannot be used to discover which accounts exist. Throttled per user and per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentifierRequest'
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '429':
+          description: Too many requests from this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Email a password reset code
+      description: Always answers 200 so it cannot be used to discover which accounts exist. Throttled per user and per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentifierRequest'
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '429':
+          description: Too many requests from this client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Set a new password using the emailed reset code
+      description: Revokes every existing session of the account. The new password must meet the policy, must not contain the username or email, and must differ from the current password; the code is consumed only when the reset succeeds.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '400':
+          description: Invalid or expired code, or password does not meet the policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many attempts or requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/auth/refresh:
     post:
       tags: [Auth]
       summary: Rotate a refresh token and issue a new access token
+      description: >-
+        Browsers send no body; the refresh token is read from the HttpOnly swiftdrop_refresh
+        cookie (Path=/api/v1/auth, SameSite=Strict). Non-browser clients may send it in the body.
+        The rotated token is returned as a new Set-Cookie, never in the JSON body.
       security: []
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -284,8 +491,8 @@ paths:
   /api/v1/users/{userId}/role:
     patch:
       tags: [Users]
-      summary: Change a user's role
-      description: Requires SYSTEM_ADMIN. Revokes the target user's active sessions.
+      summary: Verify an existing account role
+      description: Requires SYSTEM_ADMIN. Roles are fixed at account creation. Requests for a different role return 409; the current role is an idempotent no-op.
       parameters:
         - $ref: '#/components/parameters/UserId'
       requestBody:
@@ -296,7 +503,7 @@ paths:
               $ref: '#/components/schemas/UpdateUserRoleRequest'
       responses:
         '200':
-          description: Role updated
+          description: Account role unchanged
           content:
             application/json:
               schema:
@@ -320,7 +527,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '409':
-          description: Cannot remove the last active SYSTEM_ADMIN
+          description: Account roles cannot be changed after creation
           content:
             application/json:
               schema:
@@ -398,6 +605,32 @@ components:
           maxLength: 72
           format: password
           example: SwiftDrop123
+    MfaChallengeResponse:
+      type: object
+      required: [mfaRequired, challengeId, expiresInMinutes]
+      properties:
+        mfaRequired:
+          type: boolean
+          description: Always true; lets clients tell this body apart from a TokenResponse.
+          example: true
+        challengeId:
+          type: string
+          description: Opaque, single-use id of this sign-in attempt. Send it to /login/mfa.
+        expiresInMinutes:
+          type: integer
+          format: int32
+          example: 10
+    LoginMfaRequest:
+      type: object
+      required: [challengeId, code]
+      properties:
+        challengeId:
+          type: string
+          maxLength: 64
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: '123456'
     RegisterUserRequest:
       type: object
       required: [username, email, firstName, lastName, password, role, district]
@@ -474,16 +707,59 @@ components:
           nullable: true
     RefreshTokenRequest:
       type: object
-      required: [refreshToken]
       properties:
         refreshToken:
           type: string
+          description: Optional when the swiftdrop_refresh cookie is sent.
     LogoutRequest:
       type: object
       properties:
         refreshToken:
           type: string
           description: Optional refresh token to revoke.
+    VerifyEmailRequest:
+      type: object
+      required: [identifier, code]
+      properties:
+        identifier:
+          type: string
+          maxLength: 320
+          description: Username or email address of the account.
+          example: customer.one@example.com
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          description: 6-digit verification code.
+          example: '482913'
+    IdentifierRequest:
+      type: object
+      required: [identifier]
+      properties:
+        identifier:
+          type: string
+          maxLength: 320
+          description: Username or email address of the account.
+          example: customer.one@example.com
+    ResetPasswordRequest:
+      type: object
+      required: [identifier, code, newPassword]
+      properties:
+        identifier:
+          type: string
+          maxLength: 320
+          description: Username or email address of the account.
+          example: customer.one@example.com
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          description: 6-digit reset code.
+          example: '482913'
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 72
+          format: password
+          description: 8-72 characters with at least one letter and one digit.
     ChangePasswordRequest:
       type: object
       required: [currentPassword, newPassword]
@@ -499,6 +775,7 @@ components:
           format: password
     UpdateUserRoleRequest:
       type: object
+      description: Compatibility request to verify an existing role. Account roles cannot be changed after creation.
       required: [role]
       properties:
         role:
@@ -516,6 +793,10 @@ components:
           type: string
         refreshToken:
           type: string
+          nullable: true
+          description: >-
+            Always null for /login, /refresh and /oauth2/exchange: the refresh token is set as the
+            HttpOnly swiftdrop_refresh cookie instead.
         tokenType:
           type: string
           example: Bearer
@@ -562,6 +843,9 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/UserStatus'
+        emailVerified:
+          type: boolean
+          description: True once the email address has been verified.
         lastLoginAt:
           type: string
           format: date-time
@@ -578,6 +862,33 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/UserProfileResponse'
+        timestamp:
+          type: string
+          format: date-time
+    UsernameAvailabilityResponse:
+      type: object
+      required: [username, available]
+      properties:
+        username:
+          type: string
+          description: The username that was checked, trimmed.
+        available:
+          type: boolean
+          description: True when the username is valid and no account (verified or pending) uses it.
+        reason:
+          type: string
+          nullable: true
+          enum: [TAKEN, INVALID]
+          description: Why it is not available. Null when available.
+    ApiResponseUsernameAvailability:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/UsernameAvailabilityResponse'
         timestamp:
           type: string
           format: date-time

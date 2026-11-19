@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.swiftdrop.merchant.controller.ApiKeyManagementControllerTest" time="0.891" tests="7" errors="0" skipped="0" failures="0">
+  <testcase name="testValidateInternalApiKey" classname="com.swiftdrop.merchant.controller.ApiKeyManagementControllerTest" time="0.053">
+  </testcase>
+  <testcase name="testListApiKeys" classname="com.swiftdrop.merchant.controller.ApiKeyManagementControllerTest" time="0.054">
+  </testcase>
+  <testcase name="testGenerateApiKey" classname="com.swiftdrop.merchant.controller.ApiKeyManagementControllerTest" time="0.029">
+  </testcase>
+  <testcase name="regenerateUnknownKeyReturns404" classname="com.swiftdrop.merchant.controller.ApiKeyManagementControllerTest" time="0.026">
+  </testcase>
+  <testcase name="regenerateReturnsReplacementSecret" classname="com.swiftdrop.merchant.controller.ApiKeyManagementControllerTest" time="0.01">
+  </testcase>
+  <testcase name="regenerateRevokedKeyReturns409" classname="com.swiftdrop.merchant.controller.ApiKeyManagementControllerTest" time="0.01">
+  </testcase>
+  <testcase name="testHealth" classname="com.swiftdrop.merchant.controller.ApiKeyManagementControllerTest" time="0.008">
+  </testcase>
+</testsuite>

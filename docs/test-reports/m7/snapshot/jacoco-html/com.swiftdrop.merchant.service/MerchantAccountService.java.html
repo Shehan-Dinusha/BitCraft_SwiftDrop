@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantAccountService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.service</a> &gt; <span class="el_source">MerchantAccountService.java</span></div><h1>MerchantAccountService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.service;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.merchant.domain.entity.MerchantAccount;
+import com.swiftdrop.merchant.domain.entity.MerchantStatus;
+import com.swiftdrop.merchant.domain.repository.MerchantAccountRepository;
+import com.swiftdrop.merchant.dto.CreateMerchantRequest;
+import com.swiftdrop.merchant.dto.MerchantAccountResponse;
+import com.swiftdrop.merchant.exception.MerchantNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+<span class="fc" id="L18">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class MerchantAccountService {
+
+    private final MerchantAccountRepository merchantAccountRepository;
+
+<span class="fc" id="L25">    public static final UUID DEFAULT_MERCHANT_ID = UUID.fromString(&quot;22222222-2222-2222-2222-222222222222&quot;);</span>
+
+    @Transactional
+    public MerchantAccountResponse createMerchant(CreateMerchantRequest request) {
+<span class="fc" id="L29">        log.info(&quot;Creating new merchant account: {}&quot;, request.businessName());</span>
+<span class="fc" id="L30">        MerchantAccount account = MerchantAccount.builder()</span>
+<span class="fc" id="L31">                .businessName(request.businessName())</span>
+<span class="fc" id="L32">                .contactEmail(request.contactEmail())</span>
+<span class="fc" id="L33">                .contactPhone(request.contactPhone())</span>
+<span class="fc" id="L34">                .pickupAddress(request.pickupAddress())</span>
+<span class="fc" id="L35">                .operatingDistrict(request.operatingDistrict())</span>
+<span class="fc" id="L36">                .status(MerchantStatus.PENDING_APPROVAL)</span>
+<span class="fc" id="L37">                .build();</span>
+
+<span class="fc" id="L39">        MerchantAccount saved = merchantAccountRepository.save(account);</span>
+<span class="fc" id="L40">        return mapToResponse(saved);</span>
+    }
+
+    @Transactional
+    public MerchantAccountResponse getOrCreateMerchant(UUID merchantId, String fallbackName) {
+<span class="fc" id="L45">        return merchantAccountRepository.findByMerchantId(merchantId)</span>
+<span class="fc" id="L46">                .map(this::mapToResponse)</span>
+<span class="fc" id="L47">                .orElseGet(() -&gt; {</span>
+<span class="fc" id="L48">                    log.info(&quot;Provisioning default merchant account for ID: {}&quot;, merchantId);</span>
+<span class="fc" id="L49">                    MerchantAccount account = MerchantAccount.builder()</span>
+<span class="fc" id="L50">                            .merchantId(merchantId)</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">                            .businessName(fallbackName != null ? fallbackName : &quot;SwiftDrop Merchant Hub&quot;)</span>
+<span class="fc" id="L52">                            .contactEmail(&quot;merchant-&quot; + merchantId.toString().substring(0, 8) + &quot;@swiftdrop.lk&quot;)</span>
+<span class="fc" id="L53">                            .contactPhone(&quot;+94 11 234 5678&quot;)</span>
+<span class="fc" id="L54">                            .pickupAddress(&quot;No. 128 Galle Road, Colombo 03&quot;)</span>
+<span class="fc" id="L55">                            .operatingDistrict(SriLankanDistrict.COLOMBO)</span>
+<span class="fc" id="L56">                            .status(MerchantStatus.PENDING_APPROVAL)</span>
+<span class="fc" id="L57">                            .build();</span>
+<span class="fc" id="L58">                    MerchantAccount saved = merchantAccountRepository.save(account);</span>
+<span class="fc" id="L59">                    return mapToResponse(saved);</span>
+                });
+    }
+
+    @Transactional(readOnly = true)
+    public MerchantAccountResponse getMerchantById(UUID merchantId) {
+<span class="nc" id="L65">        MerchantAccount account = merchantAccountRepository.findByMerchantId(merchantId)</span>
+<span class="nc" id="L66">                .orElseThrow(() -&gt; new MerchantNotFoundException(&quot;Merchant not found: &quot; + merchantId));</span>
+<span class="nc" id="L67">        return mapToResponse(account);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;MerchantAccountResponse&gt; getAllMerchants() {
+<span class="nc" id="L72">        return merchantAccountRepository.findAll().stream()</span>
+<span class="nc" id="L73">                .map(this::mapToResponse)</span>
+<span class="nc" id="L74">                .toList();</span>
+    }
+
+    private MerchantAccountResponse mapToResponse(MerchantAccount account) {
+<span class="fc" id="L78">        return new MerchantAccountResponse(</span>
+<span class="fc" id="L79">                account.getMerchantId(),</span>
+<span class="fc" id="L80">                account.getBusinessName(),</span>
+<span class="fc" id="L81">                account.getContactEmail(),</span>
+<span class="fc" id="L82">                account.getContactPhone(),</span>
+<span class="fc" id="L83">                account.getPickupAddress(),</span>
+<span class="fc" id="L84">                account.getOperatingDistrict(),</span>
+<span class="fc" id="L85">                account.getStatus().name(),</span>
+<span class="fc" id="L86">                account.getCreatedAt()</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

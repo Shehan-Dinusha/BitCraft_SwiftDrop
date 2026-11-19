@@ -8,31 +8,93 @@ export type UserStatus = NonNullable<components['schemas']['UserStatus']>;
 /** Alias used by admin pages to reference a user list entry. */
 export type UserProfileItem = components['schemas']['UserProfileResponse'];
 
-export async function loginUser(username: string, password: string): Promise<AuthTokenResponse> {
-  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/login', { username, password });
+export type MfaChallenge = components['schemas']['MfaChallengeResponse'];
+
+/** Either a signed-in session, or (admins and dispatchers with MFA on) a second-factor challenge. */
+export type LoginResult = AuthTokenResponse | MfaChallenge;
+
+export function isMfaChallenge(result: LoginResult): result is MfaChallenge {
+  return (result as MfaChallenge).mfaRequired === true;
+}
+
+export async function loginUser(username: string, password: string): Promise<LoginResult> {
+  const { data } = await apiClient.post<LoginResult>('/v1/auth/login', { username, password });
   return data;
 }
 
-export async function registerUser(
+/** Second step of an MFA sign-in: the emailed 6-digit code for the challenge from {@link loginUser}. */
+export async function completeMfaLogin(challengeId: string, code: string): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/login/mfa', { challengeId, code });
+  return data;
+}
+
+export type RegisterUserInput = {
+  username: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  district: components['schemas']['SriLankanDistrict'];
+};
+
+export const SRI_LANKAN_DISTRICTS: components['schemas']['SriLankanDistrict'][] = [
+  'COLOMBO', 'GAMPAHA', 'KALUTARA', 'KANDY', 'MATALE', 'NUWARA_ELIYA', 'GALLE', 'MATARA',
+  'HAMBANTOTA', 'JAFFNA', 'KILINOCHCHI', 'MANNAR', 'VAVUNIYA', 'MULLAITIVU', 'BATTICALOA',
+  'AMPARA', 'TRINCOMALEE', 'KURUNEGALA', 'PUTTALAM', 'ANURADHAPURA', 'POLONNARUWA', 'BADULLA',
+  'MONARAGALA', 'RATNAPURA', 'KEGALLE'
+];
+
+/**
+ * Self-service registration always creates a CUSTOMER account. The account starts unverified: the
+ * API emails a 6-digit code that {@link verifyEmail} confirms. Registration never signs the user in.
+ */
+export async function registerUser(input: RegisterUserInput): Promise<void> {
+  await apiClient.post('/v1/auth/register', { ...input, role: 'CUSTOMER' });
+}
+
+export type UsernameAvailability = components['schemas']['UsernameAvailabilityResponse'];
+
+/** Live check for the sign-up form. The server's unique index stays the authority (register answers 409). */
+export async function checkUsernameAvailability(
   username: string,
-  email: string,
-  password: string
-): Promise<AuthTokenResponse> {
-  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/register', {
-    username,
-    email,
-    password
-  });
+  signal?: AbortSignal
+): Promise<UsernameAvailability> {
+  const { data } = await apiClient.get<components['schemas']['ApiResponseUsernameAvailability']>(
+    '/v1/auth/username-availability',
+    { params: { username }, signal }
+  );
+  return data.data ?? { username, available: false, reason: null };
+}
+
+/** Confirms the emailed code. No session is created: the user signs in afterwards. */
+export async function verifyEmail(identifier: string, code: string): Promise<void> {
+  await apiClient.post('/v1/auth/verify-email', { identifier, code });
+}
+
+/** Asks for a new verification code. The API answers 200 whether or not the account exists. */
+export async function resendVerification(identifier: string): Promise<void> {
+  await apiClient.post('/v1/auth/resend-verification', { identifier });
+}
+
+/** Asks for a password-reset code. The API answers 200 whether or not the account exists. */
+export async function forgotPassword(identifier: string): Promise<void> {
+  await apiClient.post('/v1/auth/forgot-password', { identifier });
+}
+
+/** Sets a new password using the emailed reset code. */
+export async function resetPassword(identifier: string, code: string, newPassword: string): Promise<void> {
+  await apiClient.post('/v1/auth/reset-password', { identifier, code, newPassword });
+}
+
+/** Rotates the session. The refresh token is the HttpOnly cookie, so nothing is sent in the body. */
+export async function refreshTokens(): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/refresh', {});
   return data;
 }
 
-export async function refreshTokens(refreshToken: string): Promise<AuthTokenResponse> {
-  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/refresh', { refreshToken });
-  return data;
-}
-
-export async function logoutUser(refreshToken?: string | null): Promise<void> {
-  await apiClient.post('/v1/auth/logout', refreshToken ? { refreshToken } : {});
+/** Revokes the refresh-token cookie's session and blacklists the current access token. */
+export async function logoutUser(): Promise<void> {
+  await apiClient.post('/v1/auth/logout', {});
 }
 
 export async function fetchCurrentUser(): Promise<AuthUserProfile> {
@@ -90,7 +152,7 @@ export async function listUsers(params?: {
   };
 }
 
-/** Change a user's role. Requires SYSTEM_ADMIN role. */
+/** Compatibility role check. Different roles return 409; roles are fixed at creation. */
 export async function updateUserRole(userId: string, role: UserRole): Promise<UserProfileItem> {
   const { data } = await apiClient.patch<{ data?: UserProfileItem }>(
     `/v1/users/${userId}/role`,
@@ -106,4 +168,22 @@ export async function updateUserStatus(userId: string, status: UserStatus): Prom
     { status }
   );
   return data.data ?? {};
+}
+
+/** Maps the `oauth_error` code from the backend redirect to a user-facing message. */
+export function oauthErrorMessage(code: string): string {
+  switch (code) {
+    case 'access_denied':
+      return 'Google sign-in was cancelled. Please try again.';
+    case 'invalid_state':
+      return 'Your Google sign-in session expired. Please try again.';
+    case 'email_unverified':
+      return 'Your Google email address is not verified, so it cannot be used to sign in.';
+    case 'account_inactive':
+      return 'Your account is not active. Contact support.';
+    case 'not_configured':
+      return 'Google sign-in is not available right now.';
+    default:
+      return 'Google sign-in failed. Please try again.';
+  }
 }

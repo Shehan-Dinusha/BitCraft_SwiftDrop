@@ -49,87 +49,87 @@ public class StompTrackingWebSocketHandler implements WebSocketHandler {
     @Override
     @NonNull
     public Mono&lt;Void&gt; handle(@NonNull WebSocketSession session) {
-<span class="nc" id="L52">        Sinks.Many&lt;String&gt; outgoing = Sinks.many().unicast().onBackpressureBuffer();</span>
-<span class="nc" id="L53">        StompSessionState state = new StompSessionState(session, outgoing);</span>
+<span class="fc" id="L52">        Sinks.Many&lt;String&gt; outgoing = Sinks.many().unicast().onBackpressureBuffer();</span>
+<span class="fc" id="L53">        StompSessionState state = new StompSessionState(session, outgoing);</span>
 
-<span class="nc" id="L55">        Mono&lt;Void&gt; send = session.send(outgoing.asFlux().map(session::textMessage));</span>
-<span class="nc" id="L56">        Mono&lt;Void&gt; receive = session.receive()</span>
-<span class="nc" id="L57">                .map(WebSocketMessage::getPayloadAsText)</span>
-<span class="nc" id="L58">                .doOnNext(state::handleFrame)</span>
-<span class="nc" id="L59">                .doFinally(signal -&gt; {</span>
-<span class="nc" id="L60">                    state.dispose();</span>
-<span class="nc" id="L61">                    outgoing.tryEmitComplete();</span>
-<span class="nc" id="L62">                })</span>
-<span class="nc" id="L63">                .then();</span>
+<span class="fc" id="L55">        Mono&lt;Void&gt; send = session.send(outgoing.asFlux().map(session::textMessage));</span>
+<span class="fc" id="L56">        Mono&lt;Void&gt; receive = session.receive()</span>
+<span class="fc" id="L57">                .map(WebSocketMessage::getPayloadAsText)</span>
+<span class="fc" id="L58">                .doOnNext(state::handleFrame)</span>
+<span class="fc" id="L59">                .doFinally(signal -&gt; {</span>
+<span class="fc" id="L60">                    state.dispose();</span>
+<span class="fc" id="L61">                    outgoing.tryEmitComplete();</span>
+<span class="fc" id="L62">                })</span>
+<span class="fc" id="L63">                .then();</span>
 
-<span class="nc" id="L65">        return Mono.when(send, receive)</span>
-<span class="nc" id="L66">                .doFinally(signal -&gt; state.dispose());</span>
+<span class="fc" id="L65">        return Mono.when(send, receive)</span>
+<span class="fc" id="L66">                .doFinally(signal -&gt; state.dispose());</span>
     }
 
     private final class StompSessionState {
 
         private final WebSocketSession session;
         private final Sinks.Many&lt;String&gt; outgoing;
-<span class="nc" id="L73">        private final Map&lt;String, Disposable&gt; subscriptions = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L73">        private final Map&lt;String, Disposable&gt; subscriptions = new ConcurrentHashMap&lt;&gt;();</span>
         private TrackingTokenVerifier.StompPrincipal principal;
 
-<span class="nc" id="L76">        private StompSessionState(WebSocketSession session, Sinks.Many&lt;String&gt; outgoing) {</span>
-<span class="nc" id="L77">            this.session = session;</span>
-<span class="nc" id="L78">            this.outgoing = outgoing;</span>
-<span class="nc" id="L79">        }</span>
+<span class="fc" id="L76">        private StompSessionState(WebSocketSession session, Sinks.Many&lt;String&gt; outgoing) {</span>
+<span class="fc" id="L77">            this.session = session;</span>
+<span class="fc" id="L78">            this.outgoing = outgoing;</span>
+<span class="fc" id="L79">        }</span>
 
         private void handleFrame(String rawFrame) {
-<span class="nc bnc" id="L82" title="All 4 branches missed.">            if (rawFrame == null || rawFrame.isBlank()) {</span>
+<span class="pc bpc" id="L82" title="2 of 4 branches missed.">            if (rawFrame == null || rawFrame.isBlank()) {</span>
 <span class="nc" id="L83">                return;</span>
             }
 
-<span class="nc bnc" id="L86" title="All 2 branches missed.">            for (String frame : rawFrame.split(&quot;\u0000&quot;)) {</span>
-<span class="nc" id="L87">                String cleaned = frame.replace(&quot;\r&quot;, &quot;&quot;).stripLeading();</span>
-<span class="nc bnc" id="L88" title="All 2 branches missed.">                if (cleaned.isBlank()) {</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">            for (String frame : rawFrame.split(&quot;\u0000&quot;)) {</span>
+<span class="fc" id="L87">                String cleaned = frame.replace(&quot;\r&quot;, &quot;&quot;).stripLeading();</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">                if (cleaned.isBlank()) {</span>
 <span class="nc" id="L89">                    continue;</span>
                 }
 
-<span class="nc" id="L92">                String[] lines = cleaned.split(&quot;\n&quot;, -1);</span>
-<span class="nc" id="L93">                String command = lines[0].strip().toUpperCase(Locale.ROOT);</span>
-<span class="nc" id="L94">                Map&lt;String, String&gt; headers = parseHeaders(lines);</span>
+<span class="fc" id="L92">                String[] lines = cleaned.split(&quot;\n&quot;, -1);</span>
+<span class="fc" id="L93">                String command = lines[0].strip().toUpperCase(Locale.ROOT);</span>
+<span class="fc" id="L94">                Map&lt;String, String&gt; headers = parseHeaders(lines);</span>
 
-<span class="nc bnc" id="L96" title="All 6 branches missed.">                switch (command) {</span>
-<span class="nc" id="L97">                    case &quot;CONNECT&quot;, &quot;STOMP&quot; -&gt; connect(headers);</span>
-<span class="nc" id="L98">                    case &quot;SUBSCRIBE&quot; -&gt; subscribe(headers);</span>
-<span class="nc" id="L99">                    case &quot;UNSUBSCRIBE&quot; -&gt; unsubscribe(headers);</span>
-<span class="nc" id="L100">                    case &quot;DISCONNECT&quot; -&gt; disconnect(headers);</span>
+<span class="pc bpc" id="L96" title="1 of 6 branches missed.">                switch (command) {</span>
+<span class="fc" id="L97">                    case &quot;CONNECT&quot;, &quot;STOMP&quot; -&gt; connect(headers);</span>
+<span class="fc" id="L98">                    case &quot;SUBSCRIBE&quot; -&gt; subscribe(headers);</span>
+<span class="fc" id="L99">                    case &quot;UNSUBSCRIBE&quot; -&gt; unsubscribe(headers);</span>
+<span class="fc" id="L100">                    case &quot;DISCONNECT&quot; -&gt; disconnect(headers);</span>
 <span class="nc" id="L101">                    case &quot;SEND&quot; -&gt; sendReceipt(headers);</span>
-<span class="nc" id="L102">                    default -&gt; sendError(&quot;Unsupported STOMP command&quot;);</span>
+<span class="fc" id="L102">                    default -&gt; sendError(&quot;Unsupported STOMP command&quot;);</span>
                 }
             }
-<span class="nc" id="L105">        }</span>
+<span class="fc" id="L105">        }</span>
 
         private Map&lt;String, String&gt; parseHeaders(String[] lines) {
-<span class="nc" id="L108">            Map&lt;String, String&gt; headers = new LinkedHashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L109" title="All 2 branches missed.">            for (int index = 1; index &lt; lines.length; index++) {</span>
-<span class="nc" id="L110">                String line = lines[index];</span>
-<span class="nc bnc" id="L111" title="All 2 branches missed.">                if (line.isBlank()) {</span>
-<span class="nc" id="L112">                    break;</span>
+<span class="fc" id="L108">            Map&lt;String, String&gt; headers = new LinkedHashMap&lt;&gt;();</span>
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">            for (int index = 1; index &lt; lines.length; index++) {</span>
+<span class="fc" id="L110">                String line = lines[index];</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">                if (line.isBlank()) {</span>
+<span class="fc" id="L112">                    break;</span>
                 }
-<span class="nc" id="L114">                int separator = line.indexOf(':');</span>
-<span class="nc bnc" id="L115" title="All 2 branches missed.">                if (separator &gt; 0) {</span>
-<span class="nc" id="L116">                    headers.put(line.substring(0, separator).trim(),</span>
-<span class="nc" id="L117">                            line.substring(separator + 1).trim());</span>
+<span class="fc" id="L114">                int separator = line.indexOf(':');</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">                if (separator &gt; 0) {</span>
+<span class="fc" id="L116">                    headers.put(line.substring(0, separator).trim(),</span>
+<span class="fc" id="L117">                            line.substring(separator + 1).trim());</span>
                 }
             }
-<span class="nc" id="L120">            return headers;</span>
+<span class="fc" id="L120">            return headers;</span>
         }
 
         private void connect(Map&lt;String, String&gt; headers) {
-<span class="nc" id="L124">            String authorization = headers.getOrDefault(&quot;Authorization&quot;,</span>
-<span class="nc" id="L125">                    headers.get(&quot;authorization&quot;));</span>
-<span class="nc" id="L126">            principal = tokenVerifier.verify(authorization);</span>
-<span class="nc" id="L127">            sendConnected();</span>
-<span class="nc" id="L128">        }</span>
+<span class="fc" id="L124">            String authorization = headers.getOrDefault(&quot;Authorization&quot;,</span>
+<span class="fc" id="L125">                    headers.get(&quot;authorization&quot;));</span>
+<span class="fc" id="L126">            principal = tokenVerifier.verify(authorization);</span>
+<span class="fc" id="L127">            sendConnected();</span>
+<span class="fc" id="L128">        }</span>
 
         private void sendConnected() {
-<span class="nc" id="L131">            String sessionId = session.getId();</span>
-<span class="nc" id="L132">            outgoing.tryEmitNext(</span>
+<span class="fc" id="L131">            String sessionId = session.getId();</span>
+<span class="fc" id="L132">            outgoing.tryEmitNext(</span>
                     &quot;CONNECTED\n&quot;
                             + &quot;version:1.2\n&quot;
                             + &quot;heart-beat:0,0\n&quot;
@@ -137,106 +137,106 @@ public class StompTrackingWebSocketHandler implements WebSocketHandler {
                             + &quot;server:swiftdrop-gateway/1.0\n&quot;
                             + &quot;\n\u0000&quot;
             );
-<span class="nc" id="L140">        }</span>
+<span class="fc" id="L140">        }</span>
 
         private void subscribe(Map&lt;String, String&gt; headers) {
-<span class="nc" id="L143">            String destination = headers.get(&quot;destination&quot;);</span>
-<span class="nc bnc" id="L144" title="All 4 branches missed.">            if (destination == null || destination.isBlank()) {</span>
-<span class="nc" id="L145">                sendError(&quot;SUBSCRIBE requires a destination&quot;);</span>
-<span class="nc" id="L146">                return;</span>
+<span class="fc" id="L143">            String destination = headers.get(&quot;destination&quot;);</span>
+<span class="pc bpc" id="L144" title="1 of 4 branches missed.">            if (destination == null || destination.isBlank()) {</span>
+<span class="fc" id="L145">                sendError(&quot;SUBSCRIBE requires a destination&quot;);</span>
+<span class="fc" id="L146">                return;</span>
             }
-<span class="nc bnc" id="L148" title="All 2 branches missed.">            if (!tokenVerifier.maySubscribe(principal, destination)) {</span>
-<span class="nc" id="L149">                sendError(&quot;Not authorized for this topic&quot;);</span>
-<span class="nc" id="L150">                return;</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">            if (!tokenVerifier.maySubscribe(principal, destination)) {</span>
+<span class="fc" id="L149">                sendError(&quot;Not authorized for this topic&quot;);</span>
+<span class="fc" id="L150">                return;</span>
             }
 
-<span class="nc" id="L153">            String subscriptionId = headers.getOrDefault(&quot;id&quot;, UUID.randomUUID().toString());</span>
-<span class="nc" id="L154">            Disposable previous = subscriptions.remove(subscriptionId);</span>
-<span class="nc bnc" id="L155" title="All 2 branches missed.">            if (previous != null) {</span>
+<span class="fc" id="L153">            String subscriptionId = headers.getOrDefault(&quot;id&quot;, UUID.randomUUID().toString());</span>
+<span class="fc" id="L154">            Disposable previous = subscriptions.remove(subscriptionId);</span>
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">            if (previous != null) {</span>
 <span class="nc" id="L156">                previous.dispose();</span>
             }
 
-<span class="nc" id="L159">            Disposable subscription = broadcastHub.streamTopic(destination)</span>
-<span class="nc" id="L160">                    .subscribe(payload -&gt; sendMessage(destination, subscriptionId, payload));</span>
-<span class="nc" id="L161">            subscriptions.put(subscriptionId, subscription);</span>
+<span class="fc" id="L159">            Disposable subscription = broadcastHub.streamTopic(destination)</span>
+<span class="pc" id="L160">                    .subscribe(payload -&gt; sendMessage(destination, subscriptionId, payload));</span>
+<span class="fc" id="L161">            subscriptions.put(subscriptionId, subscription);</span>
 
-<span class="nc bnc" id="L163" title="All 2 branches missed.">            if (destination.startsWith(TRACK_TOPIC_PREFIX)) {</span>
-<span class="nc" id="L164">                String trackingNumber = destination.substring(TRACK_TOPIC_PREFIX.length());</span>
-<span class="nc" id="L165">                PublicTrackingViewDto latest = broadcastHub.current(trackingNumber);</span>
-<span class="nc bnc" id="L166" title="All 2 branches missed.">                if (latest != null) {</span>
-<span class="nc" id="L167">                    String json = toJson(latest);</span>
-<span class="nc bnc" id="L168" title="All 2 branches missed.">                    if (json != null) {</span>
-<span class="nc" id="L169">                        sendMessage(destination, subscriptionId, json);</span>
+<span class="pc bpc" id="L163" title="1 of 2 branches missed.">            if (destination.startsWith(TRACK_TOPIC_PREFIX)) {</span>
+<span class="fc" id="L164">                String trackingNumber = destination.substring(TRACK_TOPIC_PREFIX.length());</span>
+<span class="fc" id="L165">                PublicTrackingViewDto latest = broadcastHub.current(trackingNumber);</span>
+<span class="fc bfc" id="L166" title="All 2 branches covered.">                if (latest != null) {</span>
+<span class="fc" id="L167">                    String json = toJson(latest);</span>
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">                    if (json != null) {</span>
+<span class="fc" id="L169">                        sendMessage(destination, subscriptionId, json);</span>
                     }
                 }
             }
 
-<span class="nc" id="L174">            sendReceipt(headers);</span>
-<span class="nc" id="L175">        }</span>
+<span class="fc" id="L174">            sendReceipt(headers);</span>
+<span class="fc" id="L175">        }</span>
 
         private void unsubscribe(Map&lt;String, String&gt; headers) {
-<span class="nc" id="L178">            String subscriptionId = headers.get(&quot;id&quot;);</span>
-<span class="nc bnc" id="L179" title="All 2 branches missed.">            if (subscriptionId != null) {</span>
-<span class="nc" id="L180">                Disposable subscription = subscriptions.remove(subscriptionId);</span>
-<span class="nc bnc" id="L181" title="All 2 branches missed.">                if (subscription != null) {</span>
-<span class="nc" id="L182">                    subscription.dispose();</span>
+<span class="fc" id="L178">            String subscriptionId = headers.get(&quot;id&quot;);</span>
+<span class="pc bpc" id="L179" title="1 of 2 branches missed.">            if (subscriptionId != null) {</span>
+<span class="fc" id="L180">                Disposable subscription = subscriptions.remove(subscriptionId);</span>
+<span class="pc bpc" id="L181" title="1 of 2 branches missed.">                if (subscription != null) {</span>
+<span class="fc" id="L182">                    subscription.dispose();</span>
                 }
             }
-<span class="nc" id="L185">            sendReceipt(headers);</span>
-<span class="nc" id="L186">        }</span>
+<span class="fc" id="L185">            sendReceipt(headers);</span>
+<span class="fc" id="L186">        }</span>
 
         private void disconnect(Map&lt;String, String&gt; headers) {
-<span class="nc" id="L189">            sendReceipt(headers);</span>
-<span class="nc" id="L190">            dispose();</span>
-<span class="nc" id="L191">            outgoing.tryEmitComplete();</span>
-<span class="nc" id="L192">            session.close().subscribe();</span>
-<span class="nc" id="L193">        }</span>
+<span class="fc" id="L189">            sendReceipt(headers);</span>
+<span class="fc" id="L190">            dispose();</span>
+<span class="fc" id="L191">            outgoing.tryEmitComplete();</span>
+<span class="fc" id="L192">            session.close().subscribe();</span>
+<span class="fc" id="L193">        }</span>
 
         private void sendMessage(String destination, String subscriptionId, String payload) {
-<span class="nc" id="L196">            int contentLength = payload.getBytes(StandardCharsets.UTF_8).length;</span>
-<span class="nc" id="L197">            outgoing.tryEmitNext(</span>
+<span class="fc" id="L196">            int contentLength = payload.getBytes(StandardCharsets.UTF_8).length;</span>
+<span class="fc" id="L197">            outgoing.tryEmitNext(</span>
                     &quot;MESSAGE\n&quot;
                             + &quot;destination:&quot; + destination + &quot;\n&quot;
                             + &quot;subscription:&quot; + subscriptionId + &quot;\n&quot;
-<span class="nc" id="L201">                            + &quot;message-id:&quot; + UUID.randomUUID() + &quot;\n&quot;</span>
+<span class="fc" id="L201">                            + &quot;message-id:&quot; + UUID.randomUUID() + &quot;\n&quot;</span>
                             + &quot;content-type:application/json\n&quot;
                             + &quot;content-length:&quot; + contentLength + &quot;\n&quot;
                             + &quot;\n&quot;
                             + payload
                             + &quot;\u0000&quot;
             );
-<span class="nc" id="L208">        }</span>
+<span class="fc" id="L208">        }</span>
 
         private void sendReceipt(Map&lt;String, String&gt; headers) {
-<span class="nc" id="L211">            String receiptId = headers.get(&quot;receipt&quot;);</span>
-<span class="nc bnc" id="L212" title="All 4 branches missed.">            if (receiptId != null &amp;&amp; !receiptId.isBlank()) {</span>
-<span class="nc" id="L213">                outgoing.tryEmitNext(&quot;RECEIPT\nreceipt-id:&quot; + receiptId + &quot;\n\n\u0000&quot;);</span>
+<span class="fc" id="L211">            String receiptId = headers.get(&quot;receipt&quot;);</span>
+<span class="pc bpc" id="L212" title="2 of 4 branches missed.">            if (receiptId != null &amp;&amp; !receiptId.isBlank()) {</span>
+<span class="fc" id="L213">                outgoing.tryEmitNext(&quot;RECEIPT\nreceipt-id:&quot; + receiptId + &quot;\n\n\u0000&quot;);</span>
             }
-<span class="nc" id="L215">        }</span>
+<span class="fc" id="L215">        }</span>
 
         private void sendError(String message) {
-<span class="nc" id="L218">            outgoing.tryEmitNext(</span>
+<span class="fc" id="L218">            outgoing.tryEmitNext(</span>
                     &quot;ERROR\n&quot;
-<span class="nc" id="L220">                            + &quot;message:&quot; + message.replace(&quot;\n&quot;, &quot; &quot;) + &quot;\n&quot;</span>
+<span class="fc" id="L220">                            + &quot;message:&quot; + message.replace(&quot;\n&quot;, &quot; &quot;) + &quot;\n&quot;</span>
                             + &quot;content-type:text/plain\n&quot;
                             + &quot;\n&quot;
                             + message
                             + &quot;\u0000&quot;
             );
-<span class="nc" id="L226">        }</span>
+<span class="fc" id="L226">        }</span>
 
         private String toJson(Object payload) {
             try {
-<span class="nc" id="L230">                return objectMapper.writeValueAsString(payload);</span>
+<span class="fc" id="L230">                return objectMapper.writeValueAsString(payload);</span>
 <span class="nc" id="L231">            } catch (JsonProcessingException exception) {</span>
 <span class="nc" id="L232">                return null;</span>
             }
         }
 
         private void dispose() {
-<span class="nc" id="L237">            subscriptions.values().forEach(Disposable::dispose);</span>
-<span class="nc" id="L238">            subscriptions.clear();</span>
-<span class="nc" id="L239">        }</span>
+<span class="fc" id="L237">            subscriptions.values().forEach(Disposable::dispose);</span>
+<span class="fc" id="L238">            subscriptions.clear();</span>
+<span class="fc" id="L239">        }</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

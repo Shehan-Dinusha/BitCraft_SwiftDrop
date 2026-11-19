@@ -31,6 +31,17 @@ public record BulkOrderIngestItem(
         BigDecimal packageWeightKg,
 
         @Schema(description = "Delivery service speed: STANDARD or EXPRESS", example = "STANDARD")
-        String deliverySpeed
+        String deliverySpeed,
+        @Schema(description = "Stable merchant reference required for forwarding") String externalRef,
+        @Schema(description = "Delivery city required for forwarding") String deliveryCity,
+        @Schema(description = "Five-digit delivery postal code") String deliveryPostalCode,
+        @Schema(description = "Pickup city") String pickupCity,
+        @Schema(description = "Five-digit pickup postal code") String pickupPostalCode,
+        @Schema(description = "Explicit prohibited-items declaration") Boolean prohibitedItemsDeclared
 ) {
+    public BulkOrderIngestItem(String recipientName, String recipientPhone, SriLankanDistrict deliveryDistrict,
+                              String deliveryAddress, BigDecimal packageWeightKg, String deliverySpeed) {
+        this(recipientName, recipientPhone, deliveryDistrict, deliveryAddress, packageWeightKg, deliverySpeed,
+                null, null, null, null, null, null);
+    }
 }

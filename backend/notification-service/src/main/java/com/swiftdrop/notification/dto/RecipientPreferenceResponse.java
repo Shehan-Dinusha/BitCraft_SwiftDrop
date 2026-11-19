@@ -16,8 +16,6 @@ public record RecipientPreferenceResponse(
         @Schema(description = "Whether email notifications are enabled")
         boolean emailEnabled,
 
-        @Schema(description = "Whether SMS notifications are enabled")
-        boolean smsEnabled,
 
         @Schema(description = "Whether in-app push notifications are enabled")
         boolean pushEnabled,
@@ -25,8 +23,6 @@ public record RecipientPreferenceResponse(
         @Schema(description = "Recipient contact email", example = "customer@example.com")
         String emailAddress,
 
-        @Schema(description = "Recipient contact phone number (E.164)", example = "+94771234567")
-        String phoneNumber,
 
         @Schema(description = "Preferred language code", example = "en")
         String languagePreference,

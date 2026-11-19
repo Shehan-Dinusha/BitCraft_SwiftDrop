@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DynamicPricingEngine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: PricingZone</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.pricing.service</a> &gt; <span class="el_source">DynamicPricingEngine.java</span></div><h1>DynamicPricingEngine.java</h1><pre class="source lang-java linenums">package com.swiftdrop.pricing.service;
+
+import com.swiftdrop.contracts.enums.OrderSpeed;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.pricing.domain.entity.DistrictZoneMapping;
+import com.swiftdrop.pricing.domain.entity.PricingZone;
+import com.swiftdrop.pricing.domain.entity.TariffRule;
+import com.swiftdrop.pricing.domain.repository.DistrictZoneMappingRepository;
+import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
+import com.swiftdrop.pricing.domain.repository.TariffRuleRepository;
+import com.swiftdrop.pricing.dto.PricingQuoteRequest;
+import com.swiftdrop.pricing.dto.PricingQuoteResponse;
+import com.swiftdrop.pricing.exception.UnsupportedPricingSpeedException;
+import com.swiftdrop.pricing.service.strategy.PricingStrategy;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+<span class="fc" id="L25">@Slf4j</span>
+public class DynamicPricingEngine {
+
+    private static final String DEFAULT_ROUTE = &quot;ALL&quot;;
+
+    private final DistrictZoneMappingRepository districtZoneMappingRepository;
+    private final PricingZoneRepository pricingZoneRepository;
+    private final List&lt;PricingStrategy&gt; pricingStrategies;
+    private final TariffRuleRepository tariffRuleRepository;
+
+    public PricingQuoteResponse calculateQuote(PricingQuoteRequest request) {
+<span class="fc" id="L36">        log.info(&quot;Calculating delivery quote from {} to {}, weight={}kg, speed={}&quot;,</span>
+<span class="fc" id="L37">                request.pickupDistrict(), request.deliveryDistrict(),</span>
+<span class="fc" id="L38">                request.actualWeightKg(), request.speed());</span>
+
+<span class="fc" id="L40">        TariffRule rule = tariffRuleRepository.findActiveRules(DEFAULT_ROUTE, DEFAULT_ROUTE).stream()</span>
+<span class="fc" id="L41">                .findFirst()</span>
+<span class="fc" id="L42">                .orElseThrow(() -&gt; new IllegalStateException(&quot;No active default tariff rule is configured&quot;));</span>
+
+        // 1. Resolve zones
+<span class="fc" id="L45">        String pickupZoneCode = resolveZoneCode(request.pickupDistrict());</span>
+<span class="fc" id="L46">        String deliveryZoneCode = resolveZoneCode(request.deliveryDistrict());</span>
+
+<span class="fc" id="L48">        PricingZone pickupZone = pricingZoneRepository.findByZoneCode(pickupZoneCode)</span>
+<span class="fc" id="L49">                .orElseThrow(() -&gt; new IllegalStateException(&quot;Pricing zone not found: &quot; + pickupZoneCode));</span>
+
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        boolean isIntraDistrict = request.pickupDistrict() == request.deliveryDistrict();</span>
+
+        // 2. Volumetric and chargeable weight calculation
+<span class="fc" id="L54">        BigDecimal volumetricWeight = BigDecimal.ZERO;</span>
+<span class="pc bpc" id="L55" title="2 of 6 branches missed.">        if (request.lengthCm() != null &amp;&amp; request.widthCm() != null &amp;&amp; request.heightCm() != null</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">                &amp;&amp; request.lengthCm().compareTo(BigDecimal.ZERO) &gt; 0</span>
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">                &amp;&amp; request.widthCm().compareTo(BigDecimal.ZERO) &gt; 0</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">                &amp;&amp; request.heightCm().compareTo(BigDecimal.ZERO) &gt; 0) {</span>
+<span class="fc" id="L59">            BigDecimal volume = request.lengthCm().multiply(request.widthCm()).multiply(request.heightCm());</span>
+<span class="fc" id="L60">            volumetricWeight = volume.divide(rule.getVolumetricDivisor(), 2, RoundingMode.HALF_UP);</span>
+        }
+
+<span class="fc" id="L63">        BigDecimal chargeableWeight = request.actualWeightKg().max(volumetricWeight)</span>
+<span class="fc" id="L64">                .setScale(2, RoundingMode.HALF_UP);</span>
+
+        // 3. Base fee and per-step fee
+        BigDecimal baseFee;
+        BigDecimal perStepFee;
+
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        if (isIntraDistrict) {</span>
+<span class="fc" id="L71">            baseFee = pickupZone.getBaseFee();</span>
+<span class="fc" id="L72">            perStepFee = pickupZone.getPerKgFee();</span>
+        } else {
+            // Inter-district fees come from the active default tariff rule
+<span class="fc" id="L75">            baseFee = rule.getBasePrice();</span>
+<span class="fc" id="L76">            perStepFee = rule.getPricePerStep();</span>
+        }
+
+        // The base fee covers the first weight step; every started extra step is billed
+<span class="fc" id="L80">        BigDecimal step = rule.getWeightStepKg();</span>
+<span class="fc" id="L81">        BigDecimal weightFee = BigDecimal.ZERO;</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        if (chargeableWeight.compareTo(step) &gt; 0) {</span>
+<span class="fc" id="L83">            BigDecimal extraSteps = chargeableWeight.subtract(step).divide(step, 0, RoundingMode.CEILING);</span>
+<span class="fc" id="L84">            weightFee = extraSteps.multiply(perStepFee).setScale(2, RoundingMode.HALF_UP);</span>
+        }
+
+<span class="fc" id="L87">        BigDecimal standardSubtotal = baseFee.add(weightFee);</span>
+
+        // 4. Service speed pricing strategy
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">        OrderSpeed speed = request.speed() != null ? request.speed() : OrderSpeed.STANDARD;</span>
+<span class="fc" id="L91">        PricingStrategy strategy = pricingStrategies.stream()</span>
+<span class="fc" id="L92">                .filter(candidate -&gt; candidate.supports(speed))</span>
+<span class="fc" id="L93">                .findFirst()</span>
+<span class="fc" id="L94">                .orElseThrow(() -&gt; new UnsupportedPricingSpeedException(speed));</span>
+
+<span class="fc" id="L96">        BigDecimal totalFee = strategy.apply(standardSubtotal, pickupZone).setScale(2, RoundingMode.HALF_UP);</span>
+<span class="fc" id="L97">        BigDecimal speedSurcharge = totalFee.subtract(standardSubtotal).setScale(2, RoundingMode.HALF_UP);</span>
+
+<span class="fc" id="L99">        return PricingQuoteResponse.builder()</span>
+<span class="fc" id="L100">                .pickupDistrict(request.pickupDistrict())</span>
+<span class="fc" id="L101">                .deliveryDistrict(request.deliveryDistrict())</span>
+<span class="fc" id="L102">                .pickupZone(pickupZoneCode)</span>
+<span class="fc" id="L103">                .deliveryZone(deliveryZoneCode)</span>
+<span class="fc" id="L104">                .intraDistrict(isIntraDistrict)</span>
+<span class="fc" id="L105">                .actualWeightKg(request.actualWeightKg().setScale(2, RoundingMode.HALF_UP))</span>
+<span class="fc" id="L106">                .volumetricWeightKg(volumetricWeight)</span>
+<span class="fc" id="L107">                .chargeableWeightKg(chargeableWeight)</span>
+<span class="fc" id="L108">                .speed(speed)</span>
+<span class="fc" id="L109">                .baseFee(baseFee)</span>
+<span class="fc" id="L110">                .weightFee(weightFee)</span>
+<span class="fc" id="L111">                .speedSurcharge(speedSurcharge)</span>
+<span class="fc" id="L112">                .estimatedFee(totalFee)</span>
+<span class="fc" id="L113">                .currency(&quot;LKR&quot;)</span>
+<span class="fc" id="L114">                .pricingRuleVersionId(rule.getRuleVersionId())</span>
+<span class="fc" id="L115">                .build();</span>
+    }
+
+    private String resolveZoneCode(SriLankanDistrict district) {
+<span class="fc" id="L119">        return districtZoneMappingRepository.findByDistrict(district.name())</span>
+<span class="fc" id="L120">                .map(DistrictZoneMapping::getZoneCode)</span>
+<span class="fc" id="L121">                .orElseThrow(() -&gt; new IllegalStateException(&quot;No pricing zone is mapped for district: &quot; + district));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

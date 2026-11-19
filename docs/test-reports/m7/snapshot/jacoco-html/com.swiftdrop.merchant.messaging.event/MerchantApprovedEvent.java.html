@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantApprovedEvent.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.messaging.event</a> &gt; <span class="el_source">MerchantApprovedEvent.java</span></div><h1>MerchantApprovedEvent.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.messaging.event;
+
+import java.time.Instant;
+import java.util.UUID;
+
+/** Local PR 1 event until Member 9 supplies the shared contract (Member 7 guide, stage 5). */
+public record MerchantApprovedEvent(UUID eventId, UUID correlationId, UUID merchantId,
+                                    UUID ownerUserId, Instant approvedAt, Instant timestamp) {
+    public static final String ROUTING_KEY = &quot;merchant.approved&quot;;
+
+<span class="fc" id="L11">    public MerchantApprovedEvent {</span>
+<span class="pc bpc" id="L12" title="1 of 2 branches missed.">        if (eventId == null) eventId = UUID.randomUUID();</span>
+<span class="fc bfc" id="L13" title="All 2 branches covered.">        if (correlationId == null) correlationId = UUID.randomUUID();</span>
+<span class="fc bfc" id="L14" title="All 2 branches covered.">        if (timestamp == null) timestamp = Instant.now();</span>
+<span class="fc" id="L15">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

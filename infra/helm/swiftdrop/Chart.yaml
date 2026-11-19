@@ -1,0 +1,16 @@
+apiVersion: v2
+name: swiftdrop
+description: >-
+  SwiftDrop on Kubernetes — API gateway, nine business microservices, the React
+  frontend, nine PostgreSQL StatefulSets (database-per-service), RabbitMQ and Redis,
+  wired together with ConfigMaps, Secrets, Services and an Ingress.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - swiftdrop
+  - microservices
+  - spring-boot
+  - postgresql
+  - rabbitmq
+home: https://github.com/BitCraft-Org/SwiftDrop

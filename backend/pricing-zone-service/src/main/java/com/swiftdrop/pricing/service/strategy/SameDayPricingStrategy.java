@@ -6,10 +6,12 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+/**
+ * SAME_DAY delivery: the subtotal times the zone's same-day multiplier, the highest surcharge,
+ * because it reserves a courier for a dedicated run.
+ */
 @Component
 public class SameDayPricingStrategy implements PricingStrategy {
-
-    private static final BigDecimal DEFAULT_MULTIPLIER = new BigDecimal("2.00");
 
     @Override
     public boolean supports(OrderSpeed speed) {
@@ -18,7 +20,6 @@ public class SameDayPricingStrategy implements PricingStrategy {
 
     @Override
     public BigDecimal apply(BigDecimal subtotal, PricingZone zone) {
-        BigDecimal multiplier = zone != null ? zone.getSameDayMultiplier() : DEFAULT_MULTIPLIER;
-        return subtotal.multiply(multiplier);
+        return subtotal.multiply(zone.getSameDayMultiplier());
     }
 }

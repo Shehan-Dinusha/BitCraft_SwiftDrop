@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InAppNotificationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.service</a> &gt; <span class="el_source">InAppNotificationService.java</span></div><h1>InAppNotificationService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.service;
+
+import com.swiftdrop.notification.domain.entity.InAppNotification;
+import com.swiftdrop.notification.domain.repository.InAppNotificationRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+<span class="fc" id="L15">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class InAppNotificationService {
+
+    private final InAppNotificationRepository repository;
+
+    @Transactional
+    public InAppNotification saveNotification(UUID userId, String title, String body, String trackingNumber) {
+<span class="pc bpc" id="L24" title="1 of 2 branches missed.">        if (userId == null) {</span>
+<span class="nc" id="L25">            log.warn(&quot;Cannot save in-app notification without userId&quot;);</span>
+<span class="nc" id="L26">            return null;</span>
+        }
+
+<span class="fc" id="L29">        InAppNotification notification = InAppNotification.builder()</span>
+<span class="fc" id="L30">                .userId(userId)</span>
+<span class="pc bpc" id="L31" title="1 of 2 branches missed.">                .title(title != null ? title : &quot;SwiftDrop Update&quot;)</span>
+<span class="pc bpc" id="L32" title="1 of 2 branches missed.">                .body(body != null ? body : &quot;&quot;)</span>
+<span class="fc" id="L33">                .trackingNumber(trackingNumber)</span>
+<span class="fc" id="L34">                .read(false)</span>
+<span class="fc" id="L35">                .createdAt(Instant.now())</span>
+<span class="fc" id="L36">                .build();</span>
+
+<span class="fc" id="L38">        InAppNotification saved = repository.save(notification);</span>
+<span class="fc" id="L39">        log.info(&quot;Saved in-app notification id={} for user={}&quot;, saved.getId(), userId);</span>
+<span class="fc" id="L40">        return saved;</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;InAppNotification&gt; listNotifications(UUID userId) {
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        if (userId == null) {</span>
+<span class="nc" id="L46">            return List.of();</span>
+        }
+<span class="fc" id="L48">        return repository.findByUserIdOrderByCreatedAtDesc(userId);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount(UUID userId) {
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        if (userId == null) {</span>
+<span class="nc" id="L54">            return 0;</span>
+        }
+<span class="fc" id="L56">        return repository.countByUserIdAndReadFalse(userId);</span>
+    }
+
+    @Transactional
+    public Optional&lt;InAppNotification&gt; markAsRead(Long id, UUID userId) {
+<span class="pc bpc" id="L61" title="2 of 4 branches missed.">        if (id == null || userId == null) {</span>
+<span class="nc" id="L62">            return Optional.empty();</span>
+        }
+<span class="fc" id="L64">        return repository.findByIdAndUserId(id, userId)</span>
+<span class="fc" id="L65">                .map(n -&gt; {</span>
+<span class="fc" id="L66">                    n.setRead(true);</span>
+<span class="fc" id="L67">                    return repository.save(n);</span>
+                });
+    }
+
+    @Transactional
+    public int markAllAsRead(UUID userId) {
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">        if (userId == null) {</span>
+<span class="nc" id="L74">            return 0;</span>
+        }
+<span class="fc" id="L76">        return repository.markAllReadByUserId(userId);</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,28 +1,29 @@
-# Member 10: Analytics and customer AI assistant
+﻿# Member 10: Analytics and customer AI assistant
 
-Use the [Member 10 guide](../../member-guides/member-10.md) as the scope and stage checklist.
-Stages 1?5 reporting work and Stages 6?11 assistant code are implemented. The chatbot is
-customer-only; operational reports/audits remain restricted to dispatchers and administrators.
-Stage 7 live Azure verification is pending university account access. Later MCP/dashboard/
-diagram work is not claimed complete.
+Start with the [Member 10 scope guide](../../member-guides/member-10.md).
+The implementation includes operational analytics, customer-only AI chat, real gateway tools,
+MCP, the dashboard/widget and the complete analytics ERD and AI sequence diagrams.
+Live Azure pricing and owned-tracking verification is recorded in the Azure verification guide.
 
 | Document | Purpose |
 |---|---|
-| [Implementation roadmap](implementation-roadmap.md) | Remaining work, part ordering and dependencies |
-| [Stages 1?5 summary](stages-1-to-5-summary.md) | Completed analytics behavior and recorded evidence |
-| [AI setup and connection guide](stages-6-to-11-ai-assistant.md) | Mock startup, customer browser checks, real-model settings and limitations |
-| [Verification](verification.md) | Consolidated automated/manual checks, SQL reconciliation and review commands |
-| [Reporting contracts](reporting-contracts.md) | Metric meanings, timezone, ranges and acceptance examples |
-| [Event reliability](part-2-event-reliability.md) | Inbox transactions, validation, bounded retries, broker parity and tests |
-| [Analytics projections](part-3-analytics-projections.md) | Distinct-order/daily/courier projections and replay behavior |
-| [Reporting APIs](part-4-reporting-api.md) | Report contracts, operational authorization and compatibility |
-| [Handoff register](handoff-requests.md) | Cross-member policy and shared-file review dependencies |
-| [Historical baseline](baseline-notes.md) | Initial observations, not the current implementation status |
-| [Baseline evidence](../../test-reports/m10/part-1/README.md) | Recorded initial results |
-| [Reporting evidence](../../test-reports/m10/part-4/README.md) | Recorded reporting and authorization checks |
-| [Assistant evidence](../../test-reports/m10/stages-6-to-11/README.md) | Executed backend/frontend checks and pending Azure smoke |
+| [Verification](verification.md) | Current build, test, API, browser and data-reconciliation checks |
+| [AI setup](stages-6-to-11-ai-assistant.md) | Mock/real providers, gateway tools, customer authorization and conversation limits |
+| [Azure setup and costs](azure-setup-and-cost-management.md) | Provisioning, credentials and cost controls |
+| [Azure verification](stage-7-azure-verification.md) | Deployment settings and recorded live provider checks |
+| [MCP and frontend](stages-12-to-15.md) | MCP connection, dashboard and customer-widget integration |
+| [Admin UI and integration changes](admin-dashboard-refresh.md) | Current UI behavior, role policy and dispatch/delivery integration |
+| [Reporting contracts](reporting-contracts.md) | Metric definitions, date ranges and workload semantics |
+| [Event reliability](part-2-event-reliability.md) | Idempotency, validation, retries and broker declarations |
+| [Analytics projections](part-3-analytics-projections.md) | Daily/order/courier projections and reconciliation |
+| [Reporting APIs](part-4-reporting-api.md) | Report contracts and operational access control |
+| [Diagrams](stage-16-diagrams.md) | Sequence/ERD sources and SVG/PNG/PDF exports |
+| [Schema dictionary](analytics-schema.md) | Complete table, column, key and constraint definitions |
+| [Shared-file handoffs](handoff-requests.md) | Ownership review dependencies; runtime success is not owner sign-off |
+| [Current validation evidence](../../test-reports/m10/admin-ui-refresh/README.md) | Review results and current screenshots |
 
-Four overlapping Part 1?4 self-verification documents were consolidated into `verification.md`.
-The separate frontend AI demo walkthrough was merged into the AI setup guide. Historical
-technical explanations and curated test evidence are retained. Runtime logs, session data,
-model keys and build output stay outside commits.
+Historical test reports under `docs/test-reports/m10/` are retained as submission evidence.
+The obsolete baseline/roadmap, stage-1–5 summary and duplicate Part 4 self-verification
+have been consolidated into this index and `verification.md`. Temporary audit notes and
+intermediate screenshots were removed. Keep runtime logs, credentials, tokens, browser
+profiles and build outputs in ignored directories.

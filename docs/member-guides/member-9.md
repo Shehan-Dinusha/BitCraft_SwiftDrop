@@ -27,6 +27,13 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 
 ## 2. Gaps to close
 
+**Status update (2026-11-14):** All gaps below are implemented on `dev` (PRs #25, #28, #59,
+#60) and covered by the required tests. In addition, EMAIL notifications can now be sent for real
+through Azure Communication Services (`NOTIFICATION_EMAIL_PROVIDER=azure`; default `mock`).
+Every trigger sends EMAIL; **SMS was removed** (Azure SMS needs a purchased number the student
+subscription cannot get), and in-app push is unchanged. See [Azure email notifications](../design/m9/azure-email-notifications.md) and the
+[test and coverage evidence](../test-reports/m9/README.md) (124 unit + 2 integration tests). A review on 2026-11-16 added caller access checks to the preference, log and dispatch APIs, enabled the integration tests in `mvn verify`, and brought `definitions.json` and the event schema document back in line with the code. The original checkboxes are kept below for reference.
+
 **Broker orchestration (you own this for the whole team):**
 
 - [ ] **`definitions.json` doesn't match the Java configs.** Examples: `notification.events.queue` binds only `notification.#` in JSON but `parcel.status.changed.#` in Java; `webhook.events.queue` bindings differ; `customer-order.fee-revision.queue` and `swiftdrop.auth.events` are missing from JSON. Produce one table of every exchange/queue/binding, then make `definitions.json` and each `RabbitMQConfig` agree (send owners the exact lines for their config).
@@ -46,7 +53,7 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 
 ## 3. Boundaries
 
-**You own:** `backend/notification-service/`; `common-contracts/events/**` and `EventRoutingKeys` (record files); `infra/local/rabbitmq/definitions.json`; `infra/k8s/messaging/`; the frontend notification files above.
+**You own:** `backend/notification-service/`; `common-contracts/events/**` and `EventRoutingKeys` (record files); `infra/local/rabbitmq/definitions.json`; `infra/helm/swiftdrop/templates/rabbitmq.yaml` and `redis.yaml`; the frontend notification files above.
 
 **You do not touch:** other services' publishers/consumers. You send them the exact change for their `RabbitMQConfig`; they make it.
 
@@ -85,7 +92,7 @@ git checkout -b feature/m9-setup
 Copy-Item .env.example .env
 ```
 
-Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `infra/k8s/services/notification-service.yml` (rule from `AGENTS.md`).
+Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `services.notification-service` in `infra/helm/swiftdrop/values.yaml` (rule from `AGENTS.md`).
 
 > **Known setup traps (skip this box once `repo-fix-plan.md` is merged on `dev`):**
 > 1. `docker-compose.yml` starts Postgres with password `changeme_pg`, but services default to `swiftdrop`.
@@ -461,7 +468,7 @@ Every test below is written and committed inside a stage in Part B. Use this tab
 - [ ] DB and RabbitMQ credentials in `application.yml` come from env variables (no hard-coded values).
 - [ ] No secrets in code, no personal data (phone, address, names) in logs or error messages.
 - [ ] Your service block in `docker-compose.yml` starts and is healthy (`docker compose up -d notification-service`).
-- [ ] `infra/k8s/services/notification-service.yml` has every env variable your `application.yml` reads (bonus marks).
+- [ ] `services.notification-service` in `infra/helm/swiftdrop/values.yaml` has every env variable your `application.yml` reads (bonus marks).
 - [ ] Documentation deliverable exported (PNG/PDF + source) to `docs/design/m9/` and sent to whoever compiles the final design PDF.
 
 **E2. Test evidence for the submission.** Save `backend/notification-service/target/surefire-reports/` and the JaCoCo `index.html` (as a screenshot or PDF) into `docs/test-reports/m9/`.

@@ -24,8 +24,12 @@ public class CourierAssignedConsumer {
         log.info("Received CourierAssignedEvent for order: {}, courier: {}", event.orderId(), event.courierId());
         try {
             deliveryExecutionService.handleCourierAssigned(event);
-        } catch (Exception ex) {
-            log.error("Failed to process courier assignment in delivery service for order: {}", event.orderId(), ex);
+        } catch (RuntimeException ex) {
+            // Rethrow the original exception (never swallow it, which would ack and lose the
+            // assignment). ListenerRetryPolicyConfig retries transient failures; once it gives up,
+            // the message is rejected and dead-lettered to dlq.delivery.events.queue.
+            log.error("Failed to process courier assignment for order: {}", event.orderId(), ex);
+            throw ex;
         }
     }
 }

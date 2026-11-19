@@ -117,7 +117,7 @@ flowchart LR
     EX -- "order.created<br/>order.cancelled<br/>parcel.status.changed.#<br/>dispatch.#" --> Q2["dispatch.* queues"] --> S2["dispatch-assignment-service"]
     EX -- "delivery.#<br/>dispatch.courier.assigned" --> Q3["delivery.* queues"] --> S3["delivery-execution-service"]
     EX -- "notification.#" --> Q4["notification.events.queue"] --> S4["notification-service"]
-    EX -- "webhook.#" --> Q5["webhook.events.queue"] --> S5["webhook-resiliency-service"]
+    EX -- "order.created<br/>parcel.status.changed.#<br/>webhook.dispatch.requested" --> Q5["webhook.events.queue"] --> S5["webhook-resiliency-service"]
     EX -- "parcel.status.changed.#<br/>dispatch.#" --> Q6["analytics.events.queue"] --> S6["analytics-ai-service"]
     EX -- "parcel.status.changed.#<br/>parcel.fee.revised" --> Q7["swiftdrop.gateway.* queues"] --> S7["api-gateway<br/>tracking hub"]
 
@@ -128,7 +128,7 @@ The queue, exchange and binding definitions for local development are in [`infra
 
 ## Parcel lifecycle
 
-The delivery service owns the state machine. Only allowed transitions are accepted, and `DELIVERED` needs verified proof of delivery (recipient OTP or signature).
+The delivery service owns the state machine. Only allowed transitions are accepted, and `DELIVERED` needs verified proof of delivery (a photo plus recipient name, or a signature).
 
 ```mermaid
 stateDiagram-v2
@@ -236,7 +236,8 @@ SwiftDrop/
 │       └── app/                 Router, AppShell, providers
 ├── infra/
 │   ├── local/rabbitmq/          Queue, exchange and binding definitions
-│   └── k8s/                     base · databases · messaging · services (AKS)
+│   ├── helm/swiftdrop/          Helm chart for AKS (all services, DBs, broker, ingress)
+│   └── cluster/                 One-time cluster add-on values (Traefik)
 ├── docs/                        API specs, ADRs, local guide, design system
 ├── .github/workflows/           CI and CD pipelines
 ├── docker-compose.yml           Local infrastructure and optional app containers
@@ -282,18 +283,21 @@ docker compose --profile apps up -d --build
 flowchart LR
     PR["Pull request"] --> CB["CI Backend<br/>Java 25 · compile · test · verify"]
     PR --> CF["CI Frontend<br/>Node 20 · type-check · lint · build"]
-    MAIN["Push to main"] --> DET["Detect changed services"]
-    DET --> BP["Build and push images<br/>(one job per service)"]
-    BP --> DEP["Deploy to AKS"]
+    PR --> CH["CI Helm<br/>lint · template · schema validation"]
+    MAIN["Push to main"] --> DET["Detect changed components"]
+    DET --> BP["Build and push images to ACR<br/>(one job per component)"]
+    BP --> DEP["helm upgrade --install<br/>on AKS"]
 ```
 
-Workflows are in [`.github/workflows`](.github/workflows). Deployment is incremental: only services that changed are rebuilt, and a manual run can target one service.
+Workflows are in [`.github/workflows`](.github/workflows). Deployment is incremental: only the components that changed are rebuilt, and unchanged ones keep the image they are running. A manual run can target one component, `all` (needed for the first deploy), or `none` (config only). The full setup, from creating the Azure resources to the first deploy, is in the [AKS Helm deployment guide](docs/deployment/AKS-HELM-DEPLOYMENT.md).
 
 ## Documentation
 
 | Doc | What it covers |
 |---|---|
 | [Local Development Guide](docs/LOCAL-DEVELOPMENT.md) | Run one service, its database and the frontend |
+| [AKS Helm Deployment Guide](docs/deployment/AKS-HELM-DEPLOYMENT.md) | Deploy the full system to Azure Kubernetes Service with the Helm chart |
+| [Local Kubernetes Guide](docs/deployment/LOCAL-KUBERNETES.md) | Run the same chart for free on Docker Desktop's Kubernetes |
 | [API contracts](docs/api-specs/README.md) | OpenAPI documents, gateway routes, generating frontend types |
 | [ADR-001](docs/architecture/ADR-001-physical-db-statefulsets.md) | Why every database is a separate StatefulSet |
 | [Component guide](frontend/COMPONENTS.md) | Design system rules, components, catalog routes |

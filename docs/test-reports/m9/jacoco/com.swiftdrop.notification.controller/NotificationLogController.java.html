@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationLogController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.controller</a> &gt; <span class="el_source">NotificationLogController.java</span></div><h1>NotificationLogController.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.controller;
+
+import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.contracts.enums.UserRole;
+import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.contracts.security.ForbiddenException;
+import com.swiftdrop.notification.dto.DispatchNotificationRequest;
+import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
+import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
+import com.swiftdrop.notification.util.SensitiveTemplates;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Dispatch audit logs and manual dispatch.
+ *
+ * &lt;p&gt;Access rules (caller identity comes from the gateway's verified {@code X-User-Id}/{@code X-User-Role}):
+ * &lt;ul&gt;
+ *   &lt;li&gt;DISPATCHER and SYSTEM_ADMIN may list or read any log and dispatch to any recipient.&lt;/li&gt;
+ *   &lt;li&gt;Every other role sees only its own logs and may only dispatch a test message to itself,
+ *       always to its own resolved address (a request {@code destination} is ignored).&lt;/li&gt;
+ *   &lt;li&gt;One-time-code templates can never be dispatched here; they are sent only from the
+ *       auth-iam-service OTP event.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L36">@Slf4j</span>
+@RestController
+@RequestMapping({&quot;/api/v1/notifications/logs&quot;, &quot;/api/v1/notification-log&quot;})
+@Tag(name = &quot;NotificationLog&quot;, description = &quot;Notification dispatch audit log and trigger APIs&quot;)
+@RequiredArgsConstructor
+public class NotificationLogController {
+
+<span class="fc" id="L43">    static final UserRole[] OPERATIONS_ROLES = {UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN};</span>
+
+    private final MultiChannelNotificationDispatcher dispatcher;
+
+    @GetMapping(&quot;/health&quot;)
+    @Operation(summary = &quot;Health check for notification log controller&quot;)
+    public ApiResponse&lt;String&gt; health() {
+<span class="fc" id="L50">        return ApiResponse.success(&quot;NotificationLogController is ready&quot;, &quot;Health check OK&quot;);</span>
+    }
+
+    @GetMapping
+    @Operation(summary = &quot;List notification dispatch audit logs&quot;,
+            description = &quot;DISPATCHER/SYSTEM_ADMIN: all logs, optionally filtered by recipientId. &quot;
+                    + &quot;Other roles: only their own logs; asking for another recipient returns 403.&quot;)
+    public ApiResponse&lt;List&lt;NotificationDispatchLogResponse&gt;&gt; listLogs(
+            @RequestParam(required = false) UUID recipientId,
+            @RequestParam(required = false) String channel,
+            @RequestParam(required = false) String status,
+            HttpServletRequest httpRequest) {
+
+<span class="fc" id="L63">        CallerContext caller = CallerContext.from(httpRequest::getHeader);</span>
+        UUID targetRecipient;
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        if (isOperations(caller)) {</span>
+<span class="fc" id="L66">            targetRecipient = recipientId; // null = every recipient (operations console)</span>
+<span class="fc" id="L67">        } else {</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">            if (recipientId != null) {</span>
+<span class="fc" id="L69">                caller.requireSelfOrRole(recipientId, OPERATIONS_ROLES);</span>
+            }
+<span class="fc" id="L71">            targetRecipient = caller.userId();</span>
+        }
+
+<span class="fc" id="L74">        List&lt;NotificationDispatchLogResponse&gt; logs = dispatcher.listLogs(targetRecipient, channel, status);</span>
+<span class="fc" id="L75">        return ApiResponse.success(logs, &quot;Notification logs retrieved&quot;);</span>
+    }
+
+    @GetMapping(&quot;/{logId}&quot;)
+    @Operation(summary = &quot;Get notification dispatch log detail by log UUID&quot;,
+            description = &quot;Owner of the log, DISPATCHER or SYSTEM_ADMIN.&quot;)
+    public ApiResponse&lt;NotificationDispatchLogResponse&gt; getLog(
+            @PathVariable @Parameter(description = &quot;Log record UUID&quot;) UUID logId,
+            HttpServletRequest httpRequest) {
+<span class="fc" id="L84">        CallerContext caller = CallerContext.from(httpRequest::getHeader);</span>
+<span class="fc" id="L85">        return dispatcher.getLog(logId)</span>
+<span class="fc" id="L86">                .map(logResp -&gt; {</span>
+<span class="fc" id="L87">                    caller.requireSelfOrRole(logResp.recipientId(), OPERATIONS_ROLES);</span>
+<span class="fc" id="L88">                    return ApiResponse.success(logResp, &quot;Log retrieved&quot;);</span>
+                })
+<span class="pc" id="L90">                .orElseGet(() -&gt; ApiResponse.error(&quot;Notification log not found for ID: &quot; + logId));</span>
+    }
+
+    @PostMapping(&quot;/dispatch&quot;)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = &quot;Ad-hoc / manual notification dispatch&quot;,
+            description = &quot;DISPATCHER/SYSTEM_ADMIN: any recipient. Other roles: only themselves, to their own &quot;
+                    + &quot;address (destination is ignored). One-time-code templates are rejected with 403.&quot;)
+    public ApiResponse&lt;NotificationDispatchLogResponse&gt; dispatchNotification(
+            @Valid @RequestBody DispatchNotificationRequest request,
+            HttpServletRequest httpRequest) {
+<span class="fc" id="L101">        CallerContext caller = CallerContext.from(httpRequest::getHeader);</span>
+
+<span class="fc bfc" id="L103" title="All 2 branches covered.">        if (SensitiveTemplates.isSensitive(request.templateCode())) {</span>
+<span class="fc" id="L104">            throw new ForbiddenException(&quot;One-time-code emails can only be requested by the auth service&quot;);</span>
+        }
+
+<span class="fc" id="L107">        DispatchNotificationRequest effective = request;</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">        if (!isOperations(caller)) {</span>
+<span class="fc" id="L109">            caller.requireSelfOrRole(request.recipientId(), OPERATIONS_ROLES);</span>
+            // A self-service test must not become a relay to arbitrary addresses.
+<span class="fc" id="L111">            effective = new DispatchNotificationRequest(request.recipientId(), request.channel(),</span>
+<span class="fc" id="L112">                    request.templateCode(), null, request.templateParams(), request.referenceId());</span>
+        }
+
+<span class="fc" id="L115">        log.info(&quot;Manual dispatch by {} ({}) to recipient {}&quot;, caller.userId(), caller.role(), effective.recipientId());</span>
+<span class="fc" id="L116">        NotificationDispatchLogResponse response = dispatcher.dispatch(effective);</span>
+<span class="fc" id="L117">        return ApiResponse.success(response, &quot;Notification dispatched&quot;);</span>
+    }
+
+    private static boolean isOperations(CallerContext caller) {
+<span class="fc bfc" id="L121" title="All 4 branches covered.">        return caller.role() == UserRole.DISPATCHER || caller.role() == UserRole.SYSTEM_ADMIN;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

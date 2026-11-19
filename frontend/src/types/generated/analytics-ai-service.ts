@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/api/v1/ai/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** No server-initiated SSE stream is offered */
+        get: operations["deliveryMcpStream"];
+        put?: never;
+        /**
+         * Customer-only stateless MCP Streamable HTTP tools
+         * @description MCP protocol 2025-03-26. Supports initialize, ping, tools/list and tools/call. Uses JSON-RPC envelopes instead of ApiResponse. Native clients only; all Origin headers are rejected. Send a customer Bearer token through the gateway. Tool calls share the chat ten-request per-minute per-user budget and reuse ownership checks, safe output, argument validation and durable audits. No session IDs or server-initiated streams. Notifications return 202 without a body.
+         */
+        post: operations["deliveryMcp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/chat": {
         parameters: {
             query?: never;
@@ -827,6 +848,111 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    deliveryMcpStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            401: components["responses"]["Unauthenticated"];
+            /** @description Customer role required or browser Origin rejected */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Use POST; server-initiated SSE is not supported */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deliveryMcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @constant */
+                    jsonrpc: "2.0";
+                    id?: string | number;
+                    method: string;
+                    params?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description JSON-RPC result or protocol error (-32700 parse error, -32600 invalid request, -32601 unknown method, -32602 invalid params); tool failures have result.isError true */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        jsonrpc: "2.0";
+                        id: string | number | null;
+                        result?: {
+                            [key: string]: unknown;
+                        };
+                        error?: {
+                            code: number;
+                            message: string;
+                        };
+                    };
+                };
+            };
+            /** @description Notification accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description Customer role required or browser Origin rejected */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Shared assistant request limit reached */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tool audit could not be persisted */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limiter capacity reached */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     deliveryAssistantChat: {
         parameters: {
             query?: never;

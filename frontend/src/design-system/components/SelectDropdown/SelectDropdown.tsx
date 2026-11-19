@@ -201,6 +201,8 @@ export function SelectDropdown({
   const showLiveRing = resolvedState === 'default' || resolvedState === 'error';
 
   return (
+    // Delegates arrow/Enter/Escape from the focused combobox trigger or search field.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div className={cn('relative w-full', className)} onKeyDown={onKeyDown}>
       {label ? (
         <label

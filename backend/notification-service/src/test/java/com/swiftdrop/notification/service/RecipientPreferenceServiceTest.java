@@ -45,7 +45,6 @@ class RecipientPreferenceServiceTest {
                 .recipientId(recipientId)
                 .recipientType("CUSTOMER")
                 .emailEnabled(true)
-                .smsEnabled(true)
                 .pushEnabled(true)
                 .languagePreference("en")
                 .updatedAt(Instant.now())
@@ -57,7 +56,6 @@ class RecipientPreferenceServiceTest {
 
         assertThat(response.recipientId()).isEqualTo(recipientId);
         assertThat(response.emailEnabled()).isTrue();
-        assertThat(response.smsEnabled()).isTrue();
         assertThat(response.pushEnabled()).isTrue();
         assertThat(response.languagePreference()).isEqualTo("en");
 
@@ -71,10 +69,8 @@ class RecipientPreferenceServiceTest {
                 .recipientId(recipientId)
                 .recipientType("CUSTOMER")
                 .emailEnabled(true)
-                .smsEnabled(false)
                 .pushEnabled(true)
                 .emailAddress("user@example.com")
-                .phoneNumber("+94771234567")
                 .languagePreference("si")
                 .updatedAt(Instant.now())
                 .build();
@@ -84,9 +80,7 @@ class RecipientPreferenceServiceTest {
         RecipientPreferenceResponse response = preferenceService.getOrCreatePreferences(recipientId);
 
         assertThat(response.recipientId()).isEqualTo(recipientId);
-        assertThat(response.smsEnabled()).isFalse();
         assertThat(response.emailAddress()).isEqualTo("user@example.com");
-        assertThat(response.phoneNumber()).isEqualTo("+94771234567");
         assertThat(response.languagePreference()).isEqualTo("si");
 
         verify(preferenceRepository, never()).save(any());
@@ -99,7 +93,6 @@ class RecipientPreferenceServiceTest {
                 .recipientId(recipientId)
                 .recipientType("CUSTOMER")
                 .emailEnabled(true)
-                .smsEnabled(true)
                 .pushEnabled(true)
                 .languagePreference("en")
                 .build();
@@ -109,20 +102,16 @@ class RecipientPreferenceServiceTest {
 
         UpdatePreferenceRequest request = new UpdatePreferenceRequest(
                 false,
-                true,
                 false,
                 "newmail@example.com",
-                "+94770000000",
                 "ta"
         );
 
         RecipientPreferenceResponse response = preferenceService.updatePreferences(recipientId, request);
 
         assertThat(response.emailEnabled()).isFalse();
-        assertThat(response.smsEnabled()).isTrue();
         assertThat(response.pushEnabled()).isFalse();
         assertThat(response.emailAddress()).isEqualTo("newmail@example.com");
-        assertThat(response.phoneNumber()).isEqualTo("+94770000000");
         assertThat(response.languagePreference()).isEqualTo("ta");
     }
 
@@ -134,10 +123,8 @@ class RecipientPreferenceServiceTest {
 
         UpdatePreferenceRequest request = new UpdatePreferenceRequest(
                 true,
-                false,
                 true,
                 "created@example.com",
-                "+94711112222",
                 "en"
         );
 
@@ -145,6 +132,5 @@ class RecipientPreferenceServiceTest {
 
         assertThat(response.recipientId()).isEqualTo(recipientId);
         assertThat(response.emailAddress()).isEqualTo("created@example.com");
-        assertThat(response.phoneNumber()).isEqualTo("+94711112222");
     }
 }

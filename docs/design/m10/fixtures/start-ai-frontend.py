@@ -33,7 +33,9 @@ def main():
                 raise RuntimeError("Port 5173 is occupied by an application other than the Vite frontend.")
     jars = {}
     for module in MODULES:
-        options = [ROOT / "backend" / module / output / f"{module}-0.1.0-SNAPSHOT.jar" for output in ["target-ai-customer", "target-ai", "target"]]
+        # Use the latest analytics implementation with the previously validated support services.
+        build_dirs = ["target", "target-ai-customer", "target-ai"] if module == "analytics-ai-service" else ["target-ai-customer", "target-ai", "target"]
+        options = [ROOT / "backend" / module / output / f"{module}-0.1.0-SNAPSHOT.jar" for output in build_dirs]
         jars[module] = next((path for path in options if path.is_file()), None)
         if jars[module] is None:
             raise RuntimeError(f"Package {module} first; see the AI connection guide.")
@@ -64,6 +66,14 @@ def main():
         raise RuntimeError("Could not create the separate IAM demo database.")
     virtual_host = "m10-ai-demo-" + uuid.uuid4().hex[:8]
     rabbit_user = env.get("RABBITMQ_DEFAULT_USER", "swiftdrop")
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        ready = subprocess.run(["docker", "exec", "swiftdrop-rabbitmq", "rabbitmq-diagnostics", "-q", "check_running"], capture_output=True)
+        if ready.returncode == 0:
+            break
+        time.sleep(1)
+    else:
+        raise RuntimeError("RabbitMQ did not become ready for demo setup.")
     for command in [["add_vhost", virtual_host], ["set_permissions", "-p", virtual_host, rabbit_user, ".*", ".*", ".*"]]:
         result = subprocess.run(["docker", "exec", "swiftdrop-rabbitmq", "rabbitmqctl", *command], capture_output=True)
         if result.returncode:

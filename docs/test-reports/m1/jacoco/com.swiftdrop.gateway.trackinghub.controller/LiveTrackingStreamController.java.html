@@ -71,38 +71,38 @@ public class LiveTrackingStreamController implements WebSocketHandler {
     @Override
     @NonNull
     public Mono&lt;Void&gt; handle(@NonNull WebSocketSession session) {
-<span class="nc" id="L74">        String trackingNumber = resolveTrackingNumber(session);</span>
+<span class="fc" id="L74">        String trackingNumber = resolveTrackingNumber(session);</span>
 
-<span class="nc" id="L76">        return enrichmentService.enrich(trackingNumber)</span>
-<span class="nc" id="L77">                .then(Mono.defer(() -&gt; {</span>
-<span class="nc" id="L78">                    Flux&lt;StreamItem&gt; updates = broadcastHub.stream(trackingNumber)</span>
-<span class="nc" id="L79">                            .map(view -&gt; new StreamItem(view, false));</span>
-<span class="nc" id="L80">                    Flux&lt;StreamItem&gt; heartbeats = Flux.interval(heartbeatInterval)</span>
-<span class="nc" id="L81">                            .map(sequence -&gt; new StreamItem(null, true));</span>
+<span class="fc" id="L76">        return enrichmentService.enrich(trackingNumber)</span>
+<span class="fc" id="L77">                .then(Mono.defer(() -&gt; {</span>
+<span class="fc" id="L78">                    Flux&lt;StreamItem&gt; updates = broadcastHub.stream(trackingNumber)</span>
+<span class="fc" id="L79">                            .map(view -&gt; new StreamItem(view, false));</span>
+<span class="fc" id="L80">                    Flux&lt;StreamItem&gt; heartbeats = Flux.interval(heartbeatInterval)</span>
+<span class="fc" id="L81">                            .map(sequence -&gt; new StreamItem(null, true));</span>
 
-<span class="nc" id="L83">                    Flux&lt;WebSocketMessage&gt; messages = Flux.merge(updates, heartbeats)</span>
-<span class="nc" id="L84">                            .takeUntil(item -&gt; isTerminal(item.view()))</span>
-<span class="nc bnc" id="L85" title="All 2 branches missed.">                            .map(item -&gt; item.heartbeat()</span>
-<span class="nc" id="L86">                                    ? session.pingMessage(factory -&gt; factory.wrap(new byte[0]))</span>
-<span class="nc" id="L87">                                    : session.textMessage(toJson(item.view())));</span>
-<span class="nc" id="L88">                    return session.send(messages);</span>
+<span class="fc" id="L83">                    Flux&lt;WebSocketMessage&gt; messages = Flux.merge(updates, heartbeats)</span>
+<span class="fc" id="L84">                            .takeUntil(item -&gt; isTerminal(item.view()))</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">                            .map(item -&gt; item.heartbeat()</span>
+<span class="pc" id="L86">                                    ? session.pingMessage(factory -&gt; factory.wrap(new byte[0]))</span>
+<span class="fc" id="L87">                                    : session.textMessage(toJson(item.view())));</span>
+<span class="fc" id="L88">                    return session.send(messages);</span>
                 }));
     }
 
     private String resolveTrackingNumber(WebSocketSession session) {
-<span class="nc" id="L93">        String trackingNumber = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())</span>
-<span class="nc" id="L94">                .build()</span>
-<span class="nc" id="L95">                .getQueryParams()</span>
-<span class="nc" id="L96">                .getFirst(&quot;trackingNumber&quot;);</span>
-<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (trackingNumber == null) {</span>
-<span class="nc" id="L98">            trackingNumber = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())</span>
-<span class="nc" id="L99">                    .build()</span>
-<span class="nc" id="L100">                    .getQueryParams()</span>
-<span class="nc" id="L101">                    .getFirst(&quot;trackingId&quot;);</span>
+<span class="fc" id="L93">        String trackingNumber = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())</span>
+<span class="fc" id="L94">                .build()</span>
+<span class="fc" id="L95">                .getQueryParams()</span>
+<span class="fc" id="L96">                .getFirst(&quot;trackingNumber&quot;);</span>
+<span class="fc bfc" id="L97" title="All 2 branches covered.">        if (trackingNumber == null) {</span>
+<span class="fc" id="L98">            trackingNumber = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())</span>
+<span class="fc" id="L99">                    .build()</span>
+<span class="fc" id="L100">                    .getQueryParams()</span>
+<span class="fc" id="L101">                    .getFirst(&quot;trackingId&quot;);</span>
         }
-<span class="nc bnc" id="L103" title="All 4 branches missed.">        return trackingNumber == null || trackingNumber.isBlank()</span>
-<span class="nc" id="L104">                ? &quot;unknown&quot;</span>
-<span class="nc" id="L105">                : trackingNumber;</span>
+<span class="pc bpc" id="L103" title="1 of 4 branches missed.">        return trackingNumber == null || trackingNumber.isBlank()</span>
+<span class="fc" id="L104">                ? &quot;unknown&quot;</span>
+<span class="fc" id="L105">                : trackingNumber;</span>
     }
 
     private boolean isTerminal(PublicTrackingViewDto view) {
@@ -113,13 +113,13 @@ public class LiveTrackingStreamController implements WebSocketHandler {
 
     private String toJson(PublicTrackingViewDto view) {
         try {
-<span class="nc" id="L116">            return objectMapper.writeValueAsString(view);</span>
+<span class="fc" id="L116">            return objectMapper.writeValueAsString(view);</span>
 <span class="nc" id="L117">        } catch (JsonProcessingException exception) {</span>
 <span class="nc" id="L118">            throw new IllegalStateException(&quot;Unable to serialize tracking update&quot;, exception);</span>
         }
     }
 
-<span class="nc" id="L122">    private record StreamItem(PublicTrackingViewDto view, boolean heartbeat) {</span>
+<span class="fc" id="L122">    private record StreamItem(PublicTrackingViewDto view, boolean heartbeat) {</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

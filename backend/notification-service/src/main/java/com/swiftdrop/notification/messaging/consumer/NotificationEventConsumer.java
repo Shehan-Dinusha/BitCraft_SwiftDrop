@@ -1,22 +1,28 @@
 package com.swiftdrop.notification.messaging.consumer;
 
+import org.springframework.dao.DataAccessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.notification.config.RabbitMQConfig;
 import com.swiftdrop.notification.domain.entity.ProcessedEvent;
 import com.swiftdrop.notification.domain.repository.ProcessedEventRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
+import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.messaging.trigger.EventEnvelope;
 import com.swiftdrop.notification.messaging.trigger.NotificationTrigger;
+import com.swiftdrop.notification.service.InAppNotificationService;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
-import lombok.RequiredArgsConstructor;
+import com.swiftdrop.notification.util.SensitiveTemplates;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -26,13 +32,39 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class NotificationEventConsumer {
 
     private final ObjectMapper objectMapper;
     private final MultiChannelNotificationDispatcher dispatcher;
     private final List<NotificationTrigger> triggers;
     private final ProcessedEventRepository processedEventRepository;
+    private final InAppNotificationService inAppNotificationService;
+
+    public NotificationEventConsumer(
+            ObjectMapper objectMapper,
+            MultiChannelNotificationDispatcher dispatcher,
+            List<NotificationTrigger> triggers,
+            ProcessedEventRepository processedEventRepository
+    ) {
+        this(objectMapper, dispatcher, triggers, processedEventRepository, null);
+    }
+
+    // Two constructors exist, so Spring needs to be told which one to inject;
+    // without @Autowired it looks for a no-arg constructor and startup fails.
+    @Autowired
+    public NotificationEventConsumer(
+            ObjectMapper objectMapper,
+            MultiChannelNotificationDispatcher dispatcher,
+            List<NotificationTrigger> triggers,
+            ProcessedEventRepository processedEventRepository,
+            InAppNotificationService inAppNotificationService
+    ) {
+        this.objectMapper = objectMapper;
+        this.dispatcher = dispatcher;
+        this.triggers = triggers;
+        this.processedEventRepository = processedEventRepository;
+        this.inAppNotificationService = inAppNotificationService;
+    }
 
     @RabbitListener(queues = RabbitMQConfig.NOTIFICATION_EVENTS_QUEUE)
     public void onNotificationEvent(Message message) {
@@ -55,13 +87,39 @@ public class NotificationEventConsumer {
                 envelope.routingKey(), eventId, triggers.size());
 
         boolean matchedAny = false;
+        // At most one inbox row per recipient per event, even if several requests or triggers match.
+        Set<UUID> inboxRecipients = new HashSet<>();
         for (NotificationTrigger trigger : triggers) {
             if (trigger.matches(envelope)) {
                 matchedAny = true;
                 List<DispatchNotificationRequest> requests = trigger.build(envelope);
                 if (requests != null && !requests.isEmpty()) {
                     for (DispatchNotificationRequest request : requests) {
-                        dispatcher.dispatch(request);
+                        NotificationDispatchLogResponse dispatchLog = dispatcher.dispatch(request);
+                        if (SensitiveTemplates.isSensitive(request.templateCode())) {
+                            continue; // one-time codes are emailed only, never copied to the in-app inbox
+                        }
+                        if (request.recipientId() != null) {
+                            String title = dispatchLog != null && dispatchLog.subject() != null
+                                    ? dispatchLog.subject()
+                                    : "SwiftDrop Notification";
+                            String body = dispatchLog != null && dispatchLog.content() != null
+                                    ? dispatchLog.content()
+                                    : "Notification received";
+                            String trackingNumber = dispatchLog != null && dispatchLog.referenceId() != null
+                                    ? dispatchLog.referenceId()
+                                    : envelope.extractTrackingNumber();
+
+                            if (inAppNotificationService != null && inboxRecipients.add(request.recipientId())) {
+                                inAppNotificationService.saveNotification(request.recipientId(), title, body, trackingNumber);
+
+                                // For merchant orders, also write to merchant owner inbox if distinct
+                                Optional<UUID> merchantOwnerId = envelope.extractMerchantOwnerId();
+                                if (merchantOwnerId.isPresent() && inboxRecipients.add(merchantOwnerId.get())) {
+                                    inAppNotificationService.saveNotification(merchantOwnerId.get(), title, body, trackingNumber);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -75,7 +133,8 @@ public class NotificationEventConsumer {
         if (eventId != null) {
             try {
                 processedEventRepository.save(new ProcessedEvent(eventId, envelope.routingKey(), Instant.now()));
-            } catch (Exception e) {
+            } catch (DataAccessException e) {
+                // Best effort: the notification was already sent; a missing marker only risks a duplicate.
                 log.warn("Could not record processed event {}: {}", eventId, e.getMessage());
             }
         }

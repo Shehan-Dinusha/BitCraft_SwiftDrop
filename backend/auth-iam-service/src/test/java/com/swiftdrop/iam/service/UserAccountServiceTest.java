@@ -6,6 +6,7 @@ import com.swiftdrop.contracts.enums.UserStatus;
 import com.swiftdrop.iam.domain.entity.UserAccount;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.ChangePasswordRequest;
+import com.swiftdrop.iam.dto.CreateUserRequest;
 import com.swiftdrop.iam.dto.RegisterUserRequest;
 import com.swiftdrop.iam.exception.AuthException;
 import com.swiftdrop.iam.exception.UserAlreadyExistsException;
@@ -27,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -102,13 +104,70 @@ class UserAccountServiceTest {
         assertThat(profile.phone()).isNull();
         assertThat(profile.role()).isEqualTo(UserRole.CUSTOMER);
         assertThat(profile.status()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(profile.emailVerified()).isFalse();
+    }
+
+    @Test
+    void registeringAgainWithAnUnverifiedEmailReplacesThePendingSignUp() {
+        UserAccount pending = new UserAccount();
+        pending.setId(42L);
+        pending.setPublicId(UUID.randomUUID());
+        pending.setUsername("old.name");
+        pending.setEmail("alice@example.com");
+        pending.setPasswordHash("attacker-hash");
+        pending.setRole(UserRole.CUSTOMER);
+        pending.setStatus(UserStatus.ACTIVE);
+        pending.setEmailVerified(false);
+        pending.setCreatedAt(Instant.now());
+
+        when(userAccountRepository.findByEmailIgnoreCase("alice@example.com")).thenReturn(Optional.of(pending));
+        when(userAccountRepository.findByUsernameIgnoreCase("alice")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("Secret123")).thenReturn("owner-hash");
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var profile = userAccountService.register(new RegisterUserRequest(
+                "alice", "alice@example.com", null, "Alice", "Perera",
+                "Secret123", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO, null));
+
+        assertThat(profile.id()).isEqualTo(pending.getPublicId());
+        assertThat(pending.getPasswordHash()).isEqualTo("owner-hash");
+        assertThat(pending.getUsername()).isEqualTo("alice");
+        assertThat(profile.emailVerified()).isFalse();
+    }
+
+    @Test
+    void registeringWithAVerifiedEmailIsRejected() {
+        UserAccount verified = new UserAccount();
+        verified.setId(43L);
+        verified.setPublicId(UUID.randomUUID());
+        verified.setEmail("alice@example.com");
+        verified.setStatus(UserStatus.ACTIVE);
+        verified.setEmailVerified(true);
+        when(userAccountRepository.findByEmailIgnoreCase("alice@example.com")).thenReturn(Optional.of(verified));
+        when(userAccountRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> userAccountService.register(new RegisterUserRequest(
+                "alice2", "alice@example.com", null, "Alice", "Perera",
+                "Secret123", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO, null)))
+                .isInstanceOf(UserAlreadyExistsException.class);
+        verify(userAccountRepository, never()).save(any());
+    }
+
+    @Test
+    void usersCreatedByAnAdministratorAreVerifiedImmediately() {
+        when(passwordEncoder.encode("Secret123")).thenReturn("encoded");
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var profile = userAccountService.create(new CreateUserRequest(
+                "courier.one", "courier.one@example.com", null, "Courier", "One",
+                "Secret123", UserRole.COURIER, SriLankanDistrict.COLOMBO, null));
+
+        assertThat(profile.emailVerified()).isTrue();
     }
 
     @Test
     void cannotDemoteLastActiveSystemAdmin() {
         when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
-        when(userAccountRepository.countByRoleAndStatus(UserRole.SYSTEM_ADMIN, UserStatus.ACTIVE)).thenReturn(1L);
-
         assertThatThrownBy(() -> userAccountService.updateRole(admin.getPublicId(), UserRole.DISPATCHER))
                 .isInstanceOf(AuthException.class)
                 .satisfies(exception -> assertThat(((AuthException) exception).getStatus())
@@ -128,20 +187,29 @@ class UserAccountServiceTest {
     }
 
     @Test
-    void roleChangeRevokesSessions() {
+    void existingAccountRoleCannotBeChanged() {
         UserAccount user = new UserAccount();
         user.setPublicId(UUID.randomUUID());
         user.setUsername("courier");
         user.setRole(UserRole.CUSTOMER);
         user.setStatus(UserStatus.ACTIVE);
         when(userAccountRepository.findByPublicId(user.getPublicId())).thenReturn(Optional.of(user));
-        when(userAccountRepository.save(user)).thenReturn(user);
+        assertThatThrownBy(() -> userAccountService.updateRole(user.getPublicId(), UserRole.COURIER))
+                .isInstanceOf(AuthException.class)
+                .satisfies(exception -> assertThat(((AuthException) exception).getStatus())
+                        .isEqualTo(HttpStatus.CONFLICT));
+        assertThat(user.getRole()).isEqualTo(UserRole.CUSTOMER);
+        verify(userAccountRepository, never()).save(user);
+        verifyNoInteractions(refreshTokenService, tokenIssuanceService);
+    }
 
-        userAccountService.updateRole(user.getPublicId(), UserRole.COURIER);
-
-        assertThat(user.getRole()).isEqualTo(UserRole.COURIER);
-        verify(refreshTokenService).revokeAll(user);
-        verify(tokenIssuanceService).blacklistUser(user.getPublicId());
+    @Test
+    void sameRoleRequestIsAnIdempotentNoOp() {
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+        assertThat(userAccountService.updateRole(admin.getPublicId(), UserRole.SYSTEM_ADMIN).role())
+                .isEqualTo(UserRole.SYSTEM_ADMIN);
+        verify(userAccountRepository, never()).save(admin);
+        verifyNoInteractions(refreshTokenService, tokenIssuanceService);
     }
 
     @Test
@@ -156,7 +224,7 @@ class UserAccountServiceTest {
                 new ChangePasswordRequest("OldPass123", "NewPass123"));
 
         assertThat(admin.getPasswordHash()).isEqualTo("new-hash");
-        verify(passwordPolicy).validate("NewPass123");
+        verify(passwordPolicy).validate("NewPass123", admin.getUsername(), admin.getEmail());
         verify(refreshTokenService).revokeAll(admin);
         verify(tokenIssuanceService).blacklistUser(admin.getPublicId());
     }

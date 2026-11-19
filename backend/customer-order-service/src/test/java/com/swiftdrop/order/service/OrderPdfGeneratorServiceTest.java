@@ -212,7 +212,7 @@ class OrderPdfGeneratorServiceTest {
     void labelQrCodeDecodes() throws Exception {
         String url = pdfGeneratorService.trackingUrl(sampleOrder);
 
-        BufferedImage image = padded(MatrixToImageWriter.toBufferedImage(OrderPdfGeneratorService.labelQrMatrix(url)), 8);
+        BufferedImage image = padded(MatrixToImageWriter.toBufferedImage(PdfCodes.labelQrMatrix(url)), 8);
 
         assertThat(decode(image)).isEqualTo("https://swiftdrop.lk/track/SD-7K4M-9QX2");
     }
@@ -227,6 +227,7 @@ class OrderPdfGeneratorServiceTest {
         int height = stream.getAsNumber(PdfName.HEIGHT).intValue();
         int components = PdfName.DEVICERGB.equals(stream.get(PdfName.COLORSPACE)) ? 3 : 1;
         byte[] samples = PdfReader.getStreamBytes(stream);
+        reader.close();
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -242,7 +243,7 @@ class OrderPdfGeneratorServiceTest {
     @Test
     @DisplayName("The label Code 128 barcode decodes to the tracking number and fits the label at full bar width")
     void labelBarcodeDecodes() throws Exception {
-        var code = OrderPdfGeneratorService.code128("SD-7K4M-9QX2");
+        var code = PdfCodes.code128("SD-7K4M-9QX2");
 
         // 10X quiet zones on each side must fit inside the label content width (about 255 pt).
         assertThat(code.getBarcodeSize().getWidth() + 20 * 1.2f).isLessThan(255f);

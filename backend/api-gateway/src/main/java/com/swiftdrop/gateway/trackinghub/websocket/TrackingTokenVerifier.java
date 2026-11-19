@@ -1,5 +1,6 @@
 package com.swiftdrop.gateway.trackinghub.websocket;
 
+import io.jsonwebtoken.JwtException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.gateway.security.JwksKeyStore;
@@ -71,7 +72,8 @@ public class TrackingTokenVerifier {
             }
             UserRole role = UserRole.fromClaim(claimAsString(claims, "role"));
             return new StompPrincipal(claims.getSubject(), role == null ? null : role.name());
-        } catch (RuntimeException exception) {
+        } catch (JwtException | IllegalArgumentException exception) {
+            // Invalid, expired or malformed token: treat the STOMP session as anonymous.
             return null;
         }
     }

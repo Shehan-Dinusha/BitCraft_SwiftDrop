@@ -26,6 +26,18 @@ class GatewayRoutesConfigTest {
     }
 
     @Test
+    void merchantAdminAndB2bPathsMatchMerchantRoute() {
+        var route = routeLocator.getRoutes().filter(r -> r.getId().equals("merchant-b2b-service")).blockFirst();
+        assertThat(route).isNotNull();
+        for (String path : new String[] {"/api/v1/admin/merchants", "/api/v1/admin/merchants/123/approve", "/api/v1/b2b/orders"}) {
+            var exchange = org.springframework.mock.web.server.MockServerWebExchange.from(
+                    org.springframework.mock.http.server.reactive.MockServerHttpRequest.post(path));
+            assertThat(reactor.core.publisher.Mono.from(route.getPredicate().apply(exchange)).block())
+                    .as(path).isTrue();
+        }
+    }
+
+    @Test
     void bindsOrderRouteToConfiguredUrl() {
         var orderRoute = routeLocator.getRoutes()
                 .filter(route -> route.getId().equals("customer-order-service"))

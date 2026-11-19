@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
@@ -18,6 +19,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,16 +42,15 @@ class ProofOfDeliveryControllerTest {
         UUID deliveryId = UUID.randomUUID();
         ProofOfDeliveryUploadRequest request = new ProofOfDeliveryUploadRequest(
                 "https://storage.swiftdrop.lk/pod/photo.jpg",
-                "signature-base64",
-                "123456"
+                "signature-base64"
         );
 
         ProofOfDeliveryResponse response = new ProofOfDeliveryResponse(
                 1L,
                 deliveryId,
-                false,
+                true,
                 Instant.now(),
-                null
+                Instant.now()
         );
 
         when(storageService.store(eq(deliveryId), any(ProofOfDeliveryUploadRequest.class))).thenReturn(response);
@@ -60,27 +61,38 @@ class ProofOfDeliveryControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.deliveryId").value(deliveryId.toString()))
-                .andExpect(jsonPath("$.data.verified").value(false));
+                .andExpect(jsonPath("$.data.verified").value(true));
     }
 
     @Test
-    @DisplayName("POST /api/v1/deliveries/{deliveryId}/proof-of-delivery/verify verifies OTP")
-    void testVerifyPod() throws Exception {
+    @DisplayName("POST /api/v1/deliveries/{deliveryId}/proof-of-delivery with multipart/form-data uploads evidence")
+    void testUploadPodMultipart() throws Exception {
         UUID deliveryId = UUID.randomUUID();
+        MockMultipartFile photo = new MockMultipartFile(
+                "photo",
+                "evidence.jpg",
+                "image/jpeg",
+                "fake image content".getBytes()
+        );
+
         ProofOfDeliveryResponse response = new ProofOfDeliveryResponse(
-                1L,
+                2L,
                 deliveryId,
                 true,
                 Instant.now(),
                 Instant.now()
         );
 
-        when(storageService.verify(eq(deliveryId), eq("123456"))).thenReturn(response);
+        when(storageService.storeMultipart(eq(deliveryId), any(), eq("Kamal Silva"), eq("sig-data")))
+                .thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery/verify")
-                        .param("otp", "123456"))
-                .andExpect(status().isOk())
+        mockMvc.perform(multipart("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")
+                        .file(photo)
+                        .param("recipientName", "Kamal Silva")
+                        .param("signature", "sig-data"))
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.deliveryId").value(deliveryId.toString()))
                 .andExpect(jsonPath("$.data.verified").value(true));
     }
 }

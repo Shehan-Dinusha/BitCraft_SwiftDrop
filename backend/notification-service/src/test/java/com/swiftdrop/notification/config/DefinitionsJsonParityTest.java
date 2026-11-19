@@ -8,7 +8,9 @@ import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -144,6 +146,21 @@ class DefinitionsJsonParityTest {
     @DisplayName("definitions.json queues list is not empty")
     void queuesNotEmpty() {
         assertFalse(root.get("queues").isEmpty(), "No queues defined in definitions.json");
+    }
+
+    @Test
+    @DisplayName("definitions.json declares each binding only once")
+    void noDuplicateBindings() {
+        Set<String> seen = new HashSet<>();
+        List<String> duplicates = new ArrayList<>();
+        for (JsonNode b : root.get("bindings")) {
+            String key = b.path("source").asText() + "|" + b.path("vhost").asText() + "|" + b.path("destination").asText()
+                    + "|" + b.path("routing_key").asText() + "|" + b.path("arguments").toString();
+            if (!seen.add(key)) {
+                duplicates.add(b.path("destination").asText() + " <- " + b.path("routing_key").asText());
+            }
+        }
+        assertTrue(duplicates.isEmpty(), "definitions.json repeats bindings: " + duplicates);
     }
 
     @Test

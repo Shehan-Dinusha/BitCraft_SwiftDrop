@@ -1,0 +1,87 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Security scanning (static analysis + known-vulnerability checks).
+#
+#   codeql      CodeQL SAST for Java and TypeScript (results in the Security tab)
+#   trivy-fs    known CVEs in Maven/npm dependencies, plus misconfigurations in
+#               Dockerfiles and the Helm chart; fails on HIGH/CRITICAL with a fix
+#
+# Runs on every pull request, on pushes to dev/main, and weekly so that newly
+# published CVEs are caught even when the code does not change.
+# Container images are scanned separately in cd-aks-deploy.yml before push.
+# ──────────────────────────────────────────────────────────────────────────────
+name: Security Scan
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+  schedule:
+    - cron: "0 3 * * 1"   # Mondays 03:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: security-scan-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TRIVY_IMAGE: aquasec/trivy:0.58.1
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [java-kotlin, javascript-typescript]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # No compile step needed: CodeQL extracts Java sources directly.
+          build-mode: none
+          queries: security-extended
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  trivy-fs:
+    name: Trivy – dependencies & config
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan dependencies (Maven, npm)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src "$TRIVY_IMAGE" fs \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --skip-dirs frontend/node_modules \
+            .
+
+      - name: Scan Dockerfiles and Helm chart for misconfigurations
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src "$TRIVY_IMAGE" config \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --helm-values infra/helm/swiftdrop/values-secrets.example.yaml \
+            --ignorefile .trivyignore.yaml \
+            --skip-dirs frontend/node_modules \
+            .

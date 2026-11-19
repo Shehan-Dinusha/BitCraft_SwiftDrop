@@ -1,0 +1,967 @@
+{
+  "schema": "public",
+  "tables": [
+    {
+      "name": "ai_delivery_insights",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "default": "nextval('ai_delivery_insights_id_seq'::regclass)",
+          "nullable": false
+        },
+        {
+          "name": "insight_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "tracking_number",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "origin_district",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "destination_district",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "delivery_speed",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "risk_level",
+          "type": "character varying(32)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "risk_score",
+          "type": "numeric(5,2)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "predicted_delay_minutes",
+          "type": "integer",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "recommended_action",
+          "type": "character varying(255)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "reasoning",
+          "type": "text",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "weather_or_traffic_factor",
+          "type": "character varying(255)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "CURRENT_TIMESTAMP",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ai_delivery_insights_insight_id_key",
+          "definition": "CREATE UNIQUE INDEX ai_delivery_insights_insight_id_key ON public.ai_delivery_insights USING btree (insight_id)"
+        },
+        {
+          "name": "ai_delivery_insights_pkey",
+          "definition": "CREATE UNIQUE INDEX ai_delivery_insights_pkey ON public.ai_delivery_insights USING btree (id)"
+        },
+        {
+          "name": "idx_ai_insights_risk",
+          "definition": "CREATE INDEX idx_ai_insights_risk ON public.ai_delivery_insights USING btree (risk_level)"
+        },
+        {
+          "name": "idx_ai_insights_tracking",
+          "definition": "CREATE INDEX idx_ai_insights_tracking ON public.ai_delivery_insights USING btree (tracking_number)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "ai_delivery_insights_insight_id_key",
+          "type": "u",
+          "columns": [
+            "insight_id"
+          ],
+          "definition": "UNIQUE (insight_id)"
+        },
+        {
+          "name": "ai_delivery_insights_pkey",
+          "type": "p",
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)"
+        }
+      ]
+    },
+    {
+      "name": "ai_tool_invocation_audit",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "default": "nextval('ai_tool_invocation_audit_id_seq'::regclass)",
+          "nullable": false
+        },
+        {
+          "name": "audit_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "tool_name",
+          "type": "character varying(128)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "caller_persona",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "prompt_or_query",
+          "type": "text",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "input_parameters",
+          "type": "text",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "output_result",
+          "type": "text",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "execution_time_ms",
+          "type": "bigint",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "success",
+          "type": "boolean",
+          "default": "true",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "CURRENT_TIMESTAMP",
+          "nullable": false
+        },
+        {
+          "name": "actor_user_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "correlation_id",
+          "type": "character varying(100)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "outcome",
+          "type": "character varying(32)",
+          "default": null,
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ai_tool_invocation_audit_audit_id_key",
+          "definition": "CREATE UNIQUE INDEX ai_tool_invocation_audit_audit_id_key ON public.ai_tool_invocation_audit USING btree (audit_id)"
+        },
+        {
+          "name": "ai_tool_invocation_audit_pkey",
+          "definition": "CREATE UNIQUE INDEX ai_tool_invocation_audit_pkey ON public.ai_tool_invocation_audit USING btree (id)"
+        },
+        {
+          "name": "idx_ai_audit_actor_created",
+          "definition": "CREATE INDEX idx_ai_audit_actor_created ON public.ai_tool_invocation_audit USING btree (actor_user_id, created_at)"
+        },
+        {
+          "name": "idx_ai_audit_created",
+          "definition": "CREATE INDEX idx_ai_audit_created ON public.ai_tool_invocation_audit USING btree (created_at)"
+        },
+        {
+          "name": "idx_ai_audit_tool",
+          "definition": "CREATE INDEX idx_ai_audit_tool ON public.ai_tool_invocation_audit USING btree (tool_name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "ai_tool_invocation_audit_audit_id_key",
+          "type": "u",
+          "columns": [
+            "audit_id"
+          ],
+          "definition": "UNIQUE (audit_id)"
+        },
+        {
+          "name": "ai_tool_invocation_audit_pkey",
+          "type": "p",
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)"
+        }
+      ]
+    },
+    {
+      "name": "analytics_couriers",
+      "columns": [
+        {
+          "name": "courier_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "courier_name",
+          "type": "character varying(255)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "last_assignment_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_couriers_pkey",
+          "definition": "CREATE UNIQUE INDEX analytics_couriers_pkey ON public.analytics_couriers USING btree (courier_id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_couriers_pkey",
+          "type": "p",
+          "columns": [
+            "courier_id"
+          ],
+          "definition": "PRIMARY KEY (courier_id)"
+        }
+      ]
+    },
+    {
+      "name": "analytics_order_couriers",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "courier_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_order_couriers_pkey",
+          "definition": "CREATE UNIQUE INDEX analytics_order_couriers_pkey ON public.analytics_order_couriers USING btree (order_id, courier_id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_order_couriers_pkey",
+          "type": "p",
+          "columns": [
+            "order_id",
+            "courier_id"
+          ],
+          "definition": "PRIMARY KEY (order_id, courier_id)"
+        }
+      ]
+    },
+    {
+      "name": "analytics_order_projection",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "pickup_district",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "current_status",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "status_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "district",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "courier_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "assigned_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "outcome",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "outcome_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "outcome_district",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "outcome_courier_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "conflict_reason",
+          "type": "character varying(255)",
+          "default": null,
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_order_projection_pkey",
+          "definition": "CREATE UNIQUE INDEX analytics_order_projection_pkey ON public.analytics_order_projection USING btree (order_id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_order_projection_pkey",
+          "type": "p",
+          "columns": [
+            "order_id"
+          ],
+          "definition": "PRIMARY KEY (order_id)"
+        }
+      ]
+    },
+    {
+      "name": "courier_daily_stats",
+      "columns": [
+        {
+          "name": "courier_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "report_date",
+          "type": "date",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "delivered",
+          "type": "bigint",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "failed",
+          "type": "bigint",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "active",
+          "type": "bigint",
+          "default": "0",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "courier_daily_stats_pkey",
+          "definition": "CREATE UNIQUE INDEX courier_daily_stats_pkey ON public.courier_daily_stats USING btree (courier_id, report_date)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "courier_daily_stats_active_check",
+          "type": "c",
+          "columns": [
+            "active"
+          ],
+          "definition": "CHECK ((active >= 0))"
+        },
+        {
+          "name": "courier_daily_stats_delivered_check",
+          "type": "c",
+          "columns": [
+            "delivered"
+          ],
+          "definition": "CHECK ((delivered >= 0))"
+        },
+        {
+          "name": "courier_daily_stats_failed_check",
+          "type": "c",
+          "columns": [
+            "failed"
+          ],
+          "definition": "CHECK ((failed >= 0))"
+        },
+        {
+          "name": "courier_daily_stats_pkey",
+          "type": "p",
+          "columns": [
+            "courier_id",
+            "report_date"
+          ],
+          "definition": "PRIMARY KEY (courier_id, report_date)"
+        }
+      ]
+    },
+    {
+      "name": "courier_performance_metrics",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "default": "nextval('courier_performance_metrics_id_seq'::regclass)",
+          "nullable": false
+        },
+        {
+          "name": "courier_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "courier_name",
+          "type": "character varying(255)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "current_district",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "total_assigned",
+          "type": "integer",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "delivered_count",
+          "type": "integer",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "failed_count",
+          "type": "integer",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "avg_transit_minutes",
+          "type": "numeric(8,2)",
+          "default": "0.0",
+          "nullable": false
+        },
+        {
+          "name": "on_time_percentage",
+          "type": "numeric(5,2)",
+          "default": "100.0",
+          "nullable": false
+        },
+        {
+          "name": "customer_rating",
+          "type": "numeric(3,2)",
+          "default": "5.0",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "character varying(64)",
+          "default": "'AVAILABLE'::character varying",
+          "nullable": false
+        },
+        {
+          "name": "last_event_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "CURRENT_TIMESTAMP",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "CURRENT_TIMESTAMP",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "courier_performance_metrics_courier_id_key",
+          "definition": "CREATE UNIQUE INDEX courier_performance_metrics_courier_id_key ON public.courier_performance_metrics USING btree (courier_id)"
+        },
+        {
+          "name": "courier_performance_metrics_pkey",
+          "definition": "CREATE UNIQUE INDEX courier_performance_metrics_pkey ON public.courier_performance_metrics USING btree (id)"
+        },
+        {
+          "name": "idx_courier_perf_courier_id",
+          "definition": "CREATE INDEX idx_courier_perf_courier_id ON public.courier_performance_metrics USING btree (courier_id)"
+        },
+        {
+          "name": "idx_courier_perf_district",
+          "definition": "CREATE INDEX idx_courier_perf_district ON public.courier_performance_metrics USING btree (current_district)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "courier_performance_metrics_courier_id_key",
+          "type": "u",
+          "columns": [
+            "courier_id"
+          ],
+          "definition": "UNIQUE (courier_id)"
+        },
+        {
+          "name": "courier_performance_metrics_pkey",
+          "type": "p",
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)"
+        }
+      ]
+    },
+    {
+      "name": "daily_delivery_stats",
+      "columns": [
+        {
+          "name": "report_date",
+          "type": "date",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "created",
+          "type": "bigint",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "delivered",
+          "type": "bigint",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "failed",
+          "type": "bigint",
+          "default": "0",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "daily_delivery_stats_pkey",
+          "definition": "CREATE UNIQUE INDEX daily_delivery_stats_pkey ON public.daily_delivery_stats USING btree (report_date)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "daily_delivery_stats_created_check",
+          "type": "c",
+          "columns": [
+            "created"
+          ],
+          "definition": "CHECK ((created >= 0))"
+        },
+        {
+          "name": "daily_delivery_stats_delivered_check",
+          "type": "c",
+          "columns": [
+            "delivered"
+          ],
+          "definition": "CHECK ((delivered >= 0))"
+        },
+        {
+          "name": "daily_delivery_stats_failed_check",
+          "type": "c",
+          "columns": [
+            "failed"
+          ],
+          "definition": "CHECK ((failed >= 0))"
+        },
+        {
+          "name": "daily_delivery_stats_pkey",
+          "type": "p",
+          "columns": [
+            "report_date"
+          ],
+          "definition": "PRIMARY KEY (report_date)"
+        }
+      ]
+    },
+    {
+      "name": "flyway_schema_history",
+      "columns": [
+        {
+          "name": "installed_rank",
+          "type": "integer",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "version",
+          "type": "character varying(50)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "description",
+          "type": "character varying(200)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "character varying(20)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "script",
+          "type": "character varying(1000)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "checksum",
+          "type": "integer",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "installed_by",
+          "type": "character varying(100)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "installed_on",
+          "type": "timestamp without time zone",
+          "default": "now()",
+          "nullable": false
+        },
+        {
+          "name": "execution_time",
+          "type": "integer",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "success",
+          "type": "boolean",
+          "default": null,
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "flyway_schema_history_pk",
+          "definition": "CREATE UNIQUE INDEX flyway_schema_history_pk ON public.flyway_schema_history USING btree (installed_rank)"
+        },
+        {
+          "name": "flyway_schema_history_s_idx",
+          "definition": "CREATE INDEX flyway_schema_history_s_idx ON public.flyway_schema_history USING btree (success)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "flyway_schema_history_pk",
+          "type": "p",
+          "columns": [
+            "installed_rank"
+          ],
+          "definition": "PRIMARY KEY (installed_rank)"
+        }
+      ]
+    },
+    {
+      "name": "operational_sla_snapshots",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "default": "nextval('operational_sla_snapshots_id_seq'::regclass)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "character varying(64)",
+          "default": "'ACTIVE'::character varying",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "CURRENT_TIMESTAMP",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "CURRENT_TIMESTAMP",
+          "nullable": false
+        },
+        {
+          "name": "district",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": true
+        },
+        {
+          "name": "snapshot_date",
+          "type": "date",
+          "default": "CURRENT_DATE",
+          "nullable": false
+        },
+        {
+          "name": "total_parcels",
+          "type": "integer",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "delivered_on_time",
+          "type": "integer",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "breached_sla",
+          "type": "integer",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "failed_deliveries",
+          "type": "integer",
+          "default": "0",
+          "nullable": false
+        },
+        {
+          "name": "avg_transit_time_minutes",
+          "type": "numeric(8,2)",
+          "default": "0.0",
+          "nullable": false
+        },
+        {
+          "name": "on_time_rate",
+          "type": "numeric(5,2)",
+          "default": "100.0",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_sla_snapshots_date",
+          "definition": "CREATE INDEX idx_sla_snapshots_date ON public.operational_sla_snapshots USING btree (snapshot_date)"
+        },
+        {
+          "name": "idx_sla_snapshots_district",
+          "definition": "CREATE INDEX idx_sla_snapshots_district ON public.operational_sla_snapshots USING btree (district)"
+        },
+        {
+          "name": "operational_sla_snapshots_pkey",
+          "definition": "CREATE UNIQUE INDEX operational_sla_snapshots_pkey ON public.operational_sla_snapshots USING btree (id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "operational_sla_snapshots_pkey",
+          "type": "p",
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)"
+        }
+      ]
+    },
+    {
+      "name": "processed_telemetry_events",
+      "columns": [
+        {
+          "name": "event_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "event_type",
+          "type": "character varying(64)",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "correlation_id",
+          "type": "uuid",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "default": null,
+          "nullable": false
+        },
+        {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "default": "CURRENT_TIMESTAMP",
+          "nullable": false
+        },
+        {
+          "name": "projection_applied",
+          "type": "boolean",
+          "default": "false",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_processed_telemetry_order",
+          "definition": "CREATE INDEX idx_processed_telemetry_order ON public.processed_telemetry_events USING btree (order_id)"
+        },
+        {
+          "name": "idx_telemetry_pending_projection",
+          "definition": "CREATE INDEX idx_telemetry_pending_projection ON public.processed_telemetry_events USING btree (order_id) WHERE (NOT projection_applied)"
+        },
+        {
+          "name": "processed_telemetry_events_pkey",
+          "definition": "CREATE UNIQUE INDEX processed_telemetry_events_pkey ON public.processed_telemetry_events USING btree (event_id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "processed_telemetry_events_pkey",
+          "type": "p",
+          "columns": [
+            "event_id"
+          ],
+          "definition": "PRIMARY KEY (event_id)"
+        }
+      ]
+    }
+  ],
+  "database": "swiftdrop_analytics",
+  "migrationVersions": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "migrationSha256": {
+    "V1__init_analytics_schema.sql": "5da324610af22cf4d5f40cc1b2293918d981f1973b9f88e23d856e5d754b257f",
+    "V2__expand_analytics_schema.sql": "7adfb33036b4b13b419fad239408d0995e49a36af46b4262ecab9e0e4613ee51",
+    "V3__add_processed_telemetry_events.sql": "819ecf6723b1f31747c83492caabfe79a066554f74c87e0a171edf012ca2e9f5",
+    "V4__add_order_and_daily_projections.sql": "97210e624a1fc8732a101b47c3be0158cf6c06d01c39ecf6511899a73c922950",
+    "V5__safe_ai_auditing.sql": "e5fdd832c1f162e59190c23063a44856627359fe967eaa3dc2bc6dac8768ea31"
+  }
+}

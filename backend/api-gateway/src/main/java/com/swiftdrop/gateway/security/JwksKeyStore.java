@@ -1,5 +1,7 @@
 package com.swiftdrop.gateway.security;
 
+import java.security.GeneralSecurityException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +23,9 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Resolves RSA public keys from the IAM JWKS endpoint and caches them by
  * {@code kid}. Unknown key ids trigger an on-demand refetch, throttled by a
- * cooldown so forged tokens cannot stampede the IAM service.
+ * cooldown so forged tokens cannot stampede the IAM service. Requests that
+ * arrive while a fetch is already running wait for it instead of failing, so a
+ * burst of sign-ins right after a restart (empty cache) is not rejected.
  *
  * <p>The store is intentionally shared by the HTTP JWT filter and the STOMP
  * handshake so both verify the same rotation of keys.</p>
@@ -37,6 +41,7 @@ public class JwksKeyStore {
     private final long refetchCooldownMillis;
 
     private final AtomicLong lastFetchMillis = new AtomicLong(0);
+    private Mono<Map<String, RSAPublicKey>> inFlight;
 
     private volatile Map<String, RSAPublicKey> keys = Map.of();
     private volatile long keysLoadedAtMillis = 0;
@@ -71,26 +76,58 @@ public class JwksKeyStore {
 
     /** Best-effort background refresh, throttled by the refetch cooldown. */
     public void refreshAsync() {
-        if (jwksUrl == null || jwksUrl.isBlank() || !acquireFetchSlot()) {
+        if (jwksUrl == null || jwksUrl.isBlank()) {
             return;
         }
-        fetchKeys().subscribe(
+        Mono<Map<String, RSAPublicKey>> fetch = sharedFetch();
+        if (fetch == null) {
+            return;
+        }
+        fetch.subscribe(
                 ignored -> { },
                 error -> log.warn("Background JWKS refresh failed: {}", error.getMessage()));
     }
 
     private Mono<RSAPublicKey> refreshAndResolve(String keyId) {
         RSAPublicKey cached = keys.get(keyId);
-        if (!acquireFetchSlot()) {
+        Mono<Map<String, RSAPublicKey>> fetch = sharedFetch();
+        if (fetch == null) {
             return Mono.justOrEmpty(cached);
         }
-        return fetchKeys()
+        return fetch
                 .flatMap(loaded -> Mono.justOrEmpty(loaded.get(keyId)))
                 .switchIfEmpty(Mono.justOrEmpty(cached))
                 .onErrorResume(error -> {
                     log.warn("JWKS lookup failed for kid {}: {}", keyId, error.getMessage());
                     return Mono.justOrEmpty(cached);
                 });
+    }
+
+    /**
+     * Joins the JWKS fetch already in progress, or starts one if the cooldown allows.
+     * Returns {@code null} when neither applies (the caller then uses the cache).
+     */
+    private synchronized Mono<Map<String, RSAPublicKey>> sharedFetch() {
+        if (inFlight != null) {
+            return inFlight;
+        }
+        if (!acquireFetchSlot()) {
+            return null;
+        }
+        // Clear the marker BEFORE the result reaches callers (doOnSuccess/doOnError run
+        // ahead of the downstream signal). doFinally would run after it, on the Netty
+        // thread, so a caller could start its next lookup while the marker still
+        // pointed at this finished fetch and silently reuse it.
+        Mono<Map<String, RSAPublicKey>> fetch = fetchKeys()
+                .doOnSuccess(loaded -> clearInFlight())
+                .doOnError(error -> clearInFlight())
+                .cache();
+        inFlight = fetch;
+        return fetch;
+    }
+
+    private synchronized void clearInFlight() {
+        inFlight = null;
     }
 
     private boolean acquireFetchSlot() {
@@ -132,7 +169,7 @@ public class JwksKeyStore {
                 }
             }
             return Map.copyOf(parsed);
-        } catch (Exception exception) {
+        } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Unable to parse JWKS document", exception);
         }
     }
@@ -157,7 +194,8 @@ public class JwksKeyStore {
             BigInteger e = new BigInteger(1, Base64.getUrlDecoder().decode(exponent));
             return (RSAPublicKey) KeyFactory.getInstance("RSA")
                     .generatePublic(new RSAPublicKeySpec(n, e));
-        } catch (Exception exception) {
+        } catch (IllegalArgumentException | GeneralSecurityException exception) {
+            // Bad base64 or an invalid RSA modulus/exponent: ignore this key, keep the rest.
             log.warn("Skipping malformed JWK: {}", exception.getMessage());
             return null;
         }

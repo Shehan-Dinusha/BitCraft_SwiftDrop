@@ -48,6 +48,17 @@ class MerchantApiKeyGlobalFilterTest {
     }
 
     @Test
+    void b2bOrderApiRequiresApiKey() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/v1/b2b/orders").build());
+
+        filter.filter(exchange, chain).block();
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+        assertNull(chain.exchange.get());
+    }
+
+    @Test
     void nonMerchantPathSkipsApiKeyValidation() {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/orders/123").build());

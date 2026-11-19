@@ -1,0 +1,9 @@
+# Never package local secret values into the chart.
+values-secrets.yaml
+*.pem
+.DS_Store
+.git/
+.vscode/
+.idea/
+*.tmp
+*.bak

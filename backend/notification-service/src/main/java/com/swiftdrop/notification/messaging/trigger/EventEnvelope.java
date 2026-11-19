@@ -54,6 +54,18 @@ public record EventEnvelope(
         return parseUuid(payload, "recipientId");
     }
 
+    public Optional<UUID> extractMerchantOwnerId() {
+        Optional<UUID> ownerId = parseUuid(payload, "merchantOwnerId");
+        if (ownerId.isPresent()) {
+            return ownerId;
+        }
+        Optional<UUID> ownerUserId = parseUuid(payload, "ownerUserId");
+        if (ownerUserId.isPresent()) {
+            return ownerUserId;
+        }
+        return parseUuid(payload, "merchantId");
+    }
+
     public String extractTrackingNumber() {
         if (payload.hasNonNull("trackingNumber")) {
             return payload.get("trackingNumber").asText();

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+/** STANDARD delivery: the base fee with no speed surcharge. */
 @Component
 public class StandardPricingStrategy implements PricingStrategy {
 

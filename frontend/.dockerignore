@@ -1,0 +1,9 @@
+# The Dockerfile runs `npm ci` and `npm run build` itself, so local artifacts must not be sent as
+# build context (they are large, and OneDrive-synced node_modules can contain unreadable placeholders).
+node_modules
+dist
+.vite
+*.log
+.git
+.env
+.env.*

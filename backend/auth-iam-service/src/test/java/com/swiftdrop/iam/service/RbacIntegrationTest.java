@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -280,6 +281,29 @@ class RbacIntegrationTest {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    @Test
+    void admin_cannotChangeAnExistingAccountRole() throws Exception {
+        var admin = fixture("admin", UserRole.SYSTEM_ADMIN, SriLankanDistrict.COLOMBO);
+        var target = fixture("target", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);
+        mvc.perform(patch(USERS_API + "/" + target.id() + "/role")
+                .header("Authorization", bearer(admin)).contentType("application/json")
+                .content("{\"role\":\"COURIER\"}"))
+                .andExpect(status().isConflict());
+        assertThat(users.getProfile(target.id()).role())
+                .isEqualTo(UserRole.CUSTOMER);
+    }
+
+    @Test
+    void admin_sameRoleRequestLeavesAccountUnchanged() throws Exception {
+        var admin = fixture("admin", UserRole.SYSTEM_ADMIN, SriLankanDistrict.COLOMBO);
+        var target = fixture("target", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);
+        mvc.perform(patch(USERS_API + "/" + target.id() + "/role")
+                .header("Authorization", bearer(admin)).contentType("application/json")
+                .content("{\"role\":\"CUSTOMER\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("data.role").value("CUSTOMER"));
+    }
+
     private UserProfileResponse fixture(String suffix, UserRole role, SriLankanDistrict district) {
         String u = prefix + suffix;
         return users.create(new CreateUserRequest(
@@ -301,6 +325,7 @@ class RbacIntegrationTest {
                 "firstName", "Rbac",
                 "lastName",  "Created",
                 "password",  PASSWORD,
+                "role",      "CUSTOMER",
                 "district",  "COLOMBO"
         );
     }

@@ -58,6 +58,16 @@ public class ApiKeyManagementController {
         return ApiResponse.success(revoked, "API key successfully revoked");
     }
 
+    @PostMapping("/api/v1/merchants/{merchantId}/api-keys/{keyId}/regenerate")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Regenerate a merchant API key",
+            description = "Atomically creates a fresh key and revokes the old key. Preserves the label and expiry. "
+                    + "Returns the new raw secret once. Unknown or foreign keys return 404; revoked/expired keys return 409.")
+    public ApiResponse<ApiKeyResponse> regenerateApiKey(@PathVariable UUID merchantId, @PathVariable UUID keyId) {
+        return ApiResponse.success(apiKeyService.regenerateApiKey(merchantId, keyId),
+                "API key regenerated. Store the new secret securely; the old key is revoked.");
+    }
+
     /**
      * Internal endpoint invoked by API Gateway MerchantApiKeyGlobalFilter.
      * Must not be exposed to the public edge.

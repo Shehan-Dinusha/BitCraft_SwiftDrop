@@ -1,6 +1,7 @@
 package com.swiftdrop.delivery.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.security.CallerContextException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,15 @@ public class GlobalExceptionHandler {
         log.warn("Invalid delivery FSM transition: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(409, "Invalid State Transition", ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(CallerContextException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallerContext(CallerContextException ex, HttpServletRequest request) {
+        log.warn("Security authorisation exception on {}: {}", request.getRequestURI(), ex.getMessage());
+        int status = ex.statusCode();
+        String errorName = status == 403 ? "Forbidden" : "Unauthorized";
+        return ResponseEntity.status(status)
+                .body(ApiErrorResponse.of(status, errorName, ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

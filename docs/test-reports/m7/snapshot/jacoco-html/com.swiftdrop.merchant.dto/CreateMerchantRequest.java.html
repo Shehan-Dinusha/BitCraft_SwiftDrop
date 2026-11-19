@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreateMerchantRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.dto</a> &gt; <span class="el_source">CreateMerchantRequest.java</span></div><h1>CreateMerchantRequest.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.dto;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+@Schema(description = &quot;Merchant profile creation request&quot;)
+<span class="fc" id="L10">public record CreateMerchantRequest(</span>
+        @NotBlank(message = &quot;Business name is required&quot;)
+        @Schema(description = &quot;Business or corporate name&quot;, example = &quot;Colombo Retail Hub Ltd&quot;)
+        String businessName,
+
+        @NotBlank(message = &quot;Contact email is required&quot;)
+        @Email(message = &quot;Valid email is required&quot;)
+        @Schema(description = &quot;Business contact email&quot;, example = &quot;orders@colomboretail.lk&quot;)
+        String contactEmail,
+
+        @NotBlank(message = &quot;Contact phone is required&quot;)
+        @Schema(description = &quot;Contact phone&quot;, example = &quot;+94 11 234 5678&quot;)
+        String contactPhone,
+
+        @NotBlank(message = &quot;Pickup address is required&quot;)
+        @Schema(description = &quot;Pickup warehouse or store address&quot;, example = &quot;104 Galle Road, Colombo 03&quot;)
+        String pickupAddress,
+
+        @NotNull(message = &quot;Operating district is required&quot;)
+        @Schema(description = &quot;Operating district&quot;, example = &quot;COLOMBO&quot;)
+        SriLankanDistrict operatingDistrict
+) {
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

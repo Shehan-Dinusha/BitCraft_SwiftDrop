@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BulkBatchItem.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.domain.entity</a> &gt; <span class="el_source">BulkBatchItem.java</span></div><h1>BulkBatchItem.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.domain.entity;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = &quot;bulk_batch_items&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BulkBatchItem {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;batch_id&quot;, nullable = false)
+    private UUID batchId;
+
+    @Column(name = &quot;row_index&quot;, nullable = false)
+    private int rowIndex;
+
+    @Column(name = &quot;tracking_number&quot;, length = 64)
+    private String trackingNumber;
+
+    @Column(name = &quot;order_id&quot;)
+    private UUID orderId;
+
+    @Column(name = &quot;recipient_name&quot;, nullable = false, length = 100)
+    private String recipientName;
+
+    @Column(name = &quot;recipient_phone&quot;, nullable = false, length = 30)
+    private String recipientPhone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;delivery_district&quot;, nullable = false, length = 50)
+    private SriLankanDistrict deliveryDistrict;
+
+    @Column(name = &quot;delivery_address&quot;, nullable = false, length = 255)
+    private String deliveryAddress;
+
+    @Column(name = &quot;package_weight_kg&quot;, nullable = false, precision = 6, scale = 2)
+    @Builder.Default
+    private BigDecimal packageWeightKg = BigDecimal.valueOf(1.0);
+
+    @Column(name = &quot;delivery_speed&quot;, nullable = false, length = 50)
+    @Builder.Default
+    private String deliverySpeed = &quot;STANDARD&quot;;
+
+    @Column(name = &quot;item_status&quot;, nullable = false, length = 50)
+    @Builder.Default
+    private String itemStatus = &quot;PENDING&quot;;
+
+    @Column(name = &quot;error_message&quot;, length = 255)
+    private String errorMessage;
+
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @PrePersist
+    public void prePersist() {
+<span class="nc bnc" id="L69" title="All 2 branches missed.">        if (this.createdAt == null) {</span>
+<span class="nc" id="L70">            this.createdAt = Instant.now();</span>
+        }
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        if (this.itemStatus == null) {</span>
+<span class="nc" id="L73">            this.itemStatus = &quot;PENDING&quot;;</span>
+        }
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        if (this.deliverySpeed == null) {</span>
+<span class="nc" id="L76">            this.deliverySpeed = &quot;STANDARD&quot;;</span>
+        }
+<span class="nc" id="L78">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

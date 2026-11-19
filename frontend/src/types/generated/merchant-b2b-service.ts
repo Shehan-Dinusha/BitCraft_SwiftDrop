@@ -4,6 +4,584 @@
  */
 
 export interface paths {
+    "/api/v1/merchants/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register a business as the authenticated merchant */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RegisterMerchantRequest"];
+                };
+            };
+            responses: {
+                /** @description Successful request */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseMerchantApprovalResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not authorized */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Resource state conflicts with the request */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/merchants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List applications (SYSTEM_ADMIN only) */
+        get: {
+            parameters: {
+                query?: {
+                    status?: components["schemas"]["MerchantStatus"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful request */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListMerchantApprovalResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not authorized */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Resource state conflicts with the request */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/merchants/{merchantId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** approve a pending merchant (SYSTEM_ADMIN only) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful request */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseMerchantApprovalResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not authorized */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Resource state conflicts with the request */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/merchants/{merchantId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** reject a pending merchant (SYSTEM_ADMIN only) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RejectMerchantRequest"];
+                };
+            };
+            responses: {
+                /** @description Successful request */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseMerchantApprovalResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not authorized */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Resource state conflicts with the request */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}/api-keys/{keyId}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace a key and revoke its old secret atomically */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                    keyId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful request */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseApiKeyResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not authorized */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Resource state conflicts with the request */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List receipts for the authenticated merchant */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful request */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseListMerchantOrderReceiptResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not authorized */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Resource state conflicts with the request */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/b2b/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a merchant order or return an existing order for the same reference
+         * @description Requires a trusted merchant context injected after API-key authentication at the gateway.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Trusted merchant identity supplied by the gateway, not a public authentication mechanism */
+                    "X-Merchant-Id": components["parameters"]["B2bMerchantId"];
+                    "X-User-Role": components["parameters"]["B2bRole"];
+                    "X-Correlation-Id"?: components["parameters"]["B2bCorrelationId"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["B2bOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description Existing order for this merchant and external reference */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseB2bOrderResult"];
+                    };
+                };
+                /** @description Order created by the order service */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseB2bOrderResult"];
+                    };
+                };
+                /** @description Invalid order details */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing authenticated merchant context */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Merchant is not approved or caller role is not MERCHANT */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Merchant not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid or failed order-service response */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Order service unavailable; retry with the same external reference */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/b2b/orders/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit up to 500 orders with per-item results */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Trusted merchant identity supplied by the gateway, not a public authentication mechanism */
+                    "X-Merchant-Id": components["parameters"]["B2bMerchantId"];
+                    "X-User-Role": components["parameters"]["B2bRole"];
+                    "X-Correlation-Id"?: components["parameters"]["B2bCorrelationId"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["B2bBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description Results in input order, including validation and forwarding errors per item */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseB2bBulkResponse"];
+                    };
+                };
+                /** @description Empty batch, more than 500 items, or malformed JSON */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing authenticated merchant context */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Merchant approval required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Merchant not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/merchants/health": {
         parameters: {
             query?: never;
@@ -569,6 +1147,123 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
+        MerchantStatus: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "SUSPENDED";
+        RegisterMerchantRequest: {
+            businessName: string;
+            businessRegNo: string;
+            /** Format: email */
+            contactEmail: string;
+            contactPhone: string;
+            pickupAddress: string;
+            operatingDistrict: components["schemas"]["SriLankanDistrict"];
+        };
+        RejectMerchantRequest: {
+            reason: string;
+        };
+        MerchantApprovalResponse: {
+            /** Format: uuid */
+            merchantId?: string;
+            /** Format: uuid */
+            ownerUserId?: string;
+            businessName?: string;
+            businessRegNo?: string;
+            contactEmail?: string;
+            contactPhone?: string;
+            pickupAddress?: string;
+            operatingDistrict?: components["schemas"]["SriLankanDistrict"];
+            status?: components["schemas"]["MerchantStatus"];
+            /** Format: uuid */
+            approvedBy?: string;
+            /** Format: date-time */
+            approvedAt?: string;
+            rejectionReason?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        MerchantOrderReceiptResponse: {
+            externalRef: string;
+            /** Format: uuid */
+            orderId: string;
+            trackingNumber: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ApiResponseMerchantApprovalResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["MerchantApprovalResponse"];
+        };
+        ApiResponseListMerchantApprovalResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["MerchantApprovalResponse"][];
+        };
+        ApiResponseListMerchantOrderReceiptResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["MerchantOrderReceiptResponse"][];
+        };
+        B2bAddress: {
+            addressLine1: string;
+            city: string;
+            /** @description Sri Lankan district; case, spaces and hyphens are normalized */
+            district: string;
+            postalCode: string;
+            contactName: string;
+            /** @description Local or international Sri Lankan number, normalized to +94 */
+            contactPhone: string;
+        };
+        /** @description Supply exactly one of actualWeightKg and weightGrams */
+        B2bParcel: {
+            actualWeightKg?: number;
+            weightGrams?: number;
+            /** @constant */
+            prohibitedItemsDeclared: true;
+            itemDescription?: string;
+            declaredValue?: number;
+            codAmount?: number;
+        };
+        B2bOrderRequest: {
+            externalRef: string;
+            pickup: components["schemas"]["B2bAddress"];
+            delivery: components["schemas"]["B2bAddress"];
+            parcel: components["schemas"]["B2bParcel"];
+            /** @description STANDARD (default) or EXPRESS; case-insensitive */
+            speed?: string;
+        };
+        B2bBulkRequest: {
+            orders: components["schemas"]["B2bOrderRequest"][];
+        };
+        B2bOrderResult: {
+            externalRef?: string;
+            /** Format: uuid */
+            orderId?: string;
+            trackingNumber?: string;
+            created?: boolean;
+            /** @description Present only for a failed bulk item */
+            error?: string;
+        };
+        B2bBulkResponse: {
+            total?: number;
+            successCount?: number;
+            failedCount?: number;
+            items?: components["schemas"]["B2bOrderResult"][];
+        };
+        ApiResponseB2bOrderResult: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["B2bOrderResult"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseB2bBulkResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["B2bBulkResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        /** @enum {string} */
         SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
         CreateMerchantRequest: {
             businessName: string;
@@ -621,6 +1316,14 @@ export interface components {
             reason?: string;
         };
         BulkOrderIngestItem: {
+            /** @description Required to forward the row; stable idempotency reference */
+            externalRef?: string;
+            deliveryCity?: string;
+            deliveryPostalCode?: string;
+            pickupCity?: string;
+            pickupPostalCode?: string;
+            /** @description Must explicitly be true to forward the row */
+            prohibitedItemsDeclared?: boolean;
             recipientName: string;
             recipientPhone: string;
             deliveryDistrict: components["schemas"]["SriLankanDistrict"];
@@ -724,7 +1427,12 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @description Trusted merchant identity supplied by the gateway, not a public authentication mechanism */
+        B2bMerchantId: string;
+        B2bRole: "MERCHANT";
+        B2bCorrelationId: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;

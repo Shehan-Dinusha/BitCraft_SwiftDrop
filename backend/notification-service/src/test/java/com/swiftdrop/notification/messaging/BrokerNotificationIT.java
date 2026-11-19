@@ -1,8 +1,9 @@
 package com.swiftdrop.notification.messaging;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swiftdrop.notification.domain.entity.InAppNotification;
 import com.swiftdrop.notification.domain.entity.NotificationDispatchLog;
 import com.swiftdrop.notification.domain.entity.RecipientPreference;
+import com.swiftdrop.notification.domain.repository.InAppNotificationRepository;
 import com.swiftdrop.notification.domain.repository.NotificationDispatchLogRepository;
 import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -63,10 +64,10 @@ class BrokerNotificationIT {
     private NotificationDispatchLogRepository logRepository;
 
     @Autowired
-    private RecipientPreferenceRepository preferenceRepository;
+    private InAppNotificationRepository inAppRepository;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private RecipientPreferenceRepository preferenceRepository;
 
     @Test
     @DisplayName("Publishing DELIVERED event to RabbitMQ broker should produce dispatch log in PostgreSQL")
@@ -81,8 +82,6 @@ class BrokerNotificationIT {
                 .recipientType("CUSTOMER")
                 .emailEnabled(true)
                 .emailAddress("customer@example.com")
-                .smsEnabled(true)
-                .phoneNumber("+94771234567")
                 .languagePreference("en")
                 .build());
 
@@ -114,6 +113,12 @@ class BrokerNotificationIT {
             assertThat(log.getChannel()).isEqualTo("EMAIL");
             assertThat(log.getReferenceId()).isEqualTo(trackingNumber);
             assertThat(log.getStatus()).isIn("SENT", "FAILED", "SUPPRESSED");
+
+            List<InAppNotification> inAppRows = inAppRepository.findByUserIdOrderByCreatedAtDesc(customerId);
+            assertThat(inAppRows).isNotEmpty();
+            InAppNotification inApp = inAppRows.getFirst();
+            assertThat(inApp.getTrackingNumber()).isEqualTo(trackingNumber);
+            assertThat(inApp.isRead()).isFalse();
         });
     }
 }

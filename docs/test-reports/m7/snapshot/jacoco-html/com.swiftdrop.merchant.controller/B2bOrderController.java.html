@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>B2bOrderController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.controller</a> &gt; <span class="el_source">B2bOrderController.java</span></div><h1>B2bOrderController.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.controller;
+
+import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.contracts.security.JwtHeaderConstants;
+import com.swiftdrop.merchant.dto.*;
+import com.swiftdrop.merchant.service.B2bOrderSubmissionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.*;
+
+@RestController
+@RequestMapping(&quot;/api/v1/b2b/orders&quot;)
+@Tag(name = &quot;B2bOrders&quot;, description = &quot;API-key caller identity must be authenticated and injected by the gateway&quot;)
+@RequiredArgsConstructor
+public class B2bOrderController {
+    private final B2bOrderSubmissionService submissions;
+
+    @PostMapping
+    @Operation(summary = &quot;Create a merchant order; retries return the existing order&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;B2bOrderResult&gt;&gt; create(
+            @RequestHeader(value = JwtHeaderConstants.X_MERCHANT_ID, required = false) UUID merchantId,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String role,
+            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
+            @Valid @RequestBody B2bOrderRequest request) {
+<span class="fc" id="L30">        requireMerchant(merchantId, role);</span>
+<span class="fc" id="L31">        var result = submissions.submit(merchantId, request, correlationId);</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK)</span>
+<span class="fc" id="L33">                .body(ApiResponse.success(result, &quot;Merchant order accepted&quot;));</span>
+    }
+
+    @PostMapping(&quot;/bulk&quot;)
+    @Operation(summary = &quot;Submit up to 500 orders with independent item results&quot;)
+    public ApiResponse&lt;B2bBulkResponse&gt; bulk(
+            @RequestHeader(value = JwtHeaderConstants.X_MERCHANT_ID, required = false) UUID merchantId,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String role,
+            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
+            @Valid @RequestBody B2bBulkRequest request) {
+<span class="fc" id="L43">        requireMerchant(merchantId, role);</span>
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        UUID correlation = correlationId != null ? correlationId : UUID.randomUUID();</span>
+<span class="fc" id="L45">        List&lt;B2bOrderResult&gt; results = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        for (B2bOrderRequest item : request.orders()) {</span>
+<span class="fc" id="L47">            try { results.add(submissions.submit(merchantId, item, correlation)); }</span>
+<span class="fc" id="L48">            catch (IllegalArgumentException ex) { results.add(failed(item, ex.getMessage())); }</span>
+<span class="nc" id="L49">            catch (ResponseStatusException ex) {</span>
+<span class="nc bnc" id="L50" title="All 4 branches missed.">                if (ex.getStatusCode().value() == 403 || ex.getStatusCode().value() == 401) throw ex;</span>
+<span class="nc" id="L51">                results.add(failed(item, ex.getReason()));</span>
+<span class="fc" id="L52">            }</span>
+<span class="fc" id="L53">        }</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        int failures = (int) results.stream().filter(item -&gt; item.error() != null).count();</span>
+<span class="fc" id="L55">        return ApiResponse.success(new B2bBulkResponse(results.size(), results.size() - failures, failures, results), &quot;Bulk processed&quot;);</span>
+    }
+
+    private B2bOrderResult failed(B2bOrderRequest item, String error) {
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        return new B2bOrderResult(item == null ? null : item.externalRef(), null, null, false, error);</span>
+    }
+
+    private void requireMerchant(UUID merchantId, String role) {
+<span class="pc bpc" id="L63" title="1 of 4 branches missed.">        if (merchantId == null || role == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;Authenticated merchant context required&quot;);</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        if (!&quot;MERCHANT&quot;.equals(role)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, &quot;MERCHANT role required&quot;);</span>
+<span class="fc" id="L65">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

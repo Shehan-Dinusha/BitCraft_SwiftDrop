@@ -2,16 +2,28 @@ import { AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { slaColors } from '@/design-system/tokens/colors';
 
 interface SlaBreachAlertTickerProps {
-  breachCount?: number;
-  onTimeRate?: number;
+  breachCount?: number | null;
+  onTimeRate?: number | null;
   criticalDistricts?: string[];
 }
 
 export function SlaBreachAlertTicker({
-  breachCount = 0,
-  onTimeRate = 96.5,
+  breachCount,
+  onTimeRate,
   criticalDistricts = []
 }: SlaBreachAlertTickerProps) {
+  if (breachCount == null || onTimeRate == null) {
+    return (
+      <div
+        role="status"
+        className="flex items-center gap-2 rounded-lg border border-border-subtle bg-card px-4 py-3 text-sm text-secondary"
+      >
+        <AlertTriangle className="size-4 shrink-0" />
+        SLA performance is unavailable. Delivery counts and courier workload remain available in
+        Analytics.
+      </div>
+    );
+  }
   const isBreached = breachCount > 0;
 
   return (
@@ -30,10 +42,15 @@ export function SlaBreachAlertTicker({
         )}
         <div className="flex flex-wrap items-center gap-1.5 font-medium">
           <span className="font-bold">
-            {isBreached ? `${breachCount} Active SLA Breaches Detected` : 'All Island Deliveries Within SLA'}
+            {isBreached
+              ? `${breachCount} Active SLA Breaches Detected`
+              : 'All Island Deliveries Within SLA'}
           </span>
           <span className="text-slate-400">|</span>
-          <span>System On-Time Adherence: <strong className="font-mono">{onTimeRate.toFixed(1)}%</strong></span>
+          <span>
+            System On-Time Adherence:{' '}
+            <strong className="font-mono">{onTimeRate.toFixed(1)}%</strong>
+          </span>
         </div>
       </div>
 

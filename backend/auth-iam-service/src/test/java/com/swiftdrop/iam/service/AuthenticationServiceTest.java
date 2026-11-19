@@ -7,6 +7,7 @@ import com.swiftdrop.iam.domain.entity.UserAccount;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.TokenResponse;
 import com.swiftdrop.iam.exception.AccountNotActiveException;
+import com.swiftdrop.iam.exception.EmailNotVerifiedException;
 import com.swiftdrop.iam.exception.InvalidCredentialsException;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,6 +100,23 @@ class AuthenticationServiceTest {
     }
 
     @Test
+    void unknownUserStillPaysForAPasswordCheck() {
+        // Without this, "no such user" answers much faster than "wrong password" and leaks which accounts exist.
+        when(userAccountRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase("ghost", "ghost"))
+                .thenReturn(Optional.empty());
+        when(passwordEncoder.encode(any())).thenReturn("dummy-hash");
+
+        assertThatThrownBy(() -> authenticationService.login("ghost", "Secret123", "127.0.0.1", "agent"))
+                .isInstanceOf(InvalidCredentialsException.class);
+        assertThatThrownBy(() -> authenticationService.login("ghost", "Secret123", "127.0.0.1", "agent"))
+                .isInstanceOf(InvalidCredentialsException.class);
+
+        verify(passwordEncoder, org.mockito.Mockito.times(2)).matches("Secret123", "dummy-hash");
+        verify(passwordEncoder, org.mockito.Mockito.times(1)).encode(any()); // hashed once, then reused
+        verify(loginAttemptService, org.mockito.Mockito.times(2)).recordFailure("ghost", "127.0.0.1");
+    }
+
+    @Test
     void loginRejectsInactiveAccount() {
         user.setStatus(UserStatus.SUSPENDED);
         when(userAccountRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase("alice", "alice"))
@@ -138,5 +156,31 @@ class AuthenticationServiceTest {
         verify(refreshTokenService).revoke("refresh");
         verify(tokenIssuanceService).blacklistAccessToken(
                 eq("access"), eq(user.getPublicId().toString()), eq("jti"), any(Instant.class));
+    }
+
+    @Test
+    void loginRejectsAnUnverifiedEmailOnlyAfterTheCorrectPassword() {
+        user.setEmailVerified(false);
+        when(userAccountRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase("alice", "alice"))
+                .thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
+
+        assertThatThrownBy(() -> authenticationService.login("alice", "Secret123", "127.0.0.1", "agent"))
+                .isInstanceOf(EmailNotVerifiedException.class)
+                .hasFieldOrPropertyWithValue("code", "EMAIL_NOT_VERIFIED");
+
+        verify(tokenIssuanceService, never()).issueAccessToken(any());
+        verify(loginAttemptService, never()).recordFailure(any(), any());
+    }
+
+    @Test
+    void wrongPasswordOnAnUnverifiedAccountStillLooksLikeBadCredentials() {
+        user.setEmailVerified(false);
+        when(userAccountRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase("alice", "alice"))
+                .thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("Wrong1234", "hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> authenticationService.login("alice", "Wrong1234", "127.0.0.1", "agent"))
+                .isInstanceOf(InvalidCredentialsException.class);
     }
 }

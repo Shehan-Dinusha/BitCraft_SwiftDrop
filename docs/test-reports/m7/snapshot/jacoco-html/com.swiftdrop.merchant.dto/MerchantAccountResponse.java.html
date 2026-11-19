@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantAccountResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.dto</a> &gt; <span class="el_source">MerchantAccountResponse.java</span></div><h1>MerchantAccountResponse.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.dto;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Schema(description = &quot;Merchant profile response&quot;)
+<span class="fc" id="L10">public record MerchantAccountResponse(</span>
+        @Schema(description = &quot;Merchant unique UUID identifier&quot;)
+        UUID merchantId,
+
+        @Schema(description = &quot;Business or registered corporate name&quot;)
+        String businessName,
+
+        @Schema(description = &quot;Primary business contact email&quot;)
+        String contactEmail,
+
+        @Schema(description = &quot;Contact telephone number&quot;)
+        String contactPhone,
+
+        @Schema(description = &quot;Default pickup location / warehouse address&quot;)
+        String pickupAddress,
+
+        @Schema(description = &quot;Primary operating Sri Lankan district&quot;)
+        SriLankanDistrict operatingDistrict,
+
+        @Schema(description = &quot;Account operational status&quot;)
+        String status,
+
+        @Schema(description = &quot;Registration timestamp&quot;)
+        Instant createdAt
+) {
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

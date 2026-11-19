@@ -9,6 +9,7 @@ import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.data.redis.core.ReactiveValueOperations;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -41,16 +42,68 @@ class JwtAuthenticationGlobalFilterTest {
             SECRET.getBytes(StandardCharsets.UTF_8));
 
     private JwtAuthenticationGlobalFilter filter;
+    private ReactiveStringRedisTemplate redisTemplate;
+    private ReactiveValueOperations<String, String> valueOps;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        ReactiveStringRedisTemplate redisTemplate = mock(ReactiveStringRedisTemplate.class);
+        redisTemplate = mock(ReactiveStringRedisTemplate.class);
         when(redisTemplate.hasKey(anyString())).thenReturn(Mono.just(false));
+        valueOps = mock(ReactiveValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get(anyString())).thenReturn(Mono.empty());
         ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         filter = new JwtAuthenticationGlobalFilter(
                 "HS256", SECRET, BLACKLIST_PREFIX, ISSUER, AUDIENCE,
                 redisTemplate, new GatewayErrorWriter(objectMapper),
                 mock(JwksKeyStore.class), objectMapper);
+    }
+
+    @Test
+    void loginAfterTheUsersRevocationCutoffIsAccepted() {
+        UUID userId = UUID.randomUUID();
+        // e.g. a password reset an hour ago; the token below was issued just now
+        when(valueOps.get(BLACKLIST_PREFIX + "user:" + userId))
+                .thenReturn(Mono.just(Instant.now().minus(Duration.ofHours(1)).toString()));
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/orders/123")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId, "CUSTOMER", Duration.ofHours(1)))
+                .build());
+        RecordingChain chain = new RecordingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertNotNull(chain.exchange.get(), "a session started after the cutoff must be let through");
+    }
+
+    @Test
+    void tokenIssuedBeforeTheUsersRevocationCutoffIsRejected() {
+        UUID userId = UUID.randomUUID();
+        when(valueOps.get(BLACKLIST_PREFIX + "user:" + userId))
+                .thenReturn(Mono.just(Instant.now().plus(Duration.ofMinutes(5)).toString()));
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/orders/123")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId, "CUSTOMER", Duration.ofHours(1)))
+                .build());
+        RecordingChain chain = new RecordingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+        assertNull(chain.exchange.get());
+    }
+
+    @Test
+    void legacyRevocationMarkerStillRejects() {
+        UUID userId = UUID.randomUUID();
+        when(valueOps.get(BLACKLIST_PREFIX + "user:" + userId)).thenReturn(Mono.just("1"));
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/orders/123")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(userId, "CUSTOMER", Duration.ofHours(1)))
+                .build());
+        RecordingChain chain = new RecordingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
     }
 
     @Test
@@ -110,6 +163,17 @@ class JwtAuthenticationGlobalFilterTest {
         ServerWebExchange forwarded = chain.exchange.get();
         assertNotNull(forwarded);
         assertNull(forwarded.getRequest().getHeaders().getFirst(JwtHeaderConstants.X_USER_ROLE));
+    }
+
+    @Test
+    void b2bOrderApiSkipsJwtValidation() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/v1/b2b/orders").build());
+        RecordingChain chain = new RecordingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertNotNull(chain.exchange.get());
     }
 
     @Test

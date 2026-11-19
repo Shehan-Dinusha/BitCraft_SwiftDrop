@@ -12,17 +12,25 @@ import org.springframework.stereotype.Component;
 import java.util.EnumSet;
 import java.util.Set;
 
+/**
+ * OUT_FOR_DELIVERY: the courier is on the way to the recipient. The only exits are DELIVERED
+ * (which needs verified proof of delivery) and FAILED (which needs a reason code).
+ */
 @Component
 public class OutForDeliveryState implements DeliveryStateHandler {
 
     private final ProofOfDeliveryGuard proofOfDeliveryGuard;
 
+    /**
+     * Transition-graph-only instance for unit tests: without a guard, DELIVERED is always rejected.
+     */
     public OutForDeliveryState() {
         this(null);
     }
 
+    /** Spring constructor: the proof-of-delivery guard is mandatory. */
     @Autowired
-    public OutForDeliveryState(@Autowired(required = false) ProofOfDeliveryGuard proofOfDeliveryGuard) {
+    public OutForDeliveryState(ProofOfDeliveryGuard proofOfDeliveryGuard) {
         this.proofOfDeliveryGuard = proofOfDeliveryGuard;
     }
 
@@ -44,11 +52,12 @@ public class OutForDeliveryState implements DeliveryStateHandler {
 
         DeliveryState target = request.targetState();
         if (target == DeliveryState.DELIVERED) {
-            if (proofOfDeliveryGuard != null && session != null && session.getDeliveryId() != null) {
-                if (!proofOfDeliveryGuard.isSatisfied(session.getDeliveryId())) {
-                    throw new InvalidStateTransitionException(
-                            "Proof of delivery must be verified with recipient OTP or signature before marking delivery as DELIVERED");
-                }
+            // Fail closed: no guard, no session or no delivery id means proof cannot be confirmed.
+            boolean proven = proofOfDeliveryGuard != null && session != null && session.getDeliveryId() != null
+                    && proofOfDeliveryGuard.isSatisfied(session.getDeliveryId());
+            if (!proven) {
+                throw new InvalidStateTransitionException(
+                        "Proof of delivery must be verified with an uploaded photo or signature before marking delivery as DELIVERED");
             }
         } else if (target == DeliveryState.FAILED) {
             if (request.failureReason() == null) {

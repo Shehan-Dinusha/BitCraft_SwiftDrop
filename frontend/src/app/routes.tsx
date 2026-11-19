@@ -5,6 +5,10 @@ import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { SignUpPage } from '@/features/auth/pages/SignUpPage';
 import { OAuthCallbackPage } from '@/features/auth/pages/OAuthCallbackPage';
+import { VerifyEmailPage } from '@/features/auth/pages/VerifyEmailPage';
+import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
+import { RegistrationSuccessPage } from '@/features/auth/pages/RegistrationSuccessPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
 import { OrderHistoryPage } from '@/features/customer/pages/OrderHistoryPage';
@@ -15,7 +19,7 @@ import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPorta
 import { MerchantRegistrationPage } from '@/features/merchant/pages/MerchantRegistrationPage';
 import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
-import { ZoneManagementPage } from '@/features/admin-ops/pages/ZoneManagementPage';
+import { ZonePricingEditorPage } from '@/features/admin-ops/pages/ZonePricingEditorPage';
 import { DispatchBoardPage } from '@/features/admin-ops/pages/DispatchBoardPage';
 import { MerchantApprovalsPage } from '@/features/admin-ops/pages/MerchantApprovalsPage';
 import { NotificationConsolePage } from '@/features/admin-ops/pages/NotificationConsolePage';
@@ -27,6 +31,10 @@ export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <SignUpPage /> },
   { path: '/auth/callback', element: <OAuthCallbackPage /> },
+  { path: '/verify-email', element: <VerifyEmailPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
+  { path: '/registered', element: <RegistrationSuccessPage /> },
   {
     element: <AppShell />,
     children: [
@@ -154,7 +162,7 @@ export const routes: RouteObject[] = [
         path: '/ops/zones',
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
-            <ZoneManagementPage />
+            <ZonePricingEditorPage />
           </RoleGuard>
         )
       },

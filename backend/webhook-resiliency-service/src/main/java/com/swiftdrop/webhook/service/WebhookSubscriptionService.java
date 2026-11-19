@@ -2,14 +2,16 @@ package com.swiftdrop.webhook.service;
 
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.CallerContext;
-import com.swiftdrop.webhook.domain.entity.WebhookDeliveryAttempt;
 import com.swiftdrop.webhook.domain.entity.WebhookEndpoint;
 import com.swiftdrop.webhook.domain.repository.WebhookDeliveryAttemptRepository;
 import com.swiftdrop.webhook.domain.repository.WebhookEndpointRepository;
 import com.swiftdrop.webhook.dto.CreateWebhookEndpointRequest;
 import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
+import com.swiftdrop.webhook.dto.WebhookEndpointCreatedResponse;
 import com.swiftdrop.webhook.dto.WebhookEndpointResponse;
 import com.swiftdrop.webhook.exception.WebhookEndpointNotFoundException;
+import com.swiftdrop.webhook.security.UnsafeWebhookUrlException;
+import com.swiftdrop.webhook.security.WebhookUrlPolicy;
 import com.swiftdrop.webhook.service.access.MerchantAccess;
 import com.swiftdrop.webhook.service.subscription.EventSubscriptionPatterns;
 import lombok.RequiredArgsConstructor;
@@ -38,19 +40,28 @@ public class WebhookSubscriptionService {
     private final WebhookEndpointRepository endpointRepository;
     private final WebhookDeliveryAttemptRepository attemptRepository;
     private final OutboundWebhookDispatcher dispatcher;
+    private final WebhookUrlPolicy urlPolicy;
     private final SecureRandom secureRandom = new SecureRandom();
 
     /**
      * Subscribes a new webhook endpoint, generating a cryptographically secure HMAC secret. A merchant always
-     * registers under its own merchant identity; an administrator must name the merchant.
+     * registers under its own merchant identity; an administrator must name the merchant. The secret is returned
+     * in this response only.
      */
     @Transactional
-    public WebhookEndpointResponse createEndpoint(CreateWebhookEndpointRequest request, CallerContext caller) {
+    public WebhookEndpointCreatedResponse createEndpoint(CreateWebhookEndpointRequest request, CallerContext caller) {
         MerchantAccess.requireRole(caller, MANAGERS);
         UUID merchantId = MerchantAccess.ownerForCreate(caller, request.merchantId());
-        log.info("Registering webhook endpoint for merchant: {} target: {}", merchantId, request.targetUrl());
+        log.info("Registering webhook endpoint for merchant: {}", merchantId);
 
         String subscribedEvents = EventSubscriptionPatterns.parseForRegistration(request.subscribedEvents()).canonical();
+        try {
+            urlPolicy.validate(request.targetUrl());
+        } catch (UnsafeWebhookUrlException refused) {
+            // Reason code only: the URL itself is never logged.
+            log.info("Rejected webhook endpoint registration for merchant {}: {}", merchantId, refused.reason());
+            throw refused;
+        }
 
         byte[] secretBytes = new byte[32];
         secureRandom.nextBytes(secretBytes);
@@ -69,7 +80,8 @@ public class WebhookSubscriptionService {
         WebhookEndpoint saved = endpointRepository.save(endpoint);
         log.info("Webhook endpoint {} created successfully for merchant {}", saved.getEndpointId(), saved.getMerchantId());
 
-        return mapToResponse(saved);
+        // The only response that carries the secret; GET, list and status responses never do.
+        return new WebhookEndpointCreatedResponse(mapToResponse(saved), generatedSecret);
     }
 
     @Transactional(readOnly = true)
@@ -114,7 +126,8 @@ public class WebhookSubscriptionService {
     }
 
     /**
-     * Dispatches a test ping event to verify connectivity and HMAC signature computation.
+     * Connectivity check: one signed POST of a fixed test payload, no retry, no dead-letter record. The result
+     * carries the real HTTP status, a sanitised classification and the latency, never the endpoint's reply.
      */
     public WebhookDeliveryAttemptResponse testPing(UUID endpointId, CallerContext caller) {
         WebhookEndpoint endpoint = findAccessibleEndpoint(endpointId, caller);
@@ -127,14 +140,14 @@ public class WebhookSubscriptionService {
                 "message", "SwiftDrop Webhook Resiliency ping verification."
         );
 
-        return dispatcher.dispatch(endpoint, "webhook.test.ping", testPayload);
+        return dispatcher.ping(endpoint, "webhook.test.ping", testPayload);
     }
 
     @Transactional(readOnly = true)
     public List<WebhookDeliveryAttemptResponse> getDeliveryAttempts(UUID endpointId, CallerContext caller) {
         WebhookEndpoint endpoint = findAccessibleEndpoint(endpointId, caller);
         return attemptRepository.findByEndpointIdOrderByAttemptedAtDesc(endpoint.getEndpointId()).stream()
-                .map(this::mapAttemptToResponse)
+                .map(AttemptResponseMapper::toResponse)
                 .toList();
     }
 
@@ -155,26 +168,10 @@ public class WebhookSubscriptionService {
                 endpoint.getEndpointId(),
                 endpoint.getMerchantId(),
                 endpoint.getTargetUrl(),
-                endpoint.getSecretKey(),
                 endpoint.getSubscribedEvents(),
                 endpoint.isActive(),
                 endpoint.getDescription(),
                 endpoint.getCreatedAt()
-        );
-    }
-
-    private WebhookDeliveryAttemptResponse mapAttemptToResponse(WebhookDeliveryAttempt attempt) {
-        return new WebhookDeliveryAttemptResponse(
-                attempt.getAttemptId(),
-                attempt.getEndpointId(),
-                attempt.getMerchantId(),
-                attempt.getEventType(),
-                attempt.getHttpStatusCode(),
-                attempt.getAttemptNumber(),
-                attempt.isSuccess(),
-                attempt.getResponseBody(),
-                attempt.getErrorMessage(),
-                attempt.getAttemptedAt()
         );
     }
 }

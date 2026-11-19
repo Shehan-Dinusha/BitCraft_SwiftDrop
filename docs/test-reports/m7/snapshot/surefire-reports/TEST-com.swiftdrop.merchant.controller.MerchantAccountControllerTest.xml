@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.swiftdrop.merchant.controller.MerchantAccountControllerTest" time="0.554" tests="4" errors="0" skipped="0" failures="0">
+  <testcase name="testListMerchants" classname="com.swiftdrop.merchant.controller.MerchantAccountControllerTest" time="0.043">
+  </testcase>
+  <testcase name="testCreateMerchant" classname="com.swiftdrop.merchant.controller.MerchantAccountControllerTest" time="0.032">
+  </testcase>
+  <testcase name="testGetMerchant" classname="com.swiftdrop.merchant.controller.MerchantAccountControllerTest" time="0.008">
+  </testcase>
+  <testcase name="testHealth" classname="com.swiftdrop.merchant.controller.MerchantAccountControllerTest" time="0.006">
+  </testcase>
+</testsuite>

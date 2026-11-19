@@ -22,7 +22,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -36,11 +35,6 @@ import java.util.UUID;
 @Slf4j
 @Component
 public class MerchantApiKeyGlobalFilter implements GlobalFilter, Ordered {
-
-    private static final List<String> API_KEY_PATHS = List.of(
-            "/api/v1/merchant/",
-            "/api/v1/merchant-order-ingest/"
-    );
 
     private final WebClient webClient;
     private final ReactiveStringRedisTemplate redisTemplate;
@@ -164,7 +158,7 @@ public class MerchantApiKeyGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isProtectedPath(String path) {
-        return API_KEY_PATHS.stream().anyMatch(path::startsWith);
+        return GatewayPathPolicy.isApiKeyPath(path);
     }
 
     private String firstNonBlank(String first, String second) {

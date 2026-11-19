@@ -1,0 +1,172 @@
+{{- /* RabbitMQ event broker (namespace: messaging). */ -}}
+{{- $ns := .Values.namespaces.messaging }}
+{{- $r := .Values.rabbitmq }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: {{ $ns }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: rabbitmq
+data:
+  20-swiftdrop.conf: |
+    {{- $r.config | trim | nindent 4 }}
+    {{- /* RabbitMQ sizes its memory watermark from the NODE's memory, not the container
+           limit (seen: "0.4 of available memory, computed to 2.46 GB" under a 768Mi limit),
+           so it never paged to disk before being OOMKilled. Tell it the real limit. */}}
+    {{- $mem := toString (dig "limits" "memory" "" ($r.resources | default dict)) }}
+    {{- $bytes := 0 }}
+    {{- if hasSuffix "Gi" $mem }}{{ $bytes = mul (trimSuffix "Gi" $mem | atoi) 1073741824 }}
+    {{- else if hasSuffix "Mi" $mem }}{{ $bytes = mul (trimSuffix "Mi" $mem | atoi) 1048576 }}
+    {{- end }}
+    {{- if gt (int64 $bytes) 0 }}
+    total_memory_available_override_value = {{ $bytes }}
+    {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-headless
+  namespace: {{ $ns }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/component: messaging
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: rabbitmq
+  ports:
+    - { name: amqp, port: 5672, targetPort: 5672 }
+    - { name: management, port: 15672, targetPort: 15672 }
+    - { name: epmd, port: 4369, targetPort: 4369 }
+    - { name: clustering, port: 25672, targetPort: 25672 }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: {{ $ns }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/component: messaging
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: rabbitmq
+  ports:
+    - { name: amqp, port: 5672, targetPort: 5672 }
+    - { name: management, port: 15672, targetPort: 15672 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: {{ $ns }}
+  labels:
+    {{- include "swiftdrop.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/component: messaging
+spec:
+  serviceName: rabbitmq-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.commonLabels" . | nindent 8 }}
+        app.kubernetes.io/name: rabbitmq
+        app.kubernetes.io/component: messaging
+      annotations:
+        # Covers the memory override rendered from resources too, so changing the limit rolls the pod.
+        checksum/config: {{ printf "%s|%s" $r.config (toJson $r.resources) | sha256sum }}
+        checksum/secrets: {{ toYaml .Values.secrets.rabbitmq | sha256sum }}
+    spec:
+      terminationGracePeriodSeconds: 120
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rabbitmq
+          image: {{ $r.image }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - { name: amqp, containerPort: 5672 }
+            - { name: management, containerPort: 15672 }
+            - { name: epmd, containerPort: 4369 }
+            - { name: clustering, containerPort: 25672 }
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef: { name: rabbitmq-credentials, key: username }
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef: { name: rabbitmq-credentials, key: password }
+            - name: RABBITMQ_ERLANG_COOKIE
+              valueFrom:
+                secretKeyRef: { name: rabbitmq-credentials, key: erlang-cookie }
+          resources:
+            {{- toYaml $r.resources | nindent 12 }}
+          volumeMounts:
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+            - name: rabbitmq-config
+              mountPath: /etc/rabbitmq/conf.d/20-swiftdrop.conf
+              subPath: 20-swiftdrop.conf
+              readOnly: true
+          # After a restart RabbitMQ recovers its queues from disk before it opens the AMQP
+          # port, which can take minutes on a busy node. The startup probe holds off
+          # liveness until then (up to 10 min), so recovery is never killed half-way.
+          startupProbe:
+            tcpSocket:
+              port: amqp
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          # rabbitmq-diagnostics boots a short-lived Erlang VM, which can take >10s
+          # on a CPU-starved node. Liveness (restart decision) therefore uses a cheap
+          # TCP check; readiness keeps the thorough check with a generous timeout.
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "check_running"]
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 20
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: amqp
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+      volumes:
+        - name: rabbitmq-config
+          configMap:
+            name: rabbitmq-config
+  volumeClaimTemplates:
+    - metadata:
+        name: rabbitmq-data
+        labels:
+          app.kubernetes.io/name: rabbitmq
+          app.kubernetes.io/part-of: swiftdrop
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ $r.storageClassName }}
+        resources:
+          requests:
+            storage: {{ $r.storage }}

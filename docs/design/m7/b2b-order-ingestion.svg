@@ -1,0 +1,79 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1800' height='1510' viewBox='0 0 1800 1510'><rect width='100%' height='100%' fill='white'/>
+<text x='40' y='45' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#507298'>SwiftDrop | Member 7</text>
+<text x='40' y='96' font-family='Segoe UI,Arial,sans-serif' font-size='36' fill='#16324f'>B2B order ingestion</text>
+<text x='40' y='134' font-family='Segoe UI,Arial,sans-serif' font-size='22' fill='#9c4b15'>Integration contract: Member 1 must enable B2B gateway routing and API-key/JWT filter coordination.</text>
+<rect x='35' y='170' width='230' height='80' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='49' y='202' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>E-commerce</text>
+<text x='49' y='229' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>platform</text>
+<line x1='150' y1='250' x2='150' y2='1290' stroke='#507298' stroke-width='2'/>
+<rect x='335' y='170' width='230' height='80' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='349' y='202' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Gateway</text>
+<text x='349' y='229' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Member 1</text>
+<line x1='450' y1='250' x2='450' y2='1290' stroke='#507298' stroke-width='2'/>
+<rect x='635' y='170' width='230' height='80' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='649' y='202' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Merchant service</text>
+<text x='649' y='229' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Member 7</text>
+<line x1='750' y1='250' x2='750' y2='1290' stroke='#507298' stroke-width='2'/>
+<rect x='935' y='170' width='230' height='80' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='949' y='202' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Order service</text>
+<text x='949' y='229' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Member 3</text>
+<line x1='1050' y1='250' x2='1050' y2='1290' stroke='#507298' stroke-width='2'/>
+<rect x='1235' y='170' width='230' height='80' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='1249' y='202' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>RabbitMQ</text>
+<text x='1249' y='229' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>events</text>
+<line x1='1350' y1='250' x2='1350' y2='1290' stroke='#507298' stroke-width='2'/>
+<rect x='1535' y='170' width='230' height='80' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='1549' y='202' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Dispatch</text>
+<text x='1549' y='229' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Member 5</text>
+<line x1='1650' y1='250' x2='1650' y2='1290' stroke='#507298' stroke-width='2'/>
+<text x='162' y='289' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>1. POST /api/v1/b2b/orders + X-API-Key</text>
+<line x1='150' y1='300' x2='450' y2='300' stroke='#507298' stroke-width='2'/>
+<line x1='450' y1='300' x2='439.469009257316' y2='305.75310646325' stroke='#507298' stroke-width='2'/>
+<line x1='450' y1='300' x2='439.469009257316' y2='294.24689353675' stroke='#507298' stroke-width='2'/>
+<text x='462' y='364' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>2. Internal key validation (cache miss)</text>
+<line x1='450' y1='375' x2='750' y2='375' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='375' x2='739.469009257316' y2='380.75310646325' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='375' x2='739.469009257316' y2='369.24689353675' stroke='#507298' stroke-width='2'/>
+<text x='462' y='439' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>3. Key hash/expiry + approval check; verified identity</text>
+<line x1='750' y1='450' x2='450' y2='450' stroke='#507298' stroke-width='2'/>
+<line x1='450' y1='450' x2='460.530990742684' y2='444.24689353675' stroke='#507298' stroke-width='2'/>
+<line x1='450' y1='450' x2='460.530990742684' y2='455.75310646325' stroke='#507298' stroke-width='2'/>
+<rect x='40' y='478' width='1720' height='57' rx='4' fill='#fff5e9' stroke='#adc3db' stroke-width='2'/>
+<text x='54' y='510' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Invalid/missing key: gateway returns 401. Redis validation cache may delay revocation enforcement.</text>
+<text x='462' y='584' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>4. Verified merchant/role headers + correlation ID</text>
+<line x1='450' y1='595' x2='750' y2='595' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='595' x2='739.469009257316' y2='600.75310646325' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='595' x2='739.469009257316' y2='589.24689353675' stroke='#507298' stroke-width='2'/>
+<rect x='620' y='620' width='700' height='88' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='634' y='652' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>5. Merchant DB: lock merchant; require APPROVED (else 403).</text>
+<text x='634' y='679' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Normalize payload; lookup merchantId + externalRef receipt.</text>
+<rect x='40' y='735' width='1720' height='57' rx='4' fill='#f0f8f4' stroke='#adc3db' stroke-width='2'/>
+<text x='54' y='767' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Receipt found: return existing IDs (HTTP 200); skip order-service call. Invalid payload: reject.</text>
+<text x='762' y='844' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>6. POST /internal/v1/orders (new local reference)</text>
+<line x1='750' y1='855' x2='1050' y2='855' stroke='#507298' stroke-width='2'/>
+<line x1='1050' y1='855' x2='1039.46900925732' y2='860.75310646325' stroke='#507298' stroke-width='2'/>
+<line x1='1050' y1='855' x2='1039.46900925732' y2='849.24689353675' stroke='#507298' stroke-width='2'/>
+<rect x='920' y='880' width='800' height='86' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='934' y='912' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>7. Order DB: idempotent order creation; pricing + tracking number.</text>
+<text x='934' y='939' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Existing downstream order: return it without another creation event.</text>
+<text x='1062' y='1014' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>8. order.created (new order only)</text>
+<line x1='1050' y1='1025' x2='1350' y2='1025' stroke='#507298' stroke-width='2'/>
+<line x1='1350' y1='1025' x2='1339.46900925732' y2='1030.75310646325' stroke='#507298' stroke-width='2'/>
+<line x1='1350' y1='1025' x2='1339.46900925732' y2='1019.24689353675' stroke='#507298' stroke-width='2'/>
+<text x='1362' y='1084' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>9. Event delivered to dispatch</text>
+<line x1='1350' y1='1095' x2='1650' y2='1095' stroke='#507298' stroke-width='2'/>
+<line x1='1650' y1='1095' x2='1639.46900925732' y2='1100.75310646325' stroke='#507298' stroke-width='2'/>
+<line x1='1650' y1='1095' x2='1639.46900925732' y2='1089.24689353675' stroke='#507298' stroke-width='2'/>
+<text x='762' y='1154' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>10. New/existing orderId + trackingNumber</text>
+<line x1='1050' y1='1165' x2='750' y2='1165' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='1165' x2='760.530990742684' y2='1159.24689353675' stroke='#507298' stroke-width='2'/>
+<line x1='750' y1='1165' x2='760.530990742684' y2='1170.75310646325' stroke='#507298' stroke-width='2'/>
+<text x='162' y='1239' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>11. Save merchant receipt; respond via gateway (201 new / 200 existing)</text>
+<line x1='750' y1='1250' x2='150' y2='1250' stroke='#507298' stroke-width='2'/>
+<line x1='150' y1='1250' x2='160.530990742684' y2='1244.24689353675' stroke='#507298' stroke-width='2'/>
+<line x1='150' y1='1250' x2='160.530990742684' y2='1255.75310646325' stroke='#507298' stroke-width='2'/>
+<rect x='40' y='1320' width='1720' height='135' rx='4' fill='#edf4fc' stroke='#adc3db' stroke-width='2'/>
+<text x='54' y='1352' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Each service owns its own database. Remote order commit and local receipt commit are separate.</text>
+<text x='54' y='1379' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Retry protection exists at both services. Merchant ingestion does not call its legacy order.created publisher.</text>
+<text x='54' y='1406' font-family='Segoe UI,Arial,sans-serif' font-size='20' fill='#16324f'>Bulk: 1-500 items, independent item results; correlation ID is preserved. See Mermaid source for branches.</text>
+</svg>

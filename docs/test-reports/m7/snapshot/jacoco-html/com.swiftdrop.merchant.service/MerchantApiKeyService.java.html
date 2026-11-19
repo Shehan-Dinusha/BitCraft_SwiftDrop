@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MerchantApiKeyService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: MerchantB2B</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.merchant.service</a> &gt; <span class="el_source">MerchantApiKeyService.java</span></div><h1>MerchantApiKeyService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.merchant.service;
+
+import com.swiftdrop.contracts.dto.MerchantApiKeyValidationResult;
+import com.swiftdrop.merchant.domain.entity.MerchantApiKey;
+import com.swiftdrop.merchant.domain.repository.MerchantApiKeyRepository;
+import com.swiftdrop.merchant.dto.ApiKeyResponse;
+import com.swiftdrop.merchant.dto.CreateApiKeyRequest;
+import com.swiftdrop.merchant.exception.ApiKeyNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.UUID;
+
+<span class="fc" id="L27">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class MerchantApiKeyService {
+
+    private final MerchantApiKeyRepository apiKeyRepository;
+    private final MerchantApprovalGuard approvalGuard;
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    /**
+     * Generates a new merchant API key.
+     * The raw key is returned ONLY ONCE in the response; only its SHA-256 hash is persisted.
+     */
+    @Transactional
+    public ApiKeyResponse generateApiKey(UUID merchantId, CreateApiKeyRequest request) {
+<span class="fc" id="L42">        approvalGuard.requireApproved(merchantId);</span>
+<span class="fc" id="L43">        log.info(&quot;Generating new API key for merchant: {}, name: {}&quot;, merchantId, request.keyName());</span>
+
+<span class="fc" id="L45">        Instant expiresAt = null;</span>
+<span class="pc bpc" id="L46" title="1 of 4 branches missed.">        if (request.expiresInDays() != null &amp;&amp; request.expiresInDays() &gt; 0) {</span>
+<span class="fc" id="L47">            expiresAt = Instant.now().plus(request.expiresInDays(), ChronoUnit.DAYS);</span>
+        }
+<span class="fc" id="L49">        return issueApiKey(merchantId, request.keyName(), expiresAt);</span>
+    }
+
+    /** Serializes rotations of the same key; both writes commit or roll back together. */
+    @Transactional
+    public ApiKeyResponse regenerateApiKey(UUID merchantId, UUID keyId) {
+<span class="fc" id="L55">        MerchantApiKey oldKey = apiKeyRepository.findForUpdate(keyId)</span>
+<span class="fc" id="L56">                .filter(key -&gt; key.getMerchantId().equals(merchantId))</span>
+<span class="fc" id="L57">                .orElseThrow(() -&gt; new ApiKeyNotFoundException(&quot;API key not found: &quot; + keyId));</span>
+<span class="fc" id="L58">        Instant now = Instant.now();</span>
+<span class="pc bpc" id="L59" title="1 of 4 branches missed.">        if (!oldKey.isActive() || oldKey.getRevokedAt() != null) {</span>
+<span class="fc" id="L60">            throw new ResponseStatusException(HttpStatus.CONFLICT, &quot;A revoked API key cannot be regenerated&quot;);</span>
+        }
+<span class="fc bfc" id="L62" title="All 4 branches covered.">        if (oldKey.getExpiresAt() != null &amp;&amp; !oldKey.getExpiresAt().isAfter(now)) {</span>
+<span class="fc" id="L63">            throw new ResponseStatusException(HttpStatus.CONFLICT, &quot;An expired API key cannot be regenerated&quot;);</span>
+        }
+
+<span class="fc" id="L66">        ApiKeyResponse replacement = issueApiKey(merchantId, oldKey.getKeyName(), oldKey.getExpiresAt());</span>
+<span class="fc" id="L67">        oldKey.setActive(false);</span>
+<span class="fc" id="L68">        oldKey.setRevokedAt(now);</span>
+<span class="fc" id="L69">        apiKeyRepository.save(oldKey);</span>
+<span class="fc" id="L70">        return replacement;</span>
+    }
+
+    private ApiKeyResponse issueApiKey(UUID merchantId, String keyName, Instant expiresAt) {
+
+        // Generate 32 cryptographically secure random bytes
+<span class="fc" id="L76">        byte[] randomBytes = new byte[32];</span>
+<span class="fc" id="L77">        secureRandom.nextBytes(randomBytes);</span>
+<span class="fc" id="L78">        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);</span>
+<span class="fc" id="L79">        String rawApiKey = &quot;sk_live_&quot; + token;</span>
+
+<span class="fc" id="L81">        String keyPrefix = &quot;sk_live_&quot; + token.substring(0, Math.min(6, token.length())) + &quot;...&quot;;</span>
+<span class="fc" id="L82">        String keyHash = sha256(rawApiKey);</span>
+
+<span class="fc" id="L84">        MerchantApiKey apiKey = MerchantApiKey.builder()</span>
+<span class="fc" id="L85">                .merchantId(merchantId)</span>
+<span class="fc" id="L86">                .keyName(keyName)</span>
+<span class="fc" id="L87">                .keyPrefix(keyPrefix)</span>
+<span class="fc" id="L88">                .keyHash(keyHash)</span>
+<span class="fc" id="L89">                .active(true)</span>
+<span class="fc" id="L90">                .expiresAt(expiresAt)</span>
+<span class="fc" id="L91">                .build();</span>
+
+<span class="fc" id="L93">        MerchantApiKey saved = apiKeyRepository.save(apiKey);</span>
+
+<span class="fc" id="L95">        return new ApiKeyResponse(</span>
+<span class="fc" id="L96">                saved.getKeyId(),</span>
+<span class="fc" id="L97">                saved.getMerchantId(),</span>
+<span class="fc" id="L98">                saved.getKeyName(),</span>
+<span class="fc" id="L99">                saved.getKeyPrefix(),</span>
+<span class="fc" id="L100">                saved.isActive(),</span>
+<span class="fc" id="L101">                saved.getCreatedAt(),</span>
+<span class="fc" id="L102">                saved.getExpiresAt(),</span>
+<span class="fc" id="L103">                saved.getLastUsedAt(),</span>
+<span class="fc" id="L104">                saved.getRevokedAt(),</span>
+                rawApiKey // ONLY populated upon generation
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ApiKeyResponse&gt; listApiKeys(UUID merchantId) {
+<span class="fc" id="L111">        return apiKeyRepository.findByMerchantIdOrderByCreatedAtDesc(merchantId).stream()</span>
+<span class="fc" id="L112">                .map(this::mapToResponseWithoutSecret)</span>
+<span class="fc" id="L113">                .toList();</span>
+    }
+
+    @Transactional
+    public ApiKeyResponse revokeApiKey(UUID merchantId, UUID keyId) {
+<span class="fc" id="L118">        log.info(&quot;Revoking API key: {} for merchant: {}&quot;, keyId, merchantId);</span>
+<span class="fc" id="L119">        MerchantApiKey apiKey = apiKeyRepository.findByKeyId(keyId)</span>
+<span class="pc" id="L120">                .orElseThrow(() -&gt; new ApiKeyNotFoundException(&quot;API key not found: &quot; + keyId));</span>
+
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">        if (!apiKey.getMerchantId().equals(merchantId)) {</span>
+<span class="nc" id="L123">            throw new IllegalArgumentException(&quot;API key does not belong to merchant: &quot; + merchantId);</span>
+        }
+
+<span class="fc" id="L126">        apiKey.setActive(false);</span>
+<span class="fc" id="L127">        apiKey.setRevokedAt(Instant.now());</span>
+<span class="fc" id="L128">        MerchantApiKey updated = apiKeyRepository.save(apiKey);</span>
+
+<span class="fc" id="L130">        return mapToResponseWithoutSecret(updated);</span>
+    }
+
+    /**
+     * Validates an API key (invoked by API Gateway filter via /internal/v1/api-keys/validate).
+     */
+    @Transactional
+    public MerchantApiKeyValidationResult validateApiKey(String rawApiKey) {
+<span class="pc bpc" id="L138" title="2 of 4 branches missed.">        if (rawApiKey == null || rawApiKey.isBlank()) {</span>
+<span class="nc" id="L139">            return MerchantApiKeyValidationResult.invalid(&quot;Missing API key&quot;);</span>
+        }
+
+<span class="fc" id="L142">        String keyHash = sha256(rawApiKey.trim());</span>
+<span class="fc" id="L143">        return apiKeyRepository.findByKeyHash(keyHash)</span>
+<span class="fc" id="L144">                .map(key -&gt; {</span>
+<span class="fc bfc" id="L145" title="All 2 branches covered.">                    if (!key.isActive()) {</span>
+<span class="fc" id="L146">                        return MerchantApiKeyValidationResult.invalid(&quot;API key has been revoked&quot;);</span>
+                    }
+<span class="pc bpc" id="L148" title="1 of 4 branches missed.">                    if (key.getExpiresAt() != null &amp;&amp; !key.getExpiresAt().isAfter(Instant.now())) {</span>
+<span class="fc" id="L149">                        return MerchantApiKeyValidationResult.invalid(&quot;API key has expired&quot;);</span>
+                    }
+<span class="pc bpc" id="L151" title="1 of 4 branches missed.">                    if (key.getKeyHash() == null || !MessageDigest.isEqual(</span>
+<span class="fc" id="L152">                            keyHash.getBytes(StandardCharsets.US_ASCII),</span>
+<span class="fc" id="L153">                            key.getKeyHash().getBytes(StandardCharsets.US_ASCII))) {</span>
+<span class="fc" id="L154">                        return MerchantApiKeyValidationResult.invalid(&quot;API key not recognized&quot;);</span>
+                    }
+                    // Update last used timestamp
+                    try {
+<span class="fc" id="L158">                        approvalGuard.requireApproved(key.getMerchantId());</span>
+<span class="nc" id="L159">                    } catch (org.springframework.web.server.ResponseStatusException</span>
+                             | com.swiftdrop.merchant.exception.MerchantNotFoundException ex) {
+<span class="nc" id="L161">                        return MerchantApiKeyValidationResult.invalid(&quot;Merchant approval required&quot;);</span>
+<span class="fc" id="L162">                    }</span>
+<span class="fc" id="L163">                    key.setLastUsedAt(Instant.now());</span>
+<span class="fc" id="L164">                    apiKeyRepository.save(key);</span>
+
+<span class="fc" id="L166">                    return MerchantApiKeyValidationResult.valid(key.getMerchantId());</span>
+                })
+<span class="fc" id="L168">                .orElseGet(() -&gt; MerchantApiKeyValidationResult.invalid(&quot;API key not recognized&quot;));</span>
+    }
+
+    private ApiKeyResponse mapToResponseWithoutSecret(MerchantApiKey key) {
+<span class="fc" id="L172">        return new ApiKeyResponse(</span>
+<span class="fc" id="L173">                key.getKeyId(),</span>
+<span class="fc" id="L174">                key.getMerchantId(),</span>
+<span class="fc" id="L175">                key.getKeyName(),</span>
+<span class="fc" id="L176">                key.getKeyPrefix(),</span>
+<span class="fc" id="L177">                key.isActive(),</span>
+<span class="fc" id="L178">                key.getCreatedAt(),</span>
+<span class="fc" id="L179">                key.getExpiresAt(),</span>
+<span class="fc" id="L180">                key.getLastUsedAt(),</span>
+<span class="fc" id="L181">                key.getRevokedAt(),</span>
+                null // Raw key is never exposed after creation
+        );
+    }
+
+    private String sha256(String value) {
+        try {
+<span class="fc" id="L188">            MessageDigest digest = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+<span class="fc" id="L189">            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));</span>
+<span class="nc" id="L190">        } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L191">            throw new IllegalStateException(&quot;SHA-256 algorithm unavailable&quot;, e);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -3,6 +3,7 @@ package com.swiftdrop.gateway.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
+import com.swiftdrop.contracts.security.JwtSessionRevocation;
 import com.swiftdrop.gateway.security.JwksKeyStore;
 import com.swiftdrop.gateway.security.JwsHeader;
 import io.jsonwebtoken.Claims;
@@ -55,50 +56,6 @@ import java.util.List;
 @Component
 public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
 
-    private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/v1/auth/login",
-            "/api/v1/auth/register",
-            "/api/v1/auth/refresh",
-            "/api/v1/auth/oauth2/",
-            "/api/v1/auth/.well-known/",
-            "/api/v1/public/track",
-            "/api/v1/public/tracking",
-            "/api/v1/tracking",
-            "/ws/tracking",
-            "/actuator/health",
-            "/actuator/health/readiness",
-            "/actuator/health/liveness",
-            "/swagger-ui.html",
-            "/swagger-ui",
-            "/swagger-ui/",
-            "/v3/api-docs",
-            "/webjars",
-            "/webjars/",
-            "/api/v1/iam/v3/api-docs",
-            "/api/v1/iam/v3/api-docs/",
-            "/api/v1/orders/v3/api-docs",
-            "/api/v1/orders/v3/api-docs/",
-            "/api/v1/pricing/v3/api-docs",
-            "/api/v1/pricing/v3/api-docs/",
-            "/api/v1/dispatch/v3/api-docs",
-            "/api/v1/dispatch/v3/api-docs/",
-            "/api/v1/deliveries/v3/api-docs",
-            "/api/v1/deliveries/v3/api-docs/",
-            "/api/v1/merchants/v3/api-docs",
-            "/api/v1/merchants/v3/api-docs/",
-            "/api/v1/webhooks/v3/api-docs",
-            "/api/v1/webhooks/v3/api-docs/",
-            "/api/v1/notifications/v3/api-docs",
-            "/api/v1/notifications/v3/api-docs/",
-            "/api/v1/analytics/v3/api-docs",
-            "/api/v1/analytics/v3/api-docs/"
-    );
-
-    private static final List<String> API_KEY_PATHS = List.of(
-            "/api/v1/merchant/",
-            "/api/v1/merchant-order-ingest/"
-    );
-
     private final SecretKey signingKey;
     private final boolean rs256;
     private final String issuer;
@@ -138,11 +95,11 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        if (isApiKeyPath(path)) {
+        if (GatewayPathPolicy.isApiKeyPath(path)) {
             return chain.filter(exchange);
         }
 
-        if (isPublicPath(path)) {
+        if (GatewayPathPolicy.isPublicPath(path)) {
             ServerHttpRequest sanitized = exchange.getRequest().mutate()
                     .headers(this::stripIdentityHeaders)
                     .build();
@@ -230,7 +187,7 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         );
         String jwtId = claims.getId();
 
-        return isBlacklisted(token, userId, jwtId)
+        return isBlacklisted(token, userId, jwtId, claims)
                 .flatMap(blacklisted -> {
                     if (blacklisted) {
                         log.warn("Rejected blacklisted token for path: {}", path);
@@ -262,20 +219,34 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
                 });
     }
 
-    private Mono<Boolean> isBlacklisted(String token, String userId, String jwtId) {
+    /**
+     * A token is rejected when the token itself or its {@code jti} was revoked (logout), or when it was
+     * issued before the user's revocation cutoff ({@code user:<id>} holds an ISO timestamp written on
+     * password change/reset, role or status change, or refresh-token replay). The cutoff is compared
+     * with {@link JwtSessionRevocation}, exactly as IAM does, so sessions started AFTER the cutoff work;
+     * treating the key's mere existence as revocation would lock the user out for the key's lifetime.
+     */
+    private Mono<Boolean> isBlacklisted(String token, String userId, String jwtId, Claims claims) {
         String tokenHash = sha256(token);
-        List<String> keys = new ArrayList<>(3);
+        List<String> keys = new ArrayList<>(2);
         keys.add(blacklistPrefix + "token:" + tokenHash);
-        if (userId != null && !userId.isBlank()) {
-            keys.add(blacklistPrefix + "user:" + userId);
-        }
         if (jwtId != null && !jwtId.isBlank()) {
             keys.add(blacklistPrefix + "jti:" + jwtId);
         }
-
-        return Flux.fromIterable(keys)
+        Mono<Boolean> tokenRevoked = Flux.fromIterable(keys)
                 .flatMap(redisTemplate::hasKey)
-                .any(Boolean::booleanValue)
+                .any(Boolean::booleanValue);
+
+        Mono<Boolean> userCutoffApplies = userId == null || userId.isBlank()
+                ? Mono.just(false)
+                : redisTemplate.opsForValue().get(blacklistPrefix + "user:" + userId)
+                        .map(cutoff -> JwtSessionRevocation.isRevoked(
+                                cutoff,
+                                claimAsString(claims, JwtSessionRevocation.ISSUED_AT_CLAIM),
+                                claims.getIssuedAt() == null ? null : claims.getIssuedAt().toInstant()))
+                        .defaultIfEmpty(false);
+
+        return Mono.zip(tokenRevoked, userCutoffApplies, (byToken, byUser) -> byToken || byUser)
                 .onErrorResume(exception -> {
                     log.warn("Redis blacklist check failed; allowing token: {}", exception.getMessage());
                     return Mono.just(false);
@@ -287,14 +258,6 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         headers.remove(JwtHeaderConstants.X_USER_ROLE);
         headers.remove(JwtHeaderConstants.X_MERCHANT_ID);
         headers.remove(JwtHeaderConstants.X_DISTRICT_ID);
-    }
-
-    private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
-    }
-
-    private boolean isApiKeyPath(String path) {
-        return API_KEY_PATHS.stream().anyMatch(path::startsWith);
     }
 
     private String firstNonBlank(String first, String second) {

@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.service;
 
+import java.io.IOException;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.merchant.dto.BulkOrderIngestItem;
 import lombok.extern.slf4j.Slf4j;
@@ -39,9 +40,9 @@ public class BulkCsvOrderProcessor {
                     }
                 }
 
-                String[] tokens = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+                String[] tokens = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
                 if (tokens.length < 4) {
-                    log.warn("Skipping invalid CSV line (insufficient columns): {}", line);
+                    items.add(new BulkOrderIngestItem(null, null, null, null, null, null));
                     continue;
                 }
 
@@ -50,12 +51,12 @@ public class BulkCsvOrderProcessor {
                 String districtStr = stripQuotes(tokens[2]).toUpperCase();
                 String deliveryAddress = stripQuotes(tokens[3]);
 
-                BigDecimal weight = BigDecimal.valueOf(1.0);
+                BigDecimal weight = null;
                 if (tokens.length > 4 && !tokens[4].trim().isEmpty()) {
                     try {
                         weight = new BigDecimal(stripQuotes(tokens[4]));
                     } catch (NumberFormatException e) {
-                        weight = BigDecimal.valueOf(1.0);
+                        weight = null;
                     }
                 }
 
@@ -68,7 +69,7 @@ public class BulkCsvOrderProcessor {
                 try {
                     district = SriLankanDistrict.valueOf(districtStr);
                 } catch (IllegalArgumentException e) {
-                    district = SriLankanDistrict.COLOMBO;
+                    district = null;
                 }
 
                 items.add(new BulkOrderIngestItem(
@@ -77,12 +78,14 @@ public class BulkCsvOrderProcessor {
                         district,
                         deliveryAddress,
                         weight,
-                        speed
+                        speed,
+                        column(tokens, 6), column(tokens, 7), column(tokens, 8), column(tokens, 9), column(tokens, 10),
+                        column(tokens, 11) == null ? null : declaration(column(tokens, 11))
                 ));
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.error("Failed to parse merchant CSV order batch", e);
-            throw new IllegalArgumentException("Failed to parse CSV file: " + e.getMessage(), e);
+            throw new IllegalArgumentException("Failed to parse CSV file", e);
         }
         return items;
     }
@@ -94,5 +97,15 @@ public class BulkCsvOrderProcessor {
             return val.substring(1, val.length() - 1).trim();
         }
         return val;
+    }
+
+    private String column(String[] values, int index) {
+        return values.length > index && !stripQuotes(values[index]).isBlank() ? stripQuotes(values[index]) : null;
+    }
+
+    private Boolean declaration(String value) {
+        if (value.equalsIgnoreCase("true")) return true;
+        if (value.equalsIgnoreCase("false")) return false;
+        return null;
     }
 }

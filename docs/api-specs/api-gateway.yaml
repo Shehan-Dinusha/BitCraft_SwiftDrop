@@ -3,13 +3,24 @@ info:
   title: SwiftDrop API Gateway Public Tracking API
   description: |
     Sanitized public parcel tracking exposed by the API Gateway Real-Time
-    Tracking Hub. These endpoints do not require a JWT and are rate limited.
+    Tracking Hub. The canonical read path is `/api/v1/public/track/{trackingNumber}`;
+    `/api/v1/tracking/{trackingNumber}` is served by the same controller as a
+    compatibility alias. These endpoints do not require a JWT and are rate limited.
     The WebSocket endpoint `/ws/tracking` accepts STOMP 1.2 clients and exposes
     `/topic/track/{trackingNumber}` publicly and `/topic/customer/{customerId}`
     only to the authenticated customer or a system administrator.
   version: v1.0.0
 servers:
   - url: http://localhost:8080
+x-websocket:
+  path: /ws/tracking
+  protocol: STOMP 1.2
+  query:
+    trackingNumber: Preferred tracking number query parameter.
+    trackingId: Legacy alias accepted when trackingNumber is absent.
+  topics:
+    "/topic/track/{trackingNumber}": Public, sanitized tracking updates.
+    "/topic/customer/{customerId}": Authenticated customer or system administrator only.
 paths:
   /api/v1/public/track/{trackingNumber}:
     get:
@@ -39,6 +50,54 @@ paths:
       tags: [Public Tracking]
       summary: Subscribe to Server-Sent Events tracking updates
       operationId: streamPublicTrackingView
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server-Sent Events stream of sanitized tracking views
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/PublicTrackingView"
+        "429":
+          description: Public tracking rate limit exceeded
+  /api/v1/tracking/{trackingNumber}:
+    get:
+      tags: [Public Tracking]
+      summary: Get the latest sanitized tracking view (compatibility alias)
+      description: |
+        Compatibility alias for `/api/v1/public/track/{trackingNumber}`. Both
+        prefixes are handled by the same controller and return the same payload.
+      operationId: getTrackingView
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          example: SD-2026-000123
+      responses:
+        "200":
+          description: Latest sanitized tracking view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicTrackingView"
+        "404":
+          description: Tracking data is not available
+        "429":
+          description: Public tracking rate limit exceeded
+  /api/v1/tracking/{trackingNumber}/stream:
+    get:
+      tags: [Public Tracking]
+      summary: Subscribe to SSE tracking updates (compatibility alias)
+      description: |
+        Compatibility alias for `/api/v1/public/track/{trackingNumber}/stream`.
+      operationId: streamTrackingView
       parameters:
         - name: trackingNumber
           in: path

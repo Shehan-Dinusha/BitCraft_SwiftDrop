@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ZoneAdminService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: PricingZone</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.pricing.service</a> &gt; <span class="el_source">ZoneAdminService.java</span></div><h1>ZoneAdminService.java</h1><pre class="source lang-java linenums">package com.swiftdrop.pricing.service;
+
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.pricing.domain.entity.DistrictZoneMapping;
+import com.swiftdrop.pricing.domain.entity.PricingZone;
+import com.swiftdrop.pricing.domain.repository.DistrictZoneMappingRepository;
+import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
+import com.swiftdrop.pricing.dto.DistrictMappingRequest;
+import com.swiftdrop.pricing.dto.DistrictMappingResponse;
+import com.swiftdrop.pricing.dto.ZoneRequest;
+import com.swiftdrop.pricing.dto.ZoneResponse;
+import com.swiftdrop.pricing.exception.ZoneConflictException;
+import com.swiftdrop.pricing.exception.ZoneNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ZoneAdminService {
+
+    private static final String DEFAULT_STATUS = &quot;ACTIVE&quot;;
+
+    private final PricingZoneRepository zoneRepository;
+    private final DistrictZoneMappingRepository mappingRepository;
+
+    @Transactional(readOnly = true)
+    public List&lt;ZoneResponse&gt; listZones() {
+<span class="fc" id="L32">        return zoneRepository.findAll().stream().map(ZoneResponse::from).toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ZoneResponse getZone(String zoneCode) {
+<span class="fc" id="L37">        return ZoneResponse.from(findZone(zoneCode));</span>
+    }
+
+    @Transactional
+    public ZoneResponse createZone(ZoneRequest request) {
+<span class="fc bfc" id="L42" title="All 2 branches covered.">        if (zoneRepository.existsByZoneCode(request.zoneCode())) {</span>
+<span class="fc" id="L43">            throw new ZoneConflictException(&quot;Zone code already exists: &quot; + request.zoneCode());</span>
+        }
+<span class="fc" id="L45">        PricingZone zone = PricingZone.builder()</span>
+<span class="fc" id="L46">                .zoneCode(request.zoneCode())</span>
+<span class="fc" id="L47">                .zoneName(request.zoneName())</span>
+<span class="fc" id="L48">                .tier(request.tier())</span>
+<span class="fc" id="L49">                .baseFee(request.baseFee())</span>
+<span class="fc" id="L50">                .perKgFee(request.perKgFee())</span>
+<span class="fc" id="L51">                .expressMultiplier(request.expressMultiplier())</span>
+<span class="fc" id="L52">                .sameDayMultiplier(request.sameDayMultiplier())</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">                .status(request.status() == null ? DEFAULT_STATUS : request.status())</span>
+<span class="fc" id="L54">                .build();</span>
+<span class="fc" id="L55">        return ZoneResponse.from(zoneRepository.save(zone));</span>
+    }
+
+    @Transactional
+    public ZoneResponse updateZone(String zoneCode, ZoneRequest request) {
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        if (!zoneCode.equals(request.zoneCode())) {</span>
+<span class="fc" id="L61">            throw new IllegalArgumentException(&quot;Zone code cannot be changed&quot;);</span>
+        }
+<span class="fc" id="L63">        PricingZone zone = findZone(zoneCode);</span>
+<span class="fc" id="L64">        zone.setZoneName(request.zoneName());</span>
+<span class="fc" id="L65">        zone.setTier(request.tier());</span>
+<span class="fc" id="L66">        zone.setBaseFee(request.baseFee());</span>
+<span class="fc" id="L67">        zone.setPerKgFee(request.perKgFee());</span>
+<span class="fc" id="L68">        zone.setExpressMultiplier(request.expressMultiplier());</span>
+<span class="fc" id="L69">        zone.setSameDayMultiplier(request.sameDayMultiplier());</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        if (request.status() != null) {</span>
+<span class="fc" id="L71">            zone.setStatus(request.status());</span>
+        }
+<span class="fc" id="L73">        zone.setUpdatedAt(Instant.now());</span>
+<span class="fc" id="L74">        return ZoneResponse.from(zoneRepository.save(zone));</span>
+    }
+
+    @Transactional
+    public void deleteZone(String zoneCode) {
+<span class="fc" id="L79">        PricingZone zone = findZone(zoneCode);</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        if (mappingRepository.existsByZoneCode(zoneCode)) {</span>
+<span class="fc" id="L81">            throw new ZoneConflictException(&quot;Zone still has districts mapped to it: &quot; + zoneCode);</span>
+        }
+<span class="fc" id="L83">        zoneRepository.delete(zone);</span>
+<span class="fc" id="L84">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;DistrictMappingResponse&gt; listMappings() {
+<span class="fc" id="L88">        return mappingRepository.findAll().stream().map(DistrictMappingResponse::from).toList();</span>
+    }
+
+    @Transactional
+    public DistrictMappingResponse assignDistrict(String district, DistrictMappingRequest request) {
+<span class="fc" id="L93">        String normalized = SriLankanDistrict.valueOf(district.toUpperCase()).name();</span>
+<span class="fc" id="L94">        findZone(request.zoneCode());</span>
+<span class="fc" id="L95">        DistrictZoneMapping mapping = mappingRepository.findByDistrict(normalized)</span>
+<span class="fc" id="L96">                .orElseGet(() -&gt; DistrictZoneMapping.builder().district(normalized).build());</span>
+<span class="fc" id="L97">        mapping.setZoneCode(request.zoneCode());</span>
+<span class="fc" id="L98">        return DistrictMappingResponse.from(mappingRepository.save(mapping));</span>
+    }
+
+    private PricingZone findZone(String zoneCode) {
+<span class="fc" id="L102">        return zoneRepository.findByZoneCode(zoneCode)</span>
+<span class="fc" id="L103">                .orElseThrow(() -&gt; new ZoneNotFoundException(zoneCode));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

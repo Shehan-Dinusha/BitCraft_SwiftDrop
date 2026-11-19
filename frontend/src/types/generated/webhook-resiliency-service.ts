@@ -77,7 +77,7 @@ export interface paths {
         put?: never;
         /**
          * Register a new webhook subscription endpoint
-         * @description A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403.
+         * @description A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403. The response is the only place the generated signing secret is ever returned; GET and list never include it. The target URL must pass the destination (SSRF) policy described on targetUrl; otherwise 400 "Invalid Webhook URL" with a fixed, non-revealing message.
          */
         post: {
             parameters: {
@@ -98,7 +98,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiResponseWebhookEndpointResponse"];
+                        "application/json": components["schemas"]["ApiResponseWebhookEndpointCreatedResponse"];
                     };
                 };
                 400: components["responses"]["BadRequest"];
@@ -232,7 +232,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Dispatch a test ping to the webhook endpoint */
+        /**
+         * Dispatch a test ping to the webhook endpoint
+         * @description Connectivity check: exactly one signed POST of a fixed test payload, with no retry and no dead-letter record. Returns the HTTP status, failure classification and latency; the endpoint's response body is never returned.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -538,7 +541,10 @@ export interface components {
              * @description Owning merchant. Omit as a merchant (the merchantId of the caller's token is used; any other value is refused). Required for SYSTEM_ADMIN.
              */
             merchantId?: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Must be a public HTTPS URL. Refused with 400 "Invalid Webhook URL": other schemes or plain HTTP, username/password in the URL, invalid ports, IP literals or hostnames that are loopback, private, link-local, multicast or otherwise non-public, numeric/hex IP notations, single-label and internal names (localhost, *.local, *.internal, *.svc, ...), and hostnames that cannot be resolved or resolve to any non-public address. The same policy is re-checked before every test ping and legacy replay.
+             */
             targetUrl: string;
             /**
              * @description Comma-delimited event subscriptions. Each token is an event type (order.created, parcel.status.changed), a prefix wildcard of whole segments such as parcel.*, or * for all events. Empty, malformed or unknown tokens are rejected with 400.
@@ -548,13 +554,13 @@ export interface components {
             /** @example Main Production ERP Webhook */
             description?: string;
         };
+        /** @description Endpoint details for GET, list and status responses. Never contains the signing secret. */
         WebhookEndpointResponse: {
             /** Format: uuid */
             endpointId?: string;
             /** Format: uuid */
             merchantId?: string;
             targetUrl?: string;
-            secretKey?: string;
             subscribedEvents?: string;
             active?: boolean;
             description?: string;
@@ -569,11 +575,23 @@ export interface components {
             /** Format: uuid */
             merchantId?: string;
             eventType?: string;
-            httpStatusCode?: number;
+            /** @description HTTP status returned by the endpoint; null when no HTTP response was received (timeout or connection failure). */
+            httpStatusCode?: number | null;
             attemptNumber?: number;
+            /** @description True only for a 2xx response. */
             success?: boolean;
-            responseBody?: string;
-            errorMessage?: string;
+            /**
+             * @description Failure classification; null on success.
+             * @enum {string|null}
+             */
+            errorClass?: "TIMEOUT" | "CONNECTION_FAILURE" | "HTTP_CLIENT_ERROR" | "HTTP_RATE_LIMITED" | "HTTP_SERVER_ERROR" | "INVALID_RESPONSE" | "BLOCKED_DESTINATION" | "UNKNOWN" | null;
+            /**
+             * @description Sanitised failure summary; never contains URLs, hosts, raw error text or the endpoint's response body.
+             * @example Endpoint returned a server error (HTTP 500)
+             */
+            errorMessage?: string | null;
+            /** @description Round-trip time in milliseconds; null for attempts recorded before it was measured. */
+            latencyMs?: number | null;
             /** Format: date-time */
             attemptedAt?: string;
         };
@@ -620,6 +638,17 @@ export interface components {
             message?: string;
             /** Format: date-time */
             replayedAt?: string;
+        };
+        /** @description Newly registered endpoint plus its signing secret. The secret is returned only here, once; it cannot be retrieved again through GET or list. */
+        WebhookEndpointCreatedResponse: {
+            endpoint?: components["schemas"]["WebhookEndpointResponse"];
+            /** @description HMAC-SHA256 signing secret used to verify X-SwiftDrop-Signature. Shown once; store it securely. */
+            signingSecret?: string;
+        };
+        ApiResponseWebhookEndpointCreatedResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["WebhookEndpointCreatedResponse"];
         };
         ApiResponseWebhookEndpointResponse: {
             success?: boolean;

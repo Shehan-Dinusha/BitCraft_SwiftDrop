@@ -1,5 +1,7 @@
 # Member 10: Buddika · Analytics & AI Delivery Assistant
 
+> Current implementation and validation: see the [Member 10 index](../design/m10/README.md) and [admin/integration review](../test-reports/m10/admin-ui-refresh/README.md). Older dated stage notes below describe historical milestones, not unresolved current blockers.
+
 > Draft guide, written from the `dev` branch of [Shehan-Dinusha/BitCraft_SwiftDrop](https://github.com/Shehan-Dinusha/BitCraft_SwiftDrop/tree/dev) as of 27 Oct 2026 (commit `1a05498`).
 > Your assignment list is the source of truth for **what** you build. The repo is the source of truth for **how** (stack, folders, ports, names).
 
@@ -87,7 +89,7 @@ git checkout -b feature/m10-setup
 Copy-Item .env.example .env
 ```
 
-Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `infra/k8s/services/analytics-ai-service.yml` (rule from `AGENTS.md`).
+Never commit `.env`. Every new variable you add goes into `.env.example`, `docker-compose.yml` and `services.analytics-ai-service` in `infra/helm/swiftdrop/values.yaml` (rule from `AGENTS.md`).
 
 > **Known setup traps (skip this box once `repo-fix-plan.md` is merged on `dev`):**
 > 1. `docker-compose.yml` starts Postgres with password `changeme_pg`, but services default to `swiftdrop`.
@@ -166,7 +168,7 @@ Rules:
 
 ### PR 1: Analytics correctness
 
-**Implementation status (2026-11-10):** Stages 1–5 are implemented and tested. The reporting gateway acceptance check now passes with real IAM-created dispatcher, system-admin and customer accounts. See the [Stages 1–5 completion guide](../design/m10/stages-1-to-5-summary.md) for the implementation mapping, evidence and commands. This does not mark later AI/frontend/documentation stages complete or imply a PR merge.
+**Implementation status (2026-11-10):** Stages 1–5 are implemented and tested. The reporting gateway acceptance check now passes with real IAM-created dispatcher, system-admin and customer accounts. See the [Stages 1–5 completion guide](../design/m10/verification.md) for the implementation mapping, evidence and commands. This does not mark later AI/frontend/documentation stages complete or imply a PR merge.
 
 
 #### Stage 1: Idempotent consumer
@@ -326,6 +328,14 @@ Rules:
 
 ### PR 3: MCP (optional bonus)
 
+**Implementation update (2026-11-12):** Stages 12–15 are implemented. MCP tools,
+the chart dependency, operational dashboard and customer widget improvements are
+covered in the [completion and commit guide](../design/m10/stages-12-to-15.md)
+and [validation evidence](../test-reports/m10/stages-12-to-15/README.md).
+Changes are committed in stage-based groups; PR merge remains separate. Current full gateway source packaging
+has a separate tracking-contract mismatch; live acceptance uses its previously
+packaged jar. Stage 7 live Azure verification and Stage 16 diagrams remain separate.
+
 
 #### Stage 12: MCP tools
 
@@ -390,6 +400,14 @@ Rules:
 
 #### Stage 16: Diagrams
 
+**Implementation update (2026-11-12):** Sources and SVG/PNG/PDF exports for the
+customer AI tool-calling sequence and complete analytics ERD are implemented.
+The ERD covers 10 application tables plus Flyway history (97 columns), checked
+against V1–V5 and the running analytics schema, with logical associations clearly
+separated from SQL constraints. See the [Stage 16 deliverables](../design/m10/stage-16-diagrams.md)
+and [validation evidence](../test-reports/m10/stage-16/README.md).
+Deliverables are committed locally; push and sharing with the team's design-document owner remain pending.
+
 **Objective:** Your assigned deliverable.
 
 **Steps:**
@@ -433,7 +451,7 @@ Every test below is written and committed inside a stage in Part B. Use this tab
 - [ ] DB and RabbitMQ credentials in `application.yml` come from env variables (no hard-coded values).
 - [ ] No secrets in code, no personal data (phone, address, names) in logs or error messages.
 - [ ] Your service block in `docker-compose.yml` starts and is healthy (`docker compose up -d analytics-ai-service`).
-- [ ] `infra/k8s/services/analytics-ai-service.yml` has every env variable your `application.yml` reads (bonus marks).
+- [ ] `services.analytics-ai-service` in `infra/helm/swiftdrop/values.yaml` has every env variable your `application.yml` reads (bonus marks).
 - [ ] Documentation deliverable exported (PNG/PDF + source) to `docs/design/m10/` and sent to whoever compiles the final design PDF.
 
 **E2. Test evidence for the submission.** Save `backend/analytics-ai-service/target/surefire-reports/` and the JaCoCo `index.html` (as a screenshot or PDF) into `docs/test-reports/m10/`.

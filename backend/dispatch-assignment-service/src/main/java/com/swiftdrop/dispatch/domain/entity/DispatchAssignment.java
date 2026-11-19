@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -30,6 +31,12 @@ public class DispatchAssignment {
 
     @Column(name = "order_id", nullable = false)
     private UUID orderId;
+
+    @Column(name = "merchant_id")
+    private UUID merchantId;
+
+    @Column(name = "customer_id")
+    private UUID customerId;
 
     @Column(name = "tracking_number", length = 32)
     private String trackingNumber;
@@ -62,6 +69,10 @@ public class DispatchAssignment {
     @Column(name = "assigned_at")
     private Instant assignedAt;
 
+    /** When delivery-execution reported the parcel past pickup; reassignment is blocked once set. */
+    @Column(name = "picked_up_at")
+    private Instant pickedUpAt;
+
     @Column(name = "estimated_pickup_minutes")
     private Integer estimatedPickupMinutes = 30;
 
@@ -71,11 +82,18 @@ public class DispatchAssignment {
     @Column(name = "retry_count", nullable = false)
     private Integer retryCount = 0;
 
+    @Column(name = "last_order_created_event_id")
+    private UUID lastOrderCreatedEventId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     public DispatchAssignment() {}
 
@@ -112,6 +130,12 @@ public class DispatchAssignment {
     public UUID getOrderId() { return orderId; }
     public void setOrderId(UUID orderId) { this.orderId = orderId; }
 
+    public UUID getMerchantId() { return merchantId; }
+    public void setMerchantId(UUID merchantId) { this.merchantId = merchantId; }
+
+    public UUID getCustomerId() { return customerId; }
+    public void setCustomerId(UUID customerId) { this.customerId = customerId; }
+
     public String getTrackingNumber() { return trackingNumber; }
     public void setTrackingNumber(String trackingNumber) { this.trackingNumber = trackingNumber; }
 
@@ -139,6 +163,9 @@ public class DispatchAssignment {
     public Instant getAssignedAt() { return assignedAt; }
     public void setAssignedAt(Instant assignedAt) { this.assignedAt = assignedAt; }
 
+    public Instant getPickedUpAt() { return pickedUpAt; }
+    public void setPickedUpAt(Instant pickedUpAt) { this.pickedUpAt = pickedUpAt; }
+
     public Integer getEstimatedPickupMinutes() { return estimatedPickupMinutes; }
     public void setEstimatedPickupMinutes(Integer estimatedPickupMinutes) { this.estimatedPickupMinutes = estimatedPickupMinutes; }
 
@@ -148,9 +175,17 @@ public class DispatchAssignment {
     public Integer getRetryCount() { return retryCount; }
     public void setRetryCount(Integer retryCount) { this.retryCount = retryCount; }
 
+    public UUID getLastOrderCreatedEventId() { return lastOrderCreatedEventId; }
+    public void setLastOrderCreatedEventId(UUID lastOrderCreatedEventId) {
+        this.lastOrderCreatedEventId = lastOrderCreatedEventId;
+    }
+
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

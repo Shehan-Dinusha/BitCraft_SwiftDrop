@@ -1,0 +1,20 @@
+{{- /*
+  The three-namespace split (apps / data / messaging) is an architecture rule.
+  "keep" stops `helm uninstall` from deleting the namespaces — and with them the
+  database PersistentVolumeClaims.
+*/ -}}
+{{- if .Values.namespaces.create }}
+{{- $tiers := dict "apps" "application" "data" "data" "messaging" "messaging" }}
+{{- range $key := list "apps" "data" "messaging" }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ index $.Values.namespaces $key }}
+  labels:
+    {{- include "swiftdrop.commonLabels" $ | nindent 4 }}
+    tier: {{ index $tiers $key }}
+  annotations:
+    helm.sh/resource-policy: keep
+{{- end }}
+{{- end }}

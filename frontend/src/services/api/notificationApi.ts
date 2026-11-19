@@ -5,6 +5,7 @@ export type RecipientPreferenceResponse = components['schemas']['RecipientPrefer
 export type UpdatePreferenceRequest = components['schemas']['UpdatePreferenceRequest'];
 export type NotificationDispatchLogResponse = components['schemas']['NotificationDispatchLogResponse'];
 export type DispatchNotificationRequest = components['schemas']['DispatchNotificationRequest'];
+export type InAppNotificationResponse = components['schemas']['InAppNotificationResponse'];
 
 export const notificationApi = {
   getCurrentPreferences: async (recipientId?: string) => {
@@ -52,5 +53,30 @@ export const notificationApi = {
       request
     );
     return data.data;
+  },
+
+  getUnreadCount: async (): Promise<number> => {
+    const { data } = await apiClient.get<{ success?: boolean; data?: number }>(
+      '/v1/notifications/me/unread-count'
+    );
+    return data.data ?? 0;
+  },
+
+  listMyNotifications: async (): Promise<InAppNotificationResponse[]> => {
+    const { data } = await apiClient.get<{ success?: boolean; data?: InAppNotificationResponse[] }>(
+      '/v1/notifications/me'
+    );
+    return data.data ?? [];
+  },
+
+  markAsRead: async (id: number): Promise<InAppNotificationResponse> => {
+    const { data } = await apiClient.patch<{ success?: boolean; data?: InAppNotificationResponse }>(
+      `/v1/notifications/me/${id}/read`
+    );
+    return data.data as InAppNotificationResponse;
+  },
+
+  markAllAsRead: async (): Promise<void> => {
+    await apiClient.post('/v1/notifications/me/read-all');
   },
 };

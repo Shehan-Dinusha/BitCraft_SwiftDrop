@@ -12,6 +12,13 @@
     </parent>
 
     <artifactId>common-contracts</artifactId>
+
+    <!-- Coverage ratchet: current baseline, below the project target of 70% line / 50% branch.
+         Raise these as tests are added (see jacoco:check in backend/pom.xml). -->
+    <properties>
+        <jacoco.line.minimum>0.39</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.26</jacoco.branch.minimum>
+    </properties>
     <packaging>jar</packaging>
     <name>SwiftDrop :: Common Contracts</name>
     <description>Shared enums, domain events (records), DTOs, and security constants used across all microservices.</description>

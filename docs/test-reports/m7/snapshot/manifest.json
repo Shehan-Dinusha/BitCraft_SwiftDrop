@@ -1,0 +1,40 @@
+﻿{
+    "capturedUtc":  "2026-11-13T15:46:00Z",
+    "repositoryHeadAtCapture":  "d60985bd8de25b3d3c26ea57d9861202e39b0ad0",
+    "provenance":  "Copies existing local reports; this script does not execute tests. Consult verificationCommand and source timestamps for the preceding run.",
+    "verificationCommand":  "mvn -f backend/pom.xml -pl merchant-b2b-service -am verify jacoco:report",
+    "trackedChangesAtCapture":  [
+
+                                ],
+    "coverageSourceUtc":  "2026-11-13T15:45:45Z",
+    "tests":  69,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "coverage":  [
+                     {
+                         "Scope":  "Entire merchant module",
+                         "LinesCovered":  488,
+                         "LinesMissed":  141,
+                         "LinePercent":  77.58
+                     },
+                     {
+                         "Scope":  "Controllers",
+                         "LinesCovered":  69,
+                         "LinesMissed":  19,
+                         "LinePercent":  78.41
+                     },
+                     {
+                         "Scope":  "Services",
+                         "LinesCovered":  362,
+                         "LinesMissed":  53,
+                         "LinePercent":  87.23
+                     },
+                     {
+                         "Scope":  "Controllers + services",
+                         "LinesCovered":  431,
+                         "LinesMissed":  72,
+                         "LinePercent":  85.69
+                     }
+                 ]
+}

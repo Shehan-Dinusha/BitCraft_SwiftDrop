@@ -68,6 +68,18 @@
       }
     },
     {
+      "name": "customer-order.status-sync.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+        "x-dead-letter-routing-key": "dlq.order.events",
+        "x-message-ttl": 86400000,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
       "name": "customer-order.fee-revision.queue",
       "vhost": "/",
       "durable": true,
@@ -292,6 +304,14 @@
     {
       "source": "swiftdrop.events.exchange",
       "vhost": "/",
+      "destination": "customer-order.status-sync.queue",
+      "destination_type": "queue",
+      "routing_key": "parcel.status.changed.#",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
       "destination": "customer-order.fee-revision.queue",
       "destination_type": "queue",
       "routing_key": "parcel.fee.revised",
@@ -479,22 +499,6 @@
       "destination": "dlq.webhook.events.queue",
       "destination_type": "queue",
       "routing_key": "dlq.webhook.events",
-      "arguments": {}
-    },
-    {
-      "source": "swiftdrop.events.exchange",
-      "vhost": "/",
-      "destination": "analytics.events.queue",
-      "destination_type": "queue",
-      "routing_key": "parcel.status.changed.#",
-      "arguments": {}
-    },
-    {
-      "source": "swiftdrop.events.exchange",
-      "vhost": "/",
-      "destination": "analytics.events.queue",
-      "destination_type": "queue",
-      "routing_key": "dispatch.#",
       "arguments": {}
     },
     {

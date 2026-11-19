@@ -4,8 +4,10 @@ import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.pricing.domain.entity.DistrictZoneMapping;
 import com.swiftdrop.pricing.domain.entity.PricingZone;
+import com.swiftdrop.pricing.domain.entity.TariffRule;
 import com.swiftdrop.pricing.domain.repository.DistrictZoneMappingRepository;
 import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
+import com.swiftdrop.pricing.domain.repository.TariffRuleRepository;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
 import com.swiftdrop.pricing.exception.UnsupportedPricingSpeedException;
@@ -16,16 +18,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,9 +39,14 @@ class DynamicPricingEngineTest {
     @Mock
     private PricingZoneRepository pricingZoneRepository;
 
+    @Mock
+    private TariffRuleRepository tariffRuleRepository;
+
     private DynamicPricingEngine pricingEngine;
 
     private PricingZone westernZone;
+
+    private TariffRule defaultRule;
 
     @BeforeEach
     void setUp() {
@@ -54,12 +61,26 @@ class DynamicPricingEngineTest {
                 .status("ACTIVE")
                 .build();
 
+        defaultRule = TariffRule.builder()
+                .ruleVersionId("PRICING-2026-V1")
+                .fromDistrict("ALL")
+                .toDistrict("ALL")
+                .basePrice(new BigDecimal("550.00"))
+                .weightStepKg(BigDecimal.ONE)
+                .pricePerStep(new BigDecimal("120.00"))
+                .volumetricDivisor(new BigDecimal("5000.00"))
+                .build();
+
+        lenient().when(tariffRuleRepository.findActiveRules("ALL", "ALL"))
+                .thenReturn(List.of(defaultRule));
+
         pricingEngine = new DynamicPricingEngine(
                 districtZoneMappingRepository,
                 pricingZoneRepository,
                 List.of(new StandardPricingStrategy(),
                         new ExpressPricingStrategy(),
-                        new SameDayPricingStrategy()));
+                        new SameDayPricingStrategy()),
+                tariffRuleRepository);
     }
 
     @Test
@@ -87,7 +108,7 @@ class DynamicPricingEngineTest {
         assertThat(response.baseFee()).isEqualByComparingTo("350.00");
         assertThat(response.weightFee()).isEqualByComparingTo("0.00");
         assertThat(response.estimatedFee()).isEqualByComparingTo("350.00");
-        assertThat(response.pricingRuleVersionId()).isEqualTo(DynamicPricingEngine.CURRENT_RULE_VERSION);
+        assertThat(response.pricingRuleVersionId()).isEqualTo("PRICING-2026-V1");
     }
 
     @Test
@@ -185,7 +206,8 @@ class DynamicPricingEngineTest {
         DynamicPricingEngine standardOnlyEngine = new DynamicPricingEngine(
                 districtZoneMappingRepository,
                 pricingZoneRepository,
-                List.of(new StandardPricingStrategy()));
+                List.of(new StandardPricingStrategy()),
+                tariffRuleRepository);
 
         PricingQuoteRequest request = PricingQuoteRequest.builder()
                 .pickupDistrict(SriLankanDistrict.COLOMBO)
@@ -199,5 +221,83 @@ class DynamicPricingEngineTest {
 
         assertThatThrownBy(() -> standardOnlyEngine.calculateQuote(request))
                 .isInstanceOf(UnsupportedPricingSpeedException.class);
+    }
+
+    @Test
+    @DisplayName("Missing default tariff rule fails fast with a clear message")
+    void testMissingDefaultTariffRuleThrows() {
+        lenient().when(tariffRuleRepository.findActiveRules("ALL", "ALL"))
+                .thenReturn(List.of());
+
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.KANDY)
+                .actualWeightKg(new BigDecimal("1.00"))
+                .speed(OrderSpeed.STANDARD)
+                .build();
+
+        assertThatThrownBy(() -> pricingEngine.calculateQuote(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No active default tariff rule");
+    }
+
+    @Test
+    @DisplayName("District without a zone mapping fails instead of defaulting to the western zone")
+    void testMissingZoneMappingThrows() {
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO")).thenReturn(Optional.empty());
+
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.COLOMBO)
+                .actualWeightKg(new BigDecimal("1.00"))
+                .speed(OrderSpeed.STANDARD)
+                .build();
+
+        assertThatThrownBy(() -> pricingEngine.calculateQuote(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No pricing zone is mapped");
+    }
+
+    @Test
+    @DisplayName("Mapped zone code without a zone record fails with a clear message")
+    void testMissingZoneRecordThrows() {
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("COLOMBO").zoneCode("ZONE_WESTERN").build()));
+        when(pricingZoneRepository.findByZoneCode("ZONE_WESTERN")).thenReturn(Optional.empty());
+
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.COLOMBO)
+                .actualWeightKg(new BigDecimal("1.00"))
+                .speed(OrderSpeed.STANDARD)
+                .build();
+
+        assertThatThrownBy(() -> pricingEngine.calculateQuote(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Pricing zone not found");
+    }
+
+    @Test
+    @DisplayName("Weight step from the tariff rule decides how many extra steps are billed")
+    void testWeightStepFromTariffRule() {
+        defaultRule.setWeightStepKg(new BigDecimal("2.00"));
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("COLOMBO").zoneCode("ZONE_WESTERN").build()));
+        when(districtZoneMappingRepository.findByDistrict("KANDY"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("KANDY").zoneCode("ZONE_CENTRAL").build()));
+        when(pricingZoneRepository.findByZoneCode("ZONE_WESTERN")).thenReturn(Optional.of(westernZone));
+
+        // 5 kg with 2 kg steps: first step in base fee, (5 - 2) / 2 = 1.5 -> 2 extra steps * 120.00 = 240.00
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.KANDY)
+                .actualWeightKg(new BigDecimal("5.00"))
+                .speed(OrderSpeed.STANDARD)
+                .build();
+
+        PricingQuoteResponse response = pricingEngine.calculateQuote(request);
+
+        assertThat(response.weightFee()).isEqualByComparingTo("240.00");
+        assertThat(response.estimatedFee()).isEqualByComparingTo("790.00");
     }
 }

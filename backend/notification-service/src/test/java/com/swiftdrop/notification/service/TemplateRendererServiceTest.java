@@ -47,7 +47,7 @@ class TemplateRendererServiceTest {
     void testRenderFromDatabase() {
         NotificationTemplate template = NotificationTemplate.builder()
                 .templateCode("CUSTOM_ALERT")
-                .channel("SMS")
+                .channel("EMAIL")
                 .subjectTemplate("Alert: {{topic}}")
                 .bodyTemplate("Notice: {{message}} for customer {{customerName}}.")
                 .active(true)
@@ -62,7 +62,7 @@ class TemplateRendererServiceTest {
                 "customerName", "Kamal"
         ));
 
-        assertThat(rendered.channel()).isEqualTo("SMS");
+        assertThat(rendered.channel()).isEqualTo("EMAIL");
         assertThat(rendered.subject()).isEqualTo("Alert: Security");
         assertThat(rendered.body()).isEqualTo("Notice: Password changed for customer Kamal.");
     }
@@ -78,7 +78,7 @@ class TemplateRendererServiceTest {
                 "courierName", "Sunil Perera"
         ));
 
-        assertThat(rendered.channel()).isEqualTo("SMS");
+        assertThat(rendered.channel()).isEqualTo("EMAIL");
         assertThat(rendered.subject()).isEqualTo("SwiftDrop Out for Delivery");
         assertThat(rendered.body()).contains("SD-9999 is out for delivery with Sunil Perera");
     }
@@ -110,7 +110,7 @@ class TemplateRendererServiceTest {
                 "courierName", "Amal"
         ));
 
-        assertThat(rendered.channel()).isEqualTo("SMS");
+        assertThat(rendered.channel()).isEqualTo("EMAIL");
         assertThat(rendered.subject()).isEqualTo("SwiftDrop Parcel Picked Up");
         assertThat(rendered.body()).contains("Courier Amal has picked up parcel SD-7777");
     }
@@ -126,7 +126,7 @@ class TemplateRendererServiceTest {
                 "failureReason", "Recipient unreachable"
         ));
 
-        assertThat(rendered.channel()).isEqualTo("SMS");
+        assertThat(rendered.channel()).isEqualTo("EMAIL");
         assertThat(rendered.subject()).isEqualTo("SwiftDrop Delivery Exception");
         assertThat(rendered.body()).contains("Delivery attempt failed for parcel SD-6666: Recipient unreachable");
     }
@@ -142,7 +142,7 @@ class TemplateRendererServiceTest {
                 "status", "IN_CUSTOMS"
         ));
 
-        assertThat(rendered.channel()).isEqualTo("SMS");
+        assertThat(rendered.channel()).isEqualTo("EMAIL");
         assertThat(rendered.subject()).isEqualTo("SwiftDrop Notification");
         assertThat(rendered.body()).contains("Status update for parcel SD-5555: IN_CUSTOMS");
     }

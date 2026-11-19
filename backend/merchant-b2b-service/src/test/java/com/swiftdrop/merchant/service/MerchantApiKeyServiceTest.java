@@ -74,7 +74,7 @@ class MerchantApiKeyServiceTest {
                 .merchantId(merchantId)
                 .keyName("Active Key")
                 .keyPrefix("sk_live_test...")
-                .keyHash("hashed_value")
+                .keyHash(hash(rawKey))
                 .active(true)
                 .expiresAt(Instant.now().plus(10, ChronoUnit.DAYS))
                 .build();
@@ -166,5 +166,14 @@ class MerchantApiKeyServiceTest {
 
         assertEquals(1, list.size());
         assertNull(list.get(0).rawApiKey());
+    }
+
+    private String hash(String value) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new AssertionError(ex);
+        }
     }
 }

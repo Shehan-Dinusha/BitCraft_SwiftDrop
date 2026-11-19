@@ -216,7 +216,7 @@ paths:
               $ref: "#/components/schemas/ProofOfDeliveryUploadRequest"
       responses:
         "201":
-          description: Evidence uploaded successfully
+          description: Evidence uploaded successfully; the proof is marked verified, unlocking DELIVERED
           content:
             application/json:
               schema:
@@ -241,34 +241,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseProofOfDeliveryResponse"
-
-  /api/v1/deliveries/{deliveryId}/proof-of-delivery/verify:
-    post:
-      tags:
-        - ProofOfDelivery
-      summary: Verify proof-of-delivery with recipient OTP
-      operationId: verifyProofOfDelivery
-      parameters:
-        - name: deliveryId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: otp
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Proof-of-delivery verified
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseProofOfDeliveryResponse"
-        "400":
-          description: Invalid OTP
 
 components:
   schemas:
@@ -365,13 +337,10 @@ components:
       required:
         - photoUrl
         - recipientSignature
-        - confirmationOtp
       properties:
         photoUrl:
           type: string
         recipientSignature:
-          type: string
-        confirmationOtp:
           type: string
 
     ProofOfDeliveryResponse:

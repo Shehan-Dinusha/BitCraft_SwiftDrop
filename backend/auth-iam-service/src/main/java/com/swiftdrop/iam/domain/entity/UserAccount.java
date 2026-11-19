@@ -13,11 +13,19 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * {@code @DynamicUpdate}: an UPDATE writes only the columns that changed. Without it every
+ * save rewrote the whole row, so concurrent writers erased each other's changes, e.g. a
+ * sign-in (which saves {@code lastLoginAt}) landing just after the merchant.approved handler
+ * had set {@code merchantId} wrote the stale empty merchantId back and unlinked the merchant.
+ */
 @Entity
+@DynamicUpdate
 @Table(name = "user_accounts")
 public class UserAccount {
 
@@ -60,6 +68,10 @@ public class UserAccount {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
+
+    /** True once the owner proved control of {@link #email}. Defaults to true for non-self-service paths. */
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = true;
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
@@ -187,6 +199,14 @@ public class UserAccount {
 
     public void setStatus(UserStatus status) {
         this.status = status;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 
     public Instant getLastLoginAt() {

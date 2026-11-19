@@ -1,15 +1,17 @@
 package com.swiftdrop.pricing.service;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.pricing.domain.entity.DistrictZoneMapping;
 import com.swiftdrop.pricing.domain.entity.PricingZone;
+import com.swiftdrop.pricing.domain.entity.TariffRule;
 import com.swiftdrop.pricing.domain.repository.DistrictZoneMappingRepository;
 import com.swiftdrop.pricing.domain.repository.PricingZoneRepository;
+import com.swiftdrop.pricing.domain.repository.TariffRuleRepository;
 import com.swiftdrop.pricing.dto.PricingQuoteRequest;
 import com.swiftdrop.pricing.dto.PricingQuoteResponse;
 import com.swiftdrop.pricing.exception.UnsupportedPricingSpeedException;
 import com.swiftdrop.pricing.service.strategy.PricingStrategy;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,63 +25,63 @@ import java.util.List;
 @Slf4j
 public class DynamicPricingEngine {
 
-    public static final String CURRENT_RULE_VERSION = "PRICING-2026-V1";
-    private static final BigDecimal VOLUMETRIC_DIVISOR = new BigDecimal("5000");
+    private static final String DEFAULT_ROUTE = "ALL";
 
     private final DistrictZoneMappingRepository districtZoneMappingRepository;
     private final PricingZoneRepository pricingZoneRepository;
     private final List<PricingStrategy> pricingStrategies;
+    private final TariffRuleRepository tariffRuleRepository;
 
     public PricingQuoteResponse calculateQuote(PricingQuoteRequest request) {
         log.info("Calculating delivery quote from {} to {}, weight={}kg, speed={}",
                 request.pickupDistrict(), request.deliveryDistrict(),
                 request.actualWeightKg(), request.speed());
 
-        // 1. Resolve zones
-        String pickupZoneCode = districtZoneMappingRepository.findByDistrict(request.pickupDistrict().name())
-                .map(DistrictZoneMapping::getZoneCode)
-                .orElse("ZONE_WESTERN");
+        TariffRule rule = tariffRuleRepository.findActiveRules(DEFAULT_ROUTE, DEFAULT_ROUTE).stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No active default tariff rule is configured"));
 
-        String deliveryZoneCode = districtZoneMappingRepository.findByDistrict(request.deliveryDistrict().name())
-                .map(DistrictZoneMapping::getZoneCode)
-                .orElse("ZONE_WESTERN");
+        // 1. Resolve zones
+        String pickupZoneCode = resolveZoneCode(request.pickupDistrict());
+        String deliveryZoneCode = resolveZoneCode(request.deliveryDistrict());
 
         PricingZone pickupZone = pricingZoneRepository.findByZoneCode(pickupZoneCode)
-                .orElse(null);
+                .orElseThrow(() -> new IllegalStateException("Pricing zone not found: " + pickupZoneCode));
 
         boolean isIntraDistrict = request.pickupDistrict() == request.deliveryDistrict();
 
-        // 2. Volumetric and Chargeable weight calculation
+        // 2. Volumetric and chargeable weight calculation
         BigDecimal volumetricWeight = BigDecimal.ZERO;
         if (request.lengthCm() != null && request.widthCm() != null && request.heightCm() != null
                 && request.lengthCm().compareTo(BigDecimal.ZERO) > 0
                 && request.widthCm().compareTo(BigDecimal.ZERO) > 0
                 && request.heightCm().compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal volume = request.lengthCm().multiply(request.widthCm()).multiply(request.heightCm());
-            volumetricWeight = volume.divide(VOLUMETRIC_DIVISOR, 2, RoundingMode.HALF_UP);
+            volumetricWeight = volume.divide(rule.getVolumetricDivisor(), 2, RoundingMode.HALF_UP);
         }
 
         BigDecimal chargeableWeight = request.actualWeightKg().max(volumetricWeight)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        // 3. Base fee & Per-kg surcharge calculation
+        // 3. Base fee and per-step fee
         BigDecimal baseFee;
-        BigDecimal perKgFee;
+        BigDecimal perStepFee;
 
         if (isIntraDistrict) {
-            baseFee = pickupZone != null ? pickupZone.getBaseFee() : new BigDecimal("350.00");
-            perKgFee = pickupZone != null ? pickupZone.getPerKgFee() : new BigDecimal("80.00");
+            baseFee = pickupZone.getBaseFee();
+            perStepFee = pickupZone.getPerKgFee();
         } else {
-            // Inter-district baseline: 550.00 base, 120.00 per extra kg
-            baseFee = new BigDecimal("550.00");
-            perKgFee = new BigDecimal("120.00");
+            // Inter-district fees come from the active default tariff rule
+            baseFee = rule.getBasePrice();
+            perStepFee = rule.getPricePerStep();
         }
 
+        // The base fee covers the first weight step; every started extra step is billed
+        BigDecimal step = rule.getWeightStepKg();
         BigDecimal weightFee = BigDecimal.ZERO;
-        if (chargeableWeight.compareTo(BigDecimal.ONE) > 0) {
-            BigDecimal extraKg = chargeableWeight.subtract(BigDecimal.ONE)
-                    .setScale(0, RoundingMode.CEILING); // standard logistics billing rounds up extra fractional kg
-            weightFee = extraKg.multiply(perKgFee).setScale(2, RoundingMode.HALF_UP);
+        if (chargeableWeight.compareTo(step) > 0) {
+            BigDecimal extraSteps = chargeableWeight.subtract(step).divide(step, 0, RoundingMode.CEILING);
+            weightFee = extraSteps.multiply(perStepFee).setScale(2, RoundingMode.HALF_UP);
         }
 
         BigDecimal standardSubtotal = baseFee.add(weightFee);
@@ -109,7 +111,13 @@ public class DynamicPricingEngine {
                 .speedSurcharge(speedSurcharge)
                 .estimatedFee(totalFee)
                 .currency("LKR")
-                .pricingRuleVersionId(CURRENT_RULE_VERSION)
+                .pricingRuleVersionId(rule.getRuleVersionId())
                 .build();
+    }
+
+    private String resolveZoneCode(SriLankanDistrict district) {
+        return districtZoneMappingRepository.findByDistrict(district.name())
+                .map(DistrictZoneMapping::getZoneCode)
+                .orElseThrow(() -> new IllegalStateException("No pricing zone is mapped for district: " + district));
     }
 }

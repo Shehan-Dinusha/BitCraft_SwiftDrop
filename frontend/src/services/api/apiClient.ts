@@ -6,6 +6,25 @@ type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
 export const apiClient = axios.create({ baseURL: '/api' });
 
+// Refresh tokens are single use, and the API treats a reused one as theft (it revokes every session of
+// the user). A page fires several requests at once, so when the access token is stale they all get a
+// 401 together. They must share ONE refresh instead of each spending the same refresh token.
+// The refresh token itself is the HttpOnly `swiftdrop_refresh` cookie; the browser attaches it.
+let inFlightRefresh: Promise<string> | null = null;
+
+function refreshSession(): Promise<string> {
+  inFlightRefresh ??= axios
+    .post<AuthTokenResponse>('/api/v1/auth/refresh', {}, { withCredentials: true })
+    .then(({ data }) => {
+      useAuthStore.getState().setAuth(data);
+      return data.accessToken ?? '';
+    })
+    .finally(() => {
+      inFlightRefresh = null;
+    });
+  return inFlightRefresh;
+}
+
 // ─── Request interceptor ────────────────────────────────────────────────────
 // Attach the in-memory Bearer token to every outgoing request.
 apiClient.interceptors.request.use((config) => {
@@ -51,21 +70,25 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const refreshToken = useAuthStore.getState().refreshToken;
-    if (!refreshToken) {
+    // Another request may have refreshed the session while this one was in flight. Retry once with the
+    // newer token instead of spending the single-use refresh token a second time.
+    const sentWith = String(request.headers.Authorization ?? '').replace(/^Bearer\s+/i, '');
+    const currentToken = useAuthStore.getState().token;
+    request._retry = true; // never retry the same request twice
+    if (currentToken && sentWith !== currentToken) {
+      request.headers.Authorization = `Bearer ${currentToken}`;
+      return apiClient(request);
+    }
+
+    // No signed-in user means there is no session cookie worth trying.
+    if (!useAuthStore.getState().user) {
       useAuthStore.getState().signOut();
       return Promise.reject(error);
     }
 
-    // Mark so we don't retry again if the refresh itself fails.
-    request._retry = true;
     try {
-      // Use plain axios (not apiClient) to avoid the interceptor re-triggering.
-      const { data } = await axios.post<AuthTokenResponse>('/api/v1/auth/refresh', {
-        refreshToken
-      });
-      useAuthStore.getState().setAuth(data);
-      request.headers.Authorization = `Bearer ${data.accessToken ?? ''}`;
+      const accessToken = await refreshSession();
+      request.headers.Authorization = `Bearer ${accessToken}`;
       return apiClient(request);
     } catch {
       // Refresh token is expired or revoked — force a clean sign-out.

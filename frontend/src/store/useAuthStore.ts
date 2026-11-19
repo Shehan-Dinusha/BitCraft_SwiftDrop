@@ -30,9 +30,12 @@ export function personaForRole(role?: UserRole | AuthUserProfile['role']): Perso
   }
 }
 
+/**
+ * Browser session. Only the short-lived access token is kept here; the refresh token is an
+ * HttpOnly cookie set by the auth service, so no script (and no XSS payload) can read it.
+ */
 type Session = {
   token: string | null;
-  refreshToken: string | null;
   user: AuthUserProfile | null;
   role: PersonaRole;
   /** True for a developer-switched persona with a fake token. The API client leaves it signed in on 401. */
@@ -47,16 +50,13 @@ export const useAuthStore = create<Session>()(
   persist(
     (set) => ({
       token: null,
-      refreshToken: null,
       user: null,
       role: 'CUSTOMER',
       isDevSession: false,
-      setSession: (token, role) =>
-        set({ token, role, refreshToken: null, user: null, isDevSession: true }),
+      setSession: (token, role) => set({ token, role, user: null, isDevSession: true }),
       setAuth: (tokens) =>
         set({
           token: tokens.accessToken ?? null,
-          refreshToken: tokens.refreshToken ?? null,
           user: {
             id: tokens.userId,
             username: tokens.username,
@@ -71,7 +71,6 @@ export const useAuthStore = create<Session>()(
       signOut: () =>
         set({
           token: null,
-          refreshToken: null,
           user: null,
           role: 'CUSTOMER',
           isDevSession: false
@@ -80,9 +79,8 @@ export const useAuthStore = create<Session>()(
     {
       name: 'swiftdrop-auth',
       storage: createJSONStorage(() => sessionStorage),
-      partialize: ({ token, refreshToken, user, role, isDevSession }) => ({
+      partialize: ({ token, user, role, isDevSession }) => ({
         token,
-        refreshToken,
         user,
         role,
         isDevSession

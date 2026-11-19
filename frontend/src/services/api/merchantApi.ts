@@ -10,8 +10,52 @@ export type BulkIngestRequest = components['schemas']['BulkIngestRequest'];
 export type BulkIngestBatchResponse = components['schemas']['BulkIngestBatchResponse'];
 export type BulkBatchItemResponse = components['schemas']['BulkBatchItemResponse'];
 export type SriLankanDistrict = components['schemas']['SriLankanDistrict'];
+export type RegisterMerchantRequest = components['schemas']['RegisterMerchantRequest'];
+export type MerchantApprovalResponse = components['schemas']['MerchantApprovalResponse'];
+export type MerchantStatus = components['schemas']['MerchantStatus'];
+export type MerchantOrderReceiptResponse = components['schemas']['MerchantOrderReceiptResponse'];
 
 export const merchantApi = {
+  register: async (request: RegisterMerchantRequest) => {
+    const { data } = await apiClient.post<{ data: MerchantApprovalResponse }>(
+      '/v1/merchants/register',
+      request
+    );
+    return data.data;
+  },
+  listApplications: async (status?: MerchantStatus) => {
+    const { data } = await apiClient.get<{ data: MerchantApprovalResponse[] }>(
+      '/v1/admin/merchants',
+      { params: { status } }
+    );
+    return data.data;
+  },
+  approve: async (merchantId: string) => {
+    const { data } = await apiClient.post<{ data: MerchantApprovalResponse }>(
+      `/v1/admin/merchants/${merchantId}/approve`
+    );
+    return data.data;
+  },
+  reject: async (merchantId: string, reason: string) => {
+    const { data } = await apiClient.post<{ data: MerchantApprovalResponse }>(
+      `/v1/admin/merchants/${merchantId}/reject`,
+      { reason }
+    );
+    return data.data;
+  },
+  regenerateApiKey: async (merchantId: string, keyId: string) => {
+    const { data } = await apiClient.post<{ data: ApiKeyResponse }>(
+      `/v1/merchants/${merchantId}/api-keys/${keyId}/regenerate`
+    );
+    return data.data;
+  },
+  listOrders: async (merchantId: string, page = 0, size = 20) => {
+    const { data } = await apiClient.get<{ data: MerchantOrderReceiptResponse[] }>(
+      `/v1/merchants/${merchantId}/orders`,
+      { params: { page, size } }
+    );
+    return data.data;
+  },
   getMerchant: async (merchantId: string) => {
     const { data } = await apiClient.get<{ success: boolean; data: MerchantAccountResponse }>(
       `/v1/merchants/${merchantId}`
@@ -72,8 +116,8 @@ export const merchantApi = {
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+          'Content-Type': 'multipart/form-data'
+        }
       }
     );
     return data.data;
@@ -98,5 +142,5 @@ export const merchantApi = {
       `/v1/merchants/batches/${batchId}/items`
     );
     return data.data;
-  },
+  }
 };

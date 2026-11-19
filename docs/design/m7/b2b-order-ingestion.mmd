@@ -1,0 +1,42 @@
+sequenceDiagram
+    autonumber
+    actor Shop as E-commerce platform
+    participant GW as API gateway :8080
+    participant M as Merchant service :8086
+    participant MDB as Merchant PostgreSQL
+    participant O as Order service :8082
+    participant ODB as Order PostgreSQL
+    participant MQ as RabbitMQ
+    participant D as Dispatch service
+    Note over Shop,GW: Integration contract: B2B route and API-key/JWT filter coordination still required in Member 1 gateway
+    Shop->>GW: POST /api/v1/b2b/orders + X-API-Key + externalRef
+    GW->>M: POST /internal/v1/api-keys/validate (on cache miss)
+    M->>MDB: Match SHA-256 hash; check key expiry/revocation and merchant APPROVED
+    M-->>GW: Valid merchant identity or invalid result
+    Note over GW,M: Gateway may cache validation in Redis; raw key is removed before forwarding
+    alt Missing or invalid API key
+        GW-->>Shop: 401 Unauthorized
+    else Verified merchant context
+        GW->>M: Forward with verified X-Merchant-Id, MERCHANT role and correlation ID
+        M->>MDB: Lock merchant; require APPROVED
+        alt Merchant not approved
+            M-->>Shop: 403 Forbidden (via gateway)
+        else Approved merchant
+            M->>M: Normalize phone/district/weight; validate parcel details
+            M->>MDB: Find receipt by merchantId + externalRef
+            alt Existing local receipt
+                M-->>Shop: 200 existing orderId/trackingNumber, created=false
+            else No local receipt
+                M->>O: POST /internal/v1/orders + normalized body + correlation ID
+                O->>ODB: Idempotent creation on merchantId + externalRef
+                O->>MQ: order.created for a newly created order only
+                MQ-->>D: Deliver order.created
+                O-->>M: 201 new or 200 existing orderId + trackingNumber
+                M->>MDB: Persist receipt and commit merchant transaction
+                M-->>Shop: 201 new or 200 existing order result (via gateway)
+            end
+        end
+    end
+    Note over M,O: Remote order commit survives a local receipt failure; downstream idempotency protects retry
+    Note over M,D: Merchant ingestion does not call the legacy direct order.created publisher
+    Note over Shop,M: Bulk endpoint: 1-500 items with per-item results; correlation ID preserved

@@ -53,6 +53,8 @@ public class ToolExecutor {
         } catch (JsonHttpClient.Failure ex) {
             result = Map.of("outcome", ex.status() == 404 ? "NOT_FOUND" : "UNAVAILABLE");
         } catch (RuntimeException ex) {
+            // Graceful degradation: any other downstream failure becomes an UNAVAILABLE tool result
+            // so the assistant can still answer instead of failing the whole chat turn.
             result = Map.of("outcome", "UNAVAILABLE");
         }
         outcome = (String) result.get("outcome");

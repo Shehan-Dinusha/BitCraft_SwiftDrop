@@ -25,6 +25,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthException(AuthException exception,
                                                                 HttpServletRequest request) {
+        if (exception.getCode() != null) {
+            // The `error` field carries a machine-readable code (e.g. EMAIL_NOT_VERIFIED) for the frontend.
+            String correlationId = request.getHeader(JwtHeaderConstants.X_CORRELATION_ID);
+            ApiErrorResponse body = ApiErrorResponse.of(exception.getStatus().value(), exception.getCode(),
+                    exception.getMessage(), request.getRequestURI(), correlationId);
+            return ResponseEntity.status(exception.getStatus()).body(body);
+        }
         return build(exception.getStatus(), exception.getMessage(), request, null);
     }
 

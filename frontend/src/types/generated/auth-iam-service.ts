@@ -36,6 +36,15 @@ export interface paths {
                         "application/json": components["schemas"]["TokenResponse"];
                     };
                 };
+                /** @description Password accepted but a second factor is required (SYSTEM_ADMIN and DISPATCHER when AUTH_MFA_ENABLED=true). A 6-digit code was emailed; finish with POST /api/v1/auth/login/mfa. */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaChallengeResponse"];
+                    };
+                };
                 /** @description Invalid credentials */
                 401: {
                     headers: {
@@ -45,7 +54,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiErrorResponse"];
                     };
                 };
-                /** @description Account is not active */
+                /** @description Account is not active, or the email is not verified yet (the ApiErrorResponse error field is EMAIL_NOT_VERIFIED; call /verify-email) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -71,6 +80,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a sign-in with the emailed second-factor code
+         * @description Exchanges the challenge from a 202 /login response plus the emailed code for a token pair. The refresh token is set as the HttpOnly swiftdrop_refresh cookie. After 5 wrong codes the code is destroyed and the user must sign in again.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LoginMfaRequest"];
+                };
+            };
+            responses: {
+                /** @description Token pair issued */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TokenResponse"];
+                    };
+                };
+                /** @description Wrong or expired code */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Unknown or expired challenge; sign in again */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many incorrect codes */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/register": {
         parameters: {
             query?: never;
@@ -80,7 +159,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Register a customer or merchant account */
+        /**
+         * Register a customer or merchant account
+         * @description Creates the account unverified and emails a 6-digit verification code (via notification-service).
+         *     The user must confirm it with `POST /api/v1/auth/verify-email` before password sign-in works.
+         *     Registering again with the same, still-unverified email replaces the pending sign-up.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -94,7 +178,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Account registered */
+                /** @description Account created; a verification code was emailed */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -129,6 +213,294 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm an email address with the emailed code
+         * @description Marks the account verified. No session is created: the frontend shows a "registered"
+         *     confirmation and the user then signs in with `/login`. Codes expire after 10 minutes, are
+         *     single use, and are destroyed after 5 wrong attempts (HTTP 429).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyEmailRequest"];
+                };
+            };
+            responses: {
+                /** @description Email verified; the user can now sign in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Invalid or expired code, or validation failure */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Email address is already verified */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many attempts or requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/username-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check whether a username is free for a new account
+         * @description Used by the sign-up form while the user types. Case-insensitive; a pending (unverified) sign-up also holds its username. Rate limited to 60 checks per minute per client IP. The database unique index remains the authority, so /register still answers 409 for a taken username.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @example nimal.perera */
+                    username: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Availability of the username */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUsernameAvailability"];
+                    };
+                };
+                /** @description Too many checks from this client */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a new email verification code
+         * @description Always answers 200 so it cannot be used to discover which accounts exist. Throttled per user and per IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["IdentifierRequest"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Too many requests from this client */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a password reset code
+         * @description Always answers 200 so it cannot be used to discover which accounts exist. Throttled per user and per IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["IdentifierRequest"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Too many requests from this client */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password using the emailed reset code
+         * @description Revokes every existing session of the account. The new password must meet the policy, must not contain the username or email, and must differ from the current password; the code is consumed only when the reset succeeds.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description Password updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Invalid or expired code, or password does not meet the policy */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many attempts or requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -138,7 +510,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rotate a refresh token and issue a new access token */
+        /**
+         * Rotate a refresh token and issue a new access token
+         * @description Browsers send no body; the refresh token is read from the HttpOnly swiftdrop_refresh cookie (Path=/api/v1/auth, SameSite=Strict). Non-browser clients may send it in the body. The rotated token is returned as a new Set-Cookie, never in the JSON body.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -146,7 +521,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody: {
+            requestBody?: {
                 content: {
                     "application/json": components["schemas"]["RefreshTokenRequest"];
                 };
@@ -520,8 +895,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Change a user's role
-         * @description Requires SYSTEM_ADMIN. Revokes the target user's active sessions.
+         * Verify an existing account role
+         * @description Requires SYSTEM_ADMIN. Roles are fixed at account creation. Requests for a different role return 409; the current role is an idempotent no-op.
          */
         patch: {
             parameters: {
@@ -538,7 +913,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Role updated */
+                /** @description Account role unchanged */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -574,7 +949,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiErrorResponse"];
                     };
                 };
-                /** @description Cannot remove the last active SYSTEM_ADMIN */
+                /** @description Account roles cannot be changed after creation */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -684,6 +1059,25 @@ export interface components {
              */
             password: string;
         };
+        MfaChallengeResponse: {
+            /**
+             * @description Always true; lets clients tell this body apart from a TokenResponse.
+             * @example true
+             */
+            mfaRequired: boolean;
+            /** @description Opaque, single-use id of this sign-in attempt. Send it to /login/mfa. */
+            challengeId: string;
+            /**
+             * Format: int32
+             * @example 10
+             */
+            expiresInMinutes: number;
+        };
+        LoginMfaRequest: {
+            challengeId: string;
+            /** @example 123456 */
+            code: string;
+        };
         RegisterUserRequest: {
             /** @example customer.one */
             username: string;
@@ -724,11 +1118,48 @@ export interface components {
             merchantId?: string | null;
         };
         RefreshTokenRequest: {
-            refreshToken: string;
+            /** @description Optional when the swiftdrop_refresh cookie is sent. */
+            refreshToken?: string;
         };
         LogoutRequest: {
             /** @description Optional refresh token to revoke. */
             refreshToken?: string;
+        };
+        VerifyEmailRequest: {
+            /**
+             * @description Username or email address of the account.
+             * @example customer.one@example.com
+             */
+            identifier: string;
+            /**
+             * @description 6-digit verification code.
+             * @example 482913
+             */
+            code: string;
+        };
+        IdentifierRequest: {
+            /**
+             * @description Username or email address of the account.
+             * @example customer.one@example.com
+             */
+            identifier: string;
+        };
+        ResetPasswordRequest: {
+            /**
+             * @description Username or email address of the account.
+             * @example customer.one@example.com
+             */
+            identifier: string;
+            /**
+             * @description 6-digit reset code.
+             * @example 482913
+             */
+            code: string;
+            /**
+             * Format: password
+             * @description 8-72 characters with at least one letter and one digit.
+             */
+            newPassword: string;
         };
         ChangePasswordRequest: {
             /** Format: password */
@@ -736,6 +1167,7 @@ export interface components {
             /** Format: password */
             newPassword: string;
         };
+        /** @description Compatibility request to verify an existing role. Account roles cannot be changed after creation. */
         UpdateUserRoleRequest: {
             role: components["schemas"]["UserRole"];
         };
@@ -744,7 +1176,8 @@ export interface components {
         };
         TokenResponse: {
             accessToken?: string;
-            refreshToken?: string;
+            /** @description Always null for /login, /refresh and /oauth2/exchange: the refresh token is set as the HttpOnly swiftdrop_refresh cookie instead. */
+            refreshToken?: string | null;
             /** @example Bearer */
             tokenType?: string;
             /**
@@ -774,6 +1207,8 @@ export interface components {
             /** Format: uuid */
             merchantId?: string | null;
             status?: components["schemas"]["UserStatus"];
+            /** @description True once the email address has been verified. */
+            emailVerified?: boolean;
             /** Format: date-time */
             lastLoginAt?: string | null;
             /** Format: date-time */
@@ -783,6 +1218,24 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["UserProfileResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        UsernameAvailabilityResponse: {
+            /** @description The username that was checked, trimmed. */
+            username: string;
+            /** @description True when the username is valid and no account (verified or pending) uses it. */
+            available: boolean;
+            /**
+             * @description Why it is not available. Null when available.
+             * @enum {string|null}
+             */
+            reason?: "TAKEN" | "INVALID" | null;
+        };
+        ApiResponseUsernameAvailability: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["UsernameAvailabilityResponse"];
             /** Format: date-time */
             timestamp?: string;
         };

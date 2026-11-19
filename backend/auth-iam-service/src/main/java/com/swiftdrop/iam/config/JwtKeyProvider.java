@@ -37,6 +37,11 @@ public class JwtKeyProvider {
             throw new IllegalStateException("JWT_ALGORITHM must be HS256 or RS256");
         }
         rsaEnabled = "RS256".equals(config.getAlgorithm());
+        // Fail fast: production must never sign with the shared HS256 secret (a missing
+        // JWT_ALGORITHM would otherwise silently fall back to it).
+        if (!rsaEnabled && environment.acceptsProfiles(Profiles.of("aks"))) {
+            throw new IllegalStateException("The aks profile requires JWT_ALGORITHM=RS256");
+        }
         boolean hasPrivate = config.getPrivateKey() != null && !config.getPrivateKey().isBlank();
         boolean hasPublic = config.getPublicKey() != null && !config.getPublicKey().isBlank();
         if (hasPrivate != hasPublic) throw new IllegalStateException("Both JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required");

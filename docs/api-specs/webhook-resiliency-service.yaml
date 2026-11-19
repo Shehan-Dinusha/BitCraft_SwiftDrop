@@ -17,6 +17,40 @@ info:
     - Other roles: 403.
 
     Another merchant's endpoint or dead-letter record returns 404, indistinguishable from an unknown ID.
+
+    ## Verifying outbound webhook requests (signature contract)
+
+    Every webhook SwiftDrop sends to a merchant endpoint is an HTTPS POST with a JSON body, signed with the
+    endpoint's signing secret. The secret is shown once, when the endpoint is registered. Requests carry:
+
+    - `X-SwiftDrop-Signature: sha256=<64 lowercase hex characters>`
+    - `X-SwiftDrop-Timestamp: <Unix time in whole seconds>`
+    - `X-SwiftDrop-Event-Id` (stable per event; use it to ignore duplicates), `X-SwiftDrop-Delivery-Id` (stable
+      across retries of one delivery), `X-SwiftDrop-Event` (event type), `X-SwiftDrop-Attempt`, and
+      `User-Agent: SwiftDrop-Webhooks/1`.
+
+    Signature: `HMAC-SHA256(key, signedBytes)`, hex-encoded in lowercase, where
+    - `key` = the UTF-8 bytes of the whole secret string exactly as shown at registration (including its `whsec_` prefix);
+    - `signedBytes` = the ASCII bytes of the timestamp header value, then one `.` byte, then the **raw request body
+      bytes exactly as received**. Do not parse and re-serialise the JSON before verifying: any change in spacing,
+      field order or number formatting invalidates the signature.
+
+    To verify a request:
+    1. Read `X-SwiftDrop-Timestamp`. Reject the request if it is missing, not an integer, or more than 5 minutes
+       away from your current time (older or in the future).
+    2. Build `timestamp + "." + rawBody` as bytes.
+    3. Compute HMAC-SHA256 over those bytes with your endpoint secret as the key, and hex-encode it in lowercase.
+    4. Remove the `sha256=` prefix from `X-SwiftDrop-Signature` (reject other prefixes) and compare the two hex
+       strings with a constant-time comparison function.
+    5. Reject the request (for example with 401) on any mismatch; otherwise process it, de-duplicating by
+       `X-SwiftDrop-Event-Id`.
+
+    Pseudocode (placeholder values; never commit a real secret):
+
+        expected = hex(hmac_sha256(utf8(SECRET), ascii(timestampHeader + ".") + rawBodyBytes))
+        valid    = abs(now_unix_seconds - int(timestampHeader)) <= 300
+                   and signatureHeader starts with "sha256="
+                   and constant_time_equals(expected, signatureHeader without "sha256=")
   version: v1.0.0
 servers:
   - url: http://localhost:8080
@@ -63,6 +97,9 @@ paths:
       description: >-
         A MERCHANT registers under the merchantId of its token; merchantId may be omitted and any other value is
         refused with 403. A SYSTEM_ADMIN must supply merchantId (400 otherwise). Other roles: 403.
+        The response is the only place the generated signing secret is ever returned; GET and list never
+        include it. The target URL must pass the destination (SSRF) policy described on targetUrl; otherwise
+        400 "Invalid Webhook URL" with a fixed, non-revealing message.
       requestBody:
         required: true
         content:
@@ -75,7 +112,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiResponseWebhookEndpointResponse"
+                $ref: "#/components/schemas/ApiResponseWebhookEndpointCreatedResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -161,6 +198,10 @@ paths:
     post:
       tags: [WebhookSubscription]
       summary: Dispatch a test ping to the webhook endpoint
+      description: >-
+        Connectivity check: exactly one signed POST of a fixed test payload, with no retry and no
+        dead-letter record. Returns the HTTP status, failure classification and latency; the endpoint's
+        response body is never returned.
       parameters:
         - name: endpointId
           in: path
@@ -402,6 +443,13 @@ components:
         targetUrl:
           type: string
           format: uri
+          maxLength: 500
+          description: >-
+            Must be a public HTTPS URL. Refused with 400 "Invalid Webhook URL": other schemes or plain HTTP,
+            username/password in the URL, invalid ports, IP literals or hostnames that are loopback, private,
+            link-local, multicast or otherwise non-public, numeric/hex IP notations, single-label and internal
+            names (localhost, *.local, *.internal, *.svc, ...), and hostnames that cannot be resolved or resolve to
+            any non-public address. The same policy is re-checked before every test ping and legacy replay.
         subscribedEvents:
           type: string
           description: >-
@@ -414,6 +462,7 @@ components:
           example: "Main Production ERP Webhook"
     WebhookEndpointResponse:
       type: object
+      description: Endpoint details for GET, list and status responses. Never contains the signing secret.
       properties:
         endpointId:
           type: string
@@ -422,8 +471,6 @@ components:
           type: string
           format: uuid
         targetUrl:
-          type: string
-        secretKey:
           type: string
         subscribedEvents:
           type: string
@@ -450,14 +497,27 @@ components:
           type: string
         httpStatusCode:
           type: integer
+          nullable: true
+          description: HTTP status returned by the endpoint; null when no HTTP response was received (timeout or connection failure).
         attemptNumber:
           type: integer
         success:
           type: boolean
-        responseBody:
+          description: True only for a 2xx response.
+        errorClass:
           type: string
+          nullable: true
+          description: Failure classification; null on success.
+          enum: [TIMEOUT, CONNECTION_FAILURE, HTTP_CLIENT_ERROR, HTTP_RATE_LIMITED, HTTP_SERVER_ERROR, INVALID_RESPONSE, BLOCKED_DESTINATION, UNKNOWN]
         errorMessage:
           type: string
+          nullable: true
+          description: Sanitised failure summary; never contains URLs, hosts, raw error text or the endpoint's response body.
+          example: Endpoint returned a server error (HTTP 500)
+        latencyMs:
+          type: integer
+          nullable: true
+          description: Round-trip time in milliseconds; null for attempts recorded before it was measured.
         attemptedAt:
           type: string
           format: date-time
@@ -518,6 +578,26 @@ components:
         replayedAt:
           type: string
           format: date-time
+    WebhookEndpointCreatedResponse:
+      type: object
+      description: >-
+        Newly registered endpoint plus its signing secret. The secret is returned only here, once; it cannot
+        be retrieved again through GET or list.
+      properties:
+        endpoint:
+          $ref: "#/components/schemas/WebhookEndpointResponse"
+        signingSecret:
+          type: string
+          description: HMAC-SHA256 signing secret used to verify X-SwiftDrop-Signature. Shown once; store it securely.
+    ApiResponseWebhookEndpointCreatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/WebhookEndpointCreatedResponse"
     ApiResponseWebhookEndpointResponse:
       type: object
       properties:

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   dispatchApi,
@@ -7,9 +8,12 @@ import {
   type ShiftStatus,
   type SriLankanDistrict
 } from '@/services/api/dispatchApi';
+import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
+import { SRI_LANKAN_DISTRICTS, fetchCurrentUser } from '@/services/api/authApi';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
+import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 import {
   Bike,
   Coffee,
@@ -20,30 +24,27 @@ import {
   Send,
   ShieldCheck,
   CheckCircle2,
-  Clock
+  Clock,
+  ChevronRight
 } from 'lucide-react';
 
-const SRI_LANKAN_DISTRICTS: SriLankanDistrict[] = [
-  'COLOMBO',
-  'GAMPAHA',
-  'KALUTARA',
-  'KANDY',
-  'MATALE',
-  'NUWARA_ELIYA',
-  'GALLE',
-  'MATARA',
-  'HAMBANTOTA',
-  'JAFFNA',
-  'KURUNEGALA',
-  'RATNAPURA'
+type VehicleType = NonNullable<CourierShiftResponse['vehicleType']>;
+
+const VEHICLES: { value: VehicleType; label: string }[] = [
+  { value: 'MOTORCYCLE', label: 'Motorcycle' },
+  { value: 'THREE_WHEELER', label: 'Three-wheeler' },
+  { value: 'VAN', label: 'Van' },
+  { value: 'BICYCLE', label: 'Bicycle' }
 ];
 
 export function CourierShiftDashboard() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const courierId = user?.id || '11111111-1111-1111-1111-111111111111';
+  const courierId = user?.id;
 
   const [shift, setShift] = useState<CourierShiftResponse | null>(null);
   const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
+  const [todayDeliveries, setTodayDeliveries] = useState<DeliverySessionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -53,19 +54,48 @@ export function CourierShiftDashboard() {
   const [selectedDistrict, setSelectedDistrict] = useState<SriLankanDistrict>(
     (user?.district as SriLankanDistrict) || 'COLOMBO'
   );
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('MOTORCYCLE');
 
   const fetchShiftData = useCallback(async () => {
+    if (!courierId) return;
     try {
       setLoading(true);
       setErrorMsg(null);
-      const shiftData = await dispatchApi.getCourier(courierId);
-      setShift(shiftData);
 
-      const assignedOrders = await dispatchApi.getCourierAssignments(courierId, 'ASSIGNED');
-      setAssignments(assignedOrders);
-    } catch {
-      // If courier not registered yet, leave shift as null so they can start
-      setShift(null);
+      // Fetch courier shift data
+      try {
+        const shiftData = await dispatchApi.getCourier(courierId);
+        setShift(shiftData);
+        if (shiftData?.vehicleType) setSelectedVehicle(shiftData.vehicleType);
+        if (shiftData?.currentDistrict) setSelectedDistrict(shiftData.currentDistrict as SriLankanDistrict);
+      } catch {
+        setShift(null);
+      }
+
+      // Fetch today's deliveries from delivery-execution-service (/api/v1/deliveries/me)
+      try {
+        const myDeliveries = await deliveryApi.getMyDeliveries('today');
+        setTodayDeliveries(myDeliveries || []);
+      } catch (err) {
+        console.warn('Could not load deliveries from /deliveries/me:', err);
+      }
+
+      // Fetch active dispatch assignments: an order moved to this courier by a dispatcher
+      // has status REASSIGNED, so both statuses are requested and merged, one entry each.
+      try {
+        const [assignedOrders, reassignedOrders] = await Promise.all([
+          dispatchApi.getCourierAssignments(courierId, 'ASSIGNED'),
+          dispatchApi.getCourierAssignments(courierId, 'REASSIGNED')
+        ]);
+        const activeOrders = new Map<string, DispatchAssignmentResponse>();
+        for (const item of [...(assignedOrders || []), ...(reassignedOrders || [])]) {
+          const key = item.assignmentId ?? item.orderId;
+          if (key && !activeOrders.has(key)) activeOrders.set(key, item);
+        }
+        setAssignments([...activeOrders.values()]);
+      } catch {
+        setAssignments([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -76,16 +106,21 @@ export function CourierShiftDashboard() {
   }, [fetchShiftData]);
 
   const handleStartShift = async () => {
+    if (!courierId) return;
     try {
       setUpdating(true);
       setErrorMsg(null);
+      // Starting a shift updates the courier's dispatch record, so send their real profile:
+      // the name and phone dispatchers see come from the account, not placeholders.
+      const profile = await fetchCurrentUser().catch(() => null);
+      const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ');
       const res = await dispatchApi.startShift({
         courierId,
-        courierName: user?.username || 'Sunil Perera',
-        phone: '+94771234567',
-        vehicleType: 'MOTORCYCLE',
+        courierName: fullName || shift?.courierName || user?.username || 'Courier',
+        phone: profile?.phone || shift?.phone || undefined,
+        vehicleType: selectedVehicle,
         initialDistrict: selectedDistrict,
-        maxCapacity: 5
+        maxCapacity: shift?.maxCapacity ?? 5
       });
       setShift(res);
       setSuccessMsg('Shift started! You are now AVAILABLE for delivery dispatches.');
@@ -99,6 +134,7 @@ export function CourierShiftDashboard() {
   };
 
   const handleUpdateStatus = async (newStatus: ShiftStatus) => {
+    if (!courierId) return;
     try {
       setUpdating(true);
       setErrorMsg(null);
@@ -117,6 +153,7 @@ export function CourierShiftDashboard() {
   };
 
   const handleLocationPing = async () => {
+    if (!courierId) return;
     try {
       setUpdating(true);
       setErrorMsg(null);
@@ -137,7 +174,7 @@ export function CourierShiftDashboard() {
   };
 
   const handleEndShift = async () => {
-    if (!window.confirm('Are you sure you want to end your shift?')) return;
+    if (!courierId || !window.confirm('Are you sure you want to end your shift?')) return;
     try {
       setUpdating(true);
       setErrorMsg(null);
@@ -261,6 +298,18 @@ export function CourierShiftDashboard() {
                     </option>
                   ))}
                 </select>
+                <select
+                  value={selectedVehicle}
+                  onChange={(e) => setSelectedVehicle(e.target.value as VehicleType)}
+                  aria-label="Vehicle"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  {VEHICLES.map((v) => (
+                    <option key={v.value} value={v.value}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
                 <Button
                   variant="primary"
                   onClick={handleStartShift}
@@ -369,6 +418,77 @@ export function CourierShiftDashboard() {
           </SurfaceCard>
         </div>
       )}
+
+      {/* Stage 14: Today's Deliveries List (/deliveries/me) with Touch Density (56px rows) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900">
+              Today's Deliveries
+            </h2>
+            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+              {todayDeliveries.length}
+            </span>
+          </div>
+          <span className="text-xs text-slate-500">Live from /deliveries/me &bull; Touch density</span>
+        </div>
+
+        {todayDeliveries.length === 0 ? (
+          <SurfaceCard className="p-6 text-center">
+            <Package className="mx-auto h-8 w-8 text-slate-400" />
+            <p className="mt-2 text-sm font-medium text-slate-700">
+              No deliveries assigned for today
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Assigned parcels from the dispatch engine will appear here.
+            </p>
+          </SurfaceCard>
+        ) : (
+          <div className="space-y-2">
+            {todayDeliveries.map((delivery) => (
+              <div
+                key={delivery.deliveryId}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/courier/delivery/${delivery.deliveryId}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate(`/courier/delivery/${delivery.deliveryId}`);
+                  }
+                }}
+                className="group flex min-h-[56px] h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm transition-all hover:border-indigo-300 hover:bg-slate-50/80 active:scale-[0.99] touch-manipulation cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100">
+                    <Package className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-bold text-slate-900 truncate">
+                        {delivery.trackingNumber}
+                      </span>
+                      <FsmStatusBadge state={delivery.currentState || 'ASSIGNED'} density="touch" size="sm" />
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 truncate">
+                      <span>{delivery.pickupDistrict}</span>
+                      <span>&rarr;</span>
+                      <span className="font-medium text-slate-700">{delivery.deliveryDistrict}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="hidden sm:inline text-xs font-medium text-indigo-600 group-hover:underline">
+                    View
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Active Dispatched Assignments Queue */}
       <section className="space-y-3">

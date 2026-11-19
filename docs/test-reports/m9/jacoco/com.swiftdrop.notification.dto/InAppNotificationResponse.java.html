@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InAppNotificationResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SwiftDrop :: Notification</a> &gt; <a href="index.source.html" class="el_package">com.swiftdrop.notification.dto</a> &gt; <span class="el_source">InAppNotificationResponse.java</span></div><h1>InAppNotificationResponse.java</h1><pre class="source lang-java linenums">package com.swiftdrop.notification.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Schema(description = &quot;In-app notification item representation&quot;)
+<span class="fc" id="L9">public record InAppNotificationResponse(</span>
+
+        @Schema(description = &quot;Notification unique ID&quot;, example = &quot;101&quot;)
+        Long id,
+
+        @Schema(description = &quot;Recipient user UUID&quot;, example = &quot;a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d&quot;)
+        UUID userId,
+
+        @Schema(description = &quot;Notification title&quot;, example = &quot;Parcel Out for Delivery&quot;)
+        String title,
+
+        @Schema(description = &quot;Notification body content&quot;, example = &quot;Parcel SD-1234 is out for delivery with Sunil.&quot;)
+        String body,
+
+        @Schema(description = &quot;Associated parcel tracking number&quot;, example = &quot;SD-1234&quot;)
+        String trackingNumber,
+
+        @Schema(description = &quot;Whether the notification has been read&quot;, example = &quot;false&quot;)
+        boolean read,
+
+        @Schema(description = &quot;Timestamp when notification was created&quot;)
+        Instant createdAt
+) {}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

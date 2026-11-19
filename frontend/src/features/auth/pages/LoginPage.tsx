@@ -1,153 +1,253 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import { Link, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Lock, LogIn, Mail, ShieldCheck } from 'lucide-react';
+import { Alert } from '@/design-system/components/Alert/Alert';
 import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
 import { roleHome } from '@/app/roleHome';
-import { loginUser, googleAuthorizeUrl } from '@/services/api/authApi';
+import {
+  completeMfaLogin,
+  isMfaChallenge,
+  loginUser,
+  oauthErrorMessage,
+  type AuthTokenResponse,
+  type MfaChallenge
+} from '@/services/api/authApi';
 import { personaForRole, useAuthStore } from '@/store/useAuthStore';
+import { EMAIL_NOT_VERIFIED, parseApiError } from '@/services/api/apiError';
+import { useSignedInRedirect } from '@/features/auth/useSignedInRedirect';
+import {
+  AuthDivider,
+  AuthLink,
+  AuthShell,
+  authFieldClass,
+  FieldIcon,
+  GoogleTile,
+  SrLabel
+} from '@/features/auth/components/AuthShell';
 
 export function LoginPage() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const setSession = useAuthStore((state) => state.setSession);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from;
+  const locationState = location.state as { from?: string; notice?: string } | null;
+  const from = locationState?.from;
+  const notice = locationState?.notice;
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Second sign-in step for admins and dispatchers when MFA is on.
+  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
+  const [code, setCode] = useState('');
+  const [searchParams] = useSearchParams();
+  const oauthError = searchParams.get('oauth_error');
+  const [error, setError] = useState<string | null>(
+    oauthError ? oauthErrorMessage(oauthError) : null
+  );
+  const signedInHome = useSignedInRedirect();
+
+  if (signedInHome) return <Navigate to={signedInHome} replace />;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const tokens = await loginUser(username.trim(), password);
-      setAuth(tokens);
-      // Redirect to the page the user tried to visit, or their role home.
-      navigate(from ?? roleHome[personaForRole(tokens.role)], { replace: true });
-    } catch (requestError) {
-      if (axios.isAxiosError(requestError)) {
-        const message = (requestError.response?.data as { message?: string } | undefined)?.message;
-        setError(message ?? 'Unable to sign in. Check your credentials and try again.');
-      } else {
-        setError('Unable to sign in. Check your connection and try again.');
+      const result = await loginUser(username.trim(), password);
+      if (isMfaChallenge(result)) {
+        setChallenge(result);
+        setPassword('');
+        return;
       }
+      signedIn(result);
+    } catch (requestError) {
+      const parsed = parseApiError(requestError);
+      if (parsed.code === EMAIL_NOT_VERIFIED) {
+        // Right password, unverified email: continue on the code screen and send a fresh code.
+        navigate(`/verify-email?identifier=${encodeURIComponent(username.trim())}&resend=1`);
+        return;
+      }
+      setError(
+        parsed.message ??
+          (parsed.status
+            ? 'Unable to sign in. Check your credentials and try again.'
+            : 'Unable to sign in. Check your connection and try again.')
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  return (
-    <main className="grid min-h-screen place-items-center bg-canvas p-6 text-primary">
-      <section className="w-full max-w-md rounded-2xl border border-border-subtle bg-card p-8 shadow-ambient">
-        <p className="text-xs font-bold uppercase tracking-wider text-brand-primary">
-          SwiftDrop / Velocity
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Move every delivery forward.</h1>
-        <p className="mt-2 text-sm text-secondary">
-          Sign in with your SwiftDrop account. Your role determines which operational console opens.
-        </p>
+  function signedIn(tokens: AuthTokenResponse) {
+    setAuth(tokens);
+    // Redirect to the page the user tried to visit, or their role home.
+    navigate(from ?? roleHome[personaForRole(tokens.role)], { replace: true });
+  }
 
-        <form className="mt-8 space-y-4" onSubmit={onSubmit}>
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              Username or email
-            </span>
-            <Input
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              placeholder="customer.one"
-              required
-            />
-          </label>
+  async function onSubmitCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!challenge) return;
+    setError(null);
+    setLoading(true);
+    try {
+      signedIn(await completeMfaLogin(challenge.challengeId, code));
+    } catch (requestError) {
+      const parsed = parseApiError(requestError);
+      if (parsed.status === 401 || parsed.status === 429) {
+        // Challenge expired or too many wrong codes: start again from the password step.
+        setChallenge(null);
+        setCode('');
+      }
+      setError(parsed.message ?? 'That code did not work. Check it and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-          <label className="block space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-              Password
-            </span>
-            <Input
-              variant="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              placeholder="Your password"
-              required
-            />
-          </label>
-
-          {error ? (
-            <p role="alert" className="text-sm font-medium text-status-danger">
-              {error}
-            </p>
-          ) : null}
-
-          <Button type="submit" className="w-full" loading={loading} loadingLabel="Signing in">
-            Sign in
+  if (challenge) {
+    return (
+      <AuthShell
+        icon={<ShieldCheck />}
+        title="Enter your sign-in code"
+        description={`For your security we emailed a 6-digit code. It expires in ${challenge.expiresInMinutes} minutes.`}
+      >
+        {error ? (
+          <Alert tone="danger" title="Sign-in failed" className="mb-5">
+            {error}
+          </Alert>
+        ) : null}
+        <form className="flex flex-col gap-3" onSubmit={onSubmitCode}>
+          <SrLabel htmlFor="login-mfa-code">6-digit sign-in code</SrLabel>
+          <Input
+            id="login-mfa-code"
+            value={code}
+            onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="000000"
+            pattern="\d{6}"
+            maxLength={6}
+            required
+            autoFocus
+            className={`${authFieldClass} h-14 min-h-14`}
+            inputClassName="text-center font-mono text-mono-l tabular-nums tracking-[0.5em]"
+          />
+          <Button
+            type="submit"
+            className="mt-3 h-12 w-full rounded-xl shadow-ambient"
+            loading={loading}
+            loadingLabel="Verifying"
+            disabled={code.length !== 6}
+          >
+            Verify and sign in
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setChallenge(null);
+              setCode('');
+              setError(null);
+            }}
+          >
+            Back to sign in
           </Button>
         </form>
+      </AuthShell>
+    );
+  }
 
-        <p className="mt-5 text-center text-sm text-secondary">
-          No account?{' '}
-          <Link to="/register" className="font-semibold text-brand-primary hover:underline">
-            Create one
-          </Link>
-        </p>
+  return (
+    <AuthShell
+      icon={<LogIn />}
+      title="Sign in to SwiftDrop"
+      description="Send, track and manage your parcels across all 25 districts."
+      below={
+        <>
+          Don&apos;t have an account? <AuthLink to="/register">Create one</AuthLink>
+        </>
+      }
+    >
+      {notice && !error ? <Alert tone="success" title={notice} className="mb-5" /> : null}
+      {error ? (
+        <Alert tone="danger" title="Sign-in failed" className="mb-5">
+          {error}
+        </Alert>
+      ) : null}
 
-        {/* ── Google OAuth sign-in ─────────────────────────────────────── */}
-        <div className="mt-5 flex items-center gap-3">
-          <span className="h-px flex-1 bg-border-subtle" />
-          <span className="text-xs text-muted">or</span>
-          <span className="h-px flex-1 bg-border-subtle" />
-        </div>
+      <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+        <SrLabel htmlFor="login-username">Username or email</SrLabel>
+        <Input
+          id="login-username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="Username or email"
+          required
+          autoFocus
+          className={authFieldClass}
+          leading={
+            <FieldIcon>
+              <Mail />
+            </FieldIcon>
+          }
+        />
 
-        {/*
-          Use an <a> tag for a full browser navigation — not fetch/axios.
-          The backend starts the Google OAuth redirect from this URL.
-        */}
-        <a
-          href={googleAuthorizeUrl()}
-          className="mt-4 inline-flex w-full items-center justify-center gap-3 rounded-lg border border-border-subtle bg-card px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-surface-hover"
+        <SrLabel htmlFor="login-password">Password</SrLabel>
+        <Input
+          id="login-password"
+          variant="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+          placeholder="Password"
+          required
+          className={authFieldClass}
+          leading={
+            <FieldIcon>
+              <Lock />
+            </FieldIcon>
+          }
+        />
+
+        <Link
+          to="/forgot-password"
+          className="self-end rounded text-label text-primary hover:text-brand-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
         >
-          {/* Official Google "G" logo */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 48 48"
-            className="h-5 w-5 shrink-0"
-            aria-hidden="true"
-          >
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            <path fill="none" d="M0 0h48v48H0z"/>
-          </svg>
-          Continue with Google
-        </a>
+          Forgot password?
+        </Link>
 
-        {/* Developer shortcut — only visible in local dev builds, never in production. */}
-        {import.meta.env.DEV ? (
-          <div className="mt-6 border-t border-border-subtle pt-5">
-            <p className="text-xs text-muted">
-              Local UI work without the backend still uses a development persona token.
-            </p>
-            <Button
-              variant="outline"
-              className="mt-3 w-full"
-              onClick={() => {
-                setSession('dev-token', 'CUSTOMER');
-                navigate(roleHome.CUSTOMER, { replace: true });
-              }}
-            >
-              Continue in development mode
-            </Button>
-          </div>
-        ) : null}
-      </section>
-    </main>
+        <Button
+          type="submit"
+          className="mt-3 h-12 w-full rounded-xl shadow-ambient"
+          loading={loading}
+          loadingLabel="Signing in"
+        >
+          Sign in
+        </Button>
+      </form>
+
+      <AuthDivider label="Or sign in with" />
+      <GoogleTile />
+
+      {/* Developer shortcut: only in local dev builds, never in production. */}
+      {import.meta.env.DEV ? (
+        <Button
+          variant="ghost"
+          className="mt-4 w-full text-caption"
+          onClick={() => {
+            setSession('dev-token', 'CUSTOMER');
+            navigate(roleHome.CUSTOMER, { replace: true });
+          }}
+        >
+          Continue in development mode
+        </Button>
+      ) : null}
+    </AuthShell>
   );
 }
 
