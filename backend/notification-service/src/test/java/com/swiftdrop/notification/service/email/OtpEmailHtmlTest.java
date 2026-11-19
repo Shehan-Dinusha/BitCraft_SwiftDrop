@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OtpEmailHtmlTest {
 
-    private final EmailHtmlRenderer renderer = new EmailHtmlRenderer("https://swiftdrop.lk");
+    private final EmailHtmlRenderer renderer = new EmailHtmlRenderer();
 
     @Test
     @DisplayName("Shows the code in a large box with its expiry and account-mail footer, with no parcel blocks")
@@ -24,13 +24,15 @@ class OtpEmailHtmlTest {
                 .contains("Your code")
                 .contains("letter-spacing:0.35em")
                 .contains(">482913<")
-                .contains("Expires in 10 minutes")
+                .contains("This code expires in 10 minutes")
                 .contains("Never share this code with anyone")
                 .doesNotContain("Tracking number")
                 .doesNotContain("Track your parcel")
                 .doesNotContain("you have a parcel")
                 .doesNotContain("%s")
                 .doesNotContain("%1$");
+        // The code appears once (in the code box), not repeated in the message text.
+        assertThat(html.split("482913", -1)).hasSize(2);
     }
 
     @Test
@@ -52,13 +54,14 @@ class OtpEmailHtmlTest {
     }
 
     @Test
-    @DisplayName("Parcel emails are unchanged by the new overload")
+    @DisplayName("Parcel emails keep the parcel footer and never render a code")
     void parcelEmailsKeepTheirFooter() {
         String html = renderer.renderHtml("PARCEL_CREATED", "Subject", "Body", "SD-AAAA-BBBB",
                 Map.of("code", "999999"));
 
         assertThat(html).contains("you have a parcel with SwiftDrop")
-                .contains("Track your parcel")
+                .contains("Tracking number")
+                .doesNotContain("Your code")
                 .doesNotContain("999999");
     }
 }
