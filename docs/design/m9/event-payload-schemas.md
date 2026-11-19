@@ -500,3 +500,61 @@ These templates cannot be triggered through `POST /api/v1/notifications/logs/dis
   "timestamp": "2026-11-16T11:22:10Z"
 }
 ```
+
+---
+
+### 2.13 `notification.auth.login` — `AuthLoginEvent`
+
+* **Producer:** `auth-iam-service` (:8081): after a successful sign-in (password, second factor or Google), and after a wrong password for an **existing** account
+* **Routing Key:** `notification.auth.login` (under `notification.` so the existing `notification.#` binding delivers it)
+* **Destination Queues:** `notification.events.queue`
+* **Consumers:** `notification-service` (`AuthLoginTrigger`)
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier (deduplication) | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `recipientId` | `UUID` | No | IAM user the alert is for; notification-service resolves the registered email from IAM | Safe |
+| `outcome` | `LoginOutcome` | No | `SUCCESS` or `FAILED` (wrong password) | Safe |
+| `ipAddress` | `String` | Yes | Client IP; the email shows it partly masked (`203.94.x.x`) | **PII**: never logged |
+| `userAgent` | `String` | Yes | Browser user agent (max 300 characters); the email shows "Chrome on Windows" | Low |
+| `occurredAt` | `Instant` | No | When the sign-in happened | Safe |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+Failed attempts for unknown usernames publish nothing, so the event never reveals whether an
+account exists. notification-service emails at most one failed-sign-in alert per account every
+15 minutes, sends sign-in alerts even when email notifications are off, sends them only to the
+registered address, and never copies them to the in-app inbox.
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "0a1b2c3d-4e5f-4a6b-8c7d-8e9f0a1b2c3d",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "recipientId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "outcome": "FAILED",
+  "ipAddress": "203.94.12.7",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142.0 Safari/537.36",
+  "occurredAt": "2026-11-19T15:56:00Z",
+  "timestamp": "2026-11-19T15:56:00Z"
+}
+```
+
+---
+
+## 3. Who receives which notification
+
+| Event | Customer | Courier | Merchant company (team inbox) | Operations team (dispatchers and admins) |
+|---|---|---|---|---|
+| `order.created` | Email + in-app "Order confirmed" | | In-app "New order" (merchant orders) | |
+| `dispatch.courier.assigned` | | Email + in-app "New delivery" | In-app "Courier assigned" (merchant orders) | |
+| `dispatch.failed` | | | | In-app "Dispatch needs attention" |
+| `parcel.status.changed.*` | Email + in-app per stage | | | |
+| `notification.auth.otp` | Email only (security) | Email only (security) | Email only (security) | Email only (security) |
+| `notification.auth.login` | Email only (security) | Email only (security) | Email only (security) | Email only (security) |
+
+Team inboxes (`in_app_notifications.audience`): `OPERATIONS` is shown to every DISPATCHER and
+SYSTEM_ADMIN; `MERCHANT:<merchantId>` to every user of that merchant company. A team
+notification's read state is shared by the team.
