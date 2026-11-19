@@ -19,8 +19,13 @@ public class InAppNotification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    /** Owner of a personal notification; null for a team notification. */
+    @Column(name = "user_id")
     private UUID userId;
+
+    /** Team inbox (OPERATIONS or MERCHANT:&lt;merchantId&gt;); null for a personal notification. */
+    @Column(name = "audience", length = 100)
+    private String audience;
 
     @Column(name = "title", nullable = false)
     private String title;

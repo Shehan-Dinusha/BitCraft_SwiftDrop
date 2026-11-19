@@ -662,7 +662,7 @@ export interface components {
              * @description Template code of the notification; null for older notifications
              * @enum {string|null}
              */
-            notificationType?: "PARCEL_CREATED" | "PARCEL_PICKED_UP" | "PARCEL_OUT_FOR_DELIVERY" | "PARCEL_DELIVERED" | "PARCEL_FAILED" | null;
+            notificationType?: "PARCEL_CREATED" | "PARCEL_PICKED_UP" | "PARCEL_OUT_FOR_DELIVERY" | "PARCEL_DELIVERED" | "PARCEL_FAILED" | "COURIER_ASSIGNED" | "MERCHANT_ORDER_CREATED" | "MERCHANT_COURIER_ASSIGNED" | "DISPATCH_FAILED" | null;
             read?: boolean;
             /** Format: date-time */
             createdAt?: string;

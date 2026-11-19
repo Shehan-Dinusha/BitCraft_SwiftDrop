@@ -100,7 +100,7 @@ public class NotificationLogController {
             HttpServletRequest httpRequest) {
         CallerContext caller = CallerContext.from(httpRequest::getHeader);
 
-        if (SensitiveTemplates.isSensitive(request.templateCode())) {
+        if (SensitiveTemplates.isSecurity(request.templateCode())) {
             throw new ForbiddenException("One-time-code emails can only be requested by the auth service");
         }
 

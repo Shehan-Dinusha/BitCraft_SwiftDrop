@@ -62,44 +62,60 @@ public class EmailHtmlRenderer {
     private static final Style DEFAULT_STYLE = new Style("Update", "There is an update on your parcel", null,
             null, "#334155", "#f1f5f9", "#cbd5e1", 0, false);
 
-    private static final Map<String, Style> STYLES = Map.of(
-            "PARCEL_CREATED", new Style("Order confirmed", "Your order is confirmed",
+    private static final Map<String, Style> STYLES = Map.ofEntries(
+            Map.entry("PARCEL_CREATED", new Style("Order confirmed", "Your order is confirmed",
                     "Thank you for booking with SwiftDrop. We have received your order and will assign a courier to collect your parcel.",
                     "We will email you again when your parcel is picked up.",
-                    "#3730a3", "#eef2ff", "#c7d2fe", 1, false),
-            "PARCEL_PICKED_UP", new Style("Picked up", "Your parcel is on its way",
+                    "#3730a3", "#eef2ff", "#c7d2fe", 1, false)),
+            Map.entry("PARCEL_PICKED_UP", new Style("Picked up", "Your parcel is on its way",
                     "Our courier has collected your parcel and it is now moving through the SwiftDrop network.",
                     "We will email you again when it is out for delivery.",
-                    "#075985", "#e0f2fe", "#bae6fd", 2, false),
-            "PARCEL_OUT_FOR_DELIVERY", new Style("Out for delivery", "Your parcel is out for delivery",
+                    "#075985", "#e0f2fe", "#bae6fd", 2, false)),
+            Map.entry("PARCEL_OUT_FOR_DELIVERY", new Style("Out for delivery", "Your parcel is out for delivery",
                     "Your parcel is with the courier and on the way to the delivery address.",
                     "Please make sure someone is available to receive it.",
-                    "#5b21b6", "#f3e8ff", "#e9d5ff", 3, false),
-            "PARCEL_DELIVERED", new Style("Delivered", "Your parcel has been delivered",
+                    "#5b21b6", "#f3e8ff", "#e9d5ff", 3, false)),
+            Map.entry("PARCEL_DELIVERED", new Style("Delivered", "Your parcel has been delivered",
                     "Your parcel was delivered successfully.",
                     "Thank you for shipping with SwiftDrop.",
-                    "#065f46", "#d1fae5", "#a7f3d0", 4, false),
-            "PARCEL_FAILED", new Style("Delivery attempt failed", "We could not deliver your parcel",
+                    "#065f46", "#d1fae5", "#a7f3d0", 4, false)),
+            Map.entry("PARCEL_FAILED", new Style("Delivery attempt failed", "We could not deliver your parcel",
                     "Our courier tried to deliver your parcel but was not able to complete the delivery.",
                     "Our team will contact you to arrange another attempt. You can check the latest status in the SwiftDrop app.",
-                    "#991b1b", "#fee2e2", "#fecaca", 4, true),
-            SensitiveTemplates.EMAIL_VERIFICATION, new Style("Verify your email", "Confirm your email address",
+                    "#991b1b", "#fee2e2", "#fecaca", 4, true)),
+            Map.entry(SensitiveTemplates.EMAIL_VERIFICATION, new Style("Verify your email", "Confirm your email address",
                     "Use this code to verify the email address for your SwiftDrop account.",
                     "If you did not create a SwiftDrop account, you can ignore this email.",
-                    "#3730a3", "#eef2ff", "#c7d2fe", 0, false),
-            SensitiveTemplates.PASSWORD_RESET, new Style("Password reset", "Reset your password",
+                    "#3730a3", "#eef2ff", "#c7d2fe", 0, false)),
+            Map.entry(SensitiveTemplates.PASSWORD_RESET, new Style("Password reset", "Reset your password",
                     "Use this code to reset your SwiftDrop password.",
                     "If you did not ask to reset your password, ignore this email. Your password will stay the same.",
-                    "#92400e", "#fef3c7", "#fde68a", 0, false),
-            SensitiveTemplates.LOGIN_MFA, new Style("Sign-in code", "Confirm it's you signing in",
+                    "#92400e", "#fef3c7", "#fde68a", 0, false)),
+            Map.entry(SensitiveTemplates.LOGIN_MFA, new Style("Sign-in code", "Confirm it's you signing in",
                     "Use this code to finish signing in to SwiftDrop.",
                     "If you were not trying to sign in, change your password straight away.",
-                    "#3730a3", "#eef2ff", "#c7d2fe", 0, false));
+                    "#3730a3", "#eef2ff", "#c7d2fe", 0, false)),
+            Map.entry("COURIER_ASSIGNED", new Style("New delivery", "You have a new delivery",
+                    "A parcel has been assigned to you. Please collect it from the pickup address.",
+                    "You can see the full pickup and delivery details in the SwiftDrop courier app.",
+                    "#1d4ed8", "#eff6ff", "#bfdbfe", 0, false)),
+            Map.entry(SensitiveTemplates.LOGIN_SUCCESS, new Style("New sign-in", "New sign-in to your account",
+                    "Your SwiftDrop account was just signed in to.",
+                    "If this was you, no action is needed. If you don't recognise it, reset your password straight away.",
+                    "#065f46", "#d1fae5", "#a7f3d0", 0, false)),
+            Map.entry(SensitiveTemplates.LOGIN_FAILED, new Style("Failed sign-in attempt", "Someone tried to sign in to your account",
+                    "We stopped a sign-in to your SwiftDrop account because the password was wrong.",
+                    "If this was you, you can ignore this email. If not, change your password to keep your account safe.",
+                    "#991b1b", "#fee2e2", "#fecaca", 0, false)));
 
     private static final String PARCEL_REASON = "You are receiving this email because you have a parcel with SwiftDrop. "
             + "You can turn off parcel emails in your SwiftDrop notification settings.";
     private static final String ACCOUNT_REASON = "This security email was sent because of a request made with your "
             + "SwiftDrop account. Never share this code with anyone, including SwiftDrop staff.";
+    private static final String SIGN_IN_REASON = "Sign-in alerts help keep your SwiftDrop account safe. They are always "
+            + "sent and cannot be turned off.";
+    private static final String COURIER_REASON = "You are receiving this email because you are a SwiftDrop courier. "
+            + "You can turn off delivery emails in your SwiftDrop notification settings.";
 
     /** Plain-text alternative: the template text and the automated-message notice. */
     public String renderText(String body, String trackingNumber) {
@@ -115,7 +131,8 @@ public class EmailHtmlRenderer {
                              Map<String, String> params) {
         String code = templateCode == null ? "" : templateCode.trim().toUpperCase(Locale.ROOT);
         Map<String, String> p = params == null ? Map.of() : params;
-        boolean security = SensitiveTemplates.isSensitive(code);
+        boolean security = SensitiveTemplates.isSecurity(code);
+        boolean oneTimeCode = SensitiveTemplates.isSensitive(code);
         Style known = STYLES.get(code);
         Style style = known == null ? DEFAULT_STYLE : known;
 
@@ -130,7 +147,7 @@ public class EmailHtmlRenderer {
                 esc(style.headline())));
         content.append(row("padding:10px 40px 0 40px;font-size:15px;line-height:24px;color:#334155;",
                 esc(lead).replace("\n", "<br>")));
-        if (security) {
+        if (oneTimeCode) {
             content.append(codeBox(p.get("code"), p.get("expiresInMinutes")));
         } else {
             if (style.step() > 0) {
@@ -184,8 +201,18 @@ public class EmailHtmlRenderer {
                 </table>
                 </body>
                 </html>
-                """.formatted(safeSubject, preheader, BRAND, esc(security ? "Account security" : "Parcel update"),
-                style.accent(), content, esc(security ? ACCOUNT_REASON : PARCEL_REASON), Year.now().getValue());
+                """.formatted(safeSubject, preheader, BRAND, esc(security ? "Account security" : "COURIER_ASSIGNED".equals(code) ? "Delivery job" : "Parcel update"),
+                style.accent(), content, esc(reason(code, security, oneTimeCode)), Year.now().getValue());
+    }
+
+    private static String reason(String code, boolean security, boolean oneTimeCode) {
+        if (oneTimeCode) {
+            return ACCOUNT_REASON;
+        }
+        if (security) {
+            return SIGN_IN_REASON;
+        }
+        return "COURIER_ASSIGNED".equals(code) ? COURIER_REASON : PARCEL_REASON;
     }
 
     private static String preheader(String code, Style style, String tracking) {
@@ -259,6 +286,31 @@ public class EmailHtmlRenderer {
                 String when = when(p.get("deliveredAt"));
                 if (when != null) {
                     rows.add(new String[]{"Delivered on", when, null});
+                }
+            }
+            case "COURIER_ASSIGNED" -> {
+                String from = district(p.get("pickupDistrict"));
+                String to = district(p.get("deliveryDistrict"));
+                if (from != null && to != null) {
+                    rows.add(new String[]{"Route", from + " → " + to, null});
+                }
+                String minutes = clean(p.get("estimatedPickupMinutes"));
+                if (minutes != null && SAFE_MINUTES.matcher(minutes).matches() && !"0".equals(minutes)) {
+                    rows.add(new String[]{"Pickup expected", "In about " + minutes + " minutes", null});
+                }
+            }
+            case SensitiveTemplates.LOGIN_SUCCESS, SensitiveTemplates.LOGIN_FAILED -> {
+                String when = clean(p.get("occurredAt"));
+                if (when != null) {
+                    rows.add(new String[]{"When", when, null});
+                }
+                String device = clean(p.get("device"));
+                if (device != null) {
+                    rows.add(new String[]{"Device", device.substring(0, 1).toUpperCase(Locale.ROOT) + device.substring(1), null});
+                }
+                String ip = clean(p.get("ipAddress"));
+                if (ip != null) {
+                    rows.add(new String[]{"IP address", ip, null});
                 }
             }
             case "PARCEL_FAILED" -> {

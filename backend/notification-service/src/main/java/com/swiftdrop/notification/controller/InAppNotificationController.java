@@ -1,12 +1,16 @@
 package com.swiftdrop.notification.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
+import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.contracts.security.CallerContextException;
 import com.swiftdrop.notification.domain.entity.InAppNotification;
 import com.swiftdrop.notification.dto.InAppNotificationResponse;
 import com.swiftdrop.notification.service.InAppNotificationService;
+import com.swiftdrop.notification.util.InboxAudience;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -31,7 +35,8 @@ public class InAppNotificationController {
     public ResponseEntity<ApiResponse<List<InAppNotificationResponse>>> listMyNotifications(
             @RequestHeader(value = "X-User-Id", required = false)
             @Parameter(description = "Authenticated user UUID set by gateway", required = true)
-            String headerUserId) {
+            String headerUserId,
+            HttpServletRequest httpRequest) {
 
         UUID userId = parseUserId(headerUserId);
         if (userId == null) {
@@ -39,7 +44,7 @@ public class InAppNotificationController {
                     .body(ApiResponse.error("Missing or invalid X-User-Id authentication header"));
         }
 
-        List<InAppNotification> entities = notificationService.listNotifications(userId);
+        List<InAppNotification> entities = notificationService.listNotifications(userId, audiences(httpRequest));
         List<InAppNotificationResponse> responses = entities.stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -52,7 +57,8 @@ public class InAppNotificationController {
     public ResponseEntity<ApiResponse<Long>> getUnreadCount(
             @RequestHeader(value = "X-User-Id", required = false)
             @Parameter(description = "Authenticated user UUID set by gateway", required = true)
-            String headerUserId) {
+            String headerUserId,
+            HttpServletRequest httpRequest) {
 
         UUID userId = parseUserId(headerUserId);
         if (userId == null) {
@@ -60,7 +66,7 @@ public class InAppNotificationController {
                     .body(ApiResponse.error("Missing or invalid X-User-Id authentication header"));
         }
 
-        long unreadCount = notificationService.getUnreadCount(userId);
+        long unreadCount = notificationService.getUnreadCount(userId, audiences(httpRequest));
         return ResponseEntity.ok(ApiResponse.success(unreadCount, "Unread count retrieved"));
     }
 
@@ -70,7 +76,8 @@ public class InAppNotificationController {
             @PathVariable @Parameter(description = "Notification ID") Long id,
             @RequestHeader(value = "X-User-Id", required = false)
             @Parameter(description = "Authenticated user UUID set by gateway", required = true)
-            String headerUserId) {
+            String headerUserId,
+            HttpServletRequest httpRequest) {
 
         UUID userId = parseUserId(headerUserId);
         if (userId == null) {
@@ -78,7 +85,7 @@ public class InAppNotificationController {
                     .body(ApiResponse.error("Missing or invalid X-User-Id authentication header"));
         }
 
-        Optional<InAppNotification> updated = notificationService.markAsRead(id, userId);
+        Optional<InAppNotification> updated = notificationService.markAsRead(id, userId, audiences(httpRequest));
         return updated.map(inAppNotification -> ResponseEntity.ok(ApiResponse.success(
                         mapToResponse(inAppNotification),
                         "Notification marked as read"
@@ -92,7 +99,8 @@ public class InAppNotificationController {
     public ResponseEntity<ApiResponse<Integer>> markAllAsRead(
             @RequestHeader(value = "X-User-Id", required = false)
             @Parameter(description = "Authenticated user UUID set by gateway", required = true)
-            String headerUserId) {
+            String headerUserId,
+            HttpServletRequest httpRequest) {
 
         UUID userId = parseUserId(headerUserId);
         if (userId == null) {
@@ -100,7 +108,7 @@ public class InAppNotificationController {
                     .body(ApiResponse.error("Missing or invalid X-User-Id authentication header"));
         }
 
-        int count = notificationService.markAllAsRead(userId);
+        int count = notificationService.markAllAsRead(userId, audiences(httpRequest));
         return ResponseEntity.ok(ApiResponse.success(count, "Marked " + count + " notifications as read"));
     }
 
@@ -115,6 +123,18 @@ public class InAppNotificationController {
                 entity.isRead(),
                 entity.getCreatedAt()
         );
+    }
+
+    /**
+     * Team inboxes the caller also sees (operations team, their merchant company), from the gateway's
+     * verified role and merchant headers. No or invalid role headers mean personal notifications only.
+     */
+    private static List<String> audiences(HttpServletRequest request) {
+        try {
+            return InboxAudience.forCaller(CallerContext.from(request::getHeader));
+        } catch (CallerContextException e) {
+            return List.of();
+        }
     }
 
     private UUID parseUserId(String headerUserId) {

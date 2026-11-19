@@ -392,6 +392,22 @@
     {
       "source": "swiftdrop.events.exchange",
       "vhost": "/",
+      "destination": "notification.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dispatch.courier.assigned",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "notification.events.queue",
+      "destination_type": "queue",
+      "routing_key": "dispatch.failed",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
       "destination": "webhook.events.queue",
       "destination_type": "queue",
       "routing_key": "parcel.status.changed.#",

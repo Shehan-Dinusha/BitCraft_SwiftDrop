@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,28 +68,68 @@ public class InAppNotificationService {
                 .orElse(false);
     }
 
+    /**
+     * Writes a team notification (for example to OPERATIONS or a merchant company). Team rows have no
+     * per-user preference check and their read state is shared by the team.
+     */
+    @Transactional
+    public InAppNotification saveTeamNotification(String audience, String notificationType, String title, String body,
+                                                  String trackingNumber) {
+        if (audience == null || audience.isBlank()) {
+            return null;
+        }
+        InAppNotification saved = repository.save(InAppNotification.builder()
+                .audience(audience)
+                .notificationType(notificationType)
+                .title(title != null ? title : "SwiftDrop Update")
+                .body(body != null ? body : "")
+                .trackingNumber(trackingNumber)
+                .read(false)
+                .createdAt(Instant.now())
+                .build());
+        log.info("Saved team notification id={} for audience={}", saved.getId(), audience);
+        return saved;
+    }
+
     @Transactional(readOnly = true)
     public List<InAppNotification> listNotifications(UUID userId) {
+        return listNotifications(userId, List.of());
+    }
+
+    /** The user's own notifications plus those of their team audiences, newest first. */
+    @Transactional(readOnly = true)
+    public List<InAppNotification> listNotifications(UUID userId, Collection<String> audiences) {
         if (userId == null) {
             return List.of();
         }
-        return repository.findByUserIdOrderByCreatedAtDesc(userId);
+        return repository.findInbox(userId, nonEmpty(audiences));
     }
 
     @Transactional(readOnly = true)
     public long getUnreadCount(UUID userId) {
+        return getUnreadCount(userId, List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount(UUID userId, Collection<String> audiences) {
         if (userId == null) {
             return 0;
         }
-        return repository.countByUserIdAndReadFalse(userId);
+        return repository.countUnreadInInbox(userId, nonEmpty(audiences));
     }
 
     @Transactional
     public Optional<InAppNotification> markAsRead(Long id, UUID userId) {
+        return markAsRead(id, userId, List.of());
+    }
+
+    /** Marks one notification read if it is in the caller's inbox (their own or one of their teams'). */
+    @Transactional
+    public Optional<InAppNotification> markAsRead(Long id, UUID userId, Collection<String> audiences) {
         if (id == null || userId == null) {
             return Optional.empty();
         }
-        return repository.findByIdAndUserId(id, userId)
+        return repository.findInInbox(id, userId, nonEmpty(audiences))
                 .map(n -> {
                     n.setRead(true);
                     return repository.save(n);
@@ -97,10 +138,19 @@ public class InAppNotificationService {
 
     @Transactional
     public int markAllAsRead(UUID userId) {
+        return markAllAsRead(userId, List.of());
+    }
+
+    @Transactional
+    public int markAllAsRead(UUID userId, Collection<String> audiences) {
         if (userId == null) {
             return 0;
         }
-        return repository.markAllReadByUserId(userId);
+        return repository.markInboxRead(userId, nonEmpty(audiences));
+    }
+
+    /** JPQL "IN ()" with an empty list is invalid on some databases, so use a value no row can have. */
+    private static Collection<String> nonEmpty(Collection<String> audiences) {
+        return audiences == null || audiences.isEmpty() ? List.of("__none__") : audiences;
     }
 }
-

@@ -14,4 +14,8 @@ public interface NotificationDispatchLogRepository extends JpaRepository<Notific
     List<NotificationDispatchLog> findByRecipientIdAndChannelOrderByCreatedAtDesc(UUID recipientId, String channel);
     List<NotificationDispatchLog> findByRecipientIdAndStatusOrderByCreatedAtDesc(UUID recipientId, String status);
     List<NotificationDispatchLog> findByStatusOrderByCreatedAtDesc(String status);
+
+    /** Used to limit how often the same alert (e.g. a failed sign-in) is emailed to one recipient. */
+    boolean existsByRecipientIdAndTemplateCodeAndStatusAndCreatedAtAfter(UUID recipientId, String templateCode,
+                                                                         String status, java.time.Instant after);
 }

@@ -92,6 +92,18 @@ public class TemplateRendererService {
                     subjectTmpl = "Reset your SwiftDrop password";
                     bodyTmpl = "Your SwiftDrop password reset code is {{code}}. It expires in {{expiresInMinutes}} minutes. If you did not request a password reset, ignore this email and your password will stay the same.";
                 }
+                case "COURIER_ASSIGNED" -> {
+                    subjectTmpl = "New SwiftDrop delivery assigned";
+                    bodyTmpl = "Parcel {{trackingNumber}} has been assigned to you. Please collect it from {{pickupDistrict}} for delivery to {{deliveryDistrict}}.";
+                }
+                case "LOGIN_SUCCESS" -> {
+                    subjectTmpl = "New sign-in to your SwiftDrop account";
+                    bodyTmpl = "Your SwiftDrop account was signed in to on {{occurredAt}} from {{device}}. If this was not you, reset your password straight away.";
+                }
+                case "LOGIN_FAILED" -> {
+                    subjectTmpl = "Failed sign-in attempt on your SwiftDrop account";
+                    bodyTmpl = "Someone tried to sign in to your SwiftDrop account with a wrong password on {{occurredAt}} from {{device}}. If this was not you, consider changing your password.";
+                }
                 default -> {
                     subjectTmpl = "SwiftDrop Notification";
                     bodyTmpl = "Status update for parcel {{trackingNumber}}: {{status}}.";

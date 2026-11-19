@@ -9,6 +9,7 @@ import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.NotificationDispatchLogResponse;
 import com.swiftdrop.notification.messaging.trigger.EventEnvelope;
 import com.swiftdrop.notification.messaging.trigger.NotificationTrigger;
+import com.swiftdrop.notification.messaging.trigger.TeamNotification;
 import com.swiftdrop.notification.service.InAppNotificationService;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
 import com.swiftdrop.notification.util.SensitiveTemplates;
@@ -89,6 +90,7 @@ public class NotificationEventConsumer {
         boolean matchedAny = false;
         // At most one inbox row per recipient per event, even if several requests or triggers match.
         Set<UUID> inboxRecipients = new HashSet<>();
+        Set<String> inboxAudiences = new HashSet<>();
         for (NotificationTrigger trigger : triggers) {
             if (trigger.matches(envelope)) {
                 matchedAny = true;
@@ -96,8 +98,8 @@ public class NotificationEventConsumer {
                 if (requests != null && !requests.isEmpty()) {
                     for (DispatchNotificationRequest request : requests) {
                         NotificationDispatchLogResponse dispatchLog = dispatcher.dispatch(request);
-                        if (SensitiveTemplates.isSensitive(request.templateCode())) {
-                            continue; // one-time codes are emailed only, never copied to the in-app inbox
+                        if (SensitiveTemplates.isSecurity(request.templateCode())) {
+                            continue; // security mail (codes, sign-in alerts) is email only, never in the inbox
                         }
                         if (request.recipientId() != null) {
                             String title = dispatchLog != null && dispatchLog.subject() != null
@@ -112,13 +114,16 @@ public class NotificationEventConsumer {
 
                             if (inAppNotificationService != null && inboxRecipients.add(request.recipientId())) {
                                 inAppNotificationService.saveNotification(request.recipientId(), request.templateCode(), title, body, trackingNumber);
-
-                                // For merchant orders, also write to merchant owner inbox if distinct
-                                Optional<UUID> merchantOwnerId = envelope.extractMerchantOwnerId();
-                                if (merchantOwnerId.isPresent() && inboxRecipients.add(merchantOwnerId.get())) {
-                                    inAppNotificationService.saveNotification(merchantOwnerId.get(), request.templateCode(), title, body, trackingNumber);
-                                }
                             }
+                        }
+                    }
+                }
+                // Team inboxes (a merchant company, the operations team): one row per team, shared read state.
+                if (inAppNotificationService != null) {
+                    for (TeamNotification team : trigger.teamNotifications(envelope)) {
+                        if (team != null && team.audience() != null && inboxAudiences.add(team.audience())) {
+                            inAppNotificationService.saveTeamNotification(team.audience(), team.notificationType(),
+                                    team.title(), team.body(), team.trackingNumber());
                         }
                     }
                 }

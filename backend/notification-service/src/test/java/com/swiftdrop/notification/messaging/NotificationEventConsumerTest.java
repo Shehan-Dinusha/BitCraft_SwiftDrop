@@ -205,4 +205,40 @@ class NotificationEventConsumerTest {
 
         verify(dispatcher, never()).dispatch(any());
     }
+
+    @Test
+    @DisplayName("Team notifications are written once per audience; a failed dispatch reaches the operations team")
+    void writesTeamNotifications() {
+        NotificationEventConsumer teamConsumer = new NotificationEventConsumer(objectMapper, dispatcher,
+                List.of(new com.swiftdrop.notification.messaging.trigger.DispatchFailedTrigger()),
+                processedEventRepository, inAppNotificationService);
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("dispatch.failed");
+        String json = "{\"eventId\":\"%s\",\"orderId\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\"failureReason\":\"No courier\"}"
+                .formatted(UUID.randomUUID());
+
+        teamConsumer.onNotificationEvent(new Message(json.getBytes(StandardCharsets.UTF_8), props));
+
+        verify(inAppNotificationService).saveTeamNotification(eq("OPERATIONS"), eq("DISPATCH_FAILED"),
+                eq("Dispatch needs attention"), any(), any());
+        verify(dispatcher, never()).dispatch(any());
+    }
+
+    @Test
+    @DisplayName("Sign-in alerts are emailed but never copied to the in-app inbox")
+    void loginAlertsSkipTheInbox() {
+        UUID userId = UUID.randomUUID();
+        NotificationEventConsumer loginConsumer = new NotificationEventConsumer(objectMapper, dispatcher,
+                List.of(new com.swiftdrop.notification.messaging.trigger.AuthLoginTrigger()),
+                processedEventRepository, inAppNotificationService);
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("notification.auth.login");
+        String json = "{\"eventId\":\"%s\",\"recipientId\":\"%s\",\"outcome\":\"SUCCESS\"}"
+                .formatted(UUID.randomUUID(), userId);
+
+        loginConsumer.onNotificationEvent(new Message(json.getBytes(StandardCharsets.UTF_8), props));
+
+        verify(dispatcher).dispatch(any());
+        verify(inAppNotificationService, never()).saveNotification(any(), any(), any(), any(), any());
+    }
 }

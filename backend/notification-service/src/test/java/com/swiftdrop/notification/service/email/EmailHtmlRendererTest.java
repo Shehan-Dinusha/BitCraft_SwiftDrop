@@ -150,4 +150,33 @@ class EmailHtmlRendererTest {
                 .contains("please do not reply")
                 .doesNotContain("http");
     }
+
+    @Test
+    @DisplayName("Courier assignment email: courier copy, route and pickup time, no progress bar")
+    void courierAssignedEmail() {
+        String html = renderer.renderHtml("COURIER_ASSIGNED", "New SwiftDrop delivery assigned", "body", TRK,
+                Map.of("pickupDistrict", "Colombo", "deliveryDistrict", "Kandy", "estimatedPickupMinutes", "18"));
+
+        assertThat(html).contains("You have a new delivery").contains("Delivery job")
+                .contains("Colombo → Kandy").contains("In about 18 minutes")
+                .contains("you are a SwiftDrop courier")
+                .doesNotContain("Out for delivery</div>");
+        assertThat(count(visible(html), TRK)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Sign-in alerts show when, device and masked IP, with the security footer")
+    void signInAlerts() {
+        Map<String, String> p = Map.of("occurredAt", "19 Nov 2026, 9:26 p.m.", "device", "Chrome on Windows",
+                "ipAddress", "203.94.x.x");
+        String success = renderer.renderHtml("LOGIN_SUCCESS", "New sign-in", "body", null, p);
+        String failed = renderer.renderHtml("LOGIN_FAILED", "Failed sign-in", "body", null, p);
+
+        assertThat(success).contains("New sign-in to your account").contains("Account security")
+                .contains(">When<").contains("19 Nov 2026, 9:26 p.m.").contains("Chrome on Windows")
+                .contains("203.94.x.x").contains("always sent and cannot be turned off")
+                .doesNotContain("Your code").doesNotContain("Tracking number");
+        assertThat(failed).contains("Someone tried to sign in to your account").contains("password was wrong")
+                .contains("color:#991b1b");
+    }
 }
