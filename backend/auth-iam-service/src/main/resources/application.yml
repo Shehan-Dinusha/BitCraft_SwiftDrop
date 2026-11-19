@@ -39,6 +39,9 @@ swiftdrop:
     refresh-cookie:
       # Secure flag on the HttpOnly refresh-token cookie. Only set false for plain-HTTP local setups.
       secure: ${AUTH_REFRESH_COOKIE_SECURE:true}
+      # Origins allowed to use the refresh cookie (comma-separated). SameSite=Strict still lets
+      # sibling subdomains send it; this check rejects them. Defaults to the frontend URL.
+      allowed-origins: ${AUTH_REFRESH_COOKIE_ALLOWED_ORIGINS:${FRONTEND_URL:http://localhost:5173}}
     mfa:
       # Emailed second sign-in factor for SYSTEM_ADMIN and DISPATCHER. Needs a real email provider
       # (NOTIFICATION_EMAIL_PROVIDER=azure) or the code never reaches the user.
