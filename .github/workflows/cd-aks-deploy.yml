@@ -162,9 +162,12 @@ jobs:
         env:
           IMAGE: ${{ steps.build.outputs.image }}
         run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.58.1 image \
+          # .trivyignore.yaml lists the few accepted findings, each with a reason and an expiry.
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/src:ro" -w /src \
+            aquasec/trivy:0.58.1 image \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
+            --ignorefile .trivyignore.yaml \
             --exit-code 1 \
             "${IMAGE}:${IMAGE_TAG}"
 
