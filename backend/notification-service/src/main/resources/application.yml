@@ -42,3 +42,9 @@ notification:
       endpoint: ${ACS_EMAIL_ENDPOINT:}
       access-key: ${ACS_EMAIL_ACCESS_KEY:}
       sender-address: ${ACS_EMAIL_SENDER_ADDRESS:}
+  web-push:
+    # VAPID key pair (P-256, base64url) and a mailto:/https: contact for the push services.
+    # All three empty (default): device push is off and the in-app inbox still works.
+    public-key: ${WEB_PUSH_PUBLIC_KEY:}
+    private-key: ${WEB_PUSH_PRIVATE_KEY:}
+    subject: ${WEB_PUSH_SUBJECT:}
