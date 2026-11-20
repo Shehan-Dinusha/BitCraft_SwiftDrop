@@ -70,7 +70,12 @@ function toRequest(form: TariffForm): TariffRuleRequest {
   };
 }
 
-export function TariffEditor() {
+interface TariffEditorProps {
+  /** When true the tariff is shown for viewing only (no version id field, no publish button). */
+  readOnly?: boolean;
+}
+
+export function TariffEditor({ readOnly = false }: TariffEditorProps) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<TariffForm>(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -107,7 +112,7 @@ export function TariffEditor() {
     onError: (error) => {
       const { status, message } = readPricingApiError(error);
       let text = message ?? 'Could not publish the tariff.';
-      if (status === 403) text = 'Only dispatchers and system admins can publish tariffs.';
+      if (status === 403) text = 'Only system admins can publish tariffs.';
       if (status === 409) text = 'A tariff version with this ID already exists.';
       setFeedback({ tone: 'danger', text });
       setConfirming(false);
@@ -147,7 +152,9 @@ export function TariffEditor() {
           <>
             <p className="text-body text-secondary">
               {active
-                ? `Active version: ${active.ruleVersionId ?? 'unknown'}. Publishing creates a new version.`
+                ? `Active version: ${active.ruleVersionId ?? 'unknown'}.${
+                    readOnly ? '' : ' Publishing creates a new version.'
+                  }`
                 : 'No tariff has been published yet.'}
             </p>
 
@@ -159,6 +166,7 @@ export function TariffEditor() {
                 onChange={setField('basePrice')}
                 error={errors.basePrice}
                 inputMode="decimal"
+                readOnly={readOnly}
               />
               <Field
                 label="Weight step (kg)"
@@ -167,6 +175,7 @@ export function TariffEditor() {
                 onChange={setField('weightStepKg')}
                 error={errors.weightStepKg}
                 inputMode="decimal"
+                readOnly={readOnly}
               />
               <Field
                 label="Price per step (LKR)"
@@ -175,6 +184,7 @@ export function TariffEditor() {
                 onChange={setField('pricePerStep')}
                 error={errors.pricePerStep}
                 inputMode="decimal"
+                readOnly={readOnly}
               />
               <Field
                 label="Volumetric divisor"
@@ -183,20 +193,25 @@ export function TariffEditor() {
                 onChange={setField('volumetricDivisor')}
                 error={errors.volumetricDivisor}
                 inputMode="decimal"
+                readOnly={readOnly}
               />
-              <Field
-                label="Version ID"
-                value={form.ruleVersionId}
-                onChange={setField('ruleVersionId')}
-                hint="Optional. Generated automatically when left blank."
-              />
+              {!readOnly ? (
+                <Field
+                  label="Version ID"
+                  value={form.ruleVersionId}
+                  onChange={setField('ruleVersionId')}
+                  hint="Optional. Generated automatically when left blank."
+                />
+              ) : null}
             </div>
 
-            <div className="flex justify-end">
-              <Button variant="primary" onClick={requestPublish}>
-                Publish tariff
-              </Button>
-            </div>
+            {!readOnly ? (
+              <div className="flex justify-end">
+                <Button variant="primary" onClick={requestPublish}>
+                  Publish tariff
+                </Button>
+              </div>
+            ) : null}
           </>
         )}
       </div>
