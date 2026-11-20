@@ -417,6 +417,16 @@ frontend:
   # The Ingress already sends /api and /ws straight to the gateway; these proxy
   # blocks keep the pod usable on its own (kubectl port-forward).
   nginxConfig: |
+    # PWA: the service worker, its manifest and the HTML shell must be revalidated on every load,
+    # or phones keep running an old build for days. A map (not a separate location) keeps the
+    # server-level security headers below: any add_header inside a location would drop them.
+    map $uri $swiftdrop_cache_control {
+      default               "";
+      /sw.js                "no-cache";
+      /manifest.webmanifest "no-cache";
+      /index.html           "no-cache";
+    }
+
     server {
       listen 8080;
       root /usr/share/nginx/html;
@@ -426,6 +436,7 @@ frontend:
       add_header X-Frame-Options "DENY" always;
       add_header X-Content-Type-Options "nosniff" always;
       add_header Referrer-Policy "no-referrer" always;
+      add_header Cache-Control $swiftdrop_cache_control always;
       add_header Permissions-Policy "camera=(self), geolocation=(self), microphone=()" always;
       add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' wss:; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'" always;
       {{- if .Values.ingress.tls.enabled }}

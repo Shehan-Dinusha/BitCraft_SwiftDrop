@@ -205,6 +205,8 @@ One React app serves five roles. After sign-in, `AppShell` picks the matching la
 
 Public pages need no account: the landing page (`/`), parcel tracking (`/track`), sign-in and registration, and the design catalog (`/catalog`).
 
+The app is an installable **PWA**, aimed at couriers and customers on phones: signed-in couriers and customers get an "Install SwiftDrop" prompt (on iPhone: Share → *Add to Home Screen*). The service worker caches only the app's own files, so it opens instantly on a weak signal; API responses are never cached. New versions wait for the user to tap *Reload*, so nobody is reloaded mid-delivery. PWA features only run in a production build (`npm run build && npm run preview`), not in `npm run dev`.
+
 | Role | Density | Shell | Typical screens |
 |---|---|---|---|
 | Customer | Comfortable (44px controls) | Side nav, mobile tabs | Book, track |
@@ -257,7 +259,7 @@ SwiftDrop/
 │   └── src/
 │       ├── design-system/       Tokens, primitives, components, shells
 │       ├── features/            customer · courier · merchant · admin-ops · auth · landing ·
-│       │                        public-tracking · notifications · pricing · catalog
+│       │                        public-tracking · notifications · pricing · pwa · catalog
 │       └── app/                 Router, AppShell, providers
 ├── infra/
 │   ├── local/rabbitmq/          Queue, exchange and binding definitions
