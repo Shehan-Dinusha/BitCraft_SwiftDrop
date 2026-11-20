@@ -6,6 +6,7 @@ import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.enums.UserStatus;
 import com.swiftdrop.contracts.openapi.OpenApiConstants;
 import com.swiftdrop.iam.dto.CreateUserRequest;
+import com.swiftdrop.iam.dto.DeleteAccountRequest;
 import com.swiftdrop.iam.dto.UpdateUserRoleRequest;
 import com.swiftdrop.iam.dto.UpdateUserStatusRequest;
 import com.swiftdrop.iam.dto.UserProfileResponse;
@@ -19,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,6 +51,18 @@ public class UserRoleController {
                 userAccountService.getProfile(SecurityPrincipal.userId(authentication)),
                 "Profile retrieved"
         );
+    }
+
+    @DeleteMapping("/me")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Erase the authenticated customer's own account",
+            description = "Needs the current password. Removes the username, email, phone, names and "
+                    + "district, revokes every session and blocks sign-in. Orders already placed keep "
+                    + "an owner id but no personal data.")
+    public ApiResponse<Void> deleteOwnAccount(@Valid @RequestBody DeleteAccountRequest request,
+                                              Authentication authentication) {
+        userAccountService.deleteOwnAccount(SecurityPrincipal.userId(authentication), request);
+        return ApiResponse.success("Your account has been deleted.");
     }
 
     @GetMapping

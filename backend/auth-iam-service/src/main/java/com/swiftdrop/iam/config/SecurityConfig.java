@@ -65,6 +65,9 @@ public class SecurityConfig {
                                 "/internal/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+                        // A customer erases their own account. This must come before the
+                        // "/api/v1/users/**" admin rule below, which would otherwise refuse it.
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/users/me").hasRole("CUSTOMER")
                         .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/change-password").authenticated()
                         .requestMatchers("/api/v1/users/**").hasRole("SYSTEM_ADMIN")
                         .anyRequest().authenticated())

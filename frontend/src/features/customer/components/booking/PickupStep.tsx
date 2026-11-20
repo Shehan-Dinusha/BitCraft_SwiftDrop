@@ -15,6 +15,7 @@ export function PickupStep(props: BookingStepProps) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Field
           label="Contact name"
+          placeholder="Nimal Perera"
           required
           autoComplete="section-pickup name"
           maxLength={100}
@@ -26,6 +27,7 @@ export function PickupStep(props: BookingStepProps) {
         />
         <Field
           label="Contact phone"
+          placeholder="77 123 4567"
           required
           variant="phone"
           autoComplete="section-pickup tel-national"
@@ -40,6 +42,7 @@ export function PickupStep(props: BookingStepProps) {
         />
         <Field
           label="Backup phone"
+          placeholder="11 234 5678"
           variant="phone"
           autoComplete="section-pickup tel-national"
           inputMode="numeric"

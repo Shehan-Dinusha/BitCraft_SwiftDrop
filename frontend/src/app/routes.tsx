@@ -13,6 +13,8 @@ import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPa
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
 import { OrderHistoryPage } from '@/features/customer/pages/OrderHistoryPage';
 import { OrderDetailPage } from '@/features/customer/pages/OrderDetailPage';
+import { CustomerProfilePage } from '@/features/customer/pages/CustomerProfilePage';
+import { CustomerNotificationsPage } from '@/features/customer/pages/CustomerNotificationsPage';
 import { CourierShiftDashboard } from '@/features/courier/pages/CourierShiftDashboard';
 import { ActiveDeliveryExecutionPage } from '@/features/courier/pages/ActiveDeliveryExecutionPage';
 import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPortalDashboard';
@@ -83,6 +85,22 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['CUSTOMER']}>
             <OrderDetailPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/notifications',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <CustomerNotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/profile',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <CustomerProfilePage />
           </RoleGuard>
         )
       },

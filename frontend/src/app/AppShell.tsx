@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { LogOut, Package } from 'lucide-react';
+import { LogOut, Package, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  AccountMenu,
   BottomNav,
   IconButton,
   NavItem,
@@ -14,6 +15,7 @@ import {
   type ShellRole
 } from '@/design-system';
 import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
+import { leaveToLogin } from '@/features/auth/leaveToLogin';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -50,6 +52,13 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
         { id: 'book', label: 'Book a parcel', icon: 'plus', to: '/customer' },
         { id: 'parcels', label: 'My parcels', icon: 'package', to: '/customer/orders' },
         { id: 'track', label: 'Track a parcel', icon: 'route', to: '/customer/tracking' }
+      ]
+    },
+    {
+      label: 'Account',
+      items: [
+        { id: 'notifications', label: 'Notifications', icon: 'bell', to: '/customer/notifications' },
+        { id: 'profile', label: 'Profile', icon: 'user', to: '/customer/profile' }
       ]
     }
   ],
@@ -168,11 +177,7 @@ export function AppShell() {
       } catch {
         // Already expired or the API is unreachable: the local session is still cleared below.
       } finally {
-        signOut();
-        navigate('/login', {
-          replace: true,
-          state: { notice: 'You have been signed out.' }
-        });
+        leaveToLogin(signOut, navigate, 'You have been signed out.');
       }
     })();
   };
@@ -213,11 +218,42 @@ export function AppShell() {
           section={spec.label}
           page={pageTitle}
           showUtilities={role !== 'ADMIN_OPS'}
+          // Nothing handles search or language yet, and the customer assistant has its own button,
+          // so none of them are shown rather than left as controls that do nothing.
+          showSearch={false}
+          showLanguage={false}
+          showAssistant={false}
           district={shellRole === 'dispatcher' ? user?.district : undefined}
           notificationSlot={<NotificationBell />}
           leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}
+          trailing={
+            shellRole === 'customer' ? (
+              <AccountMenu
+                name={user?.username ?? 'Account'}
+                email={user?.email}
+                onSignOut={handleSignOut}
+                items={[
+                  {
+                    id: 'profile',
+                    label: 'Profile and security',
+                    icon: <UserRound aria-hidden="true" className="size-4" />,
+                    render: ({ className, onClick, children }) => (
+                      <Link
+                        to="/customer/profile"
+                        role="menuitem"
+                        className={className}
+                        onClick={onClick}
+                      >
+                        {children}
+                      </Link>
+                    )
+                  }
+                ]}
+              />
+            ) : undefined
+          }
         >
-          {hasTabs ? (
+          {shellRole === 'courier' ? (
             // Phones hide the sidebar (and its account footer), so sign-out lives in the top bar there.
             <IconButton
               variant="ghost"
@@ -229,6 +265,8 @@ export function AppShell() {
               className="size-9 text-secondary md:hidden"
             />
           ) : null}
+          {/* The customer assistant lives in the header; it renders nothing for other roles. */}
+          <AiAssistantSlot />
         </TopBar>
         <main className={hasTabs ? 'flex-1 pb-[68px] md:pb-0' : 'flex-1'}>
           <Outlet />
@@ -251,10 +289,6 @@ export function AppShell() {
           )}
         />
       ) : null}
-
-      <div className="fixed bottom-6 right-6 z-40">
-        <AiAssistantSlot />
-      </div>
 
       <SignOutDialog
         open={confirmingSignOut}

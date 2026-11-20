@@ -7,6 +7,7 @@ import com.swiftdrop.iam.domain.entity.UserAccount;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.ChangePasswordRequest;
 import com.swiftdrop.iam.dto.CreateUserRequest;
+import com.swiftdrop.iam.dto.DeleteAccountRequest;
 import com.swiftdrop.iam.dto.RegisterUserRequest;
 import com.swiftdrop.iam.exception.AuthException;
 import com.swiftdrop.iam.exception.UserAlreadyExistsException;
@@ -227,5 +228,76 @@ class UserAccountServiceTest {
         verify(passwordPolicy).validate("NewPass123", admin.getUsername(), admin.getEmail());
         verify(refreshTokenService).revokeAll(admin);
         verify(tokenIssuanceService).blacklistUser(admin.getPublicId());
+    }
+
+    private UserAccount customer() {
+        UserAccount customer = new UserAccount();
+        customer.setId(2L);
+        customer.setPublicId(UUID.randomUUID());
+        customer.setUsername("nimal.perera");
+        customer.setEmail("nimal@example.com");
+        customer.setPhone("0771234567");
+        customer.setFirstName("Nimal");
+        customer.setLastName("Perera");
+        customer.setDistrict(SriLankanDistrict.COLOMBO);
+        customer.setPasswordHash("hash");
+        customer.setRole(UserRole.CUSTOMER);
+        customer.setStatus(UserStatus.ACTIVE);
+        customer.setEmailVerified(true);
+        customer.setCreatedAt(Instant.now());
+        return customer;
+    }
+
+    @Test
+    void deleteOwnAccountErasesPersonalDataAndRevokesSessions() {
+        UserAccount customer = customer();
+        when(userAccountRepository.findByPublicId(customer.getPublicId())).thenReturn(Optional.of(customer));
+        when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
+        when(passwordEncoder.encode(any())).thenReturn("unusable-hash");
+
+        userAccountService.deleteOwnAccount(customer.getPublicId(), new DeleteAccountRequest("Secret123"));
+
+        assertThat(customer.getEmail()).isNull();
+        assertThat(customer.getPhone()).isNull();
+        assertThat(customer.getFirstName()).isNull();
+        assertThat(customer.getLastName()).isNull();
+        assertThat(customer.getDistrict()).isNull();
+        assertThat(customer.getUsername()).startsWith("deleted-").doesNotContain("nimal");
+        assertThat(customer.getPasswordHash()).isEqualTo("unusable-hash");
+        assertThat(customer.getStatus()).isEqualTo(UserStatus.DEACTIVATED);
+        assertThat(customer.isEmailVerified()).isFalse();
+        verify(userAccountRepository).save(customer);
+        verify(refreshTokenService).revokeAll(customer);
+        verify(tokenIssuanceService).blacklistUser(customer.getPublicId());
+    }
+
+    @Test
+    void deleteOwnAccountWithTheWrongPasswordChangesNothing() {
+        UserAccount customer = customer();
+        when(userAccountRepository.findByPublicId(customer.getPublicId())).thenReturn(Optional.of(customer));
+        when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> userAccountService.deleteOwnAccount(
+                customer.getPublicId(), new DeleteAccountRequest("wrong")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Current password is incorrect");
+
+        assertThat(customer.getEmail()).isEqualTo("nimal@example.com");
+        assertThat(customer.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        verify(userAccountRepository, never()).save(any());
+        verifyNoInteractions(refreshTokenService, tokenIssuanceService);
+    }
+
+    @Test
+    void onlyCustomersCanDeleteTheirOwnAccount() {
+        when(userAccountRepository.findByPublicId(admin.getPublicId())).thenReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> userAccountService.deleteOwnAccount(
+                admin.getPublicId(), new DeleteAccountRequest("anything")))
+                .isInstanceOfSatisfying(AuthException.class,
+                        ex -> assertThat(ex.getStatus()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        assertThat(admin.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        verify(userAccountRepository, never()).save(any());
     }
 }
