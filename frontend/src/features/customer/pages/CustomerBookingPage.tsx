@@ -2,7 +2,10 @@ import { PageHeader, SurfaceCard } from '@/design-system';
 import { OrderBookingWizard } from '../components/OrderBookingWizard';
 import { usePageTitle } from '../components/usePageTitle';
 
-/** Booking lives here; past parcels have their own page at `/customer/orders` ("My parcels"). */
+/**
+ * Booking lives here; past parcels have their own page at `/customer/orders` ("My parcels") and
+ * notifications at `/customer/notifications` (left navigation).
+ */
 export function CustomerBookingPage() {
   usePageTitle('Book a parcel');
 

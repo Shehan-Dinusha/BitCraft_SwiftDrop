@@ -118,6 +118,43 @@ export async function fetchCurrentUser(): Promise<AuthUserProfile> {
   return data.data ?? {};
 }
 
+export type UpdateProfileInput = components['schemas']['UpdateProfileRequest'];
+
+/** Updates the signed-in user's own name, phone and district. Returns the saved profile. */
+export async function updateMyProfile(input: UpdateProfileInput): Promise<AuthUserProfile> {
+  const { data } = await apiClient.patch<{ data?: AuthUserProfile }>('/v1/users/me', input);
+  return data.data ?? {};
+}
+
+/** Sets the signed-in user's profile picture (PNG, JPEG or WebP up to 512 KB). Returns the saved profile. */
+export async function uploadMyAvatar(image: Blob): Promise<AuthUserProfile> {
+  const form = new FormData();
+  form.append('file', image, 'avatar.jpg');
+  const { data } = await apiClient.put<{ data?: AuthUserProfile }>('/v1/users/me/avatar', form);
+  return data.data ?? {};
+}
+
+export async function removeMyAvatar(): Promise<AuthUserProfile> {
+  const { data } = await apiClient.delete<{ data?: AuthUserProfile }>('/v1/users/me/avatar');
+  return data.data ?? {};
+}
+
+/** The signed-in user's profile picture, or null when there is none. Fetched with the session token. */
+export async function fetchMyAvatar(): Promise<Blob | null> {
+  try {
+    const { data } = await apiClient.get<Blob>('/v1/users/me/avatar', { responseType: 'blob' });
+    return data;
+  } catch (error) {
+    if ((error as { response?: { status?: number } }).response?.status === 404) return null;
+    throw error;
+  }
+}
+
+/** Changes the signed-in user's password. The server then signs the account out everywhere. */
+export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post('/v1/auth/change-password', { currentPassword, newPassword });
+}
+
 /**
  * Swaps the one-time OAuth exchange code (from the Google callback redirect) for a full
  * SwiftDrop token pair.  The code expires in 2 minutes and is single-use.

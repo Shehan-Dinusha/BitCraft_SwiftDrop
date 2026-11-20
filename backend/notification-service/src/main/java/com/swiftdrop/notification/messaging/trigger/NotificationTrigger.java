@@ -29,6 +29,14 @@ public interface NotificationTrigger {
      */
     List<DispatchNotificationRequest> build(EventEnvelope envelope);
 
+    /**
+     * In-app notifications for teams (a merchant company or the operations team), written once per
+     * team rather than per user. Most triggers have none.
+     */
+    default List<TeamNotification> teamNotifications(EventEnvelope envelope) {
+        return List.of();
+    }
+
     /** Builds the single EMAIL request every trigger sends; the consumer also writes the in-app row. */
     static List<DispatchNotificationRequest> email(UUID recipientId, String templateCode,
                                                    Map<String, String> params, String trackingNumber) {

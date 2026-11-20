@@ -13,8 +13,6 @@ import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPa
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
 import { OrderHistoryPage } from '@/features/customer/pages/OrderHistoryPage';
 import { OrderDetailPage } from '@/features/customer/pages/OrderDetailPage';
-import { CustomerProfilePage } from '@/features/customer/pages/CustomerProfilePage';
-import { CustomerNotificationsPage } from '@/features/customer/pages/CustomerNotificationsPage';
 import { CourierShiftDashboard } from '@/features/courier/pages/CourierShiftDashboard';
 import { ActiveDeliveryExecutionPage } from '@/features/courier/pages/ActiveDeliveryExecutionPage';
 import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPortalDashboard';
@@ -28,6 +26,8 @@ import { NotificationConsolePage } from '@/features/admin-ops/pages/Notification
 import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
 import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
 import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
+import { ProfilePage } from '@/features/profile/ProfilePage';
+import { NotificationsPage } from '@/features/notifications/NotificationsPage';
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
@@ -40,6 +40,71 @@ export const routes: RouteObject[] = [
   {
     element: <AppShell />,
     children: [
+      // Notifications inbox and settings, one per workspace (left navigation).
+      {
+        path: '/customer/notifications',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/courier/notifications',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/notifications',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/profile',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/courier/profile',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/profile',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/profile',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/inbox',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
       {
         path: '/customer',
         element: (
@@ -85,22 +150,6 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['CUSTOMER']}>
             <OrderDetailPage />
-          </RoleGuard>
-        )
-      },
-      {
-        path: '/customer/notifications',
-        element: (
-          <RoleGuard roles={['CUSTOMER']}>
-            <CustomerNotificationsPage />
-          </RoleGuard>
-        )
-      },
-      {
-        path: '/customer/profile',
-        element: (
-          <RoleGuard roles={['CUSTOMER']}>
-            <CustomerProfilePage />
           </RoleGuard>
         )
       },

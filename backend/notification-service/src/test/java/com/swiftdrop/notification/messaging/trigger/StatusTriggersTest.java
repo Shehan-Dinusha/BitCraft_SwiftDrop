@@ -110,7 +110,7 @@ class StatusTriggersTest {
         DispatchNotificationRequest req = requests.getFirst();
         assertThat(req.channel()).isEqualTo("EMAIL");
         assertThat(req.templateCode()).isEqualTo("PARCEL_DELIVERED");
-        assertThat(req.templateParams()).containsEntry("deliveredAt", "2026-11-10T08:00:00Z");
+        assertThat(req.templateParams()).containsEntry("deliveredAt", "10 Nov 2026, 1:30 p.m.");
     }
 
     @Test

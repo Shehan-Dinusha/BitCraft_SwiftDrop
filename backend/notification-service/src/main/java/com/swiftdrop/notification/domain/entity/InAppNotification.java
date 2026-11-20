@@ -19,8 +19,13 @@ public class InAppNotification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    /** Owner of a personal notification; null for a team notification. */
+    @Column(name = "user_id")
     private UUID userId;
+
+    /** Team inbox (OPERATIONS or MERCHANT:&lt;merchantId&gt;); null for a personal notification. */
+    @Column(name = "audience", length = 100)
+    private String audience;
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -30,6 +35,10 @@ public class InAppNotification {
 
     @Column(name = "tracking_number", length = 64)
     private String trackingNumber;
+
+    /** Template code, e.g. {@code PARCEL_DELIVERED}; drives the icon in the inbox. Null for legacy rows. */
+    @Column(name = "notification_type", length = 64)
+    private String notificationType;
 
     @Column(name = "read", nullable = false)
     @Builder.Default

@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -47,14 +48,15 @@ public class MultiChannelNotificationDispatcher {
         RecipientPreference pref = prefOpt.orElse(null);
 
         String channel = request.channel().toUpperCase();
-        // One-time security codes are not optional mail: they ignore the email-off preference.
+        // Account-security mail (one-time codes and sign-in alerts) is not optional: it ignores the
+        // email-off preference. Only one-time codes are secret, so only they are redacted below.
+        boolean security = SensitiveTemplates.isSecurity(request.templateCode());
         boolean sensitive = SensitiveTemplates.isSensitive(request.templateCode());
-        boolean isChannelEnabled = sensitive || isChannelEnabled(pref, channel);
+        boolean isChannelEnabled = security || isChannelEnabled(pref, channel);
 
-        // Resolve destination
-        // One-time codes go only to the account's registered (IAM) address: never to a request-supplied
+        // Security mail goes only to the account's registered (IAM) address: never to a request-supplied
         // or preference address, which could otherwise redirect a password-reset code to someone else.
-        String destination = sensitive
+        String destination = security
                 ? registeredEmail(channel, request.recipientId())
                 : resolveDestination(request.destination(), pref, channel, request.recipientId());
 
@@ -72,6 +74,19 @@ public class MultiChannelNotificationDispatcher {
             log.info("Notification suppressed by user preferences for channel: {}", channel);
             status = "SUPPRESSED";
             failureReason = "Channel " + channel + " disabled in user preferences";
+        } else if (recentlyAlerted(request)) {
+            // Stops a stream of wrong passwords from flooding the owner's inbox.
+            log.info("Failed sign-in alert for {} already sent in the last {} minutes; not repeating",
+                    request.recipientId(), FAILED_LOGIN_ALERT_WINDOW.toMinutes());
+            status = "SUPPRESSED";
+            failureReason = "A failed sign-in alert was already sent in the last "
+                    + FAILED_LOGIN_ALERT_WINDOW.toMinutes() + " minutes";
+        } else if (recognisedSignIn(request)) {
+            // Signing in again from the same device and network is routine: alert only for a new one.
+            log.info("Sign-in for {} from a device seen in the last {} days; no alert", request.recipientId(),
+                    KNOWN_DEVICE_WINDOW.toDays());
+            status = "SUPPRESSED";
+            failureReason = "Sign-in from a device used in the last " + KNOWN_DEVICE_WINDOW.toDays() + " days";
         } else if (destination == null || destination.isBlank()) {
             log.warn("Notification dispatch failed: Missing destination for channel {}", channel);
             status = "FAILED";
@@ -144,6 +159,32 @@ public class MultiChannelNotificationDispatcher {
         };
     }
 
+    /** At most one failed-sign-in alert per account in this window. */
+    static final Duration FAILED_LOGIN_ALERT_WINDOW = Duration.ofMinutes(15);
+
+    private boolean recentlyAlerted(DispatchNotificationRequest request) {
+        if (!SensitiveTemplates.LOGIN_FAILED.equalsIgnoreCase(request.templateCode()) || request.recipientId() == null) {
+            return false;
+        }
+        return logRepository.existsByRecipientIdAndTemplateCodeAndStatusAndCreatedAtAfter(
+                request.recipientId(), SensitiveTemplates.LOGIN_FAILED, "SENT", Instant.now().minus(FAILED_LOGIN_ALERT_WINDOW));
+    }
+
+    /** A successful sign-in from a device and network seen within this window sends no alert. */
+    static final Duration KNOWN_DEVICE_WINDOW = Duration.ofDays(30);
+
+    private boolean recognisedSignIn(DispatchNotificationRequest request) {
+        if (!SensitiveTemplates.LOGIN_SUCCESS.equalsIgnoreCase(request.templateCode())
+                || request.recipientId() == null || request.referenceId() == null) {
+            return false;
+        }
+        // Any earlier sign-in from this device counts (alerted or already recognised), except one whose
+        // alert failed to send, so the window slides while the device stays in use.
+        return logRepository.existsByRecipientIdAndTemplateCodeAndReferenceIdAndStatusNotAndCreatedAtAfter(
+                request.recipientId(), SensitiveTemplates.LOGIN_SUCCESS, request.referenceId(), "FAILED",
+                Instant.now().minus(KNOWN_DEVICE_WINDOW));
+    }
+
     private String registeredEmail(String channel, UUID recipientId) {
         if (!"EMAIL".equals(channel) || contactClient == null || recipientId == null) {
             return null;
@@ -199,6 +240,9 @@ public class MultiChannelNotificationDispatcher {
     }
 
     private static String trackingNumberOf(DispatchNotificationRequest request) {
+        if (SensitiveTemplates.isSecurity(request.templateCode())) {
+            return null; // the reference of a security mail is never a tracking number
+        }
         if (request.templateParams() != null) {
             String fromParams = request.templateParams().get("trackingNumber");
             if (fromParams != null && !fromParams.isBlank()) {

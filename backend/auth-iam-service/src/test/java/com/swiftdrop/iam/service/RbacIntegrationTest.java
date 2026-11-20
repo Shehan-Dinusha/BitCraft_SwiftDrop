@@ -1,5 +1,7 @@
 package com.swiftdrop.iam.service;
 
+import org.springframework.http.HttpMethod;
+import org.springframework.mock.web.MockMultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
@@ -28,8 +30,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -150,6 +155,27 @@ class RbacIntegrationTest {
     }
 
     @Test
+    @DisplayName("CUSTOMER token → 200 on PATCH /api/v1/users/me; a role in the body is ignored")
+    void customer_canUpdateOwnProfile() throws Exception {
+        var customer = fixture("cust", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);
+        mvc.perform(patch(USERS_API + "/me").header("Authorization", bearer(customer))
+                        .contentType("application/json")
+                        .content("{\"firstName\":\" Nimali \",\"lastName\":\"Silva\",\"phone\":\"\",\"district\":\"KANDY\",\"role\":\"SYSTEM_ADMIN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("data.firstName").value("Nimali"))
+                .andExpect(jsonPath("data.district").value("KANDY"))
+                .andExpect(jsonPath("data.role").value("CUSTOMER"));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/v1/users/me without a token → 401")
+    void unauthenticated_cannotUpdateProfile() throws Exception {
+        mvc.perform(patch(USERS_API + "/me").contentType("application/json")
+                        .content("{\"firstName\":\"A\",\"lastName\":\"B\",\"district\":\"KANDY\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("CUSTOMER token + right password → 200 on DELETE /api/v1/users/me, and the account is erased")
     void customer_canEraseOwnAccount() throws Exception {
         var customer = fixture("erase", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);
@@ -173,6 +199,47 @@ class RbacIntegrationTest {
         // The old token is revoked and the account can no longer sign in.
         mvc.perform(get(USERS_API + "/me").header("Authorization", bearer))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("A user can upload, read and remove their own profile picture; non-images are refused")
+    void customer_profilePictureLifecycle() throws Exception {
+        var customer = fixture("cust", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);
+        byte[] png = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 'I', 'H', 'D', 'R'};
+
+        mvc.perform(get(USERS_API + "/me/avatar").header("Authorization", bearer(customer)))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(multipart(HttpMethod.PUT, USERS_API + "/me/avatar")
+                        .file(new MockMultipartFile("file", "me.png", "image/png", png))
+                        .header("Authorization", bearer(customer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("data.avatarUpdatedAt").isNotEmpty());
+
+        mvc.perform(get(USERS_API + "/me/avatar").header("Authorization", bearer(customer)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(content().bytes(png));
+
+        // A file that claims to be an image but is not one.
+        mvc.perform(multipart(HttpMethod.PUT, USERS_API + "/me/avatar")
+                        .file(new MockMultipartFile("file", "x.png", "image/png", "<svg onload=alert(1)>".getBytes()))
+                        .header("Authorization", bearer(customer)))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(delete(USERS_API + "/me/avatar").header("Authorization", bearer(customer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("data.avatarUpdatedAt").doesNotExist());
+        mvc.perform(get(USERS_API + "/me/avatar").header("Authorization", bearer(customer)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Profile picture endpoints need a signed-in user")
+    void unauthenticated_cannotUseProfilePicture() throws Exception {
+        mvc.perform(get(USERS_API + "/me/avatar")).andExpect(status().isUnauthorized());
+        mvc.perform(delete(USERS_API + "/me/avatar")).andExpect(status().isUnauthorized());
     }
 
     @Test

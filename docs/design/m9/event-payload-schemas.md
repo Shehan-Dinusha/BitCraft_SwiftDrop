@@ -500,3 +500,79 @@ These templates cannot be triggered through `POST /api/v1/notifications/logs/dis
   "timestamp": "2026-11-16T11:22:10Z"
 }
 ```
+
+---
+
+### 2.13 `notification.auth.login` — `AuthLoginEvent`
+
+* **Producer:** `auth-iam-service` (:8081): after a successful sign-in (password, second factor or Google), and after a wrong password for an **existing** account. notification-service emails a success alert only for a device and network not used in the last 30 days
+* **Routing Key:** `notification.auth.login` (under `notification.` so the existing `notification.#` binding delivers it)
+* **Destination Queues:** `notification.events.queue`
+* **Consumers:** `notification-service` (`AuthLoginTrigger`)
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier (deduplication) | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `recipientId` | `UUID` | No | IAM user the alert is for; notification-service resolves the registered email from IAM | Safe |
+| `outcome` | `LoginOutcome` | No | `SUCCESS` or `FAILED` (wrong password) | Safe |
+| `ipAddress` | `String` | Yes | Client IP; the email shows it partly masked (`203.94.x.x`) | **PII**: never logged |
+| `userAgent` | `String` | Yes | Browser user agent (max 300 characters); the email shows "Chrome on Windows" | Low |
+| `occurredAt` | `Instant` | No | When the sign-in happened | Safe |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+Failed attempts for unknown usernames publish nothing, so the event never reveals whether an
+account exists. notification-service emails at most one failed-sign-in alert per account every
+15 minutes, sends sign-in alerts even when email notifications are off, sends them only to the
+registered address, and never copies them to the in-app inbox.
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "0a1b2c3d-4e5f-4a6b-8c7d-8e9f0a1b2c3d",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "recipientId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "outcome": "FAILED",
+  "ipAddress": "203.94.12.7",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142.0 Safari/537.36",
+  "occurredAt": "2026-11-19T15:56:00Z",
+  "timestamp": "2026-11-19T15:56:00Z"
+}
+```
+
+---
+
+## 3. Who receives which notification
+
+Rule: a notification goes only to the person or team the event is about, and only when it tells
+them something new or asks them to act. Routine steps nobody acts on (in transit, a retry that
+dispatch makes by itself, an order the merchant created themselves) send nothing.
+
+| Event | Customer (own orders) | Courier | Merchant company (team inbox) | Operations team (dispatchers and admins) |
+|---|---|---|---|---|
+| `order.created` | Email + in-app "Order confirmed" | | (nothing: they created it) | |
+| `dispatch.courier.assigned` | | Email + in-app "New delivery" (the assigned courier only) | In-app "Courier assigned" (have the parcel ready) | |
+| `parcel.status.changed` PICKED_UP | Email + in-app "Picked up" | | | |
+| `parcel.status.changed` OUT_FOR_DELIVERY | Email + in-app "Out for delivery" | | | |
+| `parcel.status.changed` DELIVERED | Email + in-app "Delivered" | | | |
+| `parcel.status.changed` FAILED | Email + in-app "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" (arrange a new attempt or a return) |
+| `dispatch.failed` (retryable = false only) | | | | In-app "Dispatch needs attention" |
+| `notification.auth.otp` | Email only | Email only | Email only (to the signing-in user) | Email only |
+| `notification.auth.login` SUCCESS (new device or network only) | Email only | Email only | Email only (to the signing-in user) | Email only |
+| `notification.auth.login` FAILED (max 1 per 15 min) | Email only | Email only | Email only (to the account owner) | Email only |
+
+Merchant orders: customer-order-service stores the merchant id in `customerId`, so parcel events for
+a merchant order name the company, not a person. notification-service records merchant ids from
+`order.created` events where `merchantId` = `customerId` (`merchant_accounts`, V10). Customer
+notifications addressed to a merchant id are not sent (nothing is emailed to a company id); the
+merchant team inbox gets the merchant rows instead. A merchant row is written only for a known
+merchant company.
+
+A successful sign-in is emailed only when the device and network (`"Chrome on Windows · 203.94.x.x"`,
+kept in the dispatch log `reference_id`) were not used by that account in the last 30 days.
+
+Team inboxes (`in_app_notifications.audience`): `OPERATIONS` is shown to every DISPATCHER and
+SYSTEM_ADMIN; `MERCHANT:<merchantId>` to every user of that merchant company. A team
+notification's read state is shared by the team.

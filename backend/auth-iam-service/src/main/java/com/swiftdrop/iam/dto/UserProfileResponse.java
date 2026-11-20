@@ -22,6 +22,8 @@ public record UserProfileResponse(
         UserStatus status,
         @Schema(description = "True once the email address has been verified.") boolean emailVerified,
         Instant lastLoginAt,
-        Instant createdAt
+        Instant createdAt,
+        @Schema(description = "When the profile picture last changed; null when there is none. The picture is served by GET /api/v1/users/me/avatar.")
+        Instant avatarUpdatedAt
 ) {
 }
