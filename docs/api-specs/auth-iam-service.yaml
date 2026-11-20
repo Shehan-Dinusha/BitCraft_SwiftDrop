@@ -412,6 +412,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+    delete:
+      tags: [Users]
+      summary: Erase the authenticated customer's own account
+      description: >
+        Needs the current password. Removes the username, email, phone, names and district,
+        revokes every session and blocks sign-in. Orders already placed keep an owner id but no
+        personal data. Customer accounts only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+      responses:
+        '200':
+          description: Account erased
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '400':
+          description: Validation failure or incorrect current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Not a customer account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/users/me/avatar:
     get:
       tags: [Users]
@@ -889,6 +927,16 @@ components:
           example: '+94771234567'
         district:
           $ref: '#/components/schemas/SriLankanDistrict'
+
+    DeleteAccountRequest:
+      type: object
+      required: [currentPassword]
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 72
+          format: password
+          description: The account's current password, as confirmation.
     UpdateUserRoleRequest:
       type: object
       description: Compatibility request to verify an existing role. Account roles cannot be changed after creation.

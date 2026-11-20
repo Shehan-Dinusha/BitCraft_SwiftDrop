@@ -699,7 +699,61 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Erase the authenticated customer's own account
+         * @description Needs the current password. Removes the username, email, phone, names and district, revokes every session and blocks sign-in. Orders already placed keep an owner id but no personal data. Customer accounts only.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DeleteAccountRequest"];
+                };
+            };
+            responses: {
+                /** @description Account erased */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Validation failure or incorrect current password */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Not a customer account */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         /**
@@ -1358,6 +1412,13 @@ export interface components {
              */
             phone?: string;
             district: components["schemas"]["SriLankanDistrict"];
+        };
+        DeleteAccountRequest: {
+            /**
+             * Format: password
+             * @description The account's current password, as confirmation.
+             */
+            currentPassword: string;
         };
         /** @description Compatibility request to verify an existing role. Account roles cannot be changed after creation. */
         UpdateUserRoleRequest: {

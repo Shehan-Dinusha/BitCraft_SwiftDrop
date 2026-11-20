@@ -86,6 +86,22 @@ export async function resetPassword(identifier: string, code: string, newPasswor
   await apiClient.post('/v1/auth/reset-password', { identifier, code, newPassword });
 }
 
+/**
+ * Changes the signed-in person's password. Every session is revoked afterwards, so the caller
+ * must sign in again.
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post('/v1/auth/change-password', { currentPassword, newPassword });
+}
+
+/**
+ * Erases the signed-in customer's own account and personal data. Needs the current password. The
+ * account can no longer sign in afterwards.
+ */
+export async function deleteOwnAccount(currentPassword: string): Promise<void> {
+  await apiClient.delete('/v1/users/me', { data: { currentPassword } });
+}
+
 /** Rotates the session. The refresh token is the HttpOnly cookie, so nothing is sent in the body. */
 export async function refreshTokens(): Promise<AuthTokenResponse> {
   const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/refresh', {});

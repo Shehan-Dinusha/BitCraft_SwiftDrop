@@ -55,6 +55,7 @@ import {
   type ProfileForm
 } from './profileFormat';
 import { UserAvatar, sourceProblem, toAvatarImage, useMyAvatarUrl } from './avatar';
+import { DeleteAccountCard } from '@/features/customer/components/profile/DeleteAccountCard';
 
 /** Why we ask for a phone number, in each role's terms. */
 const PHONE_HINT: Record<string, string> = {
@@ -630,6 +631,8 @@ export function ProfilePage() {
                 ›
               </span>
             </Link>
+            {/* Only customers can erase their own account; staff accounts are managed by an admin. */}
+            {user.role === 'CUSTOMER' ? <DeleteAccountCard /> : null}
           </>
         )}
       </div>
