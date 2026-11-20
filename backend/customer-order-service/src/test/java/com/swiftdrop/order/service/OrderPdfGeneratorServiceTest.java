@@ -185,7 +185,7 @@ class OrderPdfGeneratorServiceTest {
 
         String label = pageText(new PdfReader(pdfGeneratorService.generateShippingLabelAndReceiptPdf(sampleOrder)), 1);
 
-        assertThat(label).contains("STANDARD", "NO CASH TO COLLECT");
+        assertThat(label).contains("STANDARD").doesNotContain("NO CASH TO COLLECT");
         assertThat(pdfGeneratorService.generateDeliveryReceiptPdf(sampleOrder)).isNotEmpty();
     }
 

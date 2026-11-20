@@ -370,7 +370,7 @@ public class OrderPdfGeneratorService {
                 CONTENT_LEFT, Math.max(cityBaseline, addressEnd - 15), Element.ALIGN_LEFT);
     }
 
-    /** Cash panel on the left (heavy and reversed when there is cash to collect); weight and piece count on the right. */
+    /** Cash panel on the left, only when there is cash to collect (heavy and reversed); weight and piece count beside it, or alone. */
     private void drawCashAndParcel(PdfContentByte cb, CustomerOrder order) {
         float top = Z_RECIPIENT;
         float bottom = Z_CASH;
@@ -398,22 +398,19 @@ public class OrderPdfGeneratorService {
             String amount = currency(order) + " " + money(order.getCodAmount());
             float size = fit(amount, sansBold, 17, 12, panelRight - textX - 4);
             text(cb, amount, sansBold, size, textX, panelBottom + 6, Element.ALIGN_LEFT);
-        } else {
-            cb.setColorStroke(BLACK);
-            cb.setLineWidth(0.75f);
-            cb.rectangle(CONTENT_LEFT, panelBottom, panelRight - CONTENT_LEFT, panelH);
-            cb.stroke();
-            text(cb, "NO CASH TO COLLECT", sansBold, 10, (CONTENT_LEFT + panelRight) / 2,
-                    panelBottom + panelH / 2 - 3.5f, Element.ALIGN_CENTER);
         }
 
-        cb.setColorStroke(BLACK);
-        cb.setLineWidth(0.75f);
-        float divider = panelRight + 8;
-        cb.moveTo(divider, bottom);
-        cb.lineTo(divider, top);
-        cb.stroke();
-        float factsX = divider + 8;
+        // Without cash to collect there is no panel, so the weight and piece count start at the left edge.
+        float factsX = CONTENT_LEFT;
+        if (positive(order.getCodAmount())) {
+            cb.setColorStroke(BLACK);
+            cb.setLineWidth(0.75f);
+            float divider = panelRight + 8;
+            cb.moveTo(divider, bottom);
+            cb.lineTo(divider, top);
+            cb.stroke();
+            factsX = divider + 8;
+        }
         text(cb, "WEIGHT", sansBold, 6.5f, factsX, top - 12, Element.ALIGN_LEFT);
         text(cb, kg(order.getActualWeightKg()), sansBold, 12, factsX, top - 24, Element.ALIGN_LEFT);
         text(cb, "PIECE", sansBold, 6.5f, factsX, top - 35, Element.ALIGN_LEFT);
