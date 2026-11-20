@@ -28,16 +28,10 @@ registerRoute(
 
 // The "Reload" button in src/features/pwa/PwaLayer.tsx (updateServiceWorker) sends this.
 self.addEventListener('message', (event) => {
-  const source = event.source;
-  if (!source || source instanceof ServiceWorker || !('url' in source)) {
+  // Only our own pages may control the worker (also what CodeQL js/missing-origin-check expects).
+  if (event.origin !== self.location.origin) {
     return;
   }
-
-  const sourceOrigin = new URL(source.url).origin;
-  if (sourceOrigin !== self.location.origin) {
-    return;
-  }
-
   if ((event.data as { type?: string } | null)?.type === 'SKIP_WAITING') {
     void self.skipWaiting();
   }
