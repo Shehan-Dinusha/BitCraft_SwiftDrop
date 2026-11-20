@@ -152,7 +152,7 @@ class MaskingTest {
         private EmailSender emailSender = new MockEmailSender();
 
         @Spy
-        private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer("https://swiftdrop.lk");
+        private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer();
 
         @InjectMocks
         private MultiChannelNotificationDispatcher dispatcher;

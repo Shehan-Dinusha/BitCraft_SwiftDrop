@@ -207,7 +207,7 @@ export function SelectDropdown({
       {label ? (
         <label
           htmlFor={triggerId}
-          className={cn('mb-1 block font-semibold text-primary', recipe.caption)}
+          className={cn('mb-2 block font-semibold text-primary', recipe.caption)}
         >
           {label} {required && <span className="text-status-danger">*</span>}
         </label>
@@ -286,12 +286,12 @@ export function SelectDropdown({
       {error ? (
         <span
           id={`${triggerId}-error`}
-          className={cn('mt-1 block text-status-danger', recipe.caption)}
+          className={cn('mt-2 block text-status-danger', recipe.caption)}
         >
           {error}
         </span>
       ) : hint ? (
-        <span id={`${triggerId}-hint`} className={cn('mt-1 block text-secondary', recipe.caption)}>
+        <span id={`${triggerId}-hint`} className={cn('mt-2 block text-secondary', recipe.caption)}>
           {hint}
         </span>
       ) : null}

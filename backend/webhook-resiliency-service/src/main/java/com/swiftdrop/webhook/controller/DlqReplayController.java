@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping({"/api/v1/webhooks/dlq", "/api/v1/dlq-replay"})
+@RequestMapping("/api/v1/webhooks/dlq")
 @Tag(name = "DlqReplay", description = "Dead-Letter Queue manual review, error diagnostics, and redelivery replay")
 @RequiredArgsConstructor
 public class DlqReplayController {

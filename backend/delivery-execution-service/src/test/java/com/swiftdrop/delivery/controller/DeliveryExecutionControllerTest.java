@@ -15,7 +15,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -66,8 +65,6 @@ class DeliveryExecutionControllerTest {
                 0,
                 Instant.now(),
                 null,
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 Instant.now(),
                 Instant.now()
         );
@@ -89,8 +86,6 @@ class DeliveryExecutionControllerTest {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.PICKED_UP,
                 "Collected from warehouse",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );

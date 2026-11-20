@@ -1,7 +1,8 @@
-import { ChevronDown, LogOut, Package } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/design-system/primitives/Button';
+import { BrandMark } from '../BrandMark/BrandMark';
 import { navIcons } from './navIcons';
 import { NavItem } from './NavItem';
 import { roleShellSpec, type NavEntry, type NavGroup, type ShellRole } from './roleNav';
@@ -17,6 +18,12 @@ const roleDot: Record<ShellRole, string> = {
 export interface SideNavAccount {
   name: string;
   email?: string;
+  /** Opens the user's profile; makes the avatar and name a button. */
+  onOpen?: () => void;
+  /** The profile page is the current page. */
+  active?: boolean;
+  /** Profile picture URL; initials are shown when absent. */
+  avatarUrl?: string | null;
 }
 
 export interface SideNavProps {
@@ -108,15 +115,7 @@ export function SideNav({
           operational && rail && 'mb-5'
         )}
       >
-        <span
-          aria-hidden="true"
-          className={cn(
-            'flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary text-brand-on',
-            operational && 'size-10 rounded-xl shadow-sm'
-          )}
-        >
-          <Package className="size-[18px]" />
-        </span>
+        <BrandMark size={operational ? 40 : 32} />
         {rail ? null : (
           <>
             <div className="flex min-w-0 flex-1 flex-col">
@@ -135,9 +134,6 @@ export function SideNav({
                 <span className="truncate">{workspace ?? spec.workspace}</span>
               </span>
             </div>
-            {!operational && (
-              <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-secondary" />
-            )}
           </>
         )}
       </div>
@@ -198,21 +194,50 @@ export function SideNav({
             operational && 'mt-5 rounded-xl border bg-canvas py-3'
           )}
         >
-          <div className={cn('flex items-center gap-2.5 px-2', rail && 'flex-col px-0')}>
-            <span
-              aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-caption text-brand-primary"
-            >
-              {initials(account.name)}
-            </span>
-            {rail ? null : (
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-body-strong text-primary">{account.name}</span>
-                {account.email ? (
-                  <span className="truncate text-caption text-muted">{account.email}</span>
-                ) : null}
-              </div>
-            )}
+          <div className={cn('flex items-center gap-1.5 px-1', rail && 'flex-col px-0')}>
+            {(() => {
+              const identity = (
+                <>
+                  {account.avatarUrl ? (
+                    <img src={account.avatarUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-caption text-brand-primary"
+                    >
+                      {initials(account.name)}
+                    </span>
+                  )}
+                  {rail ? null : (
+                    <span className="flex min-w-0 flex-1 flex-col text-left">
+                      <span className="truncate text-body-strong text-primary">{account.name}</span>
+                      {account.email ? (
+                        <span className="truncate text-caption text-muted">{account.email}</span>
+                      ) : null}
+                    </span>
+                  )}
+                </>
+              );
+              const base = cn('flex min-w-0 items-center gap-2.5 rounded-lg p-1', rail ? 'justify-center' : 'flex-1');
+              return account.onOpen ? (
+                <button
+                  type="button"
+                  onClick={account.onOpen}
+                  aria-label={`Your profile: ${account.name}`}
+                  aria-current={account.active ? 'page' : undefined}
+                  title="Your profile"
+                  className={cn(
+                    base,
+                    'transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus',
+                    account.active && 'bg-brand-subtle'
+                  )}
+                >
+                  {identity}
+                </button>
+              ) : (
+                <div className={base}>{identity}</div>
+              );
+            })()}
             {onSignOut ? (
               <button
                 type="button"

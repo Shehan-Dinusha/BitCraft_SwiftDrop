@@ -7,7 +7,6 @@ import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
-import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
@@ -30,7 +29,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -86,10 +84,7 @@ class CourierAccessAuthorizationTest {
                         post("/api/v1/dispatch/couriers/shifts/{courierId}/end", id)),
                 Arguments.of("PUT /couriers/shifts/status", (CourierRequest) id ->
                         jsonBody(put("/api/v1/dispatch/couriers/shifts/status"),
-                                new UpdateShiftStatusRequest(id, ShiftStatus.ON_BREAK))),
-                Arguments.of("PUT /couriers/shifts/location", (CourierRequest) id ->
-                        jsonBody(put("/api/v1/dispatch/couriers/shifts/location"), new CourierLocationPingRequest(
-                                id, SriLankanDistrict.COLOMBO, new BigDecimal("6.9271"), new BigDecimal("79.8612"))))
+                                new UpdateShiftStatusRequest(id, ShiftStatus.ON_BREAK)))
         );
     }
 

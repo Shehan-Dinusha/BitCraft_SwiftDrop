@@ -635,8 +635,6 @@ async function stageDeliver() {
           body: {
             targetState: target,
             actorRole: 'COURIER',
-            latitude: Math.round((c.district.lat + (r.next() - 0.5) * 0.08) * 1e6) / 1e6,
-            longitude: Math.round((c.district.lng + (r.next() - 0.5) * 0.08) * 1e6) / 1e6,
             failureReason: target === 'FAILED' ? r.pick(FAILURES[plan.leg]) : undefined,
             notes: target === 'FAILED' ? 'Reported by courier' : undefined,
           },

@@ -32,7 +32,7 @@ const defaultSuggestions = [
 ];
 
 export function AiAssistantDock({
-  title = 'Velocity AI Assistant',
+  title = 'SwiftDrop AI Assistant',
   subtitle = 'Grounded in live operational data',
   placeholder = 'Ask about SLA, courier load, or zone demand',
   suggestions = defaultSuggestions,

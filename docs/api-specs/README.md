@@ -4,7 +4,7 @@ SwiftDrop exposes **one OpenAPI 3.1 document per service**, plus a public tracki
 
 | I want to... | Go to |
 |---|---|
-| Try endpoints in the browser | [Swagger UI](http://localhost:8080/swagger-ui.html) on a running gateway |
+| Try endpoints in the browser | [Swagger UI on AKS](https://api.swiftdrop.bitcraft.biz/swagger-ui.html), or [locally](http://localhost:8080/swagger-ui.html) on a running gateway |
 | See which URL reaches which service | [Gateway routes](#gateway-routes) |
 | Find the document for a service | [Spec files](#spec-files) |
 | Generate frontend types | [Frontend engineers](#frontend-engineers) |
@@ -38,10 +38,10 @@ flowchart LR
     GW -- "/api/v1/pricing/**<br/>/api/v1/zones/**" --> S3["pricing-zone-service :8083"]
     GW -- "/api/v1/dispatch/**" --> S4["dispatch-assignment-service :8084"]
     GW -- "/api/v1/deliveries/**" --> S5["delivery-execution-service :8085"]
-    GW -- "/api/v1/merchants/**<br/>/api/v1/merchant/**<br/>/api/v1/merchant-order-ingest/**<br/>/api/v1/api-key-management/**" --> S6["merchant-b2b-service :8086"]
+    GW -- "/api/v1/merchants/**<br/>/api/v1/admin/merchants/**<br/>/api/v1/b2b/**<br/>/api/v1/merchant-order-ingest/**<br/>/api/v1/api-key-management/**" --> S6["merchant-b2b-service :8086"]
     GW -- "/api/v1/webhooks/**" --> S7["webhook-resiliency-service :8087"]
     GW -- "/api/v1/notifications/**" --> S8["notification-service :8088"]
-    GW -- "/api/v1/analytics/**<br/>/api/v1/operational-kpi/**<br/>/api/v1/ai-delivery-assistant/**<br/>/api/v1/reports/**" --> S9["analytics-ai-service :8089"]
+    GW -- "/api/v1/analytics/**<br/>/api/v1/ai/**<br/>/api/v1/operational-kpi/**<br/>/api/v1/ai-delivery-assistant/**" --> S9["analytics-ai-service :8089"]
     GW -- "/api/v1/tracking/{id}/stream (SSE)<br/>/ws/tracking (WebSocket)" --> T["Tracking hub<br/>(inside the gateway)"]
 ```
 
@@ -102,7 +102,10 @@ To create the demo accounts, run `npm run seed:demo` in [`frontend`](../../front
 ## Backend engineers
 
 1. Start the services you need and open the central UI at [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html). It lists every service.
-2. Use **Authorize** to paste a JWT; the document endpoints themselves need no token.
+2. Use **Authorize** to paste a JWT; the document endpoints themselves need no token. Every operation sends it by default;
+   public ones (login, register, tracking) are marked `security: []`, and the merchant B2B endpoints use **apiKeyAuth**
+   (`X-Merchant-Api-Key`) instead. "Try it out" calls the same host that served the page, so it works on AKS and locally.
+   Service-to-service `/internal/**` endpoints are not routed by the gateway and are left out of the docs.
 3. Each service's raw document is at `http://localhost:<port>/v3/api-docs`.
 
 Every endpoint should have `@Tag`, `@Operation` and `@Schema` annotations, Jakarta validation on request bodies, and the shared `ApiResponse<T>` wrapper.

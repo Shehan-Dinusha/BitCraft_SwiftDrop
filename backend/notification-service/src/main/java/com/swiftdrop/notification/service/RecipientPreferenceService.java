@@ -52,8 +52,9 @@ public class RecipientPreferenceService {
         if (request.pushEnabled() != null) {
             pref.setPushEnabled(request.pushEnabled());
         }
-        if (request.emailAddress() != null && !request.emailAddress().isBlank()) {
-            pref.setEmailAddress(request.emailAddress().trim());
+        // null = leave unchanged; empty = clear it, so parcel emails go to the account (IAM) address again.
+        if (request.emailAddress() != null) {
+            pref.setEmailAddress(request.emailAddress().isBlank() ? null : request.emailAddress().trim());
         }
         if (request.languagePreference() != null && !request.languagePreference().isBlank()) {
             pref.setLanguagePreference(request.languagePreference().trim());

@@ -1,7 +1,9 @@
 package com.swiftdrop.notification.service;
 
 import com.swiftdrop.notification.domain.entity.InAppNotification;
+import com.swiftdrop.notification.domain.entity.RecipientPreference;
 import com.swiftdrop.notification.domain.repository.InAppNotificationRepository;
+import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,8 +27,36 @@ class InAppNotificationServiceTest {
     @Mock
     private InAppNotificationRepository repository;
 
+    @Mock
+    private RecipientPreferenceRepository preferenceRepository;
+
     @InjectMocks
     private InAppNotificationService service;
+
+    @Test
+    @DisplayName("Stores the notification type so the inbox can show the right icon")
+    void storesNotificationType() {
+        UUID userId = UUID.randomUUID();
+        when(repository.save(any(InAppNotification.class))).thenAnswer(i -> i.getArgument(0));
+
+        InAppNotification saved = service.saveNotification(userId, "PARCEL_DELIVERED", "Parcel Delivered",
+                "Your parcel SD-001 was delivered.", "SD-001");
+
+        assertThat(saved.getNotificationType()).isEqualTo("PARCEL_DELIVERED");
+    }
+
+    @Test
+    @DisplayName("Does not store an inbox row when the user turned in-app notifications off")
+    void respectsInAppOffPreference() {
+        UUID userId = UUID.randomUUID();
+        when(preferenceRepository.findByRecipientId(userId)).thenReturn(Optional.of(
+                RecipientPreference.builder().recipientId(userId).pushEnabled(false).build()));
+
+        InAppNotification saved = service.saveNotification(userId, "PARCEL_DELIVERED", "Parcel Delivered", "Body", "SD-001");
+
+        assertThat(saved).isNull();
+        verify(repository, never()).save(any());
+    }
 
     @Test
     @DisplayName("Should save in-app notification with default unread state")
@@ -59,12 +91,12 @@ class InAppNotificationServiceTest {
         InAppNotification n1 = InAppNotification.builder().id(1L).userId(userId).title("Alert 1").build();
         InAppNotification n2 = InAppNotification.builder().id(2L).userId(userId).title("Alert 2").build();
 
-        when(repository.findByUserIdOrderByCreatedAtDesc(userId)).thenReturn(List.of(n2, n1));
+        when(repository.findInbox(eq(userId), anyCollection())).thenReturn(List.of(n2, n1));
 
         List<InAppNotification> list = service.listNotifications(userId);
 
         assertThat(list).hasSize(2).containsExactly(n2, n1);
-        verify(repository).findByUserIdOrderByCreatedAtDesc(userId);
+        verify(repository).findInbox(eq(userId), anyCollection());
     }
 
     @Test
@@ -79,7 +111,7 @@ class InAppNotificationServiceTest {
                 .read(false)
                 .build();
 
-        when(repository.findByIdAndUserId(notificationId, userId)).thenReturn(Optional.of(existing));
+        when(repository.findInInbox(eq(notificationId), eq(userId), anyCollection())).thenReturn(Optional.of(existing));
         when(repository.save(any(InAppNotification.class))).thenAnswer(i -> i.getArgument(0));
 
         Optional<InAppNotification> updated = service.markAsRead(notificationId, userId);
@@ -94,7 +126,7 @@ class InAppNotificationServiceTest {
     void testMarkAsRead_NotFound() {
         UUID userId = UUID.randomUUID();
         Long notificationId = 999L;
-        when(repository.findByIdAndUserId(notificationId, userId)).thenReturn(Optional.empty());
+        when(repository.findInInbox(eq(notificationId), eq(userId), anyCollection())).thenReturn(Optional.empty());
 
         Optional<InAppNotification> result = service.markAsRead(notificationId, userId);
 
@@ -106,24 +138,48 @@ class InAppNotificationServiceTest {
     @DisplayName("Should mark all unread notifications as read for a user")
     void testMarkAllAsRead() {
         UUID userId = UUID.randomUUID();
-        when(repository.markAllReadByUserId(userId)).thenReturn(5);
+        when(repository.markInboxRead(eq(userId), anyCollection())).thenReturn(5);
 
         int count = service.markAllAsRead(userId);
 
         assertThat(count).isEqualTo(5);
-        verify(repository).markAllReadByUserId(userId);
+        verify(repository).markInboxRead(eq(userId), anyCollection());
     }
 
     @Test
     @DisplayName("Should return accurate unread count for user")
     void testGetUnreadCount() {
         UUID userId = UUID.randomUUID();
-        when(repository.countByUserIdAndReadFalse(userId)).thenReturn(3L);
+        when(repository.countUnreadInInbox(eq(userId), anyCollection())).thenReturn(3L);
 
         long unread = service.getUnreadCount(userId);
 
         assertThat(unread).isEqualTo(3L);
-        verify(repository).countByUserIdAndReadFalse(userId);
+        verify(repository).countUnreadInInbox(eq(userId), anyCollection());
+    }
+
+    @Test
+    @DisplayName("Team notifications are stored for an audience and listed through the caller's audiences")
+    void teamNotifications() {
+        when(repository.save(any(InAppNotification.class))).thenAnswer(i -> i.getArgument(0));
+
+        InAppNotification saved = service.saveTeamNotification("OPERATIONS", "DISPATCH_FAILED",
+                "Dispatch needs attention", "No courier could be assigned.", null);
+
+        assertThat(saved.getAudience()).isEqualTo("OPERATIONS");
+        assertThat(saved.getUserId()).isNull();
+        assertThat(saved.getNotificationType()).isEqualTo("DISPATCH_FAILED");
+
+        UUID dispatcher = UUID.randomUUID();
+        service.listNotifications(dispatcher, java.util.List.of("OPERATIONS"));
+        verify(repository).findInbox(dispatcher, java.util.List.of("OPERATIONS"));
+    }
+
+    @Test
+    @DisplayName("A caller with no team still gets a valid (non-empty) audience list in queries")
+    void noTeamUsesPlaceholderAudience() {
+        UUID userId = UUID.randomUUID();
+        service.getUnreadCount(userId, java.util.List.of());
+        verify(repository).countUnreadInInbox(userId, java.util.List.of("__none__"));
     }
 }
-

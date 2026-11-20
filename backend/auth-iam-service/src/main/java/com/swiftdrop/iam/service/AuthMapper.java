@@ -23,7 +23,8 @@ final class AuthMapper {
                 user.getStatus(),
                 user.isEmailVerified(),
                 user.getLastLoginAt(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getAvatarUpdatedAt()
         );
     }
 

@@ -26,8 +26,12 @@ import { NotificationConsolePage } from '@/features/admin-ops/pages/Notification
 import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
 import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
 import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
+import { LandingPage } from '@/features/landing/pages/LandingPage';
+import { ProfilePage } from '@/features/profile/ProfilePage';
+import { NotificationsPage } from '@/features/notifications/NotificationsPage';
 
 export const routes: RouteObject[] = [
+  { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <SignUpPage /> },
   { path: '/auth/callback', element: <OAuthCallbackPage /> },
@@ -38,6 +42,71 @@ export const routes: RouteObject[] = [
   {
     element: <AppShell />,
     children: [
+      // Notifications inbox and settings, one per workspace (left navigation).
+      {
+        path: '/customer/notifications',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/courier/notifications',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/notifications',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/customer/profile',
+        element: (
+          <RoleGuard roles={['CUSTOMER']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/courier/profile',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/profile',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/profile',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <ProfilePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/inbox',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <NotificationsPage />
+          </RoleGuard>
+        )
+      },
       {
         path: '/customer',
         element: (

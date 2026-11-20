@@ -31,7 +31,6 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'pickupStreet',
     'pickupArea',
     'pickupLandmark',
-    'pickupProvince',
     'pickupCity',
     'pickupDistrict',
     'pickupPostalCode'
@@ -45,7 +44,6 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'deliveryStreet',
     'deliveryArea',
     'deliveryLandmark',
-    'deliveryProvince',
     'deliveryCity',
     'deliveryDistrict',
     'deliveryPostalCode',
@@ -56,10 +54,7 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'widthCm',
     'heightCm',
     'actualWeightKg',
-    'speed',
-    'itemDescription',
-    'declaredValue',
-    'codAmount'
+    'speed'
   ],
   review: ['prohibitedItemsDeclared']
 };
@@ -146,12 +141,6 @@ function measure(
   return undefined;
 }
 
-function optionalAmount(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  return PATTERNS.decimal.test(trimmed) ? undefined : 'Enter an amount in rupees, e.g. 2500';
-}
-
 function fieldError(field: BookingField, form: BookingForm): string | undefined {
   switch (field) {
     case 'pickupContactName':
@@ -175,10 +164,6 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
     case 'pickupLandmark':
     case 'deliveryLandmark':
       return part(form[field], { label: 'the landmark', required: false, max: 100 });
-    case 'pickupProvince':
-      return form.pickupProvince || form.pickupDistrict ? undefined : 'Choose a province';
-    case 'deliveryProvince':
-      return form.deliveryProvince || form.deliveryDistrict ? undefined : 'Choose a province';
     case 'pickupCity':
     case 'deliveryCity':
       return city(form[field]);
@@ -210,26 +195,11 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
       return measure(form.heightCm, 'Height', { min: 0.1, unit: 'cm' });
     case 'actualWeightKg':
       return measure(form.actualWeightKg, 'Weight', { min: 0.01, max: WEIGHT_MAX_KG, unit: 'kg' });
-    case 'itemDescription':
-      return text(form.itemDescription, {
-        max: 512,
-        pattern: PATTERNS.freeText,
-        symbols: 'Remove the < and > characters'
-      });
-    case 'declaredValue':
-      return optionalAmount(form.declaredValue);
-    case 'codAmount': {
-      if (!form.collectCash) return undefined;
-      const trimmed = form.codAmount.trim();
-      if (!trimmed || Number(trimmed) <= 0) return 'Enter the amount the courier should collect';
-      return optionalAmount(trimmed);
-    }
     case 'prohibitedItemsDeclared':
       return form.prohibitedItemsDeclared
         ? undefined
         : 'Tick this box to confirm the parcel is safe to carry';
     case 'speed':
-    case 'collectCash':
       return undefined;
   }
 }

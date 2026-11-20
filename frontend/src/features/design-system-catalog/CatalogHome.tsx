@@ -34,7 +34,7 @@ export function CatalogHome() {
     <div className="mx-auto max-w-5xl space-y-10">
       <header className="space-y-3">
         <p className="text-overline uppercase text-brand-primary">Design system</p>
-        <h1 className="text-h1 text-primary">Velocity components</h1>
+        <h1 className="text-h1 text-primary">SwiftDrop components</h1>
         <p className="max-w-2xl text-body-l text-secondary">
           Every shared component, grouped like the Figma library. Everything here is light theme.
           Forced states exist for this catalog only; product code drives states from props and

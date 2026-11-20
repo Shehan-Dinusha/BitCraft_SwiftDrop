@@ -116,6 +116,23 @@ class RecipientPreferenceServiceTest {
     }
 
     @Test
+    @DisplayName("An empty email clears the custom address; a missing one leaves it unchanged")
+    void testEmptyEmailClearsCustomAddress() {
+        RecipientPreference existing = RecipientPreference.builder()
+                .recipientId(recipientId).emailAddress("custom@example.com").build();
+        when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.of(existing));
+        when(preferenceRepository.save(any(RecipientPreference.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RecipientPreferenceResponse unchanged = preferenceService.updatePreferences(recipientId,
+                new UpdatePreferenceRequest(null, null, null, null));
+        assertThat(unchanged.emailAddress()).isEqualTo("custom@example.com");
+
+        RecipientPreferenceResponse cleared = preferenceService.updatePreferences(recipientId,
+                new UpdatePreferenceRequest(null, null, "  ", null));
+        assertThat(cleared.emailAddress()).isNull();
+    }
+
+    @Test
     @DisplayName("Should create and update preferences if recipient not previously found")
     void testUpdatePreferences_NewRecord() {
         when(preferenceRepository.findByRecipientId(recipientId)).thenReturn(Optional.empty());

@@ -49,7 +49,7 @@ public class ZoneAdminController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create a pricing zone (dispatcher or system admin only)")
+    @Operation(summary = "Create a pricing zone (system admin only)")
     public ApiResponse<ZoneResponse> createZone(@Valid @RequestBody ZoneRequest request,
                                                 HttpServletRequest httpRequest) {
         adminAccessGuard.requireAdmin(httpRequest);
@@ -57,7 +57,7 @@ public class ZoneAdminController {
     }
 
     @PutMapping("/{zoneCode}")
-    @Operation(summary = "Update a pricing zone (dispatcher or system admin only)")
+    @Operation(summary = "Update a pricing zone (system admin only)")
     public ApiResponse<ZoneResponse> updateZone(@PathVariable @Parameter(description = "Zone code", example = "ZONE_WESTERN") String zoneCode,
                                                 @Valid @RequestBody ZoneRequest request,
                                                 HttpServletRequest httpRequest) {
@@ -66,7 +66,7 @@ public class ZoneAdminController {
     }
 
     @DeleteMapping("/{zoneCode}")
-    @Operation(summary = "Delete a pricing zone that has no districts mapped (dispatcher or system admin only)")
+    @Operation(summary = "Delete a pricing zone that has no districts mapped (system admin only)")
     public ApiResponse<Void> deleteZone(@PathVariable @Parameter(description = "Zone code", example = "ZONE_WESTERN") String zoneCode, HttpServletRequest httpRequest) {
         adminAccessGuard.requireAdmin(httpRequest);
         zoneAdminService.deleteZone(zoneCode);
@@ -80,7 +80,7 @@ public class ZoneAdminController {
     }
 
     @PutMapping("/districts/{district}")
-    @Operation(summary = "Assign a district to a zone (dispatcher or system admin only)")
+    @Operation(summary = "Assign a district to a zone (system admin only)")
     public ApiResponse<DistrictMappingResponse> assignDistrict(@PathVariable @Parameter(description = "District name, case-insensitive", example = "COLOMBO") String district,
                                                                @Valid @RequestBody DistrictMappingRequest request,
                                                                HttpServletRequest httpRequest) {

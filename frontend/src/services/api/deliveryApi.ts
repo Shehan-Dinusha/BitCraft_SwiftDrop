@@ -3,8 +3,6 @@ import type { components } from '@/types/generated/delivery-execution-service';
 
 export type DeliverySessionResponse = components['schemas']['DeliverySessionResponse'];
 export type TransitionDeliveryRequest = components['schemas']['TransitionDeliveryRequest'];
-export type CourierLocationUpdatePayload = components['schemas']['CourierLocationUpdatePayload'];
-export type TrackingBreadcrumbResponse = components['schemas']['TrackingBreadcrumbResponse'];
 export type ProofOfDeliveryUploadRequest = components['schemas']['ProofOfDeliveryUploadRequest'];
 export type ProofOfDeliveryResponse = components['schemas']['ProofOfDeliveryResponse'];
 export type DeliveryState = components['schemas']['DeliveryState'];
@@ -52,21 +50,6 @@ export const deliveryApi = {
     const { data } = await apiClient.post<{ success: boolean; data: DeliverySessionResponse }>(
       `/v1/deliveries/${deliveryId}/transition`,
       request
-    );
-    return data.data;
-  },
-
-  recordLocation: async (deliveryId: string, payload: CourierLocationUpdatePayload) => {
-    const { data } = await apiClient.post<{ success: boolean; data: TrackingBreadcrumbResponse }>(
-      `/v1/deliveries/${deliveryId}/location`,
-      payload
-    );
-    return data.data;
-  },
-
-  getBreadcrumbs: async (deliveryId: string) => {
-    const { data } = await apiClient.get<{ success: boolean; data: TrackingBreadcrumbResponse[] }>(
-      `/v1/deliveries/${deliveryId}/breadcrumbs`
     );
     return data.data;
   },

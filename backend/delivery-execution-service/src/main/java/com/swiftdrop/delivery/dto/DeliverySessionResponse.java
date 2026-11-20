@@ -5,7 +5,6 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -50,12 +49,6 @@ public record DeliverySessionResponse(
         @Schema(description = "Timestamp when package was delivered")
         Instant deliveredAt,
 
-        @Schema(description = "Last known courier latitude")
-        BigDecimal currentLatitude,
-
-        @Schema(description = "Last known courier longitude")
-        BigDecimal currentLongitude,
-
         @Schema(description = "Creation timestamp")
         Instant createdAt,
 
@@ -78,8 +71,6 @@ public record DeliverySessionResponse(
                 entity.getAttemptCount(),
                 entity.getPickupAt(),
                 entity.getDeliveredAt(),
-                entity.getCurrentLatitude(),
-                entity.getCurrentLongitude(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

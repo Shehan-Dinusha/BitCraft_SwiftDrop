@@ -79,8 +79,8 @@ class TemplateRendererServiceTest {
         ));
 
         assertThat(rendered.channel()).isEqualTo("EMAIL");
-        assertThat(rendered.subject()).isEqualTo("SwiftDrop Out for Delivery");
-        assertThat(rendered.body()).contains("SD-9999 is out for delivery with Sunil Perera");
+        assertThat(rendered.subject()).isEqualTo("Your parcel is out for delivery");
+        assertThat(rendered.body()).contains("SD-9999 is out for delivery and should arrive today");
     }
 
     @Test
@@ -95,8 +95,8 @@ class TemplateRendererServiceTest {
         ));
 
         assertThat(rendered.channel()).isEqualTo("EMAIL");
-        assertThat(rendered.subject()).isEqualTo("Parcel Delivered - SwiftDrop");
-        assertThat(rendered.body()).contains("SD-8888 was successfully delivered at 14:30 PM");
+        assertThat(rendered.subject()).isEqualTo("Your parcel has been delivered");
+        assertThat(rendered.body()).contains("SD-8888 was delivered on 14:30 PM");
     }
 
     @Test
@@ -111,8 +111,8 @@ class TemplateRendererServiceTest {
         ));
 
         assertThat(rendered.channel()).isEqualTo("EMAIL");
-        assertThat(rendered.subject()).isEqualTo("SwiftDrop Parcel Picked Up");
-        assertThat(rendered.body()).contains("Courier Amal has picked up parcel SD-7777");
+        assertThat(rendered.subject()).isEqualTo("Your parcel has been picked up");
+        assertThat(rendered.body()).contains("Parcel SD-7777 has been collected and is on its way");
     }
 
     @Test
@@ -127,8 +127,8 @@ class TemplateRendererServiceTest {
         ));
 
         assertThat(rendered.channel()).isEqualTo("EMAIL");
-        assertThat(rendered.subject()).isEqualTo("SwiftDrop Delivery Exception");
-        assertThat(rendered.body()).contains("Delivery attempt failed for parcel SD-6666: Recipient unreachable");
+        assertThat(rendered.subject()).isEqualTo("We could not deliver your parcel");
+        assertThat(rendered.body()).contains("We could not deliver parcel SD-6666: Recipient unreachable");
     }
 
     @Test

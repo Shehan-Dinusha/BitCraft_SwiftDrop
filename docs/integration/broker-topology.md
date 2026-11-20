@@ -50,6 +50,8 @@
 | `parcel.status.changed.#` | `notification.events.queue` | notification-service |
 | `notification.#` | `notification.events.queue` | notification-service |
 | `order.created` | `notification.events.queue` | notification-service |
+| `dispatch.courier.assigned` | `notification.events.queue` | notification-service (courier and merchant notifications) |
+| `dispatch.failed` | `notification.events.queue` | notification-service (operations alert) |
 | `parcel.status.changed.#` | `webhook.events.queue` | webhook-resiliency-service |
 | `order.created` | `webhook.events.queue` | webhook-resiliency-service |
 | `webhook.dispatch.requested` | `webhook.events.queue` | webhook-resiliency-service |
@@ -86,6 +88,7 @@
 | `DISPATCH_COURIER_ASSIGNED` | `dispatch.courier.assigned` | dispatch-assignment-service |
 | `DISPATCH_FAILED` | `dispatch.failed` | dispatch-assignment-service |
 | `MERCHANT_APPROVED` | `merchant.approved` | merchant-b2b-service |
+| `AUTH_LOGIN` | `notification.auth.login` | auth-iam-service (consumed by notification-service through `notification.#`) |
 | `AUTH_OTP_REQUESTED` | `notification.auth.otp` | auth-iam-service (consumed by notification-service through `notification.#`) |
 
 ## Policy

@@ -865,46 +865,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/internal/v1/api-keys/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Internal API key validation for gateway filter */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["MerchantApiKeyValidationRequest"];
-                };
-            };
-            responses: {
-                /** @description Validation result */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["MerchantApiKeyValidationResult"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/merchant-order-ingest/health": {
         parameters: {
             query?: never;
@@ -1305,15 +1265,6 @@ export interface components {
             /** Format: date-time */
             revokedAt?: string;
             rawApiKey?: string;
-        };
-        MerchantApiKeyValidationRequest: {
-            apiKey: string;
-        };
-        MerchantApiKeyValidationResult: {
-            valid?: boolean;
-            /** Format: uuid */
-            merchantId?: string;
-            reason?: string;
         };
         BulkOrderIngestItem: {
             /** @description Required to forward the row; stable idempotency reference */

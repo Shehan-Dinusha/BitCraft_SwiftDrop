@@ -24,7 +24,7 @@ You wrote most of the current scaffold, so this is mainly a checklist against yo
 - Tracking hub: `ParcelStatusEventConsumer` (queue `swiftdrop.gateway.tracking.queue`, binding `parcel.status.changed.#`), `TrackingDataSanitizerProxy`, `TrackingBroadcastHubService`, SSE (`LiveTrackingStreamController`), raw WebSocket + STOMP handlers, `PublicTrackingController` at `/api/v1/tracking/{trackingNumber}`.
 - Tests: `TrackingDataSanitizerProxyTest`, `TrackingTokenVerifierTest` only.
 - Root infra: `docker-compose.yml` (RabbitMQ, Redis, 9 Postgres, and only **two** app containers: `auth-iam-service`, `api-gateway`), `.env.example`, 10 Dockerfiles, `infra/helm/swiftdrop/` (Helm chart), GitHub workflows.
-- Frontend shell: `App.tsx`, `AppShell.tsx`, `routes.tsx`, providers, Velocity design system and catalog.
+- Frontend shell: `App.tsx`, `AppShell.tsx`, `routes.tsx`, providers, SwiftDrop design system and catalog.
 
 ## 2. Gaps to close (your checklist)
 
@@ -129,7 +129,7 @@ Open http://localhost:8080/actuator/health and http://localhost:8080/swagger-ui.
 mvn -f backend\pom.xml -pl api-gateway -am test
 ```
 
-**A9. Read before coding:** `AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `docs/LOCAL-DEVELOPMENT.md`, `frontend/COMPONENTS.md`, and `.agents/rules/*.md`. They define package layout, DTO rules (Java records + `@Schema`), Flyway rules (new `V<N>__*.sql`, never edit an old one), and the Velocity design-system rules.
+**A9. Read before coding:** `AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `docs/LOCAL-DEVELOPMENT.md`, `frontend/COMPONENTS.md`, and `.agents/rules/*.md`. They define package layout, DTO rules (Java records + `@Schema`), Flyway rules (new `V<N>__*.sql`, never edit an old one), and the SwiftDrop design-system rules.
 
 > The gateway needs RabbitMQ and Redis. To test routing to a service, also start that service; until route URIs are config-driven (your Phase 1), call services on their own ports.
 

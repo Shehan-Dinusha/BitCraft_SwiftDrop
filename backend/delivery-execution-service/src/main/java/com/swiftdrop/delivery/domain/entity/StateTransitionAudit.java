@@ -11,7 +11,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -45,12 +44,6 @@ public class StateTransitionAudit {
 
     @Column(name = "notes", length = 512)
     private String notes;
-
-    @Column(name = "latitude", precision = 10, scale = 7)
-    private BigDecimal latitude;
-
-    @Column(name = "longitude", precision = 10, scale = 7)
-    private BigDecimal longitude;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -87,12 +80,6 @@ public class StateTransitionAudit {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
-
-    public BigDecimal getLatitude() { return latitude; }
-    public void setLatitude(BigDecimal latitude) { this.latitude = latitude; }
-
-    public BigDecimal getLongitude() { return longitude; }
-    public void setLongitude(BigDecimal longitude) { this.longitude = longitude; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

@@ -63,7 +63,7 @@ public class SessionController {
             content = @Content(schema = @Schema(implementation = MfaChallengeResponse.class)))
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String ip = clientIp(httpRequest);
-        UserAccount user = authenticationService.authenticate(request.username(), request.password(), ip);
+        UserAccount user = authenticationService.authenticate(request.username(), request.password(), ip, userAgent(httpRequest));
         if (loginMfaService.isRequiredFor(user)) {
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(loginMfaService.start(user));
         }

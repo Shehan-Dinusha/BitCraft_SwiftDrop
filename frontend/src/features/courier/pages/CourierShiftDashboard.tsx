@@ -21,7 +21,6 @@ import {
   Package,
   Power,
   RefreshCw,
-  Send,
   ShieldCheck,
   CheckCircle2,
   Clock,
@@ -146,27 +145,6 @@ export function CourierShiftDashboard() {
       setSuccessMsg(`Status updated to ${newStatus}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update shift status';
-      setErrorMsg(msg);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleLocationPing = async () => {
-    if (!courierId) return;
-    try {
-      setUpdating(true);
-      setErrorMsg(null);
-      const res = await dispatchApi.updateLocation({
-        courierId,
-        district: shift?.currentDistrict || selectedDistrict,
-        latitude: 6.9271,
-        longitude: 79.8612
-      });
-      setShift(res);
-      setSuccessMsg('GPS location heartbeat sent successfully!');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send location heartbeat';
       setErrorMsg(msg);
     } finally {
       setUpdating(false);
@@ -339,16 +317,6 @@ export function CourierShiftDashboard() {
                 >
                   <Coffee className="mr-1.5 h-4 w-4" />
                   Break
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleLocationPing}
-                  disabled={updating}
-                  className="min-h-[44px]"
-                  title="Ping live GPS heartbeat"
-                >
-                  <Send className="mr-1.5 h-4 w-4 text-indigo-500" />
-                  Ping GPS
                 </Button>
                 <Button
                   variant="destructive"

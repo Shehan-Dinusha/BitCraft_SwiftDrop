@@ -9,7 +9,6 @@ export type CourierWorkloadResponse = components['schemas']['CourierWorkloadResp
 export type CourierSuggestionResponse = components['schemas']['CourierSuggestionResponse'];
 export type StartShiftRequest = components['schemas']['StartShiftRequest'];
 export type UpdateShiftStatusRequest = components['schemas']['UpdateShiftStatusRequest'];
-export type CourierLocationPingRequest = components['schemas']['CourierLocationPingRequest'];
 export type AssignmentStatus = components['schemas']['AssignmentStatus'];
 export type ShiftStatus = components['schemas']['ShiftStatus'];
 export type SriLankanDistrict = components['schemas']['SriLankanDistrict'];
@@ -127,14 +126,6 @@ export const dispatchApi = {
   updateShiftStatus: async (request: UpdateShiftStatusRequest) => {
     const { data } = await apiClient.put<{ success: boolean; data: CourierShiftResponse }>(
       '/v1/dispatch/couriers/shifts/status',
-      request
-    );
-    return data.data;
-  },
-
-  updateLocation: async (request: CourierLocationPingRequest) => {
-    const { data } = await apiClient.put<{ success: boolean; data: CourierShiftResponse }>(
-      '/v1/dispatch/couriers/shifts/location',
       request
     );
     return data.data;

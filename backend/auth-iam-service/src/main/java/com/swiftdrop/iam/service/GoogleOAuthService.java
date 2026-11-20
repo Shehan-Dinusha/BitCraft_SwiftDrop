@@ -77,6 +77,13 @@ public class GoogleOAuthService {
     private final TokenIssuanceService tokenIssuanceService;
     private final RefreshTokenService refreshTokenService;
     private final GoogleApiClient googleApiClient;
+    /** Emails a "new sign-in" alert; optional so the service also works without messaging (tests). */
+    private AuthLoginPublisher loginPublisher;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setLoginPublisher(AuthLoginPublisher loginPublisher) {
+        this.loginPublisher = loginPublisher;
+    }
 
     public GoogleOAuthService(GoogleOAuthConfig oauthConfig,
             StringRedisTemplate redis,
@@ -236,6 +243,9 @@ public class GoogleOAuthService {
         TokenIssuanceService.IssuedAccessToken accessToken = tokenIssuanceService.issueAccessToken(user);
         RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.create(user, userAgent, ipAddress);
 
+        if (loginPublisher != null) {
+            loginPublisher.publishSuccess(user, ipAddress, userAgent);
+        }
         return AuthMapper.toTokenResponse(user, accessToken, refreshToken.rawToken());
     }
 

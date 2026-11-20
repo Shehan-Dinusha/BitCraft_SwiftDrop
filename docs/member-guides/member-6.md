@@ -19,11 +19,11 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 ## 1. What already exists on `dev`
 
 - `CourierAssignedConsumer` creates a `DeliverySession` from `dispatch.courier.assigned`.
-- `DeliveryExecutionController` `/api/v1/deliveries`: get by id/order/tracking, `GET /courier/{courierId}`, `POST /{id}/transition`, `POST /{id}/location`, breadcrumbs. `ProofOfDeliveryController`: upload, verify, get.
+- `DeliveryExecutionController` `/api/v1/deliveries`: get by id/order/tracking, `GET /courier/{courierId}`, `POST /{id}/transition`. `ProofOfDeliveryController`: upload, verify, get.
 - `DeliveryStateMachine`: a transition **table** (`EnumMap`) `CREATED → ASSIGNED → PICKED_UP → IN_TRANSIT → DELIVERED | FAILED`, plus guards (`GeofenceProximityGuard`, `ProofOfDeliveryGuard`) and actions (audit, publish).
-- `DeliveryEventPublisher`: `DeliveryStateChangedEvent`, `LocationUpdatedEvent`, `parcel.status.changed`.
+- `DeliveryEventPublisher`: `DeliveryStateChangedEvent`, `parcel.status.changed`.
 - Flyway V1–V3; five test classes.
-- Frontend: `CourierShiftDashboard`, `ActiveDeliveryExecutionPage`, `OneTapStateTransitionCard`, `ProofOfDeliveryCaptureModal`, `GpsTelemetryPublisher`.
+- Frontend: `CourierShiftDashboard`, `ActiveDeliveryExecutionPage`, `OneTapStateTransitionCard`, `ProofOfDeliveryCaptureModal`. (Device location was removed: SwiftDrop matches couriers by district.)
 
 ## 2. Gaps to close
 
@@ -126,7 +126,7 @@ Open http://localhost:8085/actuator/health and http://localhost:8085/swagger-ui.
 mvn -f backend\pom.xml -pl delivery-execution-service -am test
 ```
 
-**A9. Read before coding:** `AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `docs/LOCAL-DEVELOPMENT.md`, `frontend/COMPONENTS.md`, and `.agents/rules/*.md`. They define package layout, DTO rules (Java records + `@Schema`), Flyway rules (new `V<N>__*.sql`, never edit an old one), and the Velocity design-system rules.
+**A9. Read before coding:** `AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `docs/LOCAL-DEVELOPMENT.md`, `frontend/COMPONENTS.md`, and `.agents/rules/*.md`. They define package layout, DTO rules (Java records + `@Schema`), Flyway rules (new `V<N>__*.sql`, never edit an old one), and the SwiftDrop design-system rules.
 
 ## Part B0. How you work every day (same for all members)
 
@@ -258,7 +258,7 @@ Rules:
 
 **Steps:**
 
-1. Use the policy in get-by-id, by-order, by-tracking, breadcrumbs, POD get; `GET /courier/{courierId}` only when it equals the caller.
+1. Use the policy in get-by-id, by-order, by-tracking, POD get; `GET /courier/{courierId}` only when it equals the caller.
 
 **Commit:** `feat(delivery): enforce courier ownership on reads`
 
@@ -343,7 +343,7 @@ Rules:
 
 **Steps:**
 
-1. `/courier`: list from `/deliveries/me` with status badges; `touch` density, 56 px rows.
+1. `/courier`: list from `/deliveries/me` with status badges; `kinetic` density, 56 px rows.
 
 **Commit:** `feat(frontend): add courier today list`
 

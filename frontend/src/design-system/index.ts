@@ -69,9 +69,9 @@ export {
   slaColors
 } from './tokens/colors';
 export {
-  velocityTypography,
-  velocityTextStyles,
-  type VelocityTextStyle
+  typography,
+  textStyles,
+  type TextStyle
 } from './tokens/typography';
 export { Checkbox } from './components/Checkbox/Checkbox';
 export type { CheckboxProps } from './components/Checkbox/Checkbox';
@@ -195,10 +195,14 @@ export type {
   AssistantMessage,
   AssistantPanelProps
 } from './components/AiAssistant/AiAssistant';
+export { BrandMark } from './components/BrandMark/BrandMark';
+export type { BrandMarkProps } from './components/BrandMark/BrandMark';
 export { NavItem } from './components/Shell/NavItem';
 export type { NavItemProps } from './components/Shell/NavItem';
 export { SideNav } from './components/Shell/SideNav';
 export type { SideNavAccount, SideNavProps } from './components/Shell/SideNav';
+export { AccountMenu } from './components/Shell/AccountMenu';
+export type { AccountMenuItem, AccountMenuProps } from './components/Shell/AccountMenu';
 export { TopBar, PublicHeader } from './components/Shell/TopBar';
 export type { PublicHeaderProps, TopBarProps } from './components/Shell/TopBar';
 export { BottomNav } from './components/Shell/BottomNav';

@@ -40,7 +40,7 @@ public class TariffAdminController {
     }
 
     @PutMapping("/default")
-    @Operation(summary = "Publish a new default tariff version (dispatcher or system admin only)")
+    @Operation(summary = "Publish a new default tariff version (system admin only)")
     public ApiResponse<TariffRuleResponse> publishNewVersion(@Valid @RequestBody TariffRuleRequest request,
                                                              HttpServletRequest httpRequest) {
         adminAccessGuard.requireAdmin(httpRequest);

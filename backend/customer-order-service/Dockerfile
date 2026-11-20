@@ -1,5 +1,7 @@
 FROM maven:3-eclipse-temurin-25 AS build
 WORKDIR /workspace
+# Resolve Maven Central through Google's mirror (see docker/maven-settings.xml).
+COPY docker/maven-settings.xml /root/.m2/settings.xml
 COPY pom.xml .
 COPY common-contracts ./common-contracts
 COPY customer-order-service ./customer-order-service

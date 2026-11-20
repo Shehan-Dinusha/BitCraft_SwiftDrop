@@ -86,6 +86,22 @@ export async function resetPassword(identifier: string, code: string, newPasswor
   await apiClient.post('/v1/auth/reset-password', { identifier, code, newPassword });
 }
 
+/**
+ * Changes the signed-in person's password. Every session is revoked afterwards, so the caller
+ * must sign in again.
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post('/v1/auth/change-password', { currentPassword, newPassword });
+}
+
+/**
+ * Erases the signed-in customer's own account and personal data. Needs the current password. The
+ * account can no longer sign in afterwards.
+ */
+export async function deleteOwnAccount(currentPassword: string): Promise<void> {
+  await apiClient.delete('/v1/users/me', { data: { currentPassword } });
+}
+
 /** Rotates the session. The refresh token is the HttpOnly cookie, so nothing is sent in the body. */
 export async function refreshTokens(): Promise<AuthTokenResponse> {
   const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/refresh', {});
@@ -100,6 +116,43 @@ export async function logoutUser(): Promise<void> {
 export async function fetchCurrentUser(): Promise<AuthUserProfile> {
   const { data } = await apiClient.get<{ data?: AuthUserProfile }>('/v1/users/me');
   return data.data ?? {};
+}
+
+export type UpdateProfileInput = components['schemas']['UpdateProfileRequest'];
+
+/** Updates the signed-in user's own name, phone and district. Returns the saved profile. */
+export async function updateMyProfile(input: UpdateProfileInput): Promise<AuthUserProfile> {
+  const { data } = await apiClient.patch<{ data?: AuthUserProfile }>('/v1/users/me', input);
+  return data.data ?? {};
+}
+
+/** Sets the signed-in user's profile picture (PNG, JPEG or WebP up to 512 KB). Returns the saved profile. */
+export async function uploadMyAvatar(image: Blob): Promise<AuthUserProfile> {
+  const form = new FormData();
+  form.append('file', image, 'avatar.jpg');
+  const { data } = await apiClient.put<{ data?: AuthUserProfile }>('/v1/users/me/avatar', form);
+  return data.data ?? {};
+}
+
+export async function removeMyAvatar(): Promise<AuthUserProfile> {
+  const { data } = await apiClient.delete<{ data?: AuthUserProfile }>('/v1/users/me/avatar');
+  return data.data ?? {};
+}
+
+/** The signed-in user's profile picture, or null when there is none. Fetched with the session token. */
+export async function fetchMyAvatar(): Promise<Blob | null> {
+  try {
+    const { data } = await apiClient.get<Blob>('/v1/users/me/avatar', { responseType: 'blob' });
+    return data;
+  } catch (error) {
+    if ((error as { response?: { status?: number } }).response?.status === 404) return null;
+    throw error;
+  }
+}
+
+/** Changes the signed-in user's password. The server then signs the account out everywhere. */
+export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post('/v1/auth/change-password', { currentPassword, newPassword });
 }
 
 /**

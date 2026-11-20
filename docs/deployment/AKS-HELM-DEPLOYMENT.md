@@ -8,6 +8,8 @@ This guide deploys the **whole system**: the frontend, the API gateway, the nine
 > [!TIP]
 > AKS costs money for every hour it runs. To learn and test for free first, run the same chart on Docker Desktop: see [LOCAL-KUBERNETES.md](LOCAL-KUBERNETES.md).
 
+This guide is for setting the cluster up. Once it is running, use the [operations runbook](OPERATIONS-RUNBOOK.md) for releases, pause/resume, backups and incidents.
+
 ## Contents
 
 1. [What gets deployed](#1-what-gets-deployed)
@@ -323,6 +325,8 @@ helm upgrade --install swiftdrop infra/helm/swiftdrop -n default \
 ```
 
 ## 11. Day-to-day operations
+
+The step-by-step release procedure (`dev` → `main`), and what to do when something breaks, are in the [operations runbook](OPERATIONS-RUNBOOK.md).
 
 | Task | Command |
 |---|---|

@@ -80,18 +80,6 @@ describe('booking validation', () => {
     );
   });
 
-  it('requires a positive COD amount only when cash collection is on', () => {
-    expect(validateField('codAmount', { ...validForm, collectCash: false, codAmount: '' })).toBe(
-      undefined
-    );
-    expect(validateField('codAmount', { ...validForm, collectCash: true, codAmount: '0' })).toContain(
-      'amount the courier should collect'
-    );
-    expect(validateField('codAmount', { ...validForm, collectCash: true, codAmount: '2500' })).toBe(
-      undefined
-    );
-  });
-
   it('maps server field errors, including joined address fields', () => {
     expect(
       parseServerFieldErrors(
@@ -103,7 +91,6 @@ describe('booking validation', () => {
 
   it('finds the step that owns a field', () => {
     expect(stepOfField('recipientEmail')).toBe('dropoff');
-    expect(stepOfField('codAmount')).toBe('parcel');
     expect(stepOfField('prohibitedItemsDeclared')).toBe('review');
   });
 });

@@ -92,7 +92,7 @@ Verified in code; the audit IDs are in brackets.
 Also note:
 - `OutboundWebhookDispatcher` is `@Deprecated`. Only test ping and legacy replay use it.
 - `webhook.dispatch.requested` is bound but has no producer. The consumer deliberately rejects it to the DLQ.
-- The gateway does not route the alias paths `/api/v1/dlq-replay` and `/api/v1/webhook-subscription`.
+- The old alias paths `/api/v1/dlq-replay` and `/api/v1/webhook-subscription` were removed (the gateway never routed them); use `/api/v1/webhooks/dlq` and `/api/v1/webhooks/subscriptions`.
 
 ---
 
@@ -529,7 +529,7 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
   - Update the copy ("3-attempt exponential backoff" becomes the real D1 schedule).
 - **Modify:** `frontend/src/features/merchant/pages/WebhookResiliencyConsolePage.tsx`, `components/WebhookDlqReplayTable.tsx`, `services/api/webhookApi.ts` (generated types only).
 - **Optional new file:** `WebhookSettingsCard.tsx` (named in the member guide).
-- **Rules:** `frontend/AGENTS.md`: Velocity design-system components, compact density, and generated types only.
+- **Rules:** `frontend/AGENTS.md`: SwiftDrop design-system components, compact density, and generated types only.
 - **Split if large:** 14a history; 14b DEAD/replay.
 - **Depends on:** Steps 12 and 13.
 - **Done when:** `npm run lint && npm run build` pass, and the flows work in dev mode.

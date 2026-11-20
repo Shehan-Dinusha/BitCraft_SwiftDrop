@@ -5,7 +5,6 @@ import com.swiftdrop.contracts.enums.DeliveryState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 
-import java.math.BigDecimal;
 
 @Schema(description = "Request to advance delivery finite state machine.")
 public record TransitionDeliveryRequest(
@@ -15,12 +14,6 @@ public record TransitionDeliveryRequest(
 
         @Schema(description = "Optional operational notes or handover remarks", example = "Parcel inspected and collected")
         String notes,
-
-        @Schema(description = "GPS latitude of transition event", example = "6.9271")
-        BigDecimal latitude,
-
-        @Schema(description = "GPS longitude of transition event", example = "79.8612")
-        BigDecimal longitude,
 
         @Schema(description = "Failure reason if target state is FAILED")
         DeliveryFailureReason failureReason,

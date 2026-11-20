@@ -8,8 +8,10 @@ info:
     X-Correlation-Id header is a UUID, that correlationId; internal details are never returned.
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
-    description: API Gateway
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
+security:
+  - bearerAuth: []
 paths:
   /api/v1/dispatch/health:
     get:
@@ -75,7 +77,7 @@ paths:
           description: >-
             Order already assigned (Assignment Conflict), courier not available, assignment in a
             terminal state, or the record was changed by a concurrent operation (Conflict). A conflict
-            on the courier's record only, such as a location update, is retried automatically up to
+            on the courier's record only, such as a status update, is retried automatically up to
             three times before a 409 is returned.
           content:
             application/json:
@@ -135,7 +137,7 @@ paths:
             Order has no courier yet or is no longer assigned to the expected courier
             (Assignment Conflict), order already picked up (Reassignment Not Allowed), courier not
             available, assignment in a terminal state, or the record was changed by a concurrent
-            operation (Conflict). A conflict on the courier's record only, such as a location update,
+            operation (Conflict). A conflict on the courier's record only, such as a status update,
             is retried automatically up to three times before a 409 is returned.
           content:
             application/json:
@@ -631,61 +633,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
 
-  /api/v1/dispatch/couriers/shifts/location:
-    put:
-      tags:
-        - CourierAvailability
-      summary: Record courier GPS location heartbeat ping
-      description: >-
-        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
-      operationId: updateLocation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CourierLocationPingRequest"
-      responses:
-        "200":
-          description: Location updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
-        "401":
-          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorResponse"
-        "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorResponse"
-        "409":
-          description: >-
-            Conflict: the courier's record kept changing concurrently (for example during an
-            assignment) after up to three automatic attempts, or Courier Not Available for an
-            unknown courier.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorResponse"
-              examples:
-                courierRecordChanged:
-                  summary: Courier record changed by another operation
-                  value:
-                    status: 409
-                    error: Conflict
-                    message: >-
-                      The courier's record was changed by another operation, such as a location
-                      update or another assignment. Refresh and retry.
-                    path: /api/v1/dispatch/couriers/shifts/location
-                    timestamp: "2026-11-15T08:30:00Z"
-
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     AssignmentStatus:
       type: string
@@ -809,24 +762,6 @@ components:
         status:
           $ref: "#/components/schemas/ShiftStatus"
 
-    CourierLocationPingRequest:
-      type: object
-      required:
-        - courierId
-        - district
-      properties:
-        courierId:
-          type: string
-          format: uuid
-        district:
-          $ref: "#/components/schemas/SriLankanDistrict"
-        latitude:
-          type: number
-          example: 6.9271
-        longitude:
-          type: number
-          example: 79.8612
-
     DispatchAssignmentResponse:
       type: object
       properties:
@@ -884,10 +819,6 @@ components:
           $ref: "#/components/schemas/VehicleType"
         currentDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
-        latitude:
-          type: number
-        longitude:
-          type: number
         shiftStatus:
           $ref: "#/components/schemas/ShiftStatus"
         activeParcelsCount:
