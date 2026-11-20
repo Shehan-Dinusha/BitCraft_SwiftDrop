@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, Package } from 'lucide-react';
+import { LogOut, Package } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/design-system/primitives/Button';
@@ -135,9 +135,6 @@ export function SideNav({
                 <span className="truncate">{workspace ?? spec.workspace}</span>
               </span>
             </div>
-            {!operational && (
-              <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-secondary" />
-            )}
           </>
         )}
       </div>
