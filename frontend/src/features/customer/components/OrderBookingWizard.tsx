@@ -28,7 +28,8 @@ import { StepIndicator, type BookingStepDef } from './booking/StepIndicator';
 import { PickupStep } from './booking/PickupStep';
 import { DropoffStep } from './booking/DropoffStep';
 import { ParcelStep } from './booking/ParcelStep';
-import { ReviewStep } from './booking/ReviewStep';
+import { FeePanel, ReviewStep } from './booking/ReviewStep';
+import { SPEED_LABEL } from './orders/orderDisplay';
 import { BookingSuccess } from './booking/BookingSuccess';
 
 const STEPS: BookingStepDef[] = [
@@ -111,9 +112,9 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
     }));
   }, [profile.data]);
 
-  // Only price the parcel on the review step, and only once the inputs the fee depends on are valid.
+  // Price the parcel on the parcel and review steps, once the inputs the fee depends on are valid.
   const estimateRequest = useMemo(() => {
-    if (step !== 'review' || !form.pickupDistrict || !form.deliveryDistrict) return null;
+    if ((step !== 'parcel' && step !== 'review') || !form.pickupDistrict || !form.deliveryDistrict) return null;
     const parcelErrors = validateStep('parcel', form);
     return Object.keys(parcelErrors).length === 0 ? toFeeEstimateRequest(form) : null;
   }, [step, form]);
@@ -270,7 +271,24 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
       <form noValidate onSubmit={handleNext} className="flex flex-col gap-6">
         {step === 'pickup' ? <PickupStep {...stepProps} /> : null}
         {step === 'dropoff' ? <DropoffStep {...stepProps} /> : null}
-        {step === 'parcel' ? <ParcelStep {...stepProps} /> : null}
+        {step === 'parcel' ? (
+          <>
+            <ParcelStep {...stepProps} />
+            {/* Orders are only created from the review step; this is just the live price. */}
+            {estimateRequest ? (
+              <FeePanel
+                estimate={estimate}
+                status={estimateStatus}
+                onRetry={retryEstimate}
+                speedLabel={SPEED_LABEL[form.speed]}
+              />
+            ) : (
+              <p className="text-body text-secondary">
+                Enter the weight and size to see the price.
+              </p>
+            )}
+          </>
+        ) : null}
         {isReview ? (
           <ReviewStep
             form={form}

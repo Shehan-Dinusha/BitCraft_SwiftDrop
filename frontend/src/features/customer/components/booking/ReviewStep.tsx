@@ -144,7 +144,7 @@ export function ReviewStep({
   );
 }
 
-function FeePanel({
+export function FeePanel({
   estimate,
   status,
   onRetry,
