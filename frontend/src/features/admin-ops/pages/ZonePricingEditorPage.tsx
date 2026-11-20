@@ -19,6 +19,7 @@ import {
   type ZoneRequest,
   type ZoneResponse
 } from '@/services/api/pricingApi';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const ZONES_KEY = ['pricing', 'zones'] as const;
 const MAPPINGS_KEY = ['pricing', 'district-mappings'] as const;
@@ -117,6 +118,11 @@ interface MappingRow {
 
 export function ZonePricingEditorPage() {
   const queryClient = useQueryClient();
+  // Dispatchers can view zones and tariffs, but only system admins can change them.
+  // The persona role maps dispatchers and admins to the same value, so the raw backend role is used.
+  const user = useAuthStore((state) => state.user);
+  const canEdit = user?.role === 'SYSTEM_ADMIN';
+
   const [editing, setEditing] = useState<ZoneResponse | 'new' | null>(null);
   const [form, setForm] = useState<ZoneForm>(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -135,7 +141,7 @@ export function ZonePricingEditorPage() {
     const { status, message } = readPricingApiError(error);
     setFeedback({
       tone: 'danger',
-      text: status === 403 ? 'Only dispatchers and system admins can change zones.' : (message ?? fallback)
+      text: status === 403 ? 'Only system admins can change zones.' : (message ?? fallback)
     });
   };
 
@@ -202,24 +208,24 @@ export function ZonePricingEditorPage() {
     setForm((current) => ({ ...current, [key]: event.target.value }));
 
   const zones = zonesQuery.data ?? [];
-    const zoneRows: ZoneRow[] = zones.map((zone) => ({
-      id: zone.zoneCode ?? String(zone.id),
-      zoneCode: zone.zoneCode ?? '',
-      zoneName: zone.zoneName ?? '',
-      tier: zone.tier ?? '',
-      baseFee: zone.baseFee ?? 0,
-      perKgFee: zone.perKgFee ?? 0,
-      expressMultiplier: zone.expressMultiplier ?? 0,
-      sameDayMultiplier: zone.sameDayMultiplier ?? 0,
-      actions: '',
-      zone
-    }));
-    const mappingRows: MappingRow[] = (mappingsQuery.data ?? []).map((mapping) => ({
-      id: String(mapping.district),
-      district: String(mapping.district),
-      zoneCode: mapping.zoneCode ?? '',
-      actions: ''
-    }));
+  const zoneRows: ZoneRow[] = zones.map((zone) => ({
+    id: zone.zoneCode ?? String(zone.id),
+    zoneCode: zone.zoneCode ?? '',
+    zoneName: zone.zoneName ?? '',
+    tier: zone.tier ?? '',
+    baseFee: zone.baseFee ?? 0,
+    perKgFee: zone.perKgFee ?? 0,
+    expressMultiplier: zone.expressMultiplier ?? 0,
+    sameDayMultiplier: zone.sameDayMultiplier ?? 0,
+    actions: '',
+    zone
+  }));
+  const mappingRows: MappingRow[] = (mappingsQuery.data ?? []).map((mapping) => ({
+    id: String(mapping.district),
+    district: String(mapping.district),
+    zoneCode: mapping.zoneCode ?? '',
+    actions: ''
+  }));
   const zoneOptions = zones.map((zone) => ({
     value: zone.zoneCode ?? '',
     label: `${zone.zoneCode} (${zone.zoneName})`
@@ -229,9 +235,11 @@ export function ZonePricingEditorPage() {
     <main className="flex flex-col gap-4 p-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-h3 text-primary">Zone pricing</h1>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-          New zone
-        </Button>
+        {canEdit ? (
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+            New zone
+          </Button>
+        ) : null}
       </div>
 
       {feedback ? (
@@ -260,20 +268,24 @@ export function ZonePricingEditorPage() {
               { key: 'perKgFee', label: 'Per kg (LKR)', align: 'right' },
               { key: 'expressMultiplier', label: 'Express x', align: 'right' },
               { key: 'sameDayMultiplier', label: 'Same-day x', align: 'right' },
-              {
-                key: 'actions',
-                label: 'Actions',
-                render: (row: ZoneRow) => (
-                  <span className="flex gap-1">
-                    <Button variant="ghost" onClick={() => openEdit(row.zone)}>
-                      Edit
-                    </Button>
-                    <Button variant="ghost" onClick={() => setDeleting(row.zone)}>
-                      Delete
-                    </Button>
-                  </span>
-                )
-              }
+              ...(canEdit
+                ? [
+                    {
+                      key: 'actions' as const,
+                      label: 'Actions',
+                      render: (row: ZoneRow) => (
+                        <span className="flex gap-1">
+                          <Button variant="ghost" onClick={() => openEdit(row.zone)}>
+                            Edit
+                          </Button>
+                          <Button variant="ghost" onClick={() => setDeleting(row.zone)}>
+                            Delete
+                          </Button>
+                        </span>
+                      )
+                    }
+                  ]
+                : [])
             ]}
           />
         )}
@@ -289,29 +301,31 @@ export function ZonePricingEditorPage() {
             rows={mappingRows}
             columns={[
               { key: 'district', label: 'District' },
-              {
-                key: 'actions',
-                label: 'Zone',
-                render: (row: MappingRow) => (
-                  <SelectDropdown
-                    label={`Zone for ${row.district}`}
-                    options={zoneOptions}
-                    value={row.zoneCode}
-                    onChange={(zoneCode: string) =>
-                      assignDistrict.mutate({
-                        district: row.district as SriLankanDistrict,
-                        zoneCode
-                      })
-                    }
-                  />
-                )
-              }
+              canEdit
+                ? {
+                    key: 'actions',
+                    label: 'Zone',
+                    render: (row: MappingRow) => (
+                      <SelectDropdown
+                        label={`Zone for ${row.district}`}
+                        options={zoneOptions}
+                        value={row.zoneCode}
+                        onChange={(zoneCode: string) =>
+                          assignDistrict.mutate({
+                            district: row.district as SriLankanDistrict,
+                            zoneCode
+                          })
+                        }
+                      />
+                    )
+                  }
+                : { key: 'zoneCode', label: 'Zone' }
             ]}
           />
         )}
       </SurfaceCard>
 
-      <TariffEditor />
+      <TariffEditor readOnly={!canEdit} />
 
       <Modal
         open={editing !== null}
