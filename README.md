@@ -330,7 +330,10 @@ This deploys the same Helm chart that runs on AKS, sized for a laptop with the [
 #  1. Docker Desktop → Settings → Kubernetes → Enable Kubernetes (cluster type: Kubeadm)
 #  2. Ingress controller
 helm repo add traefik https://traefik.github.io/charts && helm repo update
-helm --kube-context docker-desktop upgrade --install traefik traefik/traefik   -n traefik --create-namespace   --set ingressClass.isDefaultClass=true   --set providers.kubernetesIngress.publishedService.enabled=true
+helm --kube-context docker-desktop upgrade --install traefik traefik/traefik \
+  -n traefik --create-namespace \
+  --set ingressClass.isDefaultClass=true \
+  --set providers.kubernetesIngress.publishedService.enabled=true
 #  3. Secrets (writes the git-ignored infra/helm/swiftdrop/values-secrets.yaml)
 bash scripts/generate-helm-secrets.sh
 
@@ -339,7 +342,9 @@ kubectl config view --raw --minify --context docker-desktop > /tmp/kube-local
 KUBECONFIG=/tmp/kube-local bash scripts/k8s-local-build.sh
 
 # Deploy, then watch the pods start (1–3 minutes per service)
-helm --kube-context docker-desktop upgrade --install swiftdrop infra/helm/swiftdrop -n default   -f infra/helm/swiftdrop/values-local.yaml   -f infra/helm/swiftdrop/values-secrets.yaml
+helm --kube-context docker-desktop upgrade --install swiftdrop infra/helm/swiftdrop -n default \
+  -f infra/helm/swiftdrop/values-local.yaml \
+  -f infra/helm/swiftdrop/values-secrets.yaml
 kubectl --context docker-desktop get pods -A -l app.kubernetes.io/part-of=swiftdrop -w
 ```
 
