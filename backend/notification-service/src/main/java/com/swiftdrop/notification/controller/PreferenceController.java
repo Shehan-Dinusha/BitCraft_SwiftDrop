@@ -24,7 +24,7 @@ import java.util.UUID;
  */
 @Slf4j
 @RestController
-@RequestMapping({"/api/v1/notifications/preferences", "/api/v1/preference"})
+@RequestMapping("/api/v1/notifications/preferences")
 @Tag(name = "Preference", description = "Recipient notification preferences management")
 @RequiredArgsConstructor
 public class PreferenceController {

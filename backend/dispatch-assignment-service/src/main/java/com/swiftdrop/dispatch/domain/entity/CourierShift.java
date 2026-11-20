@@ -15,7 +15,6 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -43,12 +42,6 @@ public class CourierShift {
     @Enumerated(EnumType.STRING)
     @Column(name = "current_district", nullable = false, length = 64)
     private SriLankanDistrict currentDistrict;
-
-    @Column(name = "latitude", precision = 10, scale = 7)
-    private BigDecimal latitude;
-
-    @Column(name = "longitude", precision = 10, scale = 7)
-    private BigDecimal longitude;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "shift_status", nullable = false, length = 32)
@@ -129,12 +122,6 @@ public class CourierShift {
 
     public SriLankanDistrict getCurrentDistrict() { return currentDistrict; }
     public void setCurrentDistrict(SriLankanDistrict currentDistrict) { this.currentDistrict = currentDistrict; }
-
-    public BigDecimal getLatitude() { return latitude; }
-    public void setLatitude(BigDecimal latitude) { this.latitude = latitude; }
-
-    public BigDecimal getLongitude() { return longitude; }
-    public void setLongitude(BigDecimal longitude) { this.longitude = longitude; }
 
     public ShiftStatus getShiftStatus() { return shiftStatus; }
     public void setShiftStatus(ShiftStatus shiftStatus) { this.shiftStatus = shiftStatus; }

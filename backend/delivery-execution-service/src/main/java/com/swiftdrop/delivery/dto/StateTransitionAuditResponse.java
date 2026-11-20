@@ -4,7 +4,6 @@ import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.delivery.domain.entity.StateTransitionAudit;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -31,12 +30,6 @@ public record StateTransitionAuditResponse(
         @Schema(description = "Transition notes")
         String notes,
 
-        @Schema(description = "GPS latitude")
-        BigDecimal latitude,
-
-        @Schema(description = "GPS longitude")
-        BigDecimal longitude,
-
         @Schema(description = "Audit timestamp")
         Instant createdAt
 ) {
@@ -50,8 +43,6 @@ public record StateTransitionAuditResponse(
                 entity.getTriggeredBy(),
                 entity.getActorRole(),
                 entity.getNotes(),
-                entity.getLatitude(),
-                entity.getLongitude(),
                 entity.getCreatedAt()
         );
     }

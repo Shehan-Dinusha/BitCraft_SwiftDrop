@@ -4,7 +4,7 @@ globs:
   - "frontend/src/**/*.{ts,tsx}"
 ---
 
-# Frontend Velocity ergonomics and contracts
+# Frontend ergonomics and contracts
 
 Before editing a view, inspect its persona folder, `src/design-system`, `density.ts`, `colors.ts`, and the relevant generated OpenAPI declarations.
 

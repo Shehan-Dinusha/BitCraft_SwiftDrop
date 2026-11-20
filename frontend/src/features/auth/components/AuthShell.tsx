@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { BrandMark } from '@/design-system/components/BrandMark/BrandMark';
 import { DensityProvider } from '@/design-system/providers/DensityProvider';
 import { googleAuthorizeUrl } from '@/services/api/authApi';
 import { cn } from '@/utils/cn';
@@ -168,9 +168,7 @@ export function AuthShell({
             aria-label="SwiftDrop sign in"
             className="inline-flex items-center gap-2.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
           >
-            <span className="flex size-10 items-center justify-center rounded-xl bg-brand-primary text-brand-on shadow-ambient">
-              <Package aria-hidden="true" className="size-5" />
-            </span>
+            <BrandMark size={40} />
             <span className="text-h2 text-primary">SwiftDrop</span>
           </Link>
         </header>

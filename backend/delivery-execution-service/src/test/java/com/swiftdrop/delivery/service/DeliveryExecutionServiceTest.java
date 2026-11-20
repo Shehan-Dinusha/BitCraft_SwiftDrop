@@ -9,10 +9,7 @@ import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
-import com.swiftdrop.delivery.domain.entity.TrackingBreadcrumb;
 import com.swiftdrop.delivery.domain.repository.DeliverySessionRepository;
-import com.swiftdrop.delivery.domain.repository.TrackingBreadcrumbRepository;
-import com.swiftdrop.delivery.dto.CourierLocationUpdatePayload;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
 import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 import com.swiftdrop.delivery.messaging.publisher.DeliveryEventPublisher;
@@ -29,7 +26,6 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.time.Instant;
 import java.util.Optional;
@@ -46,8 +42,6 @@ class DeliveryExecutionServiceTest {
     @Mock
     private DeliverySessionRepository deliverySessionRepository;
 
-    @Mock
-    private TrackingBreadcrumbRepository breadcrumbRepository;
 
     @Spy
     private DeliveryStateMachine stateMachine = new DeliveryStateMachine();
@@ -102,7 +96,7 @@ class DeliveryExecutionServiceTest {
         assertThat(session.getCourierName()).isEqualTo("Sunil Perera");
 
         verify(auditTransitionAction).execute(any(), eq(orderId), eq(DeliveryState.CREATED),
-                eq(DeliveryState.ASSIGNED), any(), any(), any(), any(), any());
+                eq(DeliveryState.ASSIGNED), any(), any(), any());
         verify(publishStateTransitionAction).execute(any(), eq(orderId), any(), eq(courierId),
                 any(), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any());
     }
@@ -146,8 +140,6 @@ class DeliveryExecutionServiceTest {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.DELIVERED,
                 "Handed over to customer",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );
@@ -178,8 +170,6 @@ class DeliveryExecutionServiceTest {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.DELIVERED,
                 "Handed over with photo & signature",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );
@@ -192,36 +182,6 @@ class DeliveryExecutionServiceTest {
 
         verify(publishStateTransitionAction).execute(eq(deliveryId), eq(orderId), eq("SD-COL-12345"),
                 any(), any(), eq(DeliveryState.OUT_FOR_DELIVERY), eq(DeliveryState.DELIVERED), any(), any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("recordLocation: stores breadcrumb and publishes LocationUpdatedEvent")
-    void testRecordLocation() {
-        DeliverySession session = new DeliverySession();
-        session.setDeliveryId(deliveryId);
-        session.setCourierId(courierId);
-
-        when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
-        when(breadcrumbRepository.save(any(TrackingBreadcrumb.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        CourierLocationUpdatePayload payload = new CourierLocationUpdatePayload(
-                6.9271,
-                79.8612,
-                90.0,
-                30.0,
-                3.5
-        );
-
-        TrackingBreadcrumb breadcrumb = deliveryService.recordLocation(deliveryId, payload);
-
-        assertThat(breadcrumb).isNotNull();
-        assertThat(breadcrumb.getDeliveryId()).isEqualTo(deliveryId);
-        assertThat(breadcrumb.getCourierId()).isEqualTo(courierId);
-        assertThat(breadcrumb.getLatitude()).isEqualTo(BigDecimal.valueOf(6.9271));
-
-        verify(eventPublisher).publishLocationUpdated(argThat(e ->
-                e.deliveryId().equals(deliveryId) && e.latitude() == 6.9271
-        ));
     }
 
     @Test
@@ -276,34 +236,11 @@ class DeliveryExecutionServiceTest {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.PICKED_UP,
                 "Picked up parcel",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );
 
         assertThatThrownBy(() -> deliveryService.transition(deliveryId, request, caller))
-                .isInstanceOf(ForbiddenException.class);
-    }
-
-    @Test
-    @DisplayName("recordLocation with caller: Courier A updating Courier B throws ForbiddenException")
-    void testRecordLocationForbiddenForOtherCourier() {
-        UUID courierB = UUID.randomUUID();
-        DeliverySession session = new DeliverySession();
-        session.setDeliveryId(deliveryId);
-        session.setCourierId(courierB);
-
-        when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
-
-        UUID courierA = UUID.randomUUID();
-        CallerContext caller = new CallerContext(courierA, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);
-
-        CourierLocationUpdatePayload payload = new CourierLocationUpdatePayload(
-                6.9271, 79.8612, 90.0, 30.0, 3.5
-        );
-
-        assertThatThrownBy(() -> deliveryService.recordLocation(deliveryId, payload, caller))
                 .isInstanceOf(ForbiddenException.class);
     }
 

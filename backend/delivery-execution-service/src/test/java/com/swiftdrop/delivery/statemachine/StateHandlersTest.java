@@ -17,7 +17,6 @@ import com.swiftdrop.delivery.statemachine.states.PickedUpState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -97,8 +96,6 @@ class StateHandlersTest {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.DELIVERED,
                 "Delivered successfully",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );
@@ -117,7 +114,7 @@ class StateHandlersTest {
     @DisplayName("OutForDeliveryState validate: DELIVERED fails closed without a guard or delivery id")
     void testOutForDeliveryStateFailsClosedWithoutProofContext() {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
-                DeliveryState.DELIVERED, "Delivered", null, null, null, "COURIER");
+                DeliveryState.DELIVERED, "Delivered", null, "COURIER");
         DeliverySession session = new DeliverySession();
         session.setDeliveryId(UUID.randomUUID());
 
@@ -141,8 +138,6 @@ class StateHandlersTest {
         TransitionDeliveryRequest requestWithoutReason = new TransitionDeliveryRequest(
                 DeliveryState.FAILED,
                 "Recipient not home",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );
@@ -154,8 +149,6 @@ class StateHandlersTest {
         TransitionDeliveryRequest requestWithReason = new TransitionDeliveryRequest(
                 DeliveryState.FAILED,
                 "Recipient not home",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 DeliveryFailureReason.CUSTOMER_UNAVAILABLE,
                 "COURIER"
         );

@@ -26,7 +26,6 @@ import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -117,8 +116,6 @@ class StatusEventPublishIT {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.PICKED_UP,
                 "Package collected from merchant",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );

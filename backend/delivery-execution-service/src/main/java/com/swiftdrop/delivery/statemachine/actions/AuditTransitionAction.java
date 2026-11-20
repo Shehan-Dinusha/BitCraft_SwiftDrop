@@ -5,7 +5,6 @@ import com.swiftdrop.delivery.domain.entity.StateTransitionAudit;
 import com.swiftdrop.delivery.domain.repository.StateTransitionAuditRepository;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -25,9 +24,7 @@ public class AuditTransitionAction {
             DeliveryState toState,
             String triggeredBy,
             String actorRole,
-            String notes,
-            BigDecimal latitude,
-            BigDecimal longitude) {
+            String notes) {
 
         StateTransitionAudit audit = new StateTransitionAudit();
         audit.setDeliveryId(deliveryId);
@@ -37,8 +34,6 @@ public class AuditTransitionAction {
         audit.setTriggeredBy(triggeredBy != null ? triggeredBy : "COURIER_APP");
         audit.setActorRole(actorRole != null ? actorRole : "COURIER");
         audit.setNotes(notes);
-        audit.setLatitude(latitude);
-        audit.setLongitude(longitude);
         audit.setCreatedAt(Instant.now());
 
         return auditRepository.save(audit);

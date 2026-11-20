@@ -25,7 +25,7 @@ export interface DensityRecipe {
   readonly maxActions: number;
 }
 
-/** Velocity / Density "Kinetic" mode: 56px controls, 20/16 padding, 24px icons, 12px radius. */
+/** Density "Kinetic" mode: 56px controls, 20/16 padding, 24px icons, 12px radius. */
 const kineticRecipe: DensityRecipe = {
   className: 'density-kinetic',
   minTarget: 56,

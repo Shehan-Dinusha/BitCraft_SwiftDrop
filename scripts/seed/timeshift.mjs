@@ -328,14 +328,13 @@ function main() {
     + 'COMMIT;');
   console.log('   dispatch: done');
 
-  // Delivery (photos, audits and breadcrumbs follow their delivery session's order).
+  // Delivery (photos and audits follow their delivery session's order).
   cols = columnsOf('delivery');
   const viaSession = { from: 'delivery_sessions d JOIN shift s ON s.order_id = d.order_id', where: 'x.delivery_id = d.delivery_id' };
   psql('delivery', `BEGIN;\n${header}`
     + shiftUpdate(cols, 'delivery_sessions', ['created_at', 'updated_at', 'pickup_at', 'delivered_at'])
     + shiftUpdate(cols, 'state_transition_audits', ['created_at'])
     + shiftUpdate(cols, 'proof_of_delivery', ['created_at', 'verified_at'], viaSession)
-    + shiftUpdate(cols, 'tracking_breadcrumbs', ['recorded_at'], viaSession)
     + stepUpdate(cols, 'state_transition_audits', 'created_at',
       "(CASE x.to_state WHEN 'ASSIGNED' THEN 'PICKUP_ASSIGNED' WHEN 'CREATED' THEN 'PICKUP_ASSIGNED' ELSE x.to_state END)")
     + stepUpdate(cols, 'delivery_sessions', 'created_at', "'PICKUP_ASSIGNED'")

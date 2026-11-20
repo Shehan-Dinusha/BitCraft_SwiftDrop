@@ -34,5 +34,10 @@ management:
 springdoc:
   api-docs:
     version: OPENAPI_3_1
+  # Legacy aliases of /api/v1/analytics and /api/v1/analytics/ai. They still work through the gateway,
+  # but are left out of the docs so each operation is listed once.
+  paths-to-exclude:
+    - /api/v1/operational-kpi/**
+    - /api/v1/ai-delivery-assistant/**
   swagger-ui:
     path: /swagger-ui.html

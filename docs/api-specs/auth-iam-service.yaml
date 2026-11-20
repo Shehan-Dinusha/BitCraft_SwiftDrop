@@ -6,8 +6,8 @@ info:
     Access tokens are signed JWTs; refresh tokens are opaque, hashed at rest, and rotated on use.
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
-    description: API Gateway
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
 security:
   - bearerAuth: []
 paths:
@@ -308,6 +308,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/oauth2/google/authorize:
+    get:
+      tags: [Auth]
+      summary: Start Google OAuth 2.0 login
+      description: Redirects the browser to Google's consent screen. Returns 503 if Google OAuth credentials are not configured.
+      operationId: googleAuthorize
+      security: []
+      responses:
+        '302':
+          description: Redirect to Google's consent screen
+        '503':
+          description: Google OAuth is not configured
+  /api/v1/auth/oauth2/google/callback:
+    get:
+      tags: [Auth]
+      summary: Google OAuth 2.0 callback
+      description: >-
+        Receives the authorization code from Google, validates the state token, upserts the user, and
+        redirects to the frontend callback page with a short-lived one-time exchange code in the query string.
+      operationId: googleCallback
+      security: []
+      parameters:
+        - { name: code, in: query, required: false, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { type: string } }
+        - { name: error, in: query, required: false, schema: { type: string } }
+      responses:
+        '302':
+          description: Redirect to the frontend OAuth callback page
+  /api/v1/auth/oauth2/exchange:
+    post:
+      tags: [Auth]
+      summary: Exchange OAuth one-time code for SwiftDrop tokens
+      description: >-
+        Accepts the short-lived code issued by the Google callback and returns a token pair. The code is
+        consumed immediately and cannot be reused. The refresh token is set as the HttpOnly cookie.
+      operationId: googleExchange
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthExchangeRequest'
+      responses:
+        '200':
+          description: Token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+  /api/v1/auth/.well-known/jwks.json:
+    get:
+      tags: [Signing keys]
+      summary: Get the public JSON Web Key Set
+      operationId: jwks
+      security: []
+      responses:
+        '200':
+          description: Public RSA verification keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwksResponse'
   /api/v1/auth/logout:
     post:
       tags: [Auth]
@@ -950,6 +1013,34 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/UserStatus'
+    OAuthExchangeRequest:
+      type: object
+      description: One-time code returned from the Google OAuth callback, to be exchanged for tokens
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: One-time exchange code from the OAuth callback redirect
+    JwksResponse:
+      type: object
+      description: JSON Web Key Set. Empty in HS256 mode unless an RSA pair has been configured for migration.
+      properties:
+        keys:
+          type: array
+          description: Public RSA signing keys.
+          items:
+            $ref: '#/components/schemas/JwkResponse'
+    JwkResponse:
+      type: object
+      description: RSA public verification key. Contains no private or symmetric key material.
+      properties:
+        kty: { type: string, enum: [RSA], description: Key type. }
+        use: { type: string, enum: [sig], description: Public key use. }
+        alg: { type: string, enum: [RS256], description: Allowed signature algorithm. }
+        kid: { type: string, description: "Stable SHA-256 fingerprint of the X.509 public key, encoded as base64url." }
+        n: { type: string, description: Unsigned RSA modulus encoded as base64url without padding. }
+        e: { type: string, description: Unsigned RSA exponent encoded as base64url without padding. }
     TokenResponse:
       type: object
       properties:

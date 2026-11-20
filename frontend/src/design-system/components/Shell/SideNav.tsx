@@ -1,7 +1,8 @@
-import { LogOut, Package } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/design-system/primitives/Button';
+import { BrandMark } from '../BrandMark/BrandMark';
 import { navIcons } from './navIcons';
 import { NavItem } from './NavItem';
 import { roleShellSpec, type NavEntry, type NavGroup, type ShellRole } from './roleNav';
@@ -114,15 +115,7 @@ export function SideNav({
           operational && rail && 'mb-5'
         )}
       >
-        <span
-          aria-hidden="true"
-          className={cn(
-            'flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary text-brand-on',
-            operational && 'size-10 rounded-xl shadow-sm'
-          )}
-        >
-          <Package className="size-[18px]" />
-        </span>
+        <BrandMark size={operational ? 40 : 32} />
         {rail ? null : (
           <>
             <div className="flex min-w-0 flex-1 flex-col">

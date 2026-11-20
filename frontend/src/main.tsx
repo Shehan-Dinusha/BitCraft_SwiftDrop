@@ -7,6 +7,7 @@ import { AuthProvider } from '@/app/providers/AuthProvider';
 import { DensityProvider } from '@/app/providers/DensityProvider';
 import { WebSocketProvider } from '@/app/providers/WebSocketProvider';
 import { applyDevAuthBypass } from '@/app/devAuthBypass';
+import { PwaLayer } from '@/features/pwa/PwaLayer';
 import './index.css';
 
 applyDevAuthBypass();
@@ -19,6 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <WebSocketProvider>
             <BrowserRouter>
               <App />
+              <PwaLayer />
             </BrowserRouter>
           </WebSocketProvider>
         </DensityProvider>

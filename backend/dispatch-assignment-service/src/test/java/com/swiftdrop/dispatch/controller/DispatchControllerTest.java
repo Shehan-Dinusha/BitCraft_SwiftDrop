@@ -370,7 +370,7 @@ class DispatchControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("Conflict"))
                 .andExpect(jsonPath("$.message").value(
-                        "The courier's record was changed by another operation, such as a location update or "
+                        "The courier's record was changed by another operation, such as a status update or "
                                 + "another assignment. Refresh and retry."));
 
         verify(manualOverrideService, times(3)).manualAssign(any(ManualAssignRequest.class), any());

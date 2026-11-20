@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  *
  * <p>Email clients ignore most modern CSS, so the layout uses nested tables, inline styles,
  * web-safe fonts and no images. Every dynamic value is HTML-escaped. Colours come from the
- * Velocity design tokens (brand {@code #2563eb} and the per-status colours).
+ * SwiftDrop design tokens (brand {@code #2563eb} and the per-status colours).
  */
 @Component
 public class EmailHtmlRenderer {

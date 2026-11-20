@@ -1,10 +1,10 @@
 {
   "$schema": "https://tr.designtokens.org/format/",
   "meta": {
-    "name": "SwiftDrop Velocity Design System",
+    "name": "SwiftDrop Design System",
     "version": "2.0.0",
     "package": "@swiftdrop/ui",
-    "description": "Generated from Figma variable collections (Velocity / Primitives, Velocity / Theme, Velocity / Density) in file XX3u7zxTDat0l2MbG27niR on 2026-10-29. Light theme only."
+    "description": "Generated from Figma variable collections (Primitives, Theme, Density) in file XX3u7zxTDat0l2MbG27niR on 2026-10-29. Light theme only."
   },
   "primitives": {
     "color": {

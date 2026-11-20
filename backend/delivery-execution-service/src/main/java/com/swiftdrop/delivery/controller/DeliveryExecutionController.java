@@ -5,9 +5,7 @@ import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
-import com.swiftdrop.delivery.dto.CourierLocationUpdatePayload;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
-import com.swiftdrop.delivery.dto.TrackingBreadcrumbResponse;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
 import com.swiftdrop.delivery.service.DeliveryExecutionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -115,27 +113,6 @@ public class DeliveryExecutionController {
                 ? deliveryService.transition(deliveryId, request, caller)
                 : deliveryService.transition(deliveryId, request);
         return ApiResponse.success(DeliverySessionResponse.fromEntity(session), "Delivery transitioned to " + session.getCurrentState());
-    }
-
-    @PostMapping("/{deliveryId}/location")
-    @Operation(summary = "Record courier GPS telemetry breadcrumb")
-    public ApiResponse<TrackingBreadcrumbResponse> recordLocation(
-            @PathVariable UUID deliveryId,
-            @Valid @RequestBody CourierLocationUpdatePayload payload,
-            HttpServletRequest httpRequest) {
-        CallerContext caller = resolveCaller(httpRequest);
-        var breadcrumb = caller != null
-                ? deliveryService.recordLocation(deliveryId, payload, caller)
-                : deliveryService.recordLocation(deliveryId, payload);
-        return ApiResponse.success(TrackingBreadcrumbResponse.fromEntity(breadcrumb), "Location breadcrumb recorded");
-    }
-
-    @GetMapping("/{deliveryId}/breadcrumbs")
-    @Operation(summary = "Get recent GPS telemetry breadcrumbs for delivery")
-    public ApiResponse<List<TrackingBreadcrumbResponse>> getBreadcrumbs(
-            @PathVariable UUID deliveryId,
-            HttpServletRequest request) {
-        return ApiResponse.success(deliveryService.getBreadcrumbs(deliveryId, resolveCaller(request)), "Breadcrumbs retrieved");
     }
 
     private CallerContext resolveCaller(HttpServletRequest request) {

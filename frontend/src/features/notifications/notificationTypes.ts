@@ -34,7 +34,7 @@ export interface NotificationTypeMeta {
   /** One-line description for the settings page. */
   description: string;
   Icon: LucideIcon;
-  /** Delivery status whose Velocity colours tint the icon. */
+  /** Delivery status whose SwiftDrop status colours tint the icon. */
   status: PublicOrderStatus;
   /** Whether this type is also emailed (team and operations alerts are in-app only). */
   emailed: boolean;

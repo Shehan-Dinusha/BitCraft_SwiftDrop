@@ -22,7 +22,7 @@ dto/
 exception/
 ```
 
-`delivery-execution-service` owns the delivery FSM, state guards, courier transitions, PoD storage/verification, and publication of `DeliveryStateChangedEvent` and `LocationUpdatedEvent`. `api-gateway` owns the tracking consumer, public tracking DTO, PII sanitizer proxy, and SSE/WebSocket broadcast hub. Do not move tracking handlers back into delivery execution.
+`delivery-execution-service` owns the delivery FSM, state guards, courier transitions, PoD storage/verification, and publication of `DeliveryStateChangedEvent`. SwiftDrop does not use device location; do not add GPS endpoints, columns or events. `api-gateway` owns the tracking consumer, public tracking DTO, PII sanitizer proxy, and SSE/WebSocket broadcast hub. Do not move tracking handlers back into delivery execution.
 
 ## REST and OpenAPI contract rules
 
@@ -36,7 +36,7 @@ exception/
 ## RabbitMQ conventions
 
 - Use the durable topic exchange `swiftdrop.events.exchange` for the delivery tracking flow.
-- Delivery state and location events use `parcel.status.changed`; the gateway queue binds with `parcel.status.changed.#`.
+- Delivery state events use `parcel.status.changed`; the gateway queue binds with `parcel.status.changed.#`.
 - Preserve `eventId`, `correlationId`, and event timestamps. Use [JwtHeaderConstants.java](common-contracts/src/main/java/com/swiftdrop/contracts/security/JwtHeaderConstants.java) and `X-Correlation-Id` for HTTP propagation.
 - Consumers must be idempotent: tolerate duplicate delivery, use event IDs where persistence or side effects are added, and do not leak raw event PII to public clients.
 - Keep broker declarations synchronized between Java `RabbitMQConfig.java` and [definitions.json](../infra/local/rabbitmq/definitions.json).

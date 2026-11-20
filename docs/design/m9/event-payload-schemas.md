@@ -463,47 +463,7 @@ These templates cannot be triggered through `POST /api/v1/notifications/logs/dis
 
 ---
 
-### 2.12 `delivery.location.updated` — `LocationUpdatedEvent`
-
-* **Producer:** `delivery-execution-service` (:8085), from courier location pings
-* **Routing Key:** `delivery.location.updated`
-* **Destination Queues:** `delivery.events.queue` (via `delivery.#`)
-* **Consumers:** `delivery-execution-service` (internal)
-
-#### Field Specification
-
-| Field Name | Type | Nullable | Description | Privacy / PII |
-|---|---|---|---|---|
-| `eventId` | `UUID` | No | Unique event identifier | Safe |
-| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
-| `deliveryId` | `UUID` | No | Delivery record identifier | Safe |
-| `courierId` | `UUID` | No | Courier sending the location | Safe |
-| `latitude` | `double` | No | WGS-84 latitude | Courier location: share only through the sanitised tracking hub |
-| `longitude` | `double` | No | WGS-84 longitude | Courier location: share only through the sanitised tracking hub |
-| `bearingDegrees` | `double` | No | Heading in degrees (0 to 360) | Safe |
-| `speedKmh` | `double` | No | Speed in km/h | Safe |
-| `accuracy` | `double` | No | GPS accuracy in metres | Safe |
-| `timestamp` | `Instant` | No | Fix timestamp | Safe |
-
-#### Example JSON Payload
-```json
-{
-  "eventId": "9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e2f",
-  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
-  "deliveryId": "4c5d6e7f-8091-4a2b-b3c4-d5e6f708192a",
-  "courierId": "8b7c6d5e-4f3a-2b1c-0d9e-8f7a6b5c4d3e",
-  "latitude": 7.2906,
-  "longitude": 80.6337,
-  "bearingDegrees": 145.0,
-  "speedKmh": 32.5,
-  "accuracy": 8.0,
-  "timestamp": "2026-11-16T11:22:10Z"
-}
-```
-
----
-
-### 2.13 `notification.auth.login` — `AuthLoginEvent`
+### 2.12 `notification.auth.login` — `AuthLoginEvent`
 
 * **Producer:** `auth-iam-service` (:8081): after a successful sign-in (password, second factor or Google), and after a wrong password for an **existing** account. notification-service emails a success alert only for a device and network not used in the last 30 days
 * **Routing Key:** `notification.auth.login` (under `notification.` so the existing `notification.#` binding delivers it)

@@ -13,7 +13,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -73,12 +72,6 @@ public class DeliverySession {
 
     @Column(name = "delivered_at")
     private Instant deliveredAt;
-
-    @Column(name = "current_latitude", precision = 10, scale = 7)
-    private BigDecimal currentLatitude;
-
-    @Column(name = "current_longitude", precision = 10, scale = 7)
-    private BigDecimal currentLongitude;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -150,12 +143,6 @@ public class DeliverySession {
 
     public Instant getDeliveredAt() { return deliveredAt; }
     public void setDeliveredAt(Instant deliveredAt) { this.deliveredAt = deliveredAt; }
-
-    public BigDecimal getCurrentLatitude() { return currentLatitude; }
-    public void setCurrentLatitude(BigDecimal currentLatitude) { this.currentLatitude = currentLatitude; }
-
-    public BigDecimal getCurrentLongitude() { return currentLongitude; }
-    public void setCurrentLongitude(BigDecimal currentLongitude) { this.currentLongitude = currentLongitude; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

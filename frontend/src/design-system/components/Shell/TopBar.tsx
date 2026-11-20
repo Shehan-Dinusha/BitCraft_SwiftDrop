@@ -2,7 +2,6 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
-  Package,
   Pencil,
   Search,
   Sparkles,
@@ -13,6 +12,7 @@ import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/utils/cn';
 import { useMediaQuery } from '@/design-system/components/Shell/useMediaQuery';
 import { Button } from '@/design-system/primitives/Button';
+import { BrandMark } from '@/design-system/components/BrandMark/BrandMark';
 import {
   LiveIndicator,
   type LiveIndicatorState
@@ -207,7 +207,7 @@ export interface PublicHeaderProps {
   className?: string;
 }
 
-/** Figma TopBar (Role = Public): a utility strip plus the main marketing bar with quick track. */
+/** Public header: the SwiftDrop brand, quick track and sign-in. */
 export function PublicHeader({
   onTrack,
   onSignIn,
@@ -272,36 +272,11 @@ export function PublicHeader({
 
   return (
     <header className={cn('border-b border-border-subtle bg-card', className)}>
-      <div className="flex items-center gap-5 bg-canvas px-4 py-1.5 text-caption text-secondary">
-        <span className="truncate">Island-wide delivery · 25 districts · cash on pickup</span>
-        <span className="ml-auto hidden gap-5 md:flex">
-          <a href="#help">Help centre</a>
-          <a href="#branch">Find a branch</a>
-          <a href="#business">For business</a>
-          <span>English / Sinhala / Tamil</span>
-        </span>
-      </div>
       <div className="flex items-center justify-between gap-4 px-4 py-3.5 w-full max-w-screen-2xl mx-auto">
-        <div className="flex items-center gap-4 shrink-0">
-          <span className="flex items-center gap-2.5 shrink-0">
-            <span
-              aria-hidden="true"
-              className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
-            >
-              <Package className="size-[18px]" />
-            </span>
-            <span className="text-h3 text-primary">SwiftDrop</span>
-          </span>
-          <nav
-            aria-label="Primary"
-            className="hidden gap-7 text-label text-primary md:flex shrink-0"
-          >
-            <a href="#ship">Ship</a>
-            <a href="#track">Track</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#business">Business</a>
-          </nav>
-        </div>
+        <span className="flex items-center gap-2.5 shrink-0">
+          <BrandMark size={32} />
+          <span className="text-h3 text-primary">SwiftDrop</span>
+        </span>
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Active tracking chip with edit and clear */}
