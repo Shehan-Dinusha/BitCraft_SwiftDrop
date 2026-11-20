@@ -56,7 +56,10 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
     },
     {
       label: 'Account',
-      items: [{ id: 'profile', label: 'Profile', icon: 'user', to: '/customer/profile' }]
+      items: [
+        { id: 'notifications', label: 'Notifications', icon: 'bell', to: '/customer/notifications' },
+        { id: 'profile', label: 'Profile', icon: 'user', to: '/customer/profile' }
+      ]
     }
   ],
   courier: [
