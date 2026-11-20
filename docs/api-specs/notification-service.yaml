@@ -280,6 +280,95 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseInteger"
 
+  /api/v1/notifications/push/public-key:
+    get:
+      tags: [DevicePush]
+      summary: Get the VAPID public key browsers subscribe with
+      description: enabled is false when the server has no VAPID keys; the in-app inbox still works then.
+      responses:
+        "200":
+          description: The key, or enabled false
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponsePushPublicKeyResponse"
+
+  /api/v1/notifications/me/push-subscriptions:
+    post:
+      tags: [DevicePush]
+      summary: Register this device for the caller's notifications
+      description: >-
+        Upserts on the endpoint, so a device that was registered by another account moves to the caller.
+        Only https endpoints of the browsers' push services are accepted.
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionRequest"
+      responses:
+        "201":
+          description: This device will receive notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+        "400":
+          description: Not a browser push service endpoint, or invalid keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+        "401":
+          description: Missing or invalid X-User-Id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+        "503":
+          description: Device notifications are not configured on this server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+    delete:
+      tags: [DevicePush]
+      summary: Stop notifications on this device
+      description: Removes the device only if it belongs to the caller. Answers 200 either way, so sign-out can call it safely.
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushUnsubscribeRequest"
+      responses:
+        "200":
+          description: data is true when a device was removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseBoolean"
+        "401":
+          description: Missing or invalid X-User-Id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -486,6 +575,73 @@ components:
           type: string
           format: date-time
 
+    PushPublicKeyResponse:
+      type: object
+      description: What a browser needs to subscribe to device notifications
+      properties:
+        enabled:
+          type: boolean
+          description: False when the server has no VAPID keys; device notifications are unavailable
+        publicKey:
+          type: string
+          nullable: true
+          description: VAPID public key (base64url, uncompressed P-256 point) for pushManager.subscribe; null when disabled
+    ApiResponsePushPublicKeyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/PushPublicKeyResponse"
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    PushSubscriptionRequest:
+      type: object
+      description: This device's push subscription, as returned by PushSubscription.toJSON(); other fields are ignored
+      required: [endpoint, keys]
+      properties:
+        endpoint:
+          type: string
+          maxLength: 2048
+          description: Push service URL of this device
+          example: https://fcm.googleapis.com/fcm/send/dpH5lCsTSSM:APA91bH
+        keys:
+          $ref: "#/components/schemas/PushSubscriptionKeys"
+    PushSubscriptionKeys:
+      type: object
+      required: [p256dh, auth]
+      properties:
+        p256dh:
+          type: string
+          maxLength: 128
+          description: P-256 public key of the browser (base64url)
+        auth:
+          type: string
+          maxLength: 64
+          description: Authentication secret (base64url, 16 bytes)
+    PushUnsubscribeRequest:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint:
+          type: string
+          maxLength: 2048
+          description: Push service URL of the device, from PushSubscription.endpoint
+    ApiResponseBoolean:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: boolean
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
     ApiResponseLong:
       type: object
       properties:

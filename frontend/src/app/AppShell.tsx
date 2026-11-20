@@ -24,6 +24,7 @@ import { useUnreadNotificationCount } from '@/features/notifications/useNotifica
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
 import { logoutUser } from '@/services/api/authApi';
+import { forgetDeviceOnSignOut } from '@/features/pwa/webPush';
 import { roleHome } from '@/app/roleHome';
 import type { PersonaRole } from '@/types/contracts';
 
@@ -179,6 +180,9 @@ export function AppShell() {
   const confirmSignOut = () => {
     setSigningOut(true);
     void (async () => {
+      // While the token is still valid: stop lock-screen notifications on this device, so the next
+      // person on a shared phone never gets this user's alerts. Never throws, waits at most 3 s.
+      await forgetDeviceOnSignOut();
       try {
         // Revokes the refresh token and blacklists the access token on the server.
         await logoutUser();

@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react';
 import { Alert, Button, Field, SurfaceCard } from '@/design-system';
 import { Modal } from '@/design-system/primitives/Modal';
 import { leaveToLogin } from '@/features/auth/leaveToLogin';
+import { forgetDeviceOnSignOut } from '@/features/pwa/webPush';
 import { parseApiError } from '@/services/api/apiError';
 import { deleteOwnAccount } from '@/services/api/authApi';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -35,6 +36,8 @@ export function DeleteAccountCard() {
     setDeleting(true);
     try {
       await deleteOwnAccount(password);
+      // The account is gone, so stop lock-screen notifications on this device too.
+      await forgetDeviceOnSignOut(3000, { tellServer: false });
       leaveToLogin(signOut, navigate, 'Your account has been deleted.');
     } catch (requestError) {
       setError(

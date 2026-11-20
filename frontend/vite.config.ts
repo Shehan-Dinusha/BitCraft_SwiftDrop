@@ -53,11 +53,17 @@ function webhookDevProxy(env: Record<string, string>): ProxyOptions {
  *
  * registerType 'prompt': a new version waits until the user taps "Reload" (src/features/pwa), so a
  * courier is never reloaded in the middle of a delivery.
+ *
+ * strategies 'injectManifest': the worker is our own src/sw.ts (precache, navigation fallback,
+ * SKIP_WAITING for "Reload", and lock-screen push notifications); only the precache list is injected.
  */
 function pwa() {
   return VitePWA({
     registerType: 'prompt',
     injectRegister: false,
+    strategies: 'injectManifest',
+    srcDir: 'src',
+    filename: 'sw.ts',
     manifest: {
       id: '/',
       name: 'SwiftDrop',
@@ -89,11 +95,9 @@ function pwa() {
         }
       ]
     },
-    workbox: {
+    // Navigation fallback and its denylist live in src/sw.ts.
+    injectManifest: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-      navigateFallback: '/index.html',
-      navigateFallbackDenylist: [/^\/api\//, /^\/ws\//, /^\/swagger-ui/, /^\/v3\/api-docs/, /^\/webjars\//, /^\/healthz$/],
-      cleanupOutdatedCaches: true,
       // The main bundle is ~1.3 MB; keep it precached.
       maximumFileSizeToCacheInBytes: 3 * 1024 * 1024
     }

@@ -106,6 +106,13 @@ secrets:
     endpoint: ""
     senderAddress: ""
     accessKey: ""
+  # Optional — Web Push (lock-screen notifications). Empty privateKey = device push off; the in-app
+  # inbox still works. scripts/generate-helm-secrets.sh creates the VAPID pair. publicKey and subject
+  # are not secret; they sit here so one file holds the setup.
+  webPush:
+    publicKey: ""       # base64url P-256 point (65 bytes)
+    privateKey: ""      # base64url P-256 scalar (32 bytes)
+    subject: ""         # mailto:you@example.com or https://your-site
 
 # ── Shared config (ConfigMap "swiftdrop-common-config", mounted into every backend service) ──
 commonConfig:
@@ -373,8 +380,12 @@ services:
       NOTIFICATION_EMAIL_PROVIDER: '{{ if .Values.secrets.acsEmail.accessKey }}azure{{ else }}mock{{ end }}'
       ACS_EMAIL_ENDPOINT: '{{ if .Values.secrets.acsEmail.accessKey }}{{ required "secrets.acsEmail.endpoint is required when acsEmail.accessKey is set" .Values.secrets.acsEmail.endpoint }}{{ end }}'
       ACS_EMAIL_SENDER_ADDRESS: '{{ if .Values.secrets.acsEmail.accessKey }}{{ required "secrets.acsEmail.senderAddress is required when acsEmail.accessKey is set" .Values.secrets.acsEmail.senderAddress }}{{ end }}'
+      # Lock-screen (Web Push) notifications once secrets.webPush.privateKey is set.
+      WEB_PUSH_PUBLIC_KEY: '{{ if .Values.secrets.webPush.privateKey }}{{ required "secrets.webPush.publicKey is required when webPush.privateKey is set" .Values.secrets.webPush.publicKey }}{{ end }}'
+      WEB_PUSH_SUBJECT: '{{ if .Values.secrets.webPush.privateKey }}{{ required "secrets.webPush.subject (mailto: or https:) is required when webPush.privateKey is set" .Values.secrets.webPush.subject }}{{ end }}'
     secretEnv:
       - { name: ACS_EMAIL_ACCESS_KEY, secretName: notification-acs-email, key: access-key, optional: true }
+      - { name: WEB_PUSH_PRIVATE_KEY, secretName: notification-web-push, key: private-key, optional: true }
 
   analytics-ai-service:
     enabled: true

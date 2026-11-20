@@ -570,6 +570,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/push/public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the VAPID public key browsers subscribe with
+         * @description enabled is false when the server has no VAPID keys; the in-app inbox still works then.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The key, or enabled false */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePushPublicKeyResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/me/push-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register this device for the caller's notifications
+         * @description Upserts on the endpoint, so a device that was registered by another account moves to the caller. Only https endpoints of the browsers' push services are accepted.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-User-Id": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PushSubscriptionRequest"];
+                };
+            };
+            responses: {
+                /** @description This device will receive notifications */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+                /** @description Not a browser push service endpoint, or invalid keys */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+                /** @description Missing or invalid X-User-Id */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+                /** @description Device notifications are not configured on this server */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+            };
+        };
+        /**
+         * Stop notifications on this device
+         * @description Removes the device only if it belongs to the caller. Answers 200 either way, so sign-out can call it safely.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-User-Id": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PushUnsubscribeRequest"];
+                };
+            };
+            responses: {
+                /** @description data is true when a device was removed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBoolean"];
+                    };
+                };
+                /** @description Missing or invalid X-User-Id */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -677,6 +826,46 @@ export interface components {
         ApiResponseListInAppNotificationResponse: {
             success?: boolean;
             data?: components["schemas"]["InAppNotificationResponse"][];
+            message?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        /** @description What a browser needs to subscribe to device notifications */
+        PushPublicKeyResponse: {
+            /** @description False when the server has no VAPID keys; device notifications are unavailable */
+            enabled?: boolean;
+            /** @description VAPID public key (base64url, uncompressed P-256 point) for pushManager.subscribe; null when disabled */
+            publicKey?: string | null;
+        };
+        ApiResponsePushPublicKeyResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PushPublicKeyResponse"];
+            message?: string;
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        /** @description This device's push subscription, as returned by PushSubscription.toJSON(); other fields are ignored */
+        PushSubscriptionRequest: {
+            /**
+             * @description Push service URL of this device
+             * @example https://fcm.googleapis.com/fcm/send/dpH5lCsTSSM:APA91bH
+             */
+            endpoint: string;
+            keys: components["schemas"]["PushSubscriptionKeys"];
+        };
+        PushSubscriptionKeys: {
+            /** @description P-256 public key of the browser (base64url) */
+            p256dh: string;
+            /** @description Authentication secret (base64url, 16 bytes) */
+            auth: string;
+        };
+        PushUnsubscribeRequest: {
+            /** @description Push service URL of the device, from PushSubscription.endpoint */
+            endpoint: string;
+        };
+        ApiResponseBoolean: {
+            success?: boolean;
+            data?: boolean;
             message?: string;
             /** Format: date-time */
             timestamp?: string;

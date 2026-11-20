@@ -12,6 +12,8 @@ import com.swiftdrop.notification.messaging.trigger.NotificationTrigger;
 import com.swiftdrop.notification.messaging.trigger.TeamNotification;
 import com.swiftdrop.notification.service.InAppNotificationService;
 import com.swiftdrop.notification.service.MerchantDirectory;
+import com.swiftdrop.notification.service.push.DevicePushService;
+import com.swiftdrop.notification.service.push.PushMessages;
 import com.swiftdrop.notification.util.InboxAudience;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
 import com.swiftdrop.notification.util.SensitiveTemplates;
@@ -43,6 +45,7 @@ public class NotificationEventConsumer {
     private final ProcessedEventRepository processedEventRepository;
     private final InAppNotificationService inAppNotificationService;
     private final MerchantDirectory merchantDirectory;
+    private final DevicePushService devicePushService;
 
     public NotificationEventConsumer(
             ObjectMapper objectMapper,
@@ -63,9 +66,8 @@ public class NotificationEventConsumer {
         this(objectMapper, dispatcher, triggers, processedEventRepository, inAppNotificationService, null);
     }
 
-    // Several constructors exist, so Spring needs to be told which one to inject;
+    // Several constructors exist, so Spring is told which one to inject (the widest, below);
     // without @Autowired it looks for a no-arg constructor and startup fails.
-    @Autowired
     public NotificationEventConsumer(
             ObjectMapper objectMapper,
             MultiChannelNotificationDispatcher dispatcher,
@@ -74,12 +76,26 @@ public class NotificationEventConsumer {
             InAppNotificationService inAppNotificationService,
             MerchantDirectory merchantDirectory
     ) {
+        this(objectMapper, dispatcher, triggers, processedEventRepository, inAppNotificationService, merchantDirectory, null);
+    }
+
+    @Autowired
+    public NotificationEventConsumer(
+            ObjectMapper objectMapper,
+            MultiChannelNotificationDispatcher dispatcher,
+            List<NotificationTrigger> triggers,
+            ProcessedEventRepository processedEventRepository,
+            InAppNotificationService inAppNotificationService,
+            MerchantDirectory merchantDirectory,
+            DevicePushService devicePushService
+    ) {
         this.objectMapper = objectMapper;
         this.dispatcher = dispatcher;
         this.triggers = triggers;
         this.processedEventRepository = processedEventRepository;
         this.inAppNotificationService = inAppNotificationService;
         this.merchantDirectory = merchantDirectory;
+        this.devicePushService = devicePushService;
     }
 
     @RabbitListener(queues = RabbitMQConfig.NOTIFICATION_EVENTS_QUEUE)
@@ -138,8 +154,12 @@ public class NotificationEventConsumer {
                                     ? dispatchLog.referenceId()
                                     : envelope.extractTrackingNumber();
 
-                            if (inAppNotificationService != null && inboxRecipients.add(request.recipientId())) {
-                                inAppNotificationService.saveNotification(request.recipientId(), request.templateCode(), title, body, trackingNumber);
+                            if (inboxRecipients.add(request.recipientId())) {
+                                if (inAppNotificationService != null) {
+                                    inAppNotificationService.saveNotification(request.recipientId(), request.templateCode(), title, body, trackingNumber);
+                                }
+                                // After the inbox row and the email, so a device push problem cannot affect either.
+                                pushToDevices(request);
                             }
                         }
                     }
@@ -185,6 +205,24 @@ public class NotificationEventConsumer {
             return isMerchantCompany(UUID.fromString(audience.substring(InboxAudience.MERCHANT_PREFIX.length())));
         } catch (IllegalArgumentException e) {
             return false;
+        }
+    }
+
+    /**
+     * Sends the lock-screen (Web Push) copy through the dispatcher's PUSH channel, which applies the
+     * "push" preference, keeps security messages off devices and logs the attempt. Only some types are
+     * pushed (see PushMessages), and only to recipients that turned device notifications on somewhere.
+     */
+    private void pushToDevices(DispatchNotificationRequest request) {
+        if (devicePushService == null || !PushMessages.supports(request.templateCode())
+                || !devicePushService.hasDevices(request.recipientId())) {
+            return;
+        }
+        try {
+            dispatcher.dispatch(new DispatchNotificationRequest(request.recipientId(), "PUSH", request.templateCode(),
+                    null, request.templateParams(), request.referenceId()));
+        } catch (RuntimeException e) {
+            log.warn("Device push for {} failed: {}", request.recipientId(), e.getClass().getSimpleName());
         }
     }
 }

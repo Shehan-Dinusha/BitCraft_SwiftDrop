@@ -513,11 +513,11 @@ dispatch makes by itself, an order the merchant created themselves) send nothing
 | Event | Customer (own orders) | Courier | Merchant company (team inbox) | Operations team (dispatchers and admins) |
 |---|---|---|---|---|
 | `order.created` | Email + in-app "Order confirmed" | | (nothing: they created it) | |
-| `dispatch.courier.assigned` | | Email + in-app "New delivery" (the assigned courier only) | In-app "Courier assigned" (have the parcel ready) | |
-| `parcel.status.changed` PICKED_UP | Email + in-app "Picked up" | | | |
-| `parcel.status.changed` OUT_FOR_DELIVERY | Email + in-app "Out for delivery" | | | |
-| `parcel.status.changed` DELIVERED | Email + in-app "Delivered" | | | |
-| `parcel.status.changed` FAILED | Email + in-app "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" (arrange a new attempt or a return) |
+| `dispatch.courier.assigned` | | Email + in-app + lock screen "New delivery assigned" (the assigned courier only) | In-app "Courier assigned" (have the parcel ready) | |
+| `parcel.status.changed` PICKED_UP | Email + in-app + lock screen "Picked up" | | | |
+| `parcel.status.changed` OUT_FOR_DELIVERY | Email + in-app + lock screen "Out for delivery" | | | |
+| `parcel.status.changed` DELIVERED | Email + in-app + lock screen "Delivered" | | | |
+| `parcel.status.changed` FAILED | Email + in-app + lock screen "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" (arrange a new attempt or a return) |
 | `dispatch.failed` (retryable = false only) | | | | In-app "Dispatch needs attention" |
 | `notification.auth.otp` | Email only | Email only | Email only (to the signing-in user) | Email only |
 | `notification.auth.login` SUCCESS (new device or network only) | Email only | Email only | Email only (to the signing-in user) | Email only |
@@ -532,6 +532,16 @@ merchant company.
 
 A successful sign-in is emailed only when the device and network (`"Chrome on Windows · 203.94.x.x"`,
 kept in the dispatch log `reference_id`) were not used by that account in the last 30 days.
+
+**Lock screen (Web Push).** Sent only to devices where the customer or courier turned on
+"Lock-screen notifications" (table `push_subscriptions`, V11), and only while the account's push
+preference (`push_enabled`) is on. Types: picked up, out for delivery, delivered, delivery failed
+(customers, normal urgency, 24 h TTL, opens `/customer/tracking/{trackingNumber}`) and new delivery
+assigned (couriers, high urgency, 15 min TTL, opens `/courier/deliveries`). The payload is only
+`{title, body, url, tag}` with the tracking number as tag: no names, addresses, phone numbers or
+amounts. Order created, team alerts and every security message are never pushed. The in-app inbox is
+always written, whatever the push preference. Without `WEB_PUSH_*` keys device push is off and
+everything else works.
 
 Team inboxes (`in_app_notifications.audience`): `OPERATIONS` is shown to every DISPATCHER and
 SYSTEM_ADMIN; `MERCHANT:<merchantId>` to every user of that merchant company. A team

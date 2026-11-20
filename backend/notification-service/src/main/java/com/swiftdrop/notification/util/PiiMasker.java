@@ -52,6 +52,22 @@ public final class PiiMasker {
     }
 
     /**
+     * A Web Push endpoint as its push service host only, e.g. {@code fcm.googleapis.com/…}. The path is a
+     * per-device capability URL: anyone holding it can address that device, so it is never logged.
+     */
+    public static String maskEndpoint(String endpoint) {
+        if (endpoint == null || endpoint.isBlank()) {
+            return "";
+        }
+        try {
+            String host = java.net.URI.create(endpoint.trim()).getHost();
+            return host == null ? "***" : host + "/…";
+        } catch (IllegalArgumentException e) {
+            return "***";
+        }
+    }
+
+    /**
      * Automatically detects destination type (email, phone, or fallback) and masks PII.
      */
     public static String maskDestination(String destination) {
