@@ -36,12 +36,7 @@ public class ParcelStatusEventConsumer {
     public void onTrackingMessage(Message message) {
         try {
             JsonNode payload = objectMapper.readTree(message.getBody());
-            if (payload.has("latitude") || payload.has("longitude")) {
-                log.debug("Ignoring location-only tracking event; public views use status milestones");
-            } else {
-                broadcastHub.onStatusChanged(
-                        objectMapper.treeToValue(payload, ParcelStatusChangedEvent.class));
-            }
+            broadcastHub.onStatusChanged(objectMapper.treeToValue(payload, ParcelStatusChangedEvent.class));
         } catch (IOException | IllegalArgumentException exception) {
             log.error("Unable to process tracking event with routing key {}: {}",
                     message.getMessageProperties().getReceivedRoutingKey(), exception.getMessage());

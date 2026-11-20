@@ -11,7 +11,7 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
-import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
+import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.support.TestCallers;
@@ -38,7 +38,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -166,56 +165,40 @@ class CourierShiftErrorHandlingIT {
     }
 
     @Test
-    @DisplayName("Location ping commits first: the racing assignment is retried and succeeds with one event")
-    void assignmentRacingAnEarlierLocationPingIsRetried(CapturedOutput output) throws Exception {
+    @DisplayName("A courier status update commits first: the racing assignment is retried and succeeds with one event")
+    void assignmentRacingAnEarlierStatusUpdateIsRetried(CapturedOutput output) throws Exception {
         UUID courierId = courier(0, ShiftStatus.AVAILABLE);
         UUID orderId = unassignedOrder();
 
-        RaceResult race = raceAssignmentAndPing(courierId, orderId, true);
+        RaceResult race = raceStatusUpdateThenAssignment(courierId, orderId);
 
         assertThat(race.assignStatus).isEqualTo(200);
-        assertThat(race.pingStatus).isEqualTo(200);
+        assertThat(race.statusUpdateStatus).isEqualTo(200);
         assertThat(output.getOut()).contains("Assignment lost a courier record update race");
         assertConsistentAfterRace(courierId, orderId);
     }
 
-    @Test
-    @DisplayName("Assignment commits first: the racing location ping is retried and succeeds")
-    void locationPingRacingAnEarlierAssignmentIsRetried(CapturedOutput output) throws Exception {
-        UUID courierId = courier(0, ShiftStatus.AVAILABLE);
-        UUID orderId = unassignedOrder();
-
-        RaceResult race = raceAssignmentAndPing(courierId, orderId, false);
-
-        assertThat(race.assignStatus).isEqualTo(200);
-        assertThat(race.pingStatus).isEqualTo(200);
-        assertThat(output.getOut()).contains("Location update lost a courier record update race");
-        assertConsistentAfterRace(courierId, orderId);
+    private record RaceResult(int assignStatus, int statusUpdateStatus) {
     }
 
-    private record RaceResult(int assignStatus, int pingStatus) {
-    }
-
-    private RaceResult raceAssignmentAndPing(UUID courierId, UUID orderId, boolean pingFirst) throws Exception {
+    private RaceResult raceStatusUpdateThenAssignment(UUID courierId, UUID orderId) throws Exception {
         ExecutorService clients = Executors.newFixedThreadPool(2);
         try {
             Future<MvcResult>[] requests = new TransactionTemplate(transactionManager).execute(status -> {
                 jdbcTemplate.queryForObject(
                         "SELECT id FROM courier_shifts WHERE courier_id = ? FOR UPDATE", Long.class, courierId);
-                Future<MvcResult> first = clients.submit(() -> pingFirst ? ping(courierId) : assign(orderId, courierId));
+                Future<MvcResult> first = clients.submit(() -> updateStatus(courierId));
                 awaitBlocked("update courier_shifts%", 1);
-                Future<MvcResult> second = clients.submit(() -> pingFirst ? assign(orderId, courierId) : ping(courierId));
+                Future<MvcResult> second = clients.submit(() -> assign(orderId, courierId));
                 awaitBlocked("update courier_shifts%", 2);
                 @SuppressWarnings("unchecked")
                 Future<MvcResult>[] ordered = new Future[]{first, second};
                 return ordered;
             }); // releasing the row lock lets the first writer commit and the second hit the version check
 
-            MvcResult first = requests[0].get(30, TimeUnit.SECONDS);
-            MvcResult second = requests[1].get(30, TimeUnit.SECONDS);
-            MvcResult assign = pingFirst ? second : first;
-            MvcResult ping = pingFirst ? first : second;
-            return new RaceResult(assign.getResponse().getStatus(), ping.getResponse().getStatus());
+            MvcResult statusUpdate = requests[0].get(30, TimeUnit.SECONDS);
+            MvcResult assign = requests[1].get(30, TimeUnit.SECONDS);
+            return new RaceResult(assign.getResponse().getStatus(), statusUpdate.getResponse().getStatus());
         } finally {
             clients.shutdownNow();
         }
@@ -228,9 +211,8 @@ class CourierShiftErrorHandlingIT {
 
         CourierShift courier = courierShiftRepository.findByCourierId(courierId).orElseThrow();
         assertThat(courier.getActiveParcelsCount()).as("workload incremented exactly once").isEqualTo(1);
-        assertThat(courier.getLatitude()).as("location ping kept").isEqualByComparingTo("6.9000000");
-        assertThat(courier.getLongitude()).isEqualByComparingTo("79.8500000");
-        assertThat(courier.getCurrentDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
+        assertThat(courier.getShiftStatus()).as("status update kept").isEqualTo(ShiftStatus.AVAILABLE);
+        assertThat(courier.getLastHeartbeatAt()).isNotNull();
 
         verify(rabbitTemplate, times(1)).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME),
                 eq(RabbitMQConfig.ROUTING_KEY_COURIER_ASSIGNED), isA(CourierAssignedEvent.class));
@@ -244,11 +226,10 @@ class CourierShiftErrorHandlingIT {
                 .andReturn();
     }
 
-    private MvcResult ping(UUID courierId) throws Exception {
-        return mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location").with(TestCallers.courier(courierId))
+    private MvcResult updateStatus(UUID courierId) throws Exception {
+        return mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/status").with(TestCallers.courier(courierId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new CourierLocationPingRequest(courierId,
-                                SriLankanDistrict.GAMPAHA, new BigDecimal("6.9000000"), new BigDecimal("79.8500000")))))
+                        .content(objectMapper.writeValueAsString(new UpdateShiftStatusRequest(courierId, ShiftStatus.AVAILABLE))))
                 .andReturn();
     }
 

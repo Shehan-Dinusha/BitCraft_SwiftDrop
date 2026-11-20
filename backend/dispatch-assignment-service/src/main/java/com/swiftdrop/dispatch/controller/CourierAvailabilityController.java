@@ -3,13 +3,11 @@ package com.swiftdrop.dispatch.controller;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
-import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
 import com.swiftdrop.dispatch.security.DispatchAccess;
-import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import com.swiftdrop.dispatch.service.CourierShiftService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,12 +31,9 @@ import java.util.UUID;
 public class CourierAvailabilityController {
 
     private final CourierShiftService courierShiftService;
-    private final CourierConflictRetry courierConflictRetry;
 
-    public CourierAvailabilityController(CourierShiftService courierShiftService,
-                                         CourierConflictRetry courierConflictRetry) {
+    public CourierAvailabilityController(CourierShiftService courierShiftService) {
         this.courierShiftService = courierShiftService;
-        this.courierConflictRetry = courierConflictRetry;
     }
 
     @GetMapping("/health")
@@ -122,19 +117,6 @@ public class CourierAvailabilityController {
         return ApiResponse.success(
                 courierShiftService.updateStatus(request.courierId(), request.status()),
                 "Shift status updated successfully"
-        );
-    }
-
-    @PutMapping("/shifts/location")
-    @Operation(summary = "Record courier GPS location heartbeat ping",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
-    public ApiResponse<CourierShiftResponse> updateLocation(
-            @Valid @RequestBody CourierLocationPingRequest request,
-            HttpServletRequest httpRequest) {
-        DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
-        return ApiResponse.success(
-                courierConflictRetry.run("Location update", () -> courierShiftService.updateLocation(request)),
-                "Location updated successfully"
         );
     }
 }

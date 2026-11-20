@@ -17,7 +17,7 @@ The backend reactor modules are declared in [backend/pom.xml](backend/pom.xml): 
 | `customer-order-service` | Member 3 | 8082 | `swiftdrop-order-postgres` / 5433; `swiftdrop_order` | `order-postgres-headless.swiftdrop-data.svc.cluster.local` | Customer order lifecycle |
 | `pricing-zone-service` | Member 4 | 8083 | `swiftdrop-pricing-postgres` / 5434; `swiftdrop_pricing` | `pricing-postgres-headless.swiftdrop-data.svc.cluster.local` | Pricing quotes and geofence zones |
 | `dispatch-assignment-service` | Member 5 | 8084 | `swiftdrop-dispatch-postgres` / 5435; `swiftdrop_dispatch` | `dispatch-postgres-headless.swiftdrop-data.svc.cluster.local` | Courier availability and assignment |
-| `delivery-execution-service` | Member 6 | 8085 | `swiftdrop-delivery-postgres` / 5436; `swiftdrop_delivery` | `delivery-postgres-headless.swiftdrop-data.svc.cluster.local` | Delivery FSM, courier transitions, PoD, and delivery/location events |
+| `delivery-execution-service` | Member 6 | 8085 | `swiftdrop-delivery-postgres` / 5436; `swiftdrop_delivery` | `delivery-postgres-headless.swiftdrop-data.svc.cluster.local` | Delivery FSM, courier transitions, PoD, and delivery status events |
 | `merchant-b2b-service` | Member 7 | 8086 | `swiftdrop-merchant-postgres` / 5437; `swiftdrop_merchant` | `merchant-postgres-headless.swiftdrop-data.svc.cluster.local` | Merchant APIs, API keys, and ingestion |
 | `webhook-resiliency-service` | Member 8 | 8087 | `swiftdrop-webhook-postgres` / 5438; `swiftdrop_webhook` | `webhook-postgres-headless.swiftdrop-data.svc.cluster.local` | Webhook subscriptions, retry, and DLQ replay |
 | `notification-service` | Member 9 | 8088 | `swiftdrop-notify-postgres` / 5439; `swiftdrop_notify` | `notify-postgres-headless.swiftdrop-data.svc.cluster.local` | Notification preferences and logs |
@@ -38,7 +38,7 @@ Kubernetes namespaces are `swiftdrop-apps`, `swiftdrop-data`, and `swiftdrop-mes
 
 1. **Database per service:** the nine business services each own one PostgreSQL database and Flyway history. `api-gateway` is stateless and has no database.
 2. **Member 1 gateway boundary:** [backend/api-gateway](backend/api-gateway) owns routing and the Real-Time Tracking Hub. It consumes `parcel.status.changed.#` from `swiftdrop.events.exchange`, sanitizes PII through `TrackingDataSanitizerProxy`, and publishes public updates through `/api/v1/tracking/{trackingId}/stream` and `/ws/tracking`.
-3. **Member 6 delivery boundary:** [backend/delivery-execution-service](backend/delivery-execution-service) owns the delivery FSM, guards, courier state/location publication, and Proof-of-Delivery persistence/verification. It must not own public tracking WebSocket/SSE handlers.
+3. **Member 6 delivery boundary:** [backend/delivery-execution-service](backend/delivery-execution-service) owns the delivery FSM, guards, delivery status publication, and Proof-of-Delivery persistence/verification. SwiftDrop does not use device location: couriers are matched by district. It must not own public tracking WebSocket/SSE handlers.
 4. **API edge:** frontend REST traffic goes through `http://localhost:8080/api/v1/...`; downstream services are reached through gateway routes, not direct browser calls.
 5. **Contracts:** shared event records, DTO wrappers, enums, security headers, and OpenAPI constants belong in `common-contracts`; do not duplicate them in a service.
 

@@ -5,8 +5,7 @@ import { deliveryApi } from '@/services/api/deliveryApi';
 import type {
   DeliverySessionResponse,
   DeliveryState,
-  DeliveryFailureReason,
-  TrackingBreadcrumbResponse
+  DeliveryFailureReason
 } from '@/services/api/deliveryApi';
 import { allowedTransitions } from '@/types/fsm';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
@@ -17,7 +16,6 @@ import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBa
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
 import { DeliveryFailureReportModal } from '../components/DeliveryFailureReportModal';
-import { GpsTelemetryPublisher } from '../components/GpsTelemetryPublisher';
 import {
   ArrowLeft,
   RefreshCw,
@@ -39,7 +37,6 @@ export function ActiveDeliveryExecutionPage() {
   const deliveryIdParam = id || searchParams.get('deliveryId');
 
   const [session, setSession] = useState<DeliverySessionResponse | null>(null);
-  const [_breadcrumbs, setBreadcrumbs] = useState<TrackingBreadcrumbResponse[]>([]);
   const [isPoDVerified, setIsPoDVerified] = useState(false);
   const [isPoDModalOpen, setIsPoDModalOpen] = useState(false);
   const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
@@ -83,12 +80,6 @@ export function ActiveDeliveryExecutionPage() {
       if (activeDelivery) {
         setSession(activeDelivery);
         if (activeDelivery.deliveryId) {
-          try {
-            const crumbs = await deliveryApi.getBreadcrumbs(activeDelivery.deliveryId);
-            setBreadcrumbs(crumbs || []);
-          } catch {
-            // Non-fatal if breadcrumbs empty
-          }
           try {
             const pod = await deliveryApi.getProofOfDelivery(activeDelivery.deliveryId);
             if (pod && pod.verified) {
@@ -169,10 +160,6 @@ export function ActiveDeliveryExecutionPage() {
     }
   };
 
-  const handleBreadcrumbAdded = (crumb: TrackingBreadcrumbResponse) => {
-    setBreadcrumbs((prev) => [crumb, ...prev.slice(0, 9)]);
-  };
-
   return (
     <main className="mx-auto max-w-3xl space-y-5 p-4 md:p-6" data-density="touch">
       {/* Top Header Bar */}
@@ -191,7 +178,7 @@ export function ActiveDeliveryExecutionPage() {
               Active Delivery Execution
             </h1>
             <p className="text-xs text-slate-500">
-              One-tap FSM state machine transitions, GPS breadcrumb telemetry, and PoD handover.
+              One-tap delivery status updates and proof-of-delivery handover.
             </p>
           </div>
         </div>
@@ -340,14 +327,6 @@ export function ActiveDeliveryExecutionPage() {
             </div>
           </SurfaceCard>
 
-          {/* GPS Telemetry & Breadcrumb Publisher */}
-          {session.deliveryId && (
-            <GpsTelemetryPublisher
-              deliveryId={session.deliveryId}
-              courierId={courierId}
-              onBreadcrumbAdded={handleBreadcrumbAdded}
-            />
-          )}
 
           {/* Ergonomic Action Bar: thumb-friendly sticky bar for next allowed action */}
           {allowedNextStates.length > 0 && (

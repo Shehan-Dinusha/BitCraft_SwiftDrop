@@ -318,26 +318,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/dispatch/couriers/shifts/location": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Record courier GPS location heartbeat ping
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
-         */
-        put: operations["updateLocation"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -392,15 +372,6 @@ export interface components {
             courierId: string;
             status: components["schemas"]["ShiftStatus"];
         };
-        CourierLocationPingRequest: {
-            /** Format: uuid */
-            courierId: string;
-            district: components["schemas"]["SriLankanDistrict"];
-            /** @example 6.9271 */
-            latitude?: number;
-            /** @example 79.8612 */
-            longitude?: number;
-        };
         DispatchAssignmentResponse: {
             /** Format: uuid */
             assignmentId?: string;
@@ -433,8 +404,6 @@ export interface components {
             phone?: string;
             vehicleType?: components["schemas"]["VehicleType"];
             currentDistrict?: components["schemas"]["SriLankanDistrict"];
-            latitude?: number;
-            longitude?: number;
             shiftStatus?: components["schemas"]["ShiftStatus"];
             activeParcelsCount?: number;
             maxCapacity?: number;
@@ -639,7 +608,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Order already assigned (Assignment Conflict), courier not available, assignment in a terminal state, or the record was changed by a concurrent operation (Conflict). A conflict on the courier's record only, such as a location update, is retried automatically up to three times before a 409 is returned. */
+            /** @description Order already assigned (Assignment Conflict), courier not available, assignment in a terminal state, or the record was changed by a concurrent operation (Conflict). A conflict on the courier's record only, such as a status update, is retried automatically up to three times before a 409 is returned. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -707,7 +676,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Order has no courier yet or is no longer assigned to the expected courier (Assignment Conflict), order already picked up (Reassignment Not Allowed), courier not available, assignment in a terminal state, or the record was changed by a concurrent operation (Conflict). A conflict on the courier's record only, such as a location update, is retried automatically up to three times before a 409 is returned. */
+            /** @description Order has no courier yet or is no longer assigned to the expected courier (Assignment Conflict), order already picked up (Reassignment Not Allowed), courier not available, assignment in a terminal state, or the record was changed by a concurrent operation (Conflict). A conflict on the courier's record only, such as a status update, is retried automatically up to three times before a 409 is returned. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1269,57 +1238,6 @@ export interface operations {
             };
             /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponse"];
-                };
-            };
-        };
-    };
-    updateLocation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CourierLocationPingRequest"];
-            };
-        };
-        responses: {
-            /** @description Location updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
-                };
-            };
-            /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponse"];
-                };
-            };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponse"];
-                };
-            };
-            /** @description Conflict: the courier's record kept changing concurrently (for example during an assignment) after up to three automatic attempts, or Courier Not Available for an unknown courier. */
-            409: {
                 headers: {
                     [name: string]: unknown;
                 };

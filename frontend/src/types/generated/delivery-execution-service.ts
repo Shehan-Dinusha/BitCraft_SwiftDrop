@@ -129,40 +129,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/deliveries/{deliveryId}/location": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Record courier GPS telemetry breadcrumb */
-        post: operations["recordLocation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/deliveries/{deliveryId}/breadcrumbs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get recent GPS telemetry breadcrumbs */
-        get: operations["getBreadcrumbs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/deliveries/{deliveryId}/proof-of-delivery": {
         parameters: {
             query?: never;
@@ -194,17 +160,8 @@ export interface components {
         TransitionDeliveryRequest: {
             targetState: components["schemas"]["DeliveryState"];
             notes?: string;
-            latitude?: number;
-            longitude?: number;
             failureReason?: components["schemas"]["DeliveryFailureReason"];
             actorRole?: string;
-        };
-        CourierLocationUpdatePayload: {
-            latitude: number;
-            longitude: number;
-            bearingDegrees?: number;
-            speedKmh?: number;
-            accuracy?: number;
         };
         ProofOfDeliveryUploadRequest: {
             photoUrl: string;
@@ -239,25 +196,10 @@ export interface components {
             pickupAt?: string;
             /** Format: date-time */
             deliveredAt?: string;
-            currentLatitude?: number;
-            currentLongitude?: number;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-        };
-        TrackingBreadcrumbResponse: {
-            /** Format: uuid */
-            deliveryId?: string;
-            /** Format: uuid */
-            courierId?: string;
-            latitude?: number;
-            longitude?: number;
-            bearingDegrees?: number;
-            speedKmh?: number;
-            accuracy?: number;
-            /** Format: date-time */
-            recordedAt?: string;
         };
         ApiResponseString: {
             success?: boolean;
@@ -277,20 +219,6 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["DeliverySessionResponse"][];
-            /** Format: date-time */
-            timestamp?: string;
-        };
-        ApiResponseTrackingBreadcrumbResponse: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["TrackingBreadcrumbResponse"];
-            /** Format: date-time */
-            timestamp?: string;
-        };
-        ApiResponseListTrackingBreadcrumbResponse: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["TrackingBreadcrumbResponse"][];
             /** Format: date-time */
             timestamp?: string;
         };
@@ -501,54 +429,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-        };
-    };
-    recordLocation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                deliveryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CourierLocationUpdatePayload"];
-            };
-        };
-        responses: {
-            /** @description GPS breadcrumb recorded */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseTrackingBreadcrumbResponse"];
-                };
-            };
-        };
-    };
-    getBreadcrumbs: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                deliveryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GPS breadcrumbs retrieved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseListTrackingBreadcrumbResponse"];
-                };
             };
         };
     };

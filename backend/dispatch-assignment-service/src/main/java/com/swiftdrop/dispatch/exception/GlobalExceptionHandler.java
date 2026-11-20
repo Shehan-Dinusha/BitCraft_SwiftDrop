@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
         log.warn("Concurrent {} update rejected for {}",
                 courierConflict ? "courier shift" : "dispatch assignment", LogSanitizer.clean(request.getRequestURI()));
         String message = courierConflict
-                ? "The courier's record was changed by another operation, such as a location update or "
+                ? "The courier's record was changed by another operation, such as a status update or "
                         + "another assignment. Refresh and retry."
                 : "The dispatch record was changed by another operation. Refresh and retry.";
         return ResponseEntity.status(HttpStatus.CONFLICT)

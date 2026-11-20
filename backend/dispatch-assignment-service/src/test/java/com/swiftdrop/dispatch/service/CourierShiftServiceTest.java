@@ -5,7 +5,6 @@ import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
-import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
@@ -18,7 +17,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -106,31 +104,6 @@ class CourierShiftServiceTest {
         assertThat(shift.getActiveParcelsCount()).isEqualTo(2);
         assertThat(shift.getShiftEndedAt()).isNull();
         verify(courierShiftRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("Heartbeat location ping: updates district and coordinates")
-    void testLocationPing() {
-        CourierShift shift = new CourierShift();
-        shift.setCourierId(courierId);
-        shift.setCurrentDistrict(SriLankanDistrict.COLOMBO);
-
-        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
-        when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        CourierLocationPingRequest ping = new CourierLocationPingRequest(
-                courierId,
-                SriLankanDistrict.GAMPAHA,
-                BigDecimal.valueOf(7.0840),
-                BigDecimal.valueOf(79.9939)
-        );
-
-        CourierShiftResponse response = courierShiftService.updateLocation(ping);
-
-        assertThat(response.currentDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
-        assertThat(response.latitude()).isEqualTo(BigDecimal.valueOf(7.0840));
-        assertThat(response.longitude()).isEqualTo(BigDecimal.valueOf(79.9939));
-        assertThat(response.lastHeartbeatAt()).isNotNull();
     }
 
     @Test

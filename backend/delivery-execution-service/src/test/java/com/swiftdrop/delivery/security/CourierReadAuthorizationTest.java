@@ -19,7 +19,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -106,7 +105,7 @@ class CourierReadAuthorizationTest {
                 deliveryId, UUID.randomUUID(), "SD-COL-99999", courierA, "Courier A",
                 SriLankanDistrict.COLOMBO, SriLankanDistrict.GAMPAHA, DeliveryState.IN_TRANSIT,
                 DeliveryState.PICKED_UP, null, 0, Instant.now(), null,
-                BigDecimal.valueOf(6.9271), BigDecimal.valueOf(79.8612), Instant.now(), Instant.now()
+                Instant.now(), Instant.now()
         );
 
         when(deliveryService.getDeliveryById(eq(deliveryId), any())).thenReturn(response);

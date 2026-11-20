@@ -19,11 +19,11 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 ## 1. What already exists on `dev`
 
 - `CourierAssignedConsumer` creates a `DeliverySession` from `dispatch.courier.assigned`.
-- `DeliveryExecutionController` `/api/v1/deliveries`: get by id/order/tracking, `GET /courier/{courierId}`, `POST /{id}/transition`, `POST /{id}/location`, breadcrumbs. `ProofOfDeliveryController`: upload, verify, get.
+- `DeliveryExecutionController` `/api/v1/deliveries`: get by id/order/tracking, `GET /courier/{courierId}`, `POST /{id}/transition`. `ProofOfDeliveryController`: upload, verify, get.
 - `DeliveryStateMachine`: a transition **table** (`EnumMap`) `CREATED → ASSIGNED → PICKED_UP → IN_TRANSIT → DELIVERED | FAILED`, plus guards (`GeofenceProximityGuard`, `ProofOfDeliveryGuard`) and actions (audit, publish).
-- `DeliveryEventPublisher`: `DeliveryStateChangedEvent`, `LocationUpdatedEvent`, `parcel.status.changed`.
+- `DeliveryEventPublisher`: `DeliveryStateChangedEvent`, `parcel.status.changed`.
 - Flyway V1–V3; five test classes.
-- Frontend: `CourierShiftDashboard`, `ActiveDeliveryExecutionPage`, `OneTapStateTransitionCard`, `ProofOfDeliveryCaptureModal`, `GpsTelemetryPublisher`.
+- Frontend: `CourierShiftDashboard`, `ActiveDeliveryExecutionPage`, `OneTapStateTransitionCard`, `ProofOfDeliveryCaptureModal`. (Device location was removed: SwiftDrop matches couriers by district.)
 
 ## 2. Gaps to close
 
@@ -258,7 +258,7 @@ Rules:
 
 **Steps:**
 
-1. Use the policy in get-by-id, by-order, by-tracking, breadcrumbs, POD get; `GET /courier/{courierId}` only when it equals the caller.
+1. Use the policy in get-by-id, by-order, by-tracking, POD get; `GET /courier/{courierId}` only when it equals the caller.
 
 **Commit:** `feat(delivery): enforce courier ownership on reads`
 
