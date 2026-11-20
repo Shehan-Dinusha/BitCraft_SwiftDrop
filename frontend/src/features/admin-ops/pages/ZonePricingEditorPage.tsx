@@ -208,10 +208,27 @@ export function ZonePricingEditorPage() {
     setForm((current) => ({ ...current, [key]: event.target.value }));
 
   const zones = zonesQuery.data ?? [];
+
+  // Dispatchers see only their own district; system admins see every district.
+  const ownDistrict = (user?.district ?? '').toString().toUpperCase();
+  const scopeToOwnDistrict = !canEdit && ownDistrict !== '';
+
+  const allMappings: MappingRow[] = (mappingsQuery.data ?? []).map((mapping) => ({
+    id: String(mapping.district),
+    district: String(mapping.district),
+    zoneCode: mapping.zoneCode ?? '',
+    actions: ''
+  }));
+  const mappingRows: MappingRow[] = scopeToOwnDistrict
+    ? allMappings.filter((row) => row.district.toUpperCase() === ownDistrict)
+    : allMappings;
+  const ownZoneCode = scopeToOwnDistrict ? (mappingRows[0]?.zoneCode ?? '') : '';
+
   const zoneRows: ZoneRow[] = zones.map((zone) => ({
     id: zone.zoneCode ?? String(zone.id),
     zoneCode: zone.zoneCode ?? '',
-    zoneName: zone.zoneName ?? '',
+    zoneName:
+      (zone.zoneName ?? '') + (ownZoneCode && zone.zoneCode === ownZoneCode ? ' (your zone)' : ''),
     tier: zone.tier ?? '',
     baseFee: zone.baseFee ?? 0,
     perKgFee: zone.perKgFee ?? 0,
@@ -220,12 +237,12 @@ export function ZonePricingEditorPage() {
     actions: '',
     zone
   }));
-  const mappingRows: MappingRow[] = (mappingsQuery.data ?? []).map((mapping) => ({
-    id: String(mapping.district),
-    district: String(mapping.district),
-    zoneCode: mapping.zoneCode ?? '',
-    actions: ''
-  }));
+  if (ownZoneCode) {
+    zoneRows.sort(
+      (a, b) => Number(b.zoneCode === ownZoneCode) - Number(a.zoneCode === ownZoneCode)
+    );
+  }
+
   const zoneOptions = zones.map((zone) => ({
     value: zone.zoneCode ?? '',
     label: `${zone.zoneCode} (${zone.zoneName})`
@@ -299,6 +316,7 @@ export function ZonePricingEditorPage() {
         ) : (
           <HighDensityDataGrid<MappingRow>
             rows={mappingRows}
+            searchable={!scopeToOwnDistrict}
             columns={[
               { key: 'district', label: 'District' },
               canEdit
