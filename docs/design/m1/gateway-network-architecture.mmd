@@ -21,7 +21,7 @@ flowchart LR
     direction TB
     W1["WebFilters (ordered)<br/>CORS · SecurityHeaders · CorrelationId<br/>InternalRouteBlock · PublicTrackingRateLimit"]
     J["JwtAuthenticationGlobalFilter<br/>HS256 or RS256 via JWKS<br/>iss + aud enforced<br/>strips client X-User-* / X-Merchant-*"]
-    MK["MerchantApiKeyGlobalFilter<br/>/api/v1/merchant/**<br/>/api/v1/merchant-order-ingest/**"]
+    MK["MerchantApiKeyGlobalFilter<br/>/api/v1/b2b/**<br/>/api/v1/merchant-order-ingest/**"]
     R["GatewayRoutesConfig<br/>path prefix to downstream URI<br/>rewrites /v3/api-docs aggregation URLs"]
     HUB["Real-Time Tracking Hub<br/>PublicTrackingController<br/>SSE · raw WebSocket · STOMP<br/>TrackingDataSanitizerProxy<br/>TrackingBroadcastHubService"]
   end

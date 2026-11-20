@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.web.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -61,8 +63,25 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
+        if (ex instanceof ErrorResponse framework && framework.getStatusCode().is4xxClientError()) {
+            return frameworkClientError(framework, request.getRequestURI());
+        }
         log.error("Internal error on {}", LogSanitizer.clean(request.getRequestURI()), ex);
+        // Never return the raw exception message: it can carry database or library details.
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiErrorResponse.of(500, "Internal Server Error", ex.getMessage(), request.getRequestURI()));
+                .body(ApiErrorResponse.of(500, "Internal Server Error", "An unexpected error occurred", request.getRequestURI()));
+    }
+
+    /**
+     * Spring MVC's own client errors (unknown path 404, wrong method 405, missing parameter 400,
+     * unsupported media type 415, ...) implement {@link ErrorResponse} and already carry the right
+     * status. Return it instead of letting the catch-all turn them into a 500.
+     */
+    private static ResponseEntity<ApiErrorResponse> frameworkClientError(ErrorResponse error, String path) {
+        HttpStatusCode status = error.getStatusCode();
+        HttpStatus known = HttpStatus.resolve(status.value());
+        String reason = known != null ? known.getReasonPhrase() : "Client Error";
+        return ResponseEntity.status(status).headers(error.getHeaders())
+                .body(ApiErrorResponse.of(status.value(), reason, reason, path));
     }
 }

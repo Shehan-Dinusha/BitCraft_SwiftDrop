@@ -58,7 +58,6 @@ public class GatewayRoutesConfig {
                         .path("/api/v1/merchants/**",
                                 "/api/v1/admin/merchants/**",   // admin approval screen (JWT, SYSTEM_ADMIN)
                                 "/api/v1/b2b/**",               // B2B order API (merchant API key)
-                                "/api/v1/merchant/**",
                                 "/api/v1/merchant-order-ingest/**",
                                 "/api/v1/api-key-management/**",
                                 "/api/v1/merchants/v3/api-docs/**")
@@ -83,7 +82,6 @@ public class GatewayRoutesConfig {
                                 "/api/v1/ai/**",
                                 "/api/v1/operational-kpi/**",
                                 "/api/v1/ai-delivery-assistant/**",
-                                "/api/v1/reports/**",
                                 "/api/v1/analytics/v3/api-docs/**")
                         .filters(f -> f.rewritePath("/api/v1/analytics/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
                         .uri(routes.analytics()))

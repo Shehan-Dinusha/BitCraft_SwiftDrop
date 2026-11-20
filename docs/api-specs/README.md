@@ -38,10 +38,10 @@ flowchart LR
     GW -- "/api/v1/pricing/**<br/>/api/v1/zones/**" --> S3["pricing-zone-service :8083"]
     GW -- "/api/v1/dispatch/**" --> S4["dispatch-assignment-service :8084"]
     GW -- "/api/v1/deliveries/**" --> S5["delivery-execution-service :8085"]
-    GW -- "/api/v1/merchants/**<br/>/api/v1/merchant/**<br/>/api/v1/merchant-order-ingest/**<br/>/api/v1/api-key-management/**" --> S6["merchant-b2b-service :8086"]
+    GW -- "/api/v1/merchants/**<br/>/api/v1/admin/merchants/**<br/>/api/v1/b2b/**<br/>/api/v1/merchant-order-ingest/**<br/>/api/v1/api-key-management/**" --> S6["merchant-b2b-service :8086"]
     GW -- "/api/v1/webhooks/**" --> S7["webhook-resiliency-service :8087"]
     GW -- "/api/v1/notifications/**" --> S8["notification-service :8088"]
-    GW -- "/api/v1/analytics/**<br/>/api/v1/operational-kpi/**<br/>/api/v1/ai-delivery-assistant/**<br/>/api/v1/reports/**" --> S9["analytics-ai-service :8089"]
+    GW -- "/api/v1/analytics/**<br/>/api/v1/ai/**<br/>/api/v1/operational-kpi/**<br/>/api/v1/ai-delivery-assistant/**" --> S9["analytics-ai-service :8089"]
     GW -- "/api/v1/tracking/{id}/stream (SSE)<br/>/ws/tracking (WebSocket)" --> T["Tracking hub<br/>(inside the gateway)"]
 ```
 
