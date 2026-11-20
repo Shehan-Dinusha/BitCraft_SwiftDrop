@@ -41,7 +41,7 @@ class EmailHtmlRendererTest {
             "PARCEL_FAILED, Delivery attempt failed, #991b1b",
             "SOMETHING_ELSE, Update, #334155"
     })
-    @DisplayName("Each status uses its own badge label and Velocity status colour")
+    @DisplayName("Each status uses its own badge label and SwiftDrop status colour")
     void statusBadges(String templateCode, String badge, String colour) {
         String html = renderer.renderHtml(templateCode, "Subject", "Body", "SD-AAAA-BBBB");
 

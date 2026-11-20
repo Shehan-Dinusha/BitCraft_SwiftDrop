@@ -93,5 +93,5 @@ Do not claim runtime success from compilation alone. For API/gateway changes, st
 - Backend rules: [backend/AGENTS.md](backend/AGENTS.md)
 - Frontend/design rules: [frontend/AGENTS.md](frontend/AGENTS.md)
 - Backend contract rule: [.agents/rules/backend-contract-sync.md](.agents/rules/backend-contract-sync.md)
-- Frontend ergonomics rule: [.agents/rules/frontend-velocity-ergonomics.md](.agents/rules/frontend-velocity-ergonomics.md)
+- Frontend ergonomics rule: [.agents/rules/frontend-ergonomics.md](.agents/rules/frontend-ergonomics.md)
 - Infrastructure isolation rule: [.agents/rules/infra-db-isolation.md](.agents/rules/infra-db-isolation.md)

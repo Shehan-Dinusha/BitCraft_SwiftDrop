@@ -1,8 +1,8 @@
-import { velocityTextStyles } from '@/design-system';
+import { textStyles } from '@/design-system';
 import { cn } from '@/utils/cn';
 import { CatalogRow } from '../components/catalog-kit';
 
-const names: Record<keyof typeof velocityTextStyles, string> = {
+const names: Record<keyof typeof textStyles, string> = {
   display: 'Display',
   h1: 'H1',
   h2: 'H2',
@@ -19,10 +19,10 @@ const names: Record<keyof typeof velocityTextStyles, string> = {
 
 export function TypographySection() {
   return (
-    <CatalogRow label="Type scale" hint="Velocity/* text styles from Figma">
+    <CatalogRow label="Type scale" hint="Text styles from Figma">
       <div className="space-y-4">
-        {(Object.keys(velocityTextStyles) as (keyof typeof velocityTextStyles)[]).map((key) => {
-          const style = velocityTextStyles[key];
+        {(Object.keys(textStyles) as (keyof typeof textStyles)[]).map((key) => {
+          const style = textStyles[key];
           return (
             <div
               key={key}

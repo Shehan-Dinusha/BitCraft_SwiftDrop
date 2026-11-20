@@ -69,9 +69,9 @@ export {
   slaColors
 } from './tokens/colors';
 export {
-  velocityTypography,
-  velocityTextStyles,
-  type VelocityTextStyle
+  typography,
+  textStyles,
+  type TextStyle
 } from './tokens/typography';
 export { Checkbox } from './components/Checkbox/Checkbox';
 export type { CheckboxProps } from './components/Checkbox/Checkbox';

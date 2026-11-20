@@ -37,7 +37,7 @@ SwiftDrop manages the full life of a courier parcel across Sri Lanka: booking, p
 | **Backend** | Java 25, Spring Boot 3.5, Spring Cloud Gateway (reactive), nine servlet services, Flyway, SpringDoc OpenAPI 3.1 |
 | **Messaging** | RabbitMQ topic exchange with dead-letter queues |
 | **Data** | PostgreSQL, one physically separate database per service. Redis for JWT blacklist and rate limits |
-| **Frontend** | React 18, TypeScript, Vite, Tailwind. One app for five roles, built on the Velocity design system |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind. One app for five roles, built on the SwiftDrop design system |
 | **Platform** | Docker Compose locally; Azure Kubernetes Service (AKS) in production, deployed with a Helm chart behind Traefik and Let's Encrypt TLS |
 
 ## Live demo
@@ -208,9 +208,9 @@ One React app serves five roles. After sign-in, `AppShell` picks the matching la
 | Dispatcher | Compact | Side nav | Control tower, dispatch board, webhook dead letters |
 | System admin | Compact | Side nav | The ops area (`/ops`) plus merchant approvals, users, zone and tariff pricing, analytics dashboard, notification console |
 
-### Velocity design system
+### SwiftDrop design system
 
-The UI is built from the **Velocity** design system, which mirrors the [Figma file](https://www.figma.com/design/XX3u7zxTDat0l2MbG27niR/BitCraft-SwiftDrop-Web-Design--Copy-). The Figma file is the source of truth; the theme is **light only**.
+The UI is built from the **SwiftDrop** design system, which mirrors the [Figma file](https://www.figma.com/design/XX3u7zxTDat0l2MbG27niR/BitCraft-SwiftDrop-Web-Design--Copy-). The Figma file is the source of truth; the theme is **light only**.
 
 ```mermaid
 flowchart LR
@@ -222,7 +222,7 @@ flowchart LR
 
 - **Browse every component** at [`/catalog`](http://localhost:5173/catalog) once the frontend is running. It is public: no login and no backend needed. It is grouped like the Figma library, with a gallery that shows the shell of every role at desktop, tablet and mobile width.
 - **Share the catalog as one file:** `npm run build:catalog` writes a single self-contained HTML file you can open from disk or send to someone.
-- **Component rules and the full component map:** [`frontend/COMPONENTS.md`](frontend/COMPONENTS.md). Figma links: [`docs/velocity-design-system/figma-source.md`](docs/velocity-design-system/figma-source.md).
+- **Component rules and the full component map:** [`frontend/COMPONENTS.md`](frontend/COMPONENTS.md). Figma links: [`docs/design-system/figma-source.md`](docs/design-system/figma-source.md).
 
 ### Working on the frontend
 
@@ -334,7 +334,7 @@ The full setup, from creating the Azure resources to the first deploy, is in the
 | [API contracts](docs/api-specs/README.md) | OpenAPI documents, gateway routes, generating frontend types |
 | [ADR-001](docs/architecture/ADR-001-physical-db-statefulsets.md) | Why every database is a separate StatefulSet |
 | [Component guide](frontend/COMPONENTS.md) | Design system rules, components, catalog routes |
-| [Design system source](docs/velocity-design-system/figma-source.md) | Figma file and node links |
+| [Design system source](docs/design-system/figma-source.md) | Figma file and node links |
 | [Agent instructions](AGENTS.md) | Architecture boundaries and the change-sync checklist |
 
 ## Contributing

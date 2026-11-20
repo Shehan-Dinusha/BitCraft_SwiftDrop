@@ -1,4 +1,4 @@
-# Velocity Design System — Ergonomic Guidelines
+# SwiftDrop Design System — Ergonomic Guidelines
 
 > SwiftDrop's internal design system for building consistent, accessible, and performant logistics UIs.
 

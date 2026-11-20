@@ -1,4 +1,4 @@
-# Frontend and Velocity Design System Agent Instructions
+# Frontend and SwiftDrop Design System Agent Instructions
 
 These rules apply to all work below [frontend](.).
 
@@ -6,7 +6,7 @@ These rules apply to all work below [frontend](.).
 
 Read [package.json](package.json), [tailwind.config.ts](tailwind.config.ts), the target persona feature folder, [frontend/src/design-system](src/design-system), the relevant API service, and any generated declaration under [src/types/generated](src/types/generated) before editing.
 
-## Velocity density and ergonomics
+## Density and ergonomics
 
 The live density mapping is defined in [density.ts](src/design-system/tokens/density.ts):
 

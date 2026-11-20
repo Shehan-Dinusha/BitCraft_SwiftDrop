@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
   Button,
-  DensityProvider as VelocityDensityProvider,
+  DensityProvider,
   EmptyState,
   PageHeader,
   PublicHeader,
@@ -39,7 +39,7 @@ export function PublicTrackingPage() {
   const hasTracking = Boolean(trackingNumber?.trim());
 
   return (
-    <VelocityDensityProvider density="comfortable">
+    <DensityProvider density="comfortable">
       <div className="min-h-screen bg-canvas text-primary">
         <PublicHeader
           onTrack={openTracking}
@@ -118,7 +118,7 @@ export function PublicTrackingPage() {
           )}
         </main>
       </div>
-    </VelocityDensityProvider>
+    </DensityProvider>
   );
 }
 

@@ -68,7 +68,7 @@ import java.util.Map;
 public class OrderPdfGeneratorService {
 
 
-    // Palette: the Velocity design system's navy, slate neutrals and status colours.
+    // Palette: the SwiftDrop design system's navy, slate neutrals and status colours.
     private static final Color INK = new Color(15, 23, 42);          // slate-900
     private static final Color BODY = new Color(51, 65, 85);         // slate-700
     private static final Color MUTED = new Color(100, 116, 139);     // slate-500

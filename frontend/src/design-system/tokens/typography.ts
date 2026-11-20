@@ -1,4 +1,4 @@
-export const velocityTypography = {
+export const typography = {
   trackingId: 'font-mono tabular-nums text-xs',
   coordinates: 'font-mono tabular-nums text-sm',
   eta: 'font-mono tabular-nums font-semibold',
@@ -6,11 +6,11 @@ export const velocityTypography = {
 } as const;
 
 /**
- * The 12 Velocity text styles from Figma. Each value is the Tailwind class
+ * The 12 SwiftDrop text styles from Figma. Each value is the Tailwind class
  * (`fontSize` key in tailwind.config.ts); the two mono styles also need
  * `font-mono`, which is included here.
  */
-export const velocityTextStyles = {
+export const textStyles = {
   display: { className: 'text-display', spec: 'Plus Jakarta Sans 700 · 36/44' },
   h1: { className: 'text-h1', spec: 'Plus Jakarta Sans 700 · 28/36' },
   h2: { className: 'text-h2', spec: 'Plus Jakarta Sans 600 · 22/30' },
@@ -28,4 +28,4 @@ export const velocityTextStyles = {
   monoL: { className: 'font-mono text-mono-l', spec: 'JetBrains Mono 500 · 20/28' }
 } as const;
 
-export type VelocityTextStyle = keyof typeof velocityTextStyles;
+export type TextStyle = keyof typeof textStyles;
