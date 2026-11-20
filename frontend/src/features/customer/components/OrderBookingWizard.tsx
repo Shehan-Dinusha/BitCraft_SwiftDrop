@@ -148,7 +148,6 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
     // Postal codes have no blur event (SpecialField), so check them once all 5 digits are in.
     const complete = field.endsWith('PostalCode') && String(value).length === 5;
     setErrors((current) => {
-      if (field === 'collectCash' && !value) return { ...current, codAmount: undefined };
       return current[field] || complete
         ? { ...current, [field]: validateField(field, { ...form, [field]: value }) }
         : current;

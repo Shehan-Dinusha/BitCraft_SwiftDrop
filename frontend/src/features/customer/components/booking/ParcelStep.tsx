@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Package, Timer, Zap } from 'lucide-react';
-import { Button, Field, RadioCard, Toggle } from '@/design-system';
+import { Package, Timer, Zap } from 'lucide-react';
+import { Field, RadioCard } from '@/design-system';
 import type { OrderSpeed } from '@/services/api/orderApi';
 import type { BookingStepProps } from './AddressFields';
 import type { BookingField } from './bookingForm';
@@ -31,22 +30,6 @@ const decimal = (value: string) => value.replace(',', '.').replace(/[^\d.]/g, ''
 const unit = (text: string) => <span className="shrink-0 text-body text-muted">{text}</span>;
 
 export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps) {
-  const [showExtras, setShowExtras] = useState(
-    Boolean(
-      form.itemDescription || form.declaredValue || errors.itemDescription || errors.declaredValue
-    )
-  );
-  const [focusExtras, setFocusExtras] = useState(false);
-  const contentsRef = useRef<HTMLInputElement>(null);
-
-  // Revealing the optional fields removes the button that had focus; hand focus to the new field.
-  useEffect(() => {
-    if (focusExtras && showExtras) {
-      contentsRef.current?.focus();
-      setFocusExtras(false);
-    }
-  }, [focusExtras, showExtras]);
-
   const sizeField = (
     field: Extract<BookingField, 'lengthCm' | 'widthCm' | 'heightCm'>,
     label: string
@@ -120,70 +103,7 @@ export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps)
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-border-subtle p-4">
-        <Toggle
-          label="Collect cash from the recipient"
-          checked={form.collectCash}
-          onChange={(event) => {
-            onChange('collectCash', event.target.checked);
-            if (!event.target.checked) onChange('codAmount', '');
-          }}
-        />
-        {form.collectCash ? (
-          <Field
-            label="Amount to collect"
-            required
-            variant="currency"
-            currency="LKR"
-            inputMode="decimal"
-            className="sm:max-w-[280px]"
-            value={form.codAmount}
-            error={errors.codAmount}
-            hint="The courier collects this in cash on delivery"
-            onChange={(event) => onChange('codAmount', decimal(event.target.value))}
-            onBlur={() => onBlur('codAmount')}
-          />
-        ) : null}
-      </div>
 
-      {showExtras ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field
-            ref={contentsRef}
-            label="What's inside"
-            maxLength={512}
-            value={form.itemDescription}
-            error={errors.itemDescription}
-            hint="Optional, e.g. documents or clothing"
-            onChange={(event) => onChange('itemDescription', event.target.value)}
-            onBlur={() => onBlur('itemDescription')}
-          />
-          <Field
-            label="Value of the contents"
-            variant="currency"
-            currency="LKR"
-            inputMode="decimal"
-            value={form.declaredValue}
-            error={errors.declaredValue}
-            hint="Optional"
-            onChange={(event) => onChange('declaredValue', decimal(event.target.value))}
-            onBlur={() => onBlur('declaredValue')}
-          />
-        </div>
-      ) : (
-        <Button
-          type="button"
-          variant="ghost"
-          className="self-start"
-          rightIcon={<ChevronDown />}
-          onClick={() => {
-            setShowExtras(true);
-            setFocusExtras(true);
-          }}
-        >
-          Add contents and value
-        </Button>
-      )}
     </fieldset>
   );
 }

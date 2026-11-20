@@ -4,7 +4,6 @@ import {
   Alert,
   Button,
   Checkbox,
-  MoneyAmount,
   PriceBreakdown,
   Skeleton,
   SpeedTag,
@@ -98,17 +97,6 @@ export function ReviewStep({
                 {form.actualWeightKg} kg · {form.lengthCm} × {form.widthCm} × {form.heightCm} cm
               </span>
             </div>
-            {form.itemDescription ? <Line>{form.itemDescription}</Line> : null}
-            {form.declaredValue ? (
-              <Line>
-                Declared value <MoneyAmount amount={Number(form.declaredValue)} size="sm" />
-              </Line>
-            ) : null}
-            {form.codAmount ? (
-              <Line>
-                Cash on delivery <MoneyAmount amount={Number(form.codAmount)} size="sm" />
-              </Line>
-            ) : null}
           </Summary>
         </div>
 

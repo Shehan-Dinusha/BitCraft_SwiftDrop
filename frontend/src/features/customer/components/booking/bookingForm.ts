@@ -42,13 +42,8 @@ export interface BookingForm {
   heightCm: string;
   actualWeightKg: string;
   speed: OrderSpeed;
-  itemDescription: string;
   /** Optional notes for the courier, such as a gate code or a landmark. */
   customerNotes: string;
-  declaredValue: string;
-  /** UI only: the customer turned on "Collect cash on delivery", so an amount is required. */
-  collectCash: boolean;
-  codAmount: string;
   prohibitedItemsDeclared: boolean;
 }
 
@@ -83,11 +78,7 @@ export const initialBookingForm: BookingForm = {
   heightCm: '',
   actualWeightKg: '',
   speed: 'STANDARD',
-  itemDescription: '',
   customerNotes: '',
-  declaredValue: '',
-  collectCash: false,
-  codAmount: '',
   prohibitedItemsDeclared: false
 };
 
@@ -235,10 +226,8 @@ export function toCreateOrderRequest(form: BookingForm): CreateOrderRequest {
     heightCm: toNumber(form.heightCm),
     actualWeightKg: toNumber(form.actualWeightKg),
     speed: form.speed,
-    itemDescription: optionalText(form.itemDescription),
     customerNotes: optionalText(form.customerNotes),
-    declaredValue: form.declaredValue.trim() ? toNumber(form.declaredValue) : 0,
-    codAmount: form.collectCash && form.codAmount.trim() ? toNumber(form.codAmount) : 0,
+    declaredValue: 0,
     prohibitedItemsDeclared: form.prohibitedItemsDeclared
   };
 }
