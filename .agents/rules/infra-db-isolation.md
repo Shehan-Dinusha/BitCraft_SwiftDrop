@@ -18,6 +18,8 @@ Before editing infrastructure, inspect [docker-compose.yml](../../docker-compose
 - Any new environment variable must be mirrored in `.env.example`, Docker Compose, and the chart: non-secret values in `services.<name>.config`, secrets in `services.<name>.secretEnv` plus `templates/secrets.yaml`, `values-secrets.example.yaml` and `scripts/generate-helm-secrets.sh`.
 - Never commit real secret values; `infra/helm/swiftdrop/values-secrets.yaml` is git-ignored.
 - Gateway tracking uses `swiftdrop.events.exchange`, queue `swiftdrop.gateway.tracking.queue`, and binding `parcel.status.changed.#`.
+- The frontend nginx config exists twice: `frontend/nginx.conf` and `frontend.nginxConfig` in `values.yaml`. Change both. Never put `add_header` inside a `location`: it drops every server-level security header (use a `map`, as the PWA cache headers do).
+- Kubernetes context safety: commands for the local cluster pass `--context docker-desktop` / `--kube-context docker-desktop`; check `kubectl config current-context` before anything destructive. Production procedures (release, pause/resume, backup/restore) are in [OPERATIONS-RUNBOOK.md](../../docs/deployment/OPERATIONS-RUNBOOK.md).
 
 After editing:
 
