@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/api/v1/orders", "/api/v1/order"})
+@RequestMapping("/api/v1/orders")
 @Tag(name = "Order", description = "Customer parcel ordering lifecycle, fee estimation, label printing, and fee revisions")
 @RequiredArgsConstructor
 @Slf4j

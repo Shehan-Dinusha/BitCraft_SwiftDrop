@@ -4,7 +4,10 @@ info:
   description: Dynamic delivery tariff calculation, geofence zones, and quote estimation APIs.
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
+security:
+  - bearerAuth: []
 paths:
   /api/v1/pricing/health:
     get:
@@ -83,19 +86,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListZoneResponse"
-
-  /api/v1/geofence-zone/health:
-    get:
-      tags: [Geofence Zone]
-      summary: Check geofence zone endpoint health
-      operationId: checkGeofenceZoneHealth
-      responses:
-        "200":
-          description: Service health response
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseString"
 
   /api/v1/pricing/tariffs:
     get:
@@ -396,6 +386,11 @@ paths:
                 $ref: "#/components/schemas/ApiResponseVoid"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     OrderSpeed:
       type: string

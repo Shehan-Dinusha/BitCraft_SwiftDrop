@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/api/v1/pricing", "/api/v1/pricing-quote"})
+@RequestMapping("/api/v1/pricing")
 @Tag(name = "Pricing", description = "Delivery fee quotation and geofence pricing zones")
 @RequiredArgsConstructor
 public class PricingQuoteController {

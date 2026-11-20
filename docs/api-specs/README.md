@@ -4,7 +4,7 @@ SwiftDrop exposes **one OpenAPI 3.1 document per service**, plus a public tracki
 
 | I want to... | Go to |
 |---|---|
-| Try endpoints in the browser | [Swagger UI](http://localhost:8080/swagger-ui.html) on a running gateway |
+| Try endpoints in the browser | [Swagger UI on AKS](https://api.swiftdrop.bitcraft.biz/swagger-ui.html), or [locally](http://localhost:8080/swagger-ui.html) on a running gateway |
 | See which URL reaches which service | [Gateway routes](#gateway-routes) |
 | Find the document for a service | [Spec files](#spec-files) |
 | Generate frontend types | [Frontend engineers](#frontend-engineers) |
@@ -102,7 +102,10 @@ To create the demo accounts, run `npm run seed:demo` in [`frontend`](../../front
 ## Backend engineers
 
 1. Start the services you need and open the central UI at [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html). It lists every service.
-2. Use **Authorize** to paste a JWT; the document endpoints themselves need no token.
+2. Use **Authorize** to paste a JWT; the document endpoints themselves need no token. Every operation sends it by default;
+   public ones (login, register, tracking) are marked `security: []`, and the merchant B2B endpoints use **apiKeyAuth**
+   (`X-Merchant-Api-Key`) instead. "Try it out" calls the same host that served the page, so it works on AKS and locally.
+   Service-to-service `/internal/**` endpoints are not routed by the gateway and are left out of the docs.
 3. Each service's raw document is at `http://localhost:<port>/v3/api-docs`.
 
 Every endpoint should have `@Tag`, `@Operation` and `@Schema` annotations, Jakarta validation on request bodies, and the shared `ApiResponse<T>` wrapper.

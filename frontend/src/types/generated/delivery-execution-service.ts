@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deliveries/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List deliveries assigned to the authenticated courier
+         * @description Returns today's deliveries (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
+         */
+        get: operations["getMyDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/deliveries/{deliveryId}": {
         parameters: {
             query?: never;
@@ -306,6 +326,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseString"];
+                };
+            };
+        };
+    };
+    getMyDeliveries: {
+        parameters: {
+            query?: {
+                /** @description Day to list, as yyyy-MM-dd. Defaults to today. */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier deliveries retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDeliverySessionResponse"];
                 };
             };
         };

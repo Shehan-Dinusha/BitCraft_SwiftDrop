@@ -553,6 +553,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/oauth2/google/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start Google OAuth 2.0 login
+         * @description Redirects the browser to Google's consent screen. Returns 503 if Google OAuth credentials are not configured.
+         */
+        get: operations["googleAuthorize"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth2/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Google OAuth 2.0 callback
+         * @description Receives the authorization code from Google, validates the state token, upserts the user, and redirects to the frontend callback page with a short-lived one-time exchange code in the query string.
+         */
+        get: operations["googleCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth2/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange OAuth one-time code for SwiftDrop tokens
+         * @description Accepts the short-lived code issued by the Google callback and returns a token pair. The code is consumed immediately and cannot be reused. The refresh token is set as the HttpOnly cookie.
+         */
+        post: operations["googleExchange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/.well-known/jwks.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the public JSON Web Key Set */
+        get: operations["jwks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -1174,6 +1251,40 @@ export interface components {
         UpdateUserStatusRequest: {
             status: components["schemas"]["UserStatus"];
         };
+        /** @description One-time code returned from the Google OAuth callback, to be exchanged for tokens */
+        OAuthExchangeRequest: {
+            /** @description One-time exchange code from the OAuth callback redirect */
+            code: string;
+        };
+        /** @description JSON Web Key Set. Empty in HS256 mode unless an RSA pair has been configured for migration. */
+        JwksResponse: {
+            /** @description Public RSA signing keys. */
+            keys?: components["schemas"]["JwkResponse"][];
+        };
+        /** @description RSA public verification key. Contains no private or symmetric key material. */
+        JwkResponse: {
+            /**
+             * @description Key type.
+             * @enum {string}
+             */
+            kty?: "RSA";
+            /**
+             * @description Public key use.
+             * @enum {string}
+             */
+            use?: "sig";
+            /**
+             * @description Allowed signature algorithm.
+             * @enum {string}
+             */
+            alg?: "RS256";
+            /** @description Stable SHA-256 fingerprint of the X.509 public key, encoded as base64url. */
+            kid?: string;
+            /** @description Unsigned RSA modulus encoded as base64url without padding. */
+            n?: string;
+            /** @description Unsigned RSA exponent encoded as base64url without padding. */
+            e?: string;
+        };
         TokenResponse: {
             accessToken?: string;
             /** @description Always null for /login, /refresh and /oauth2/exchange: the refresh token is set as the HttpOnly swiftdrop_refresh cookie instead. */
@@ -1291,4 +1402,96 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    googleAuthorize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to Google's consent screen */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Google OAuth is not configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    googleCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the frontend OAuth callback page */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    googleExchange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthExchangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Token pair issued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+        };
+    };
+    jwks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public RSA verification keys */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JwksResponse"];
+                };
+            };
+        };
+    };
+}

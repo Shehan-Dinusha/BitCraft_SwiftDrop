@@ -8,8 +8,10 @@ info:
     X-Correlation-Id header is a UUID, that correlationId; internal details are never returned.
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
-    description: API Gateway
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
+security:
+  - bearerAuth: []
 paths:
   /api/v1/dispatch/health:
     get:
@@ -686,6 +688,11 @@ paths:
                     timestamp: "2026-11-15T08:30:00Z"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     AssignmentStatus:
       type: string

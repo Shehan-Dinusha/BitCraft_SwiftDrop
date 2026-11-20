@@ -4,7 +4,10 @@ info:
   description: Merchant onboarding, SHA-256 API key management, and bulk parcel order ingestion.
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
+security:
+  - bearerAuth: []
 paths:
   /api/v1/merchants/register:
     post:
@@ -171,6 +174,8 @@ paths:
     post:
       tags: [B2bOrders]
       summary: Create a merchant order or return an existing order for the same reference
+      security:
+        - apiKeyAuth: []
       description: Requires a trusted merchant context injected after API-key authentication at the gateway.
       parameters:
         - $ref: "#/components/parameters/B2bMerchantId"
@@ -212,6 +217,8 @@ paths:
     post:
       tags: [B2bOrders]
       summary: Submit up to 500 orders with per-item results
+      security:
+        - apiKeyAuth: []
       parameters:
         - $ref: "#/components/parameters/B2bMerchantId"
         - $ref: "#/components/parameters/B2bRole"
@@ -379,28 +386,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseApiKeyResponse"
 
-  /internal/v1/api-keys/validate:
-    post:
-      tags: [ApiKeyManagement]
-      summary: Internal API key validation for gateway filter
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MerchantApiKeyValidationRequest"
-      responses:
-        "200":
-          description: Validation result
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MerchantApiKeyValidationResult"
-
   /api/v1/merchant-order-ingest/health:
     get:
       tags: [MerchantOrderIngest]
       summary: Check order ingest health
+      security:
+        - apiKeyAuth: []
       responses:
         "200":
           description: Service health response
@@ -522,6 +513,15 @@ paths:
                 $ref: "#/components/schemas/ApiResponseListBulkBatchItemResponse"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Merchant-Api-Key
   parameters:
     B2bMerchantId:
       name: X-Merchant-Id
@@ -863,25 +863,6 @@ components:
           type: string
           format: date-time
         rawApiKey:
-          type: string
-
-    MerchantApiKeyValidationRequest:
-      type: object
-      required:
-        - apiKey
-      properties:
-        apiKey:
-          type: string
-
-    MerchantApiKeyValidationResult:
-      type: object
-      properties:
-        valid:
-          type: boolean
-        merchantId:
-          type: string
-          format: uuid
-        reason:
           type: string
 
     BulkOrderIngestItem:

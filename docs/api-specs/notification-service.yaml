@@ -4,7 +4,10 @@ info:
   description: Recipient notification preferences management, dispatch (Email via Azure Communication Services, in-app Push), and delivery audit log APIs.
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
+security:
+  - bearerAuth: []
 paths:
   /api/v1/notifications/preferences/health:
     get:
@@ -278,6 +281,11 @@ paths:
                 $ref: "#/components/schemas/ApiResponseInteger"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     ApiResponseString:
       type: object

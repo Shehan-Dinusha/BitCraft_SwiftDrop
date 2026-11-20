@@ -9,7 +9,9 @@ import com.swiftdrop.merchant.dto.BulkIngestRequest;
 import com.swiftdrop.merchant.dto.BulkOrderIngestItem;
 import com.swiftdrop.merchant.service.BulkCsvOrderProcessor;
 import com.swiftdrop.merchant.service.BulkOrderIngestionService;
+import com.swiftdrop.merchant.config.OpenApiConfig;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class MerchantOrderIngestController {
 
     @GetMapping("/api/v1/merchant-order-ingest/health")
     @Operation(summary = "Check order ingestion controller health")
+    @SecurityRequirement(name = OpenApiConfig.API_KEY_SCHEME)
     public ApiResponse<String> health() {
         return ApiResponse.success("MerchantOrderIngestController is active");
     }

@@ -21,7 +21,7 @@ public class OpenApiConfig {
                         .version("v1.0.0")
                         .contact(new Contact().name(OpenApiConstants.CONTACT_NAME).url(OpenApiConstants.CONTACT_URL))
                         .license(new License().name(OpenApiConstants.LICENSE_NAME).url(OpenApiConstants.LICENSE_URL)))
-                .servers(java.util.List.of(new Server().url("http://localhost:8080").description("API Gateway")))
+                .servers(java.util.List.of(new Server().url("/").description("API Gateway (same origin as this Swagger UI)")))
                 .components(new Components().addSecuritySchemes(OpenApiConstants.BEARER_AUTH_SCHEME,
                         new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")));
     }
