@@ -26,8 +26,10 @@ import { NotificationConsolePage } from '@/features/admin-ops/pages/Notification
 import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
 import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
 import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
+import { LandingPage } from '@/features/landing/pages/LandingPage';
 
 export const routes: RouteObject[] = [
+  { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <SignUpPage /> },
   { path: '/auth/callback', element: <OAuthCallbackPage /> },
