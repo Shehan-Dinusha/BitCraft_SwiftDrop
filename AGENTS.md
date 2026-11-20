@@ -49,7 +49,7 @@ Kubernetes namespaces are `swiftdrop-apps`, `swiftdrop-data`, and `swiftdrop-mes
 | Add/modify REST controller or DTO | Verify `@Tag`, `@Operation`, `@Schema`, Jakarta validation, and `ApiResponse<T>` usage; update the relevant `docs/api-specs` contract; run `npm run api:sync:local` against a running gateway or `npm run api:sync:specs` from static specs. |
 | Add/modify a JPA `@Entity` field | Add a new immutable Flyway migration named `V<N>__<description>.sql` in that service’s `src/main/resources/db/migration/`; never edit a committed migration. |
 | Add/modify a RabbitMQ event record | Update [common-contracts](backend/common-contracts), rebuild it with `mvn -f backend/pom.xml clean install -pl common-contracts -am`, and update `definitions.json` plus the relevant `RabbitMQConfig.java` when queues or routing keys change. |
-| Add an environment variable to `application.yml` | Update [.env.example](.env.example), [docker-compose.yml](docker-compose.yml), and the Helm chart: `services.<service>.config` in [values.yaml](infra/helm/swiftdrop/values.yaml) for non-secret values, or `services.<service>.secretEnv` plus `templates/secrets.yaml` and `values-secrets.example.yaml` for secrets. |
+| Add an environment variable to `application.yml` | Update [.env.example](.env.example), [docker-compose.yml](docker-compose.yml), and the Helm chart: `services.<service>.config` in [values.yaml](infra/helm/swiftdrop/values.yaml) for non-secret values, or `services.<service>.secretEnv` plus `templates/secrets.yaml`, `values-secrets.example.yaml` and `scripts/generate-helm-secrets.sh` for secrets. A real secret value also goes into the `HELM_SECRETS_VALUES` environment secret on GitHub (see the runbook). |
 | Change gateway route or public tracking stream | Update `GatewayRoutesConfig.java`, `JwtAuthenticationGlobalFilter.java`, gateway OpenAPI URLs, frontend tracking API/client, and verify WebSocket/SSE behavior. |
 | Change a frontend contract type | Regenerate under `frontend/src/types/generated/`; do not hand-edit generated files. |
 
@@ -88,6 +88,36 @@ helm template swiftdrop infra/helm/swiftdrop -f infra/helm/swiftdrop/values-stud
 
 Do not claim runtime success from compilation alone. For API/gateway changes, start the relevant services and verify health, OpenAPI, RabbitMQ consumption, and the affected HTTP/SSE/WebSocket path.
 
+`mvn test` runs unit tests only. Integration tests (`*IT`, Testcontainers with real PostgreSQL and RabbitMQ) run in `mvn verify`, which is what CI runs. Run `mvn -f backend/pom.xml -pl <module> -am verify` before a PR that touches persistence, Flyway or messaging; Docker must be running.
+
+## Working Rules
+
+### Git and pull requests
+
+- Never commit or push to `dev` or `main`. Branch from `dev` (`fix/…`, `feat/…`, `docs/…`, `refactor/…`), open a PR into `dev`, and merge it with **Squash and merge** (`dev` requires linear history).
+- Releases are a `dev` → `main` PR merged with **Create a merge commit**, never squash. The procedure is in the [operations runbook](docs/deployment/OPERATIONS-RUNBOOK.md).
+- Use Conventional Commit subjects (`feat(frontend): …`, `fix(api-docs): …`, `refactor!: …` for breaking changes) and explain the why in the body.
+- If `dev` moved while you worked, merge `origin/dev` into your branch once and resolve conflicts there, not in the PR. Keep the other side's new work and re-apply your change on top. Then re-run the checks: regenerate API types, run lint, build and tests.
+- PR descriptions list what changed, anything breaking, anything needed before deploying (migrations, Helm values, secrets), and how it was tested.
+
+### Product decisions that constrain the code
+
+- **No device location.** SwiftDrop matches couriers by district. Do not add GPS fields, endpoints, events, columns or `navigator.geolocation`; nginx sends `Permissions-Policy: geolocation=()`.
+- **Branding.** The product name is "SwiftDrop" (the old "Velocity" name is retired everywhere). The logo is the `BrandMark` design-system component; never use a generic icon tile as the logo. The source image is `docs/brand/swiftdrop-logo.png`.
+- **PWA.** The frontend is an installable PWA for couriers and customers. The service worker must never cache API responses, and updates wait for the user ("Reload"); see [frontend/AGENTS.md](frontend/AGENTS.md).
+- **Swagger.** One UI at the gateway (`/swagger-ui.html`) lists every service. Each service's `OpenApiConfig` uses server `"/"` and JWT (`bearerAuth`) by default. `/internal/**` endpoints are excluded from the docs. Details are in [backend/AGENTS.md](backend/AGENTS.md).
+
+### Environment pitfalls (Windows, Git Bash, PowerShell)
+
+- Writing code or scripts through a shell heredoc can silently change backslashes and quotes (for example `\` line continuations become literal `\n`). Write multi-line content with a file-writing tool, or save a script to a file and run it, then re-read the result.
+- Git on Windows runs with `core.autocrlf=true`, so "LF will be replaced by CRLF" warnings are normal. Keep each file's existing line endings when editing. Shell scripts must stay LF (`.gitattributes` enforces `*.sh eol=lf`) so they run in Linux containers and CI.
+- In Git Bash, prefix `az`/`docker` commands that take `/`-paths with `MSYS_NO_PATHCONV=1`.
+
+### Kubernetes context safety
+
+- This machine can hold both the production context (`swiftdrop-aks`) and the local one (`docker-desktop`). Every `kubectl`/`helm` command against the local cluster must pass `--context docker-desktop` / `--kube-context docker-desktop`. Run the local build script with a pinned kubeconfig (`KUBECONFIG=/tmp/kube-local`), because it restarts deployments in the current context.
+- Never run `helm uninstall`, `kubectl delete`, a restore or `az aks stop` without first checking `kubectl config current-context` and getting the owner's go-ahead. Production procedures are in the [operations runbook](docs/deployment/OPERATIONS-RUNBOOK.md).
+
 ## Repository Navigation
 
 - Backend rules: [backend/AGENTS.md](backend/AGENTS.md)
@@ -95,3 +125,9 @@ Do not claim runtime success from compilation alone. For API/gateway changes, st
 - Backend contract rule: [.agents/rules/backend-contract-sync.md](.agents/rules/backend-contract-sync.md)
 - Frontend ergonomics rule: [.agents/rules/frontend-ergonomics.md](.agents/rules/frontend-ergonomics.md)
 - Infrastructure isolation rule: [.agents/rules/infra-db-isolation.md](.agents/rules/infra-db-isolation.md)
+- Releases, pause/resume, backup/restore and incidents: [docs/deployment/OPERATIONS-RUNBOOK.md](docs/deployment/OPERATIONS-RUNBOOK.md)
+- First-time AKS setup and full troubleshooting: [docs/deployment/AKS-HELM-DEPLOYMENT.md](docs/deployment/AKS-HELM-DEPLOYMENT.md)
+- Local Kubernetes (Docker Desktop): [docs/deployment/LOCAL-KUBERNETES.md](docs/deployment/LOCAL-KUBERNETES.md)
+- API contracts and Swagger: [docs/api-specs/README.md](docs/api-specs/README.md)
+- RabbitMQ event payloads: [docs/design/m9/event-payload-schemas.md](docs/design/m9/event-payload-schemas.md)
+- Who owns which service: [docs/member-guides/README.md](docs/member-guides/README.md)

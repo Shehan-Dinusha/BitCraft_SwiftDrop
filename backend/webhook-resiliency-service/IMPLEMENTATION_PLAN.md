@@ -92,7 +92,7 @@ Verified in code; the audit IDs are in brackets.
 Also note:
 - `OutboundWebhookDispatcher` is `@Deprecated`. Only test ping and legacy replay use it.
 - `webhook.dispatch.requested` is bound but has no producer. The consumer deliberately rejects it to the DLQ.
-- The gateway does not route the alias paths `/api/v1/dlq-replay` and `/api/v1/webhook-subscription`.
+- The old alias paths `/api/v1/dlq-replay` and `/api/v1/webhook-subscription` were removed (the gateway never routed them); use `/api/v1/webhooks/dlq` and `/api/v1/webhooks/subscriptions`.
 
 ---
 

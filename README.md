@@ -55,7 +55,7 @@ SwiftDrop manages the full life of a courier parcel across Sri Lanka: booking, p
 Demo sign-ins are shared with the team in [docs/deployment/DEMO-ACCOUNTS.md](docs/deployment/DEMO-ACCOUNTS.md) and with assessors separately.
 
 > [!NOTE]
-> The cluster runs on a student subscription and is paused outside demo times to save credit, so the site may be offline. It is paused and resumed with `scripts/aks/pause.sh` / `resume.sh`, which back up and restore the databases.
+> The cluster runs on a student subscription and is paused outside demo times to save credit, so the site may be offline. It is paused and resumed with `scripts/aks/pause.sh` / `resume.sh`, which back up and restore the databases. Releases, pause/resume, backups and what to do when something breaks are in the [operations runbook](docs/deployment/OPERATIONS-RUNBOOK.md).
 
 ## Architecture
 
@@ -330,7 +330,10 @@ This deploys the same Helm chart that runs on AKS, sized for a laptop with the [
 #  1. Docker Desktop → Settings → Kubernetes → Enable Kubernetes (cluster type: Kubeadm)
 #  2. Ingress controller
 helm repo add traefik https://traefik.github.io/charts && helm repo update
-helm --kube-context docker-desktop upgrade --install traefik traefik/traefik   -n traefik --create-namespace   --set ingressClass.isDefaultClass=true   --set providers.kubernetesIngress.publishedService.enabled=true
+helm --kube-context docker-desktop upgrade --install traefik traefik/traefik \
+  -n traefik --create-namespace \
+  --set ingressClass.isDefaultClass=true \
+  --set providers.kubernetesIngress.publishedService.enabled=true
 #  3. Secrets (writes the git-ignored infra/helm/swiftdrop/values-secrets.yaml)
 bash scripts/generate-helm-secrets.sh
 
@@ -339,7 +342,9 @@ kubectl config view --raw --minify --context docker-desktop > /tmp/kube-local
 KUBECONFIG=/tmp/kube-local bash scripts/k8s-local-build.sh
 
 # Deploy, then watch the pods start (1–3 minutes per service)
-helm --kube-context docker-desktop upgrade --install swiftdrop infra/helm/swiftdrop -n default   -f infra/helm/swiftdrop/values-local.yaml   -f infra/helm/swiftdrop/values-secrets.yaml
+helm --kube-context docker-desktop upgrade --install swiftdrop infra/helm/swiftdrop -n default \
+  -f infra/helm/swiftdrop/values-local.yaml \
+  -f infra/helm/swiftdrop/values-secrets.yaml
 kubectl --context docker-desktop get pods -A -l app.kubernetes.io/part-of=swiftdrop -w
 ```
 
@@ -370,7 +375,7 @@ Workflows are in [`.github/workflows`](.github/workflows).
 - **Security gates**: an image with a fixable HIGH or CRITICAL CVE is never pushed. Accepted exceptions live in [`.trivyignore.yaml`](.trivyignore.yaml), each with a reason and an expiry date.
 - **Access**: GitHub logs in to Azure with OIDC (no stored password). The Helm secrets are a `production` environment secret, so only `main` can deploy, and every deploy waits for a reviewer.
 
-The full setup, from creating the Azure resources to the first deploy, is in the [AKS Helm deployment guide](docs/deployment/AKS-HELM-DEPLOYMENT.md).
+The full setup, from creating the Azure resources to the first deploy, is in the [AKS Helm deployment guide](docs/deployment/AKS-HELM-DEPLOYMENT.md). How to release `dev` to `main`, verify a deploy and roll back is in the [operations runbook](docs/deployment/OPERATIONS-RUNBOOK.md).
 
 ## Documentation
 
@@ -378,6 +383,7 @@ The full setup, from creating the Azure resources to the first deploy, is in the
 |---|---|
 | [Local Development Guide](docs/LOCAL-DEVELOPMENT.md) | Run one service, its database and the frontend |
 | [AKS Helm Deployment Guide](docs/deployment/AKS-HELM-DEPLOYMENT.md) | Deploy the full system to Azure Kubernetes Service with the Helm chart |
+| [Operations runbook](docs/deployment/OPERATIONS-RUNBOOK.md) | Release `dev` → `main`, pause/resume the cluster, back up and restore, fix common incidents |
 | [Local Kubernetes Guide](docs/deployment/LOCAL-KUBERNETES.md) | Run the same Helm chart for free on Docker Desktop's Kubernetes |
 | [Demo data seeder](scripts/seed/README.md) | Fill a cluster with a month of realistic data through the public APIs |
 | [Demo accounts](docs/deployment/DEMO-ACCOUNTS.md) | Seeded sign-ins per role, for the team |
@@ -385,15 +391,15 @@ The full setup, from creating the Azure resources to the first deploy, is in the
 | [ADR-001](docs/architecture/ADR-001-physical-db-statefulsets.md) | Why every database is a separate StatefulSet |
 | [Component guide](frontend/COMPONENTS.md) | Design system rules, components, catalog routes |
 | [Design system source](docs/design-system/figma-source.md) | Figma file and node links |
-| [Agent instructions](AGENTS.md) | Architecture boundaries and the change-sync checklist |
+| [Agent instructions](AGENTS.md) | Architecture boundaries, the change-sync checklist and working rules, for people and AI assistants ([backend](backend/AGENTS.md), [frontend](frontend/AGENTS.md)) |
 
 ## Contributing
 
-- Branch from `dev` and open pull requests into `dev`. Never commit to `dev` or `main` directly.
-- Releases are a `dev` → `main` pull request. Pushing to `main` starts the CD pipeline; the deploy waits for approval.
+- Branch from `dev` and open pull requests into `dev`, merged with **Squash and merge**. Never commit to `dev` or `main` directly.
+- Releases are a `dev` → `main` pull request merged with **Create a merge commit** (never squash). Pushing to `main` starts the CD pipeline; the deploy waits for approval. Follow the [operations runbook](docs/deployment/OPERATIONS-RUNBOOK.md): take a backup first.
 - Keep database ownership strict: no cross-service foreign keys, shared tables or direct database access.
 - Changing a REST contract, event or database entity has required follow-up steps; see the matrix in [`AGENTS.md`](AGENTS.md).
-- Before opening a frontend PR: `npm run lint` and `npm run build`.
+- Before opening a PR: `npm run lint`, `npm test` and `npm run build` for frontend changes; `mvn -f backend/pom.xml -pl <module> -am verify` for backend changes (Docker running).
 
 ## License
 

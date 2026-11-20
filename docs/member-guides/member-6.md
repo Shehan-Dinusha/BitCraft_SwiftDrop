@@ -343,7 +343,7 @@ Rules:
 
 **Steps:**
 
-1. `/courier`: list from `/deliveries/me` with status badges; `touch` density, 56 px rows.
+1. `/courier`: list from `/deliveries/me` with status badges; `kinetic` density, 56 px rows.
 
 **Commit:** `feat(frontend): add courier today list`
 
