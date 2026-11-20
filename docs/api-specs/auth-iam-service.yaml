@@ -440,6 +440,139 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+    patch:
+      tags: [Users]
+      summary: Update the authenticated user's own profile
+      description: Changes first name, last name, phone and district. Username, email, role and status cannot be changed here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Phone number is already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    delete:
+      tags: [Users]
+      summary: Erase the authenticated customer's own account
+      description: >
+        Needs the current password. Removes the username, email, phone, names and district,
+        revokes every session and blocks sign-in. Orders already placed keep an owner id but no
+        personal data. Customer accounts only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+      responses:
+        '200':
+          description: Account erased
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '400':
+          description: Validation failure or incorrect current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Not a customer account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/me/avatar:
+    get:
+      tags: [Users]
+      summary: Get the authenticated user's profile picture
+      responses:
+        '200':
+          description: The picture
+          content:
+            image/png:
+              schema: {type: string, format: binary}
+            image/jpeg:
+              schema: {type: string, format: binary}
+            image/webp:
+              schema: {type: string, format: binary}
+        '401':
+          description: Authentication required
+        '404':
+          description: No profile picture
+    put:
+      tags: [Users]
+      summary: Set the authenticated user's profile picture
+      description: PNG, JPEG or WebP up to 512 KB in the multipart part `file`. The type is checked from the file content.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile picture updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '400':
+          description: Not a PNG, JPEG or WebP image, or larger than 512 KB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: Authentication required
+    delete:
+      tags: [Users]
+      summary: Remove the authenticated user's profile picture
+      responses:
+        '200':
+          description: Profile picture removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '401':
+          description: Authentication required
   /api/v1/users:
     get:
       tags: [Users]
@@ -836,6 +969,37 @@ components:
           minLength: 8
           maxLength: 72
           format: password
+    UpdateProfileRequest:
+      type: object
+      description: Self-service profile update.
+      required: [firstName, lastName, district]
+      properties:
+        firstName:
+          type: string
+          maxLength: 100
+          example: Nimal
+        lastName:
+          type: string
+          maxLength: 100
+          example: Perera
+        phone:
+          type: string
+          maxLength: 32
+          pattern: '^$|^\+?[0-9]{7,15}$'
+          description: Phone number; empty removes it.
+          example: '+94771234567'
+        district:
+          $ref: '#/components/schemas/SriLankanDistrict'
+
+    DeleteAccountRequest:
+      type: object
+      required: [currentPassword]
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 72
+          format: password
+          description: The account's current password, as confirmation.
     UpdateUserRoleRequest:
       type: object
       description: Compatibility request to verify an existing role. Account roles cannot be changed after creation.
@@ -944,6 +1108,11 @@ components:
         createdAt:
           type: string
           format: date-time
+        avatarUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the profile picture last changed; null when there is none. The picture is served by GET /api/v1/users/me/avatar.
     ApiResponseUserProfile:
       type: object
       properties:

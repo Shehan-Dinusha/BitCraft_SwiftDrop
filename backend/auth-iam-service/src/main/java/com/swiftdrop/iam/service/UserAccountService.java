@@ -7,7 +7,9 @@ import com.swiftdrop.iam.domain.entity.UserAccount;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.ChangePasswordRequest;
 import com.swiftdrop.iam.dto.CreateUserRequest;
+import com.swiftdrop.iam.dto.DeleteAccountRequest;
 import com.swiftdrop.iam.dto.RegisterUserRequest;
+import com.swiftdrop.iam.dto.UpdateProfileRequest;
 import com.swiftdrop.iam.dto.UserProfileResponse;
 import com.swiftdrop.iam.exception.AuthException;
 import com.swiftdrop.iam.exception.ResourceNotFoundException;
@@ -130,6 +132,21 @@ public class UserAccountService {
         return AuthMapper.toProfile(user);
     }
 
+    /** Updates the caller's own name, phone and district. */
+    @Transactional
+    public UserProfileResponse updateOwnProfile(UUID publicId, UpdateProfileRequest request) {
+        UserAccount user = requireUser(publicId);
+        String phone = normalizeNullable(request.phone());
+        if (phone != null && !phone.equals(user.getPhone()) && userAccountRepository.existsByPhone(phone)) {
+            throw new UserAlreadyExistsException("Phone number is already registered");
+        }
+        user.setFirstName(request.firstName().trim());
+        user.setLastName(request.lastName().trim());
+        user.setPhone(phone);
+        user.setDistrict(request.district());
+        return AuthMapper.toProfile(userAccountRepository.save(user));
+    }
+
     @Transactional
     public void changePassword(UUID publicId, ChangePasswordRequest request) {
         UserAccount user = requireUser(publicId);
@@ -143,6 +160,42 @@ public class UserAccountService {
         passwordPolicy.validate(request.newPassword(), user.getUsername(), user.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userAccountRepository.save(user);
+        refreshTokenService.revokeAll(user);
+        tokenIssuanceService.blacklistUser(user.getPublicId());
+    }
+
+    /**
+     * Erases a customer's own account and the personal data held on it.
+     *
+     * <p>The account row stays as an empty shell so the orders other services hold for this
+     * customer keep a valid owner id, but nothing on it identifies the person any more: the
+     * username, email, phone, names and district are gone, the password is replaced by one nobody
+     * knows, every session is revoked and the account can no longer sign in. The email address and
+     * username become free to register again.
+     */
+    @Transactional
+    public void deleteOwnAccount(UUID publicId, DeleteAccountRequest request) {
+        UserAccount user = requireUser(publicId);
+        if (user.getRole() != UserRole.CUSTOMER) {
+            throw new AuthException(HttpStatus.FORBIDDEN,
+                    "Only customer accounts can be deleted here. Ask an administrator for other accounts.");
+        }
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        user.setUsername("deleted-" + user.getPublicId().toString().replace("-", ""));
+        user.setEmail(null);
+        user.setPhone(null);
+        user.setFirstName(null);
+        user.setLastName(null);
+        user.setDistrict(null);
+        user.setMerchantId(null);
+        user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setEmailVerified(false);
+        user.setStatus(UserStatus.DEACTIVATED);
+        userAccountRepository.save(user);
+
         refreshTokenService.revokeAll(user);
         tokenIssuanceService.blacklistUser(user.getPublicId());
     }

@@ -61,6 +61,18 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with("order.created");
     }
 
+    /** Couriers are told about new assignments; merchants see "courier assigned" in their team inbox. */
+    @Bean
+    public Binding bindNotificationEventsCourierAssigned(Queue notificationEventsQueue, TopicExchange eventsExchange) {
+        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with("dispatch.courier.assigned");
+    }
+
+    /** The operations team is alerted when no courier could be assigned. */
+    @Bean
+    public Binding bindNotificationEventsDispatchFailed(Queue notificationEventsQueue, TopicExchange eventsExchange) {
+        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with("dispatch.failed");
+    }
+
     @Bean
     public Binding bindDlqNotificationEvents(Queue dlqNotificationEventsQueue, TopicExchange dlxExchange) {
         return BindingBuilder.bind(dlqNotificationEventsQueue).to(dlxExchange).with(DLQ_ROUTING_KEY);

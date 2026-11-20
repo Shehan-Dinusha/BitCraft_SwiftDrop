@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.AdditionalMatchers.and;
+import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.startsWith;
@@ -52,7 +53,7 @@ class MultiChannelNotificationDispatcherTest {
     private EmailSender emailSender;
 
     @Spy
-    private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer("https://swiftdrop.lk");
+    private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer();
 
     @InjectMocks
     private MultiChannelNotificationDispatcher dispatcher;
@@ -175,7 +176,7 @@ class MultiChannelNotificationDispatcherTest {
         assertThat(response.channel()).isEqualTo("EMAIL");
         assertThat(response.destination()).isEqualTo("customer@example.com");
         verify(emailSender).send(eq("customer@example.com"), eq("Delivered"), startsWith("Delivered at your door"),
-                and(contains("Delivered at your door"), contains("https://swiftdrop.lk/track/SD-001")));
+                and(and(contains("Your parcel has been delivered"), contains("SD-001")), not(contains("/track/"))));
     }
 
     @Test

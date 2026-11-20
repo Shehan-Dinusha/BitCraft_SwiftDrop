@@ -56,21 +56,20 @@ class TariffRbacTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"CUSTOMER", "COURIER", "MERCHANT"})
+    @ValueSource(strings = {"CUSTOMER", "COURIER", "MERCHANT", "DISPATCHER"})
     void tariffPublish_isForbiddenForNonAdminRoles(String role) throws Exception {
         mockMvc.perform(withRole(put("/api/v1/pricing/tariffs/default"), role, TARIFF_BODY))
                 .andExpect(status().isForbidden());
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"DISPATCHER", "SYSTEM_ADMIN"})
-    void tariffPublish_isAllowedForAdminRoles(String role) throws Exception {
-        mockMvc.perform(withRole(put("/api/v1/pricing/tariffs/default"), role, TARIFF_BODY))
+    @Test
+    void tariffPublish_isAllowedForSystemAdmin() throws Exception {
+        mockMvc.perform(withRole(put("/api/v1/pricing/tariffs/default"), "SYSTEM_ADMIN", TARIFF_BODY))
                 .andExpect(status().isOk());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"CUSTOMER", "COURIER", "MERCHANT"})
+    @ValueSource(strings = {"CUSTOMER", "COURIER", "MERCHANT", "DISPATCHER"})
     void zoneWrites_areForbiddenForNonAdminRoles(String role) throws Exception {
         mockMvc.perform(withRole(post("/api/v1/zones"), role, ZONE_BODY))
                 .andExpect(status().isForbidden());
@@ -82,9 +81,9 @@ class TariffRbacTest {
                 .andExpect(status().isForbidden());
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"DISPATCHER", "SYSTEM_ADMIN"})
-    void zoneWrites_areAllowedForAdminRoles(String role) throws Exception {
+    @Test
+    void zoneWrites_areAllowedForSystemAdmin() throws Exception {
+        String role = "SYSTEM_ADMIN";
         mockMvc.perform(withRole(post("/api/v1/zones"), role, ZONE_BODY))
                 .andExpect(status().isCreated());
         mockMvc.perform(withRole(put("/api/v1/zones/ZONE_X"), role, ZONE_BODY))
@@ -116,6 +115,18 @@ class TariffRbacTest {
         mockMvc.perform(get("/api/v1/pricing/tariffs")
                         .header(JwtHeaderConstants.X_USER_ID, USER_ID)
                         .header(JwtHeaderConstants.X_USER_ROLE, "CUSTOMER"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void reads_stayOpenForDispatchers() throws Exception {
+        mockMvc.perform(get("/api/v1/zones")
+                        .header(JwtHeaderConstants.X_USER_ID, USER_ID)
+                        .header(JwtHeaderConstants.X_USER_ROLE, "DISPATCHER"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/pricing/tariffs")
+                        .header(JwtHeaderConstants.X_USER_ID, USER_ID)
+                        .header(JwtHeaderConstants.X_USER_ROLE, "DISPATCHER"))
                 .andExpect(status().isOk());
     }
 }

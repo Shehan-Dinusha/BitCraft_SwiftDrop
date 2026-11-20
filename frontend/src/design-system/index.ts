@@ -201,6 +201,8 @@ export { NavItem } from './components/Shell/NavItem';
 export type { NavItemProps } from './components/Shell/NavItem';
 export { SideNav } from './components/Shell/SideNav';
 export type { SideNavAccount, SideNavProps } from './components/Shell/SideNav';
+export { AccountMenu } from './components/Shell/AccountMenu';
+export type { AccountMenuItem, AccountMenuProps } from './components/Shell/AccountMenu';
 export { TopBar, PublicHeader } from './components/Shell/TopBar';
 export type { PublicHeaderProps, TopBarProps } from './components/Shell/TopBar';
 export { BottomNav } from './components/Shell/BottomNav';

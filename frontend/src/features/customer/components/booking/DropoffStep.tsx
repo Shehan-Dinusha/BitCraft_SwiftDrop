@@ -15,6 +15,7 @@ export function DropoffStep(props: BookingStepProps) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Field
           label="Recipient name"
+          placeholder="Kasun Fernando"
           required
           autoComplete="section-delivery name"
           maxLength={100}
@@ -25,6 +26,7 @@ export function DropoffStep(props: BookingStepProps) {
         />
         <Field
           label="Recipient phone"
+          placeholder="71 234 5678"
           required
           variant="phone"
           autoComplete="section-delivery tel-national"
@@ -37,6 +39,7 @@ export function DropoffStep(props: BookingStepProps) {
         />
         <Field
           label="Second phone"
+          placeholder="11 234 5678"
           variant="phone"
           autoComplete="section-delivery tel-national"
           inputMode="numeric"
@@ -50,6 +53,7 @@ export function DropoffStep(props: BookingStepProps) {
         />
         <Field
           label="Recipient email"
+          placeholder="kasun@example.com"
           required
           inputMode="email"
           autoComplete="section-delivery email"
@@ -66,6 +70,7 @@ export function DropoffStep(props: BookingStepProps) {
 
       <Textarea
         label="Delivery instructions"
+        placeholder="Gate code 4821, call on arrival"
         rows={3}
         maxLength={500}
         value={form.customerNotes}
