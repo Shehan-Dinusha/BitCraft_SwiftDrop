@@ -336,9 +336,9 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Secret API Key Token:</label>
+              <label htmlFor="new-api-key-token" className="text-xs font-semibold text-slate-700">Secret API Key Token:</label>
               <div className="flex items-center gap-2">
-                <input
+                <input id="new-api-key-token"
                   type="text"
                   readOnly
                   value={newlyCreatedKey.rawApiKey || ''}
@@ -413,10 +413,10 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
         ) : (
           <form onSubmit={handleGenerateKey} className="space-y-4 pt-2">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
+              <label htmlFor="api-key-label" className="text-xs font-semibold text-slate-700">
                 Key Label / Description *
               </label>
-              <Input
+              <Input id="api-key-label"
                 placeholder="e.g. ERP Ingestion Key (Warehouse A)"
                 value={keyName}
                 onChange={(e) => setKeyName(e.target.value)}
@@ -425,9 +425,9 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Expiration (Days)</label>
+              <label htmlFor="api-key-expiration-days" className="text-xs font-semibold text-slate-700">Expiration (Days)</label>
               <div className="relative">
-                <Input
+                <Input id="api-key-expiration-days"
                   inputMode="numeric"
                   pattern="[0-9]+"
                   placeholder="e.g. 90 (or leave blank for non-expiring)"

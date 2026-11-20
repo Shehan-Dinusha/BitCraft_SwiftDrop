@@ -19,8 +19,8 @@ A real order created through the gateway delivered an order-confirmation email t
 | Triggers | Every trigger sends one EMAIL: order created, picked up, out for delivery, delivered, failed |
 | SMS removed | Removed from triggers, dispatcher, preferences (`smsEnabled`, `phoneNumber`), contact lookup, API spec and frontend. `POST /logs/dispatch` rejects `SMS` with 400. Migration `V5__remove_sms_channel.sql` drops the two preference columns and moves the seeded templates to EMAIL; old dispatch-log rows keep `SMS` as history |
 | In-app inbox | One inbox row per recipient per event |
-| Email design | `EmailHtmlRenderer` sends a branded HTML email (SwiftDrop header, coloured status badge, tracking-number box, **Track your parcel** button, footer) plus a plain-text copy. Table layout with inline styles and no images, so Gmail and Outlook render it; all text is HTML-escaped. The button links to `PUBLIC_TRACKING_BASE_URL/track/<number>` (use `http://localhost:5173` for a local demo) |
-| Frontend | The customer preferences card shows Email and Browser Push only; **Send Test Email** sends a real test email to the caller's saved notification email (or account email) |
+| Email design | `EmailHtmlRenderer` builds one layout with copy, accent colour and details chosen per type: a short message, a four-step progress bar (with a red final step when delivery fails) and a details table that shows the tracking number once plus only what matters for that step (route and service, courier, delivery time, or failure reason). No tracking button or link. Code emails show the code once, in a code box. A plain-text copy is always included. Table layout, inline styles, no images; all text is HTML-escaped |
+| Frontend | The notification bell shows a distinct icon per type, an All/Unread filter and a menu with **Mark all as read** and **Notification settings** (opens the settings in a drawer). The customer Notifications tab shows the same settings and a list of recent emails. The old test-email button was removed |
 | Access rules (2026-11-16) | Preferences and logs are scoped to the caller; DISPATCHER/SYSTEM_ADMIN can view all logs. `POST /logs/dispatch` lets non-staff send only a test to themselves at their own address, and nobody can send OTP templates through it. One-time codes go only to the registered IAM address |
 | Configuration | `NOTIFICATION_EMAIL_PROVIDER`, `ACS_EMAIL_ENDPOINT`, `ACS_EMAIL_ACCESS_KEY`, `ACS_EMAIL_SENDER_ADDRESS` added to `application.yml`, `.env.example`, `docker-compose.yml` and Helm (`values.yaml`; the key is an optional Secret `notification-acs-email`) |
 
@@ -75,7 +75,17 @@ az communication create -n swiftdrop-notify-acs -g rg-swiftdrop-ai-dev --locatio
 ```
 
 The sender domain shown by the domain command (`fromSenderDomain`) is what goes after
-`DoNotReply@`.
+`DoNotReply@`. Give the sender the display name **SwiftDrop**, so inboxes show "SwiftDrop" rather than
+"DoNotReply":
+
+```powershell
+az communication email domain sender-username update --sender-username DoNotReply --username DoNotReply `
+  --display-name "SwiftDrop" --domain-name AzureManagedDomain --email-service-name swiftdrop-notify-email -g rg-swiftdrop-ai-dev
+```
+
+The address itself stays `DoNotReply@<guid>.azurecomm.net`, and Gmail shows no sender logo: both need a
+domain SwiftDrop owns (for example `notify.swiftdrop.lk`), verified in Azure, and a sender logo also needs
+BIMI (a DMARC policy at enforcement plus a BIMI DNS record and usually a paid Verified Mark Certificate).
 
 ## 3. Run notification-service with Azure email
 
@@ -120,16 +130,14 @@ docker exec swiftdrop-notify-postgres psql -U swiftdrop -d swiftdrop_notify -c `
 
 Expect exactly one row: `EMAIL | PARCEL_CREATED | SENT`.
 
-**Faster alternative to steps 2–3:** sign in as the customer, open the notification
-preferences card, check and save the **Notification Email** field, and click **Send Test Email**. The
-audit table on the same card shows the new `EMAIL | SENT` row, and an "Out for Delivery" test
-email arrives at that address.
+The customer **Notifications** tab also lists recent emails with their status, so you can check
+there instead of querying the database.
 
 **Step 4. Check the service log** for `Azure accepted email for n***@... (operation <id>)`.
 Only the masked address appears.
 
 **Step 5. Check the inbox.** The message "SwiftDrop Order Confirmed" comes from
-`DoNotReply@...azurecomm.net`. Look in spam or junk the first time: Azure-managed domains
+**SwiftDrop** (`DoNotReply@...azurecomm.net`). Look in spam or junk the first time: Azure-managed domains
 have no reputation with university mail filters.
 
 **Step 6. Check the in-app inbox** has one row per parcel (not two):

@@ -1,5 +1,7 @@
 package com.swiftdrop.iam.service;
 
+import org.springframework.dao.DataAccessException;
+import org.springframework.amqp.AmqpException;
 import com.swiftdrop.contracts.events.auth.AuthOtpRequestedEvent;
 import com.swiftdrop.contracts.events.auth.OtpPurpose;
 import com.swiftdrop.iam.config.OtpProperties;
@@ -70,7 +72,7 @@ public class OtpService {
             }
         } catch (AuthException ex) {
             throw ex;
-        } catch (RuntimeException ex) {
+        } catch (DataAccessException ex) {
             log.warn("OTP IP limiter unavailable: {}", ex.getMessage());
         }
     }
@@ -111,7 +113,7 @@ public class OtpService {
             }
         } catch (AuthException ex) {
             throw ex;
-        } catch (RuntimeException ex) {
+        } catch (DataAccessException | AmqpException ex) {
             log.error("Could not issue {} code: {}", purpose, ex.getMessage());
             throw new AuthException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Verification is temporarily unavailable. Please try again shortly.");
@@ -161,7 +163,7 @@ public class OtpService {
             }
         } catch (AuthException ex) {
             throw ex;
-        } catch (RuntimeException ex) {
+        } catch (DataAccessException ex) {
             log.error("Could not verify {} code: {}", purpose, ex.getMessage());
             throw new AuthException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Verification is temporarily unavailable. Please try again shortly.");
@@ -179,7 +181,7 @@ public class OtpService {
         try {
             deleted = Boolean.TRUE.equals(redis.delete(key("code", purpose, userId)));
             redis.delete(key("attempts", purpose, userId));
-        } catch (RuntimeException ex) {
+        } catch (DataAccessException ex) {
             log.error("Could not consume {} code: {}", purpose, ex.getMessage());
             throw new AuthException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Verification is temporarily unavailable. Please try again shortly.");

@@ -1,6 +1,8 @@
 package com.swiftdrop.dispatch.exception;
 
+import com.swiftdrop.contracts.logging.LogSanitizer;
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.security.CallerContextException;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,6 +11,8 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.web.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,15 +32,27 @@ public class GlobalExceptionHandler {
 
     static final String GENERIC_ERROR_MESSAGE = "An unexpected error occurred";
 
+    /** Missing/invalid gateway identity headers -> 401; caller not allowed -> 403. */
+    @ExceptionHandler(CallerContextException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallerContext(
+            CallerContextException ex,
+            HttpServletRequest request) {
+        log.warn("Access denied on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
+        int status = ex.statusCode();
+        String errorName = status == 403 ? "Forbidden" : "Unauthorized";
+        return ResponseEntity.status(status)
+                .body(ApiErrorResponse.of(status, errorName, ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiErrorResponse> handleOptimisticLocking(
             ObjectOptimisticLockingFailureException ex,
             HttpServletRequest request) {
         boolean courierConflict = CourierConflictRetry.isCourierConflict(ex);
         log.warn("Concurrent {} update rejected for {}",
-                courierConflict ? "courier shift" : "dispatch assignment", request.getRequestURI());
+                courierConflict ? "courier shift" : "dispatch assignment", LogSanitizer.clean(request.getRequestURI()));
         String message = courierConflict
-                ? "The courier's record was changed by another operation, such as a location update or "
+                ? "The courier's record was changed by another operation, such as a status update or "
                         + "another assignment. Refresh and retry."
                 : "The dispatch record was changed by another operation. Refresh and retry.";
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -47,7 +63,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleShiftEndNotAllowed(
             ShiftEndNotAllowedException ex,
             HttpServletRequest request) {
-        log.warn("Shift end rejected on {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Shift end rejected on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(409, "Shift Conflict", ex.getMessage(), request.getRequestURI()));
     }
@@ -65,7 +81,7 @@ public class GlobalExceptionHandler {
         if (!UNIQUE_VIOLATION_SQL_STATE.equals(sqlState(ex))) {
             return handleGeneric(ex, request);
         }
-        log.warn("Unique constraint violation on {}", request.getRequestURI(), ex);
+        log.warn("Unique constraint violation on {}", LogSanitizer.clean(request.getRequestURI()), ex);
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(409, "Data Conflict",
                         "The request conflicts with an existing record. Refresh and retry.",
@@ -76,7 +92,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAssignmentConflict(
             AssignmentConflictException ex,
             HttpServletRequest request) {
-        log.warn("Assignment conflict on {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Assignment conflict on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(409, "Assignment Conflict", ex.getMessage(), request.getRequestURI()));
     }
@@ -85,7 +101,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleReassignmentNotAllowed(
             ReassignmentNotAllowedException ex,
             HttpServletRequest request) {
-        log.warn("Reassignment rejected on {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Reassignment rejected on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(409, "Reassignment Not Allowed", ex.getMessage(), request.getRequestURI()));
     }
@@ -108,7 +124,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleInvalidAssignmentTransition(
             InvalidAssignmentTransitionException ex,
             HttpServletRequest request) {
-        log.warn("Invalid assignment transition on {}", request.getRequestURI());
+        log.warn("Invalid assignment transition on {}", LogSanitizer.clean(request.getRequestURI()));
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiErrorResponse.of(
                         409,
@@ -123,14 +139,14 @@ public class GlobalExceptionHandler {
         String errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining("; "));
-        log.warn("Validation error on {}: {}", request.getRequestURI(), errors);
+        log.warn("Validation error on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(errors));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(400, "Validation Failed", errors, request.getRequestURI()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
-        log.warn("Illegal argument on {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Illegal argument on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(400, "Bad Request", ex.getMessage(), request.getRequestURI()));
     }
@@ -143,11 +159,27 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
+        if (ex instanceof ErrorResponse framework && framework.getStatusCode().is4xxClientError()) {
+            return frameworkClientError(framework, request.getRequestURI());
+        }
         String correlationId = correlationId(request);
-        log.error("Internal error on {} (correlationId={})", request.getRequestURI(), correlationId, ex);
+        log.error("Internal error on {} (correlationId={})", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(correlationId), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiErrorResponse.of(500, "Internal Server Error", GENERIC_ERROR_MESSAGE,
                         request.getRequestURI(), correlationId));
+    }
+
+    /**
+     * Spring MVC's own client errors (unknown path 404, wrong method 405, missing parameter 400,
+     * unsupported media type 415, ...) implement {@link ErrorResponse} and already carry the right
+     * status. Return it instead of letting the catch-all turn them into a 500.
+     */
+    private static ResponseEntity<ApiErrorResponse> frameworkClientError(ErrorResponse error, String path) {
+        HttpStatusCode status = error.getStatusCode();
+        HttpStatus known = HttpStatus.resolve(status.value());
+        String reason = known != null ? known.getReasonPhrase() : "Client Error";
+        return ResponseEntity.status(status).headers(error.getHeaders())
+                .body(ApiErrorResponse.of(status.value(), reason, reason, path));
     }
 
     private static String sqlState(Throwable failure) {

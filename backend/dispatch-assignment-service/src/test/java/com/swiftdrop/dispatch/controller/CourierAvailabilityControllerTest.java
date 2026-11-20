@@ -4,18 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
-import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
-import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.exception.ShiftEndNotAllowedException;
-import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import com.swiftdrop.dispatch.service.CourierShiftService;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import java.sql.SQLException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,11 +20,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.List;
 
+import static com.swiftdrop.dispatch.support.TestCallers.courier;
+import static com.swiftdrop.dispatch.support.TestCallers.dispatcher;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -42,7 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(CourierAvailabilityController.class)
-@Import(CourierConflictRetry.class)
 class CourierAvailabilityControllerTest {
 
     @Autowired
@@ -82,8 +77,6 @@ class CourierAvailabilityControllerTest {
                 "+94772345678",
                 VehicleType.MOTORCYCLE,
                 SriLankanDistrict.COLOMBO,
-                null,
-                null,
                 ShiftStatus.AVAILABLE,
                 0,
                 5,
@@ -94,7 +87,7 @@ class CourierAvailabilityControllerTest {
 
         when(courierShiftService.startShift(any(StartShiftRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start")
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start").with(courier(courierId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -115,8 +108,6 @@ class CourierAvailabilityControllerTest {
                 "+94772345678",
                 VehicleType.MOTORCYCLE,
                 SriLankanDistrict.COLOMBO,
-                null,
-                null,
                 ShiftStatus.ON_BREAK,
                 0,
                 5,
@@ -127,50 +118,12 @@ class CourierAvailabilityControllerTest {
 
         when(courierShiftService.updateStatus(eq(courierId), eq(ShiftStatus.ON_BREAK))).thenReturn(response);
 
-        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/status")
+        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/status").with(courier(courierId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.shiftStatus").value("ON_BREAK"));
-    }
-
-    @Test
-    @DisplayName("PUT /api/v1/dispatch/couriers/shifts/location updates heartbeat ping")
-    void testLocationPing() throws Exception {
-        UUID courierId = UUID.randomUUID();
-        CourierLocationPingRequest request = new CourierLocationPingRequest(
-                courierId,
-                SriLankanDistrict.COLOMBO,
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612)
-        );
-
-        CourierShiftResponse response = new CourierShiftResponse(
-                courierId,
-                "Kamal Silva",
-                "+94772345678",
-                VehicleType.MOTORCYCLE,
-                SriLankanDistrict.COLOMBO,
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
-                ShiftStatus.AVAILABLE,
-                0,
-                5,
-                Instant.now(),
-                null,
-                Instant.now()
-        );
-
-        when(courierShiftService.updateLocation(any(CourierLocationPingRequest.class))).thenReturn(response);
-
-        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.latitude").value(6.9271))
-                .andExpect(jsonPath("$.data.longitude").value(79.8612));
     }
 
     @Test
@@ -187,7 +140,7 @@ class CourierAvailabilityControllerTest {
         );
         when(courierShiftService.getWorkloads()).thenReturn(List.of(workload));
 
-        mockMvc.perform(get("/api/v1/dispatch/couriers/workload"))
+        mockMvc.perform(get("/api/v1/dispatch/couriers/workload").with(dispatcher()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].courierId").value(courierId.toString()))
@@ -201,7 +154,7 @@ class CourierAvailabilityControllerTest {
         when(courierShiftService.endShift(courierId)).thenThrow(new ShiftEndNotAllowedException(
                 "Cannot end shift: the courier still has 2 active parcel(s). Complete or reassign them first."));
 
-        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId))
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId).with(courier(courierId)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.error").value("Shift Conflict"))
@@ -216,7 +169,7 @@ class CourierAvailabilityControllerTest {
                 "could not execute statement [duplicate key value violates unique constraint \"courier_shifts_courier_id_key\"]",
                 new SQLException("duplicate key value violates unique constraint", "23505")));
 
-        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start")
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(startShiftRequest())))
                 .andExpect(status().isConflict())
@@ -233,31 +186,13 @@ class CourierAvailabilityControllerTest {
                 "null value in column \"courier_name\" violates not-null constraint",
                 new SQLException("null value in column", "23502")));
 
-        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start")
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(startShiftRequest())))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
                 .andExpect(result -> org.assertj.core.api.Assertions.assertThat(result.getResponse().getContentAsString())
                         .doesNotContain("courier_name", "not-null"));
-    }
-
-    @Test
-    @DisplayName("A location ping that loses a courier-record race once is retried and succeeds")
-    void testLocationPing_CourierConflictIsRetried() throws Exception {
-        CourierShiftResponse response = new CourierShiftResponse(UUID.randomUUID(), "Ping Courier", null,
-                null, SriLankanDistrict.COLOMBO, null, null, ShiftStatus.AVAILABLE, 0, 5, null, null, null);
-        when(courierShiftService.updateLocation(any(CourierLocationPingRequest.class)))
-                .thenThrow(new ObjectOptimisticLockingFailureException(CourierShift.class, 1L))
-                .thenReturn(response);
-
-        mockMvc.perform(put("/api/v1/dispatch/couriers/shifts/location")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new CourierLocationPingRequest(
-                                UUID.randomUUID(), SriLankanDistrict.COLOMBO, null, null))))
-                .andExpect(status().isOk());
-
-        verify(courierShiftService, times(2)).updateLocation(any(CourierLocationPingRequest.class));
     }
 
     private StartShiftRequest startShiftRequest() {

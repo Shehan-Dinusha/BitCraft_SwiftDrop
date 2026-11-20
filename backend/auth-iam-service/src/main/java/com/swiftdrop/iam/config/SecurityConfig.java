@@ -44,6 +44,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/refresh",
+                                "/api/v1/auth/login/mfa",
                                 "/api/v1/auth/oauth2/google/authorize",
                                 "/api/v1/auth/oauth2/google/callback",
                                 "/api/v1/auth/oauth2/exchange",
@@ -53,7 +54,6 @@ public class SecurityConfig {
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/username-availability",
                                 "/api/v1/auth/.well-known/jwks.json",
-                                "/api/v1/health",
                                 "/actuator/health",
                                 "/actuator/health/**",
                                 "/actuator/info",
@@ -65,6 +65,11 @@ public class SecurityConfig {
                                 "/internal/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/me").authenticated()
+                        .requestMatchers("/api/v1/users/me/avatar").authenticated()
+                        // A customer erases their own account. This must come before the
+                        // "/api/v1/users/**" admin rule below, which would otherwise refuse it.
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/users/me").hasRole("CUSTOMER")
                         .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/change-password").authenticated()
                         .requestMatchers("/api/v1/users/**").hasRole("SYSTEM_ADMIN")
                         .anyRequest().authenticated())

@@ -73,6 +73,8 @@ class DefinitionsJsonParityTest {
             new String[]{"notification.events.queue", "notification.#"},
             new String[]{"notification.events.queue", "parcel.status.changed.#"},
             new String[]{"notification.events.queue", "order.created"},
+            new String[]{"notification.events.queue", "dispatch.courier.assigned"},
+            new String[]{"notification.events.queue", "dispatch.failed"},
             new String[]{"webhook.events.queue", "parcel.status.changed.#"},
             new String[]{"webhook.events.queue", "order.created"},
             new String[]{"webhook.events.queue", "webhook.dispatch.requested"},

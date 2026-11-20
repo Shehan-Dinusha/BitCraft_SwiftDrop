@@ -302,14 +302,13 @@ export function ShellPreviewPage() {
           role={shellRole}
           activeId={roleShellSpec[shellRole].tabs?.[0]?.id}
           renderTab={(_entry, active, content, tabClassName) => (
-            <a
-              href="#"
-              onClick={(event) => event.preventDefault()}
+            <button
+              type="button"
               aria-current={active ? 'page' : undefined}
               className={tabClassName}
             >
               {content}
-            </a>
+            </button>
           )}
         />
       ) : null}

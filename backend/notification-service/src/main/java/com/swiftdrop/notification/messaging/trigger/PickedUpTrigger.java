@@ -38,15 +38,14 @@ public class PickedUpTrigger implements NotificationTrigger {
         }
 
         String trackingNumber = envelope.extractTrackingNumber();
-        String courierName = "your courier";
         JsonNode payload = envelope.payload();
-        if (payload != null && payload.hasNonNull("courierName")) {
-            courierName = payload.get("courierName").asText();
-        }
 
         Map<String, String> params = new HashMap<>();
         params.put("trackingNumber", trackingNumber);
-        params.put("courierName", courierName);
+        // Status events do not carry the courier's name; it is shown only when a producer adds it.
+        if (payload != null && payload.hasNonNull("courierName") && !payload.get("courierName").asText().isBlank()) {
+            params.put("courierName", payload.get("courierName").asText().trim());
+        }
         params.put("status", "PICKED_UP");
 
         return NotificationTrigger.email(recipientIdOpt.get(), "PARCEL_PICKED_UP", params, trackingNumber);

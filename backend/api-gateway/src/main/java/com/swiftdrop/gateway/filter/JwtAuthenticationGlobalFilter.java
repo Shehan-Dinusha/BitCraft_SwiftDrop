@@ -56,56 +56,6 @@ import java.util.List;
 @Component
 public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
 
-    private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/v1/auth/login",
-            "/api/v1/auth/register",
-            "/api/v1/auth/refresh",
-            "/api/v1/auth/verify-email",
-            "/api/v1/auth/resend-verification",
-            "/api/v1/auth/forgot-password",
-            "/api/v1/auth/reset-password",
-            "/api/v1/auth/username-availability",
-            "/api/v1/auth/oauth2/",
-            "/api/v1/auth/.well-known/",
-            "/api/v1/public/track",
-            "/api/v1/public/tracking",
-            "/api/v1/tracking",
-            "/ws/tracking",
-            "/actuator/health",
-            "/actuator/health/readiness",
-            "/actuator/health/liveness",
-            "/swagger-ui.html",
-            "/swagger-ui",
-            "/swagger-ui/",
-            "/v3/api-docs",
-            "/webjars",
-            "/webjars/",
-            "/api/v1/iam/v3/api-docs",
-            "/api/v1/iam/v3/api-docs/",
-            "/api/v1/orders/v3/api-docs",
-            "/api/v1/orders/v3/api-docs/",
-            "/api/v1/pricing/v3/api-docs",
-            "/api/v1/pricing/v3/api-docs/",
-            "/api/v1/dispatch/v3/api-docs",
-            "/api/v1/dispatch/v3/api-docs/",
-            "/api/v1/deliveries/v3/api-docs",
-            "/api/v1/deliveries/v3/api-docs/",
-            "/api/v1/merchants/v3/api-docs",
-            "/api/v1/merchants/v3/api-docs/",
-            "/api/v1/webhooks/v3/api-docs",
-            "/api/v1/webhooks/v3/api-docs/",
-            "/api/v1/notifications/v3/api-docs",
-            "/api/v1/notifications/v3/api-docs/",
-            "/api/v1/analytics/v3/api-docs",
-            "/api/v1/analytics/v3/api-docs/"
-    );
-
-    private static final List<String> API_KEY_PATHS = List.of(
-            "/api/v1/merchant/",
-            "/api/v1/merchant-order-ingest/",
-            "/api/v1/b2b/"
-    );
-
     private final SecretKey signingKey;
     private final boolean rs256;
     private final String issuer;
@@ -145,11 +95,11 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        if (isApiKeyPath(path)) {
+        if (GatewayPathPolicy.isApiKeyPath(path)) {
             return chain.filter(exchange);
         }
 
-        if (isPublicPath(path)) {
+        if (GatewayPathPolicy.isPublicPath(path)) {
             ServerHttpRequest sanitized = exchange.getRequest().mutate()
                     .headers(this::stripIdentityHeaders)
                     .build();
@@ -308,14 +258,6 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         headers.remove(JwtHeaderConstants.X_USER_ROLE);
         headers.remove(JwtHeaderConstants.X_MERCHANT_ID);
         headers.remove(JwtHeaderConstants.X_DISTRICT_ID);
-    }
-
-    private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
-    }
-
-    private boolean isApiKeyPath(String path) {
-        return API_KEY_PATHS.stream().anyMatch(path::startsWith);
     }
 
     private String firstNonBlank(String first, String second) {

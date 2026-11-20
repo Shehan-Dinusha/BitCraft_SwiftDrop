@@ -1,5 +1,7 @@
 package com.swiftdrop.merchant.controller;
 
+import com.swiftdrop.contracts.logging.LogSanitizer;
+import java.io.IOException;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.merchant.dto.BulkBatchItemResponse;
 import com.swiftdrop.merchant.dto.BulkIngestBatchResponse;
@@ -7,7 +9,9 @@ import com.swiftdrop.merchant.dto.BulkIngestRequest;
 import com.swiftdrop.merchant.dto.BulkOrderIngestItem;
 import com.swiftdrop.merchant.service.BulkCsvOrderProcessor;
 import com.swiftdrop.merchant.service.BulkOrderIngestionService;
+import com.swiftdrop.merchant.config.OpenApiConfig;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +37,7 @@ public class MerchantOrderIngestController {
 
     @GetMapping("/api/v1/merchant-order-ingest/health")
     @Operation(summary = "Check order ingestion controller health")
+    @SecurityRequirement(name = OpenApiConfig.API_KEY_SCHEME)
     public ApiResponse<String> health() {
         return ApiResponse.success("MerchantOrderIngestController is active");
     }
@@ -57,7 +62,7 @@ public class MerchantOrderIngestController {
             @RequestHeader(value = com.swiftdrop.contracts.security.JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
             @RequestParam("file") MultipartFile file) {
         approvalGuard.requireApproved(merchantId);
-        log.info("Received CSV order ingestion upload for merchant: {}, file: {}", merchantId, file.getOriginalFilename());
+        log.info("Received CSV order ingestion upload for merchant: {}, file: {}", LogSanitizer.clean(merchantId), LogSanitizer.clean(file.getOriginalFilename()));
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Uploaded CSV file cannot be empty");
         }
@@ -67,11 +72,11 @@ public class MerchantOrderIngestController {
             BulkIngestRequest request = new BulkIngestRequest(file.getOriginalFilename(), items);
             BulkIngestBatchResponse batch = ingestionService.processBulkIngest(merchantId, request, correlationId);
             return ApiResponse.success(batch, "CSV orders processed successfully");
-        } catch (org.springframework.web.server.ResponseStatusException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to process CSV file upload for merchant: {}", merchantId, e);
-            throw new IllegalArgumentException("Failed to process CSV upload: " + e.getMessage(), e);
+        } catch (IOException e) {
+            // Only the upload stream itself; validation errors (400) and server errors (500) keep their
+            // own handling instead of all becoming a 400 that echoes internal messages.
+            log.error("Failed to read CSV file upload for merchant: {}", merchantId, e);
+            throw new IllegalArgumentException("The uploaded CSV file could not be read", e);
         }
     }
 

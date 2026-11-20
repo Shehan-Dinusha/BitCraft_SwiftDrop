@@ -7,7 +7,6 @@ import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.delivery.controller.DeliveryExecutionController;
 import com.swiftdrop.delivery.controller.ProofOfDeliveryController;
-import com.swiftdrop.delivery.dto.CourierLocationUpdatePayload;
 import com.swiftdrop.delivery.dto.ProofOfDeliveryUploadRequest;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
@@ -23,7 +22,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -81,8 +79,6 @@ class CourierHorizontalAuthTest {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.PICKED_UP,
                 "Picked up parcel",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );
@@ -99,29 +95,6 @@ class CourierHorizontalAuthTest {
     }
 
     @Test
-    @DisplayName("Courier A recording location for Courier B delivery returns 403 Forbidden")
-    void testCourierACannotRecordLocationForCourierBDelivery() throws Exception {
-        UUID deliveryId = UUID.randomUUID();
-        UUID courierA = UUID.randomUUID();
-
-        when(deliveryService.recordLocation(eq(deliveryId), any(CourierLocationUpdatePayload.class), any()))
-                .thenThrow(new ForbiddenException("Courier does not own this delivery session"));
-
-        CourierLocationUpdatePayload payload = new CourierLocationUpdatePayload(
-                6.9271, 79.8612, 45.0, 25.0, 5.0
-        );
-
-        mockMvc.perform(post("/api/v1/deliveries/" + deliveryId + "/location")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header(JwtHeaderConstants.X_USER_ID, courierA.toString())
-                        .header(JwtHeaderConstants.X_USER_ROLE, UserRole.COURIER.name())
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403))
-                .andExpect(jsonPath("$.error").value("Forbidden"));
-    }
-
-    @Test
     @DisplayName("Courier A uploading POD for Courier B delivery returns 403 Forbidden")
     void testCourierACannotUploadPodForCourierBDelivery() throws Exception {
         UUID deliveryId = UUID.randomUUID();
@@ -132,8 +105,7 @@ class CourierHorizontalAuthTest {
 
         ProofOfDeliveryUploadRequest request = new ProofOfDeliveryUploadRequest(
                 "https://storage.swiftdrop.lk/pod/photo.jpg",
-                "signature-base64",
-                "123456"
+                "signature-base64"
         );
 
         mockMvc.perform(post("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")
@@ -147,18 +119,17 @@ class CourierHorizontalAuthTest {
     }
 
     @Test
-    @DisplayName("Courier A verifying POD OTP for Courier B delivery returns 403 Forbidden")
-    void testCourierACannotVerifyPodForCourierBDelivery() throws Exception {
+    @DisplayName("Courier A reading POD for Courier B delivery returns 403 Forbidden")
+    void testCourierACannotReadPodForCourierBDelivery() throws Exception {
         UUID deliveryId = UUID.randomUUID();
         UUID courierA = UUID.randomUUID();
 
         doThrow(new ForbiddenException("Courier does not own this delivery session"))
                 .when(deliveryService).assertCanAccess(eq(deliveryId), any());
 
-        mockMvc.perform(post("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery/verify")
+        mockMvc.perform(get("/api/v1/deliveries/" + deliveryId + "/proof-of-delivery")
                         .header(JwtHeaderConstants.X_USER_ID, courierA.toString())
-                        .header(JwtHeaderConstants.X_USER_ROLE, UserRole.COURIER.name())
-                        .param("otp", "123456"))
+                        .header(JwtHeaderConstants.X_USER_ROLE, UserRole.COURIER.name()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.error").value("Forbidden"));
@@ -181,8 +152,6 @@ class CourierHorizontalAuthTest {
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
                 DeliveryState.PICKED_UP,
                 "Picked up parcel",
-                BigDecimal.valueOf(6.9271),
-                BigDecimal.valueOf(79.8612),
                 null,
                 "COURIER"
         );

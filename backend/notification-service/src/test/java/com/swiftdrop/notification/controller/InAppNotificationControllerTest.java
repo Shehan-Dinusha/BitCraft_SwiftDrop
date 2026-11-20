@@ -6,7 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,7 +25,7 @@ class InAppNotificationControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private InAppNotificationService notificationService;
 
     @Test
@@ -42,7 +42,7 @@ class InAppNotificationControllerTest {
                 .createdAt(Instant.now())
                 .build();
 
-        when(notificationService.listNotifications(userId)).thenReturn(List.of(n1));
+        when(notificationService.listNotifications(userId, List.of())).thenReturn(List.of(n1));
 
         mockMvc.perform(get("/api/v1/notifications/me")
                         .header("X-User-Id", userId.toString())
@@ -54,7 +54,7 @@ class InAppNotificationControllerTest {
                 .andExpect(jsonPath("$.data[0].trackingNumber").value("SD-001"))
                 .andExpect(jsonPath("$.data[0].read").value(false));
 
-        verify(notificationService).listNotifications(userId);
+        verify(notificationService).listNotifications(userId, List.of());
     }
 
     @Test
@@ -78,7 +78,7 @@ class InAppNotificationControllerTest {
     @DisplayName("GET /api/v1/notifications/me/unread-count should return unread count for user")
     void testGetUnreadCount_Success() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(notificationService.getUnreadCount(userId)).thenReturn(4L);
+        when(notificationService.getUnreadCount(userId, List.of())).thenReturn(4L);
 
         mockMvc.perform(get("/api/v1/notifications/me/unread-count")
                         .header("X-User-Id", userId.toString())
@@ -87,7 +87,7 @@ class InAppNotificationControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").value(4));
 
-        verify(notificationService).getUnreadCount(userId);
+        verify(notificationService).getUnreadCount(userId, List.of());
     }
 
     @Test
@@ -105,7 +105,7 @@ class InAppNotificationControllerTest {
                 .createdAt(Instant.now())
                 .build();
 
-        when(notificationService.markAsRead(notificationId, userId)).thenReturn(Optional.of(updated));
+        when(notificationService.markAsRead(notificationId, userId, List.of())).thenReturn(Optional.of(updated));
 
         mockMvc.perform(patch("/api/v1/notifications/me/{id}/read", notificationId)
                         .header("X-User-Id", userId.toString())
@@ -115,7 +115,7 @@ class InAppNotificationControllerTest {
                 .andExpect(jsonPath("$.data.id").value(10))
                 .andExpect(jsonPath("$.data.read").value(true));
 
-        verify(notificationService).markAsRead(notificationId, userId);
+        verify(notificationService).markAsRead(notificationId, userId, List.of());
     }
 
     @Test
@@ -123,7 +123,7 @@ class InAppNotificationControllerTest {
     void testMarkAsRead_NotFoundOrForbidden() throws Exception {
         UUID userId = UUID.randomUUID();
         Long notificationId = 99L;
-        when(notificationService.markAsRead(notificationId, userId)).thenReturn(Optional.empty());
+        when(notificationService.markAsRead(notificationId, userId, List.of())).thenReturn(Optional.empty());
 
         mockMvc.perform(patch("/api/v1/notifications/me/{id}/read", notificationId)
                         .header("X-User-Id", userId.toString())
@@ -131,14 +131,14 @@ class InAppNotificationControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false));
 
-        verify(notificationService).markAsRead(notificationId, userId);
+        verify(notificationService).markAsRead(notificationId, userId, List.of());
     }
 
     @Test
     @DisplayName("POST /api/v1/notifications/me/read-all should mark all user alerts as read")
     void testMarkAllAsRead_Success() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(notificationService.markAllAsRead(userId)).thenReturn(7);
+        when(notificationService.markAllAsRead(userId, List.of())).thenReturn(7);
 
         mockMvc.perform(post("/api/v1/notifications/me/read-all")
                         .header("X-User-Id", userId.toString())
@@ -147,6 +147,42 @@ class InAppNotificationControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").value(7));
 
-        verify(notificationService).markAllAsRead(userId);
+        verify(notificationService).markAllAsRead(userId, List.of());
+    }
+
+    @Test
+    @DisplayName("Dispatchers also see the operations team inbox; merchants see their company's")
+    void teamAudiencesFromGatewayHeaders() throws Exception {
+        UUID dispatcherId = UUID.randomUUID();
+        when(notificationService.listNotifications(dispatcherId, List.of("OPERATIONS"))).thenReturn(List.of());
+        mockMvc.perform(get("/api/v1/notifications/me")
+                        .header("X-User-Id", dispatcherId.toString())
+                        .header("X-User-Role", "DISPATCHER")
+                        // The gateway sends an empty merchant header for non-merchants.
+                        .header("X-Merchant-Id", ""))
+                .andExpect(status().isOk());
+        verify(notificationService).listNotifications(dispatcherId, List.of("OPERATIONS"));
+
+        UUID merchantUser = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
+        when(notificationService.getUnreadCount(merchantUser, List.of("MERCHANT:" + merchantId))).thenReturn(2L);
+        mockMvc.perform(get("/api/v1/notifications/me/unread-count")
+                        .header("X-User-Id", merchantUser.toString())
+                        .header("X-User-Role", "MERCHANT")
+                        .header("X-Merchant-Id", merchantId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(2));
+    }
+
+    @Test
+    @DisplayName("Customers and couriers see only their own notifications")
+    void noTeamForCustomers() throws Exception {
+        UUID courierId = UUID.randomUUID();
+        when(notificationService.listNotifications(courierId, List.of())).thenReturn(List.of());
+        mockMvc.perform(get("/api/v1/notifications/me")
+                        .header("X-User-Id", courierId.toString())
+                        .header("X-User-Role", "COURIER"))
+                .andExpect(status().isOk());
+        verify(notificationService).listNotifications(courierId, List.of());
     }
 }

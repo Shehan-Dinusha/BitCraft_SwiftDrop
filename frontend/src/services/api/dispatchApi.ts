@@ -4,11 +4,11 @@ import type { components } from '@/types/generated/dispatch-assignment-service';
 export type DispatchAssignmentResponse = components['schemas']['DispatchAssignmentResponse'];
 export type CourierShiftResponse = components['schemas']['CourierShiftResponse'];
 export type ManualAssignRequest = components['schemas']['ManualAssignRequest'];
+export type ReassignCourierRequest = components['schemas']['ReassignCourierRequest'];
 export type CourierWorkloadResponse = components['schemas']['CourierWorkloadResponse'];
 export type CourierSuggestionResponse = components['schemas']['CourierSuggestionResponse'];
 export type StartShiftRequest = components['schemas']['StartShiftRequest'];
 export type UpdateShiftStatusRequest = components['schemas']['UpdateShiftStatusRequest'];
-export type CourierLocationPingRequest = components['schemas']['CourierLocationPingRequest'];
 export type AssignmentStatus = components['schemas']['AssignmentStatus'];
 export type ShiftStatus = components['schemas']['ShiftStatus'];
 export type SriLankanDistrict = components['schemas']['SriLankanDistrict'];
@@ -69,6 +69,14 @@ export const dispatchApi = {
     return data.data;
   },
 
+  reassign: async (request: ReassignCourierRequest) => {
+    const { data } = await apiClient.post<{ success: boolean; data: DispatchAssignmentResponse }>(
+      '/v1/dispatch/reassign',
+      request
+    );
+    return data.data;
+  },
+
   getCourierAssignments: async (courierId: string, status?: AssignmentStatus) => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
       `/v1/dispatch/couriers/${courierId}/assignments`,
@@ -118,14 +126,6 @@ export const dispatchApi = {
   updateShiftStatus: async (request: UpdateShiftStatusRequest) => {
     const { data } = await apiClient.put<{ success: boolean; data: CourierShiftResponse }>(
       '/v1/dispatch/couriers/shifts/status',
-      request
-    );
-    return data.data;
-  },
-
-  updateLocation: async (request: CourierLocationPingRequest) => {
-    const { data } = await apiClient.put<{ success: boolean; data: CourierShiftResponse }>(
-      '/v1/dispatch/couriers/shifts/location',
       request
     );
     return data.data;

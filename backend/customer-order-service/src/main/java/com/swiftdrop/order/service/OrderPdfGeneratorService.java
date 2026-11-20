@@ -1,8 +1,17 @@
 package com.swiftdrop.order.service;
 
+import static com.swiftdrop.order.service.PdfCodes.BAR_HEIGHT;
+import static com.swiftdrop.order.service.PdfCodes.BAR_X;
+import static com.swiftdrop.order.service.PdfCodes.code128;
+import static com.swiftdrop.order.service.PdfCodes.labelQrMatrix;
+import static com.swiftdrop.order.service.PdfCodes.png;
+import static com.swiftdrop.order.service.PdfFormat.*;
+import com.swiftdrop.order.exception.OrderDocumentGenerationException;
+import java.io.IOException;
+import com.lowagie.text.DocumentException;
+import com.google.zxing.WriterException;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
@@ -16,7 +25,6 @@ import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.BaseFont;
-import com.lowagie.text.pdf.Barcode;
 import com.lowagie.text.pdf.Barcode128;
 import com.lowagie.text.pdf.ColumnText;
 import com.lowagie.text.pdf.PdfContentByte;
@@ -37,15 +45,8 @@ import org.springframework.stereotype.Service;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Renders the customer's A5 documents with OpenPDF:
@@ -66,13 +67,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OrderPdfGeneratorService {
 
-    private static final ZoneId COLOMBO = ZoneId.of("Asia/Colombo");
-    private static final DateTimeFormatter DATE_TIME =
-            DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", Locale.ENGLISH).withZone(COLOMBO);
-    private static final DateTimeFormatter DATE =
-            DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH).withZone(COLOMBO);
 
-    // Palette: the Velocity design system's navy, slate neutrals and status colours.
+    // Palette: the SwiftDrop design system's navy, slate neutrals and status colours.
     private static final Color INK = new Color(15, 23, 42);          // slate-900
     private static final Color BODY = new Color(51, 65, 85);         // slate-700
     private static final Color MUTED = new Color(100, 116, 139);     // slate-500
@@ -91,7 +87,6 @@ public class OrderPdfGeneratorService {
 
     private final BaseFont sans;
     private final BaseFont sansBold;
-    private final BaseFont mono;
     private final BaseFont monoBold;
 
     public OrderPdfGeneratorService(
@@ -105,9 +100,8 @@ public class OrderPdfGeneratorService {
         try {
             this.sans = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
             this.sansBold = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
-            this.mono = BaseFont.createFont(BaseFont.COURIER, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
             this.monoBold = BaseFont.createFont(BaseFont.COURIER_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
-        } catch (Exception e) {
+        } catch (DocumentException | IOException e) {
             throw new IllegalStateException("Built-in PDF fonts are unavailable", e);
         }
     }
@@ -177,10 +171,8 @@ public class OrderPdfGeneratorService {
     private static final float Z_CASH = 192.8f;
     private static final float Z_RETURN = 164.4f;
 
-    private static final float BAR_X = 1.2f;
-    private static final float BAR_HEIGHT = 51f;
 
-    private void buildShippingLabel(Document doc, PdfWriter writer, CustomerOrder order) throws Exception {
+    private void buildShippingLabel(Document doc, PdfWriter writer, CustomerOrder order) throws IOException, WriterException {
         PdfContentByte cb = writer.getDirectContent();
         cb.saveState();
 
@@ -323,19 +315,9 @@ public class OrderPdfGeneratorService {
         text(cb, value, monoBold, 16, (FRAME_LEFT + FRAME_RIGHT) / 2, Z_BARCODE + 8.5f, Element.ALIGN_CENTER);
     }
 
-    /** The label's Code 128 of the tracking number, as drawn (bar width and height included). */
-    static Barcode128 code128(String value) {
-        Barcode128 code = new Barcode128();
-        code.setCodeType(Barcode.CODE128);
-        code.setCode(value);
-        code.setX(BAR_X);
-        code.setBarHeight(BAR_HEIGHT);
-        code.setFont(null);
-        return code;
-    }
 
     /** Recipient on the left, QR code on the right. */
-    private void drawRecipient(PdfContentByte cb, CustomerOrder order) throws Exception {
+    private void drawRecipient(PdfContentByte cb, CustomerOrder order) throws IOException, WriterException {
         float top = Z_BARCODE;
         float qrSize = mm(22);
         float qrX = CONTENT_RIGHT - qrSize;
@@ -388,7 +370,7 @@ public class OrderPdfGeneratorService {
                 CONTENT_LEFT, Math.max(cityBaseline, addressEnd - 15), Element.ALIGN_LEFT);
     }
 
-    /** Cash panel on the left (heavy and reversed when there is cash to collect); weight and piece count on the right. */
+    /** Cash panel on the left, only when there is cash to collect (heavy and reversed); weight and piece count beside it, or alone. */
     private void drawCashAndParcel(PdfContentByte cb, CustomerOrder order) {
         float top = Z_RECIPIENT;
         float bottom = Z_CASH;
@@ -416,22 +398,19 @@ public class OrderPdfGeneratorService {
             String amount = currency(order) + " " + money(order.getCodAmount());
             float size = fit(amount, sansBold, 17, 12, panelRight - textX - 4);
             text(cb, amount, sansBold, size, textX, panelBottom + 6, Element.ALIGN_LEFT);
-        } else {
-            cb.setColorStroke(BLACK);
-            cb.setLineWidth(0.75f);
-            cb.rectangle(CONTENT_LEFT, panelBottom, panelRight - CONTENT_LEFT, panelH);
-            cb.stroke();
-            text(cb, "NO CASH TO COLLECT", sansBold, 10, (CONTENT_LEFT + panelRight) / 2,
-                    panelBottom + panelH / 2 - 3.5f, Element.ALIGN_CENTER);
         }
 
-        cb.setColorStroke(BLACK);
-        cb.setLineWidth(0.75f);
-        float divider = panelRight + 8;
-        cb.moveTo(divider, bottom);
-        cb.lineTo(divider, top);
-        cb.stroke();
-        float factsX = divider + 8;
+        // Without cash to collect there is no panel, so the weight and piece count start at the left edge.
+        float factsX = CONTENT_LEFT;
+        if (positive(order.getCodAmount())) {
+            cb.setColorStroke(BLACK);
+            cb.setLineWidth(0.75f);
+            float divider = panelRight + 8;
+            cb.moveTo(divider, bottom);
+            cb.lineTo(divider, top);
+            cb.stroke();
+            factsX = divider + 8;
+        }
         text(cb, "WEIGHT", sansBold, 6.5f, factsX, top - 12, Element.ALIGN_LEFT);
         text(cb, kg(order.getActualWeightKg()), sansBold, 12, factsX, top - 24, Element.ALIGN_LEFT);
         text(cb, "PIECE", sansBold, 6.5f, factsX, top - 35, Element.ALIGN_LEFT);
@@ -439,7 +418,7 @@ public class OrderPdfGeneratorService {
     }
 
     /** Return address on one or two compact lines: the sender's name in bold, then the address. No phone. */
-    private void drawReturnTo(PdfContentByte cb, CustomerOrder order) throws Exception {
+    private void drawReturnTo(PdfContentByte cb, CustomerOrder order) throws IOException, WriterException {
         float top = Z_CASH;
         text(cb, "IF UNDELIVERED, RETURN TO", sansBold, 6.5f, CONTENT_LEFT, top - 9.5f, Element.ALIGN_LEFT);
         String address = addressLines(order.getPickupAddressLine1(), order.getPickupAddressLine2()) + ", "
@@ -522,7 +501,7 @@ public class OrderPdfGeneratorService {
      * {@code max} down to {@code min} that fits. Returns the y just below the last line drawn.
      */
     private static float block(PdfContentByte cb, String value, BaseFont base, float max, float min, float height,
-                               float left, float right, float top) throws Exception {
+                               float left, float right, float top) throws IOException, WriterException {
         if (value.isEmpty() || height <= 0) {
             return top;
         }
@@ -544,7 +523,7 @@ public class OrderPdfGeneratorService {
      * Returns the y below the last line, or NaN if it did not all fit. With {@code simulate} nothing is drawn.
      */
     private float flowAddress(PdfContentByte cb, String value, float size, float top, float narrowRight,
-                                float qrClear, float bottom, boolean simulate) throws Exception {
+                                float qrClear, float bottom, boolean simulate) throws IOException, WriterException {
         float leading = size * 1.2f;
         ColumnText ct = new ColumnText(cb);
         ct.setLeading(leading);
@@ -573,13 +552,8 @@ public class OrderPdfGeneratorService {
         return ct;
     }
 
-    /** Vector QR code (error correction Q, 4-module quiet zone included in {@code size}). */
-    static BitMatrix labelQrMatrix(String text) throws Exception {
-        return new QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0,
-                Map.of(EncodeHintType.MARGIN, 4, EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.Q));
-    }
 
-    private static void drawQr(PdfContentByte cb, String text, float x, float y, float size) throws Exception {
+    private static void drawQr(PdfContentByte cb, String text, float x, float y, float size) throws IOException, WriterException {
         BitMatrix matrix = labelQrMatrix(text);
         int modules = matrix.getWidth();
         float m = size / modules;
@@ -594,31 +568,7 @@ public class OrderPdfGeneratorService {
         cb.fill();
     }
 
-    /** Province from the district (fixed administrative map), used only as a sorting hint. */
-    private static String province(SriLankanDistrict district) {
-        if (district == null) {
-            return "";
-        }
-        return switch (district) {
-            case COLOMBO, GAMPAHA, KALUTARA -> "Western Province";
-            case KANDY, MATALE, NUWARA_ELIYA -> "Central Province";
-            case GALLE, MATARA, HAMBANTOTA -> "Southern Province";
-            case JAFFNA, KILINOCHCHI, MANNAR, VAVUNIYA, MULLAITIVU -> "Northern Province";
-            case BATTICALOA, AMPARA, TRINCOMALEE -> "Eastern Province";
-            case KURUNEGALA, PUTTALAM -> "North Western Province";
-            case ANURADHAPURA, POLONNARUWA -> "North Central Province";
-            case BADULLA, MONARAGALA -> "Uva Province";
-            case RATNAPURA, KEGALLE -> "Sabaragamuwa Province";
-        };
-    }
 
-    /** City, district and postal code on one line, without repeating a city named after its district. */
-    private static String placeShort(String city, SriLankanDistrict district, String postalCode) {
-        String d = districtName(district);
-        String c = safe(city);
-        String place = c.isEmpty() ? d : c.equalsIgnoreCase(d) || d.isEmpty() ? c : c + ", " + d;
-        return has(postalCode) ? place + "  " + postalCode.trim() : place;
-    }
 
     private static float mm(float value) {
         return value * 72f / 25.4f;
@@ -626,7 +576,7 @@ public class OrderPdfGeneratorService {
 
     // ─── Page 2: booking receipt ──────────────────────────────────────────────
 
-    private void buildBookingReceipt(Document doc, CustomerOrder order) throws Exception {
+    private void buildBookingReceipt(Document doc, CustomerOrder order) throws IOException, WriterException {
         doc.add(documentHeader("Booking receipt",
                 "Keep this for your records. The label is on page 1."));
 
@@ -711,7 +661,7 @@ public class OrderPdfGeneratorService {
 
     // ─── Delivery receipt ─────────────────────────────────────────────────────
 
-    private void buildDeliveryReceipt(Document doc, CustomerOrder order) throws Exception {
+    private void buildDeliveryReceipt(Document doc, CustomerOrder order) throws IOException, WriterException {
         boolean delivered = order.getStatus() == PublicOrderStatus.DELIVERED;
         doc.add(documentHeader("Delivery receipt",
                 delivered ? "This parcel was delivered." : "This parcel has not been delivered yet."));
@@ -912,7 +862,7 @@ public class OrderPdfGeneratorService {
 
     @FunctionalInterface
     private interface PageBuilder {
-        void build(Document doc, PdfWriter writer) throws Exception;
+        void build(Document doc, PdfWriter writer) throws IOException, WriterException;
     }
 
     private byte[] render(CustomerOrder order, String kind, String title, int pages, PageBuilder builder) {
@@ -927,9 +877,9 @@ public class OrderPdfGeneratorService {
             builder.build(document, writer);
             document.close();
             return out.toByteArray();
-        } catch (Exception e) {
+        } catch (DocumentException | IOException | WriterException e) {
             log.error("Failed to generate {} PDF for order {}", kind, order.getOrderId(), e);
-            throw new RuntimeException("Error generating " + kind + " PDF", e);
+            throw new OrderDocumentGenerationException("Error generating " + kind + " PDF", e);
         }
     }
 
@@ -969,7 +919,7 @@ public class OrderPdfGeneratorService {
         t.setWidthPercentage(100);
         try {
             t.setWidths(widths);
-        } catch (Exception e) {
+        } catch (DocumentException e) {
             throw new IllegalArgumentException(e);
         }
         return t;
@@ -990,7 +940,7 @@ public class OrderPdfGeneratorService {
         return new Font(base, size, Font.NORMAL, color);
     }
 
-    private Image qr(String text, float size) throws Exception {
+    private Image qr(String text, float size) throws IOException, WriterException {
         // Rendered large and scaled down, so the modules stay sharp when printed.
         Map<EncodeHintType, Object> hints = Map.of(
                 EncodeHintType.MARGIN, 1,
@@ -1001,100 +951,23 @@ public class OrderPdfGeneratorService {
         return image;
     }
 
-    private static byte[] png(BitMatrix matrix) throws Exception {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
-            return out.toByteArray();
-        }
-    }
 
     // ─── Formatting ───────────────────────────────────────────────────────────
 
-    private static String money(BigDecimal amount) {
-        DecimalFormat format = new DecimalFormat("#,##0.00", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
-        return format.format(amount == null ? BigDecimal.ZERO : amount);
-    }
 
-    private static String currency(CustomerOrder order) {
-        return has(order.getCurrency()) ? order.getCurrency() : "LKR";
-    }
 
-    private static String kg(BigDecimal value) {
-        return value == null ? "-" : value.stripTrailingZeros().toPlainString() + " kg";
-    }
 
-    private static String dimensions(CustomerOrder order) {
-        return number(order.getLengthCm()) + " x " + number(order.getWidthCm()) + " x " + number(order.getHeightCm());
-    }
 
-    private static String number(BigDecimal value) {
-        return value == null ? "-" : value.stripTrailingZeros().toPlainString();
-    }
 
-    private static String dateTime(Instant instant) {
-        return instant == null ? "-" : DATE_TIME.format(instant);
-    }
 
-    private static String date(Instant instant) {
-        return instant == null ? "-" : DATE.format(instant);
-    }
 
-    private static String speedLabel(OrderSpeed speed) {
-        if (speed == null) {
-            return "Standard";
-        }
-        return switch (speed) {
-            case STANDARD -> "Standard";
-            case EXPRESS -> "Express";
-            case SAME_DAY -> "Same day";
-        };
-    }
 
-    private static String statusLabel(PublicOrderStatus status) {
-        return status == null ? "Booked" : titleCase(status.name());
-    }
 
-    /** {@code NUWARA_ELIYA} becomes {@code Nuwara Eliya}. */
-    private static String districtName(SriLankanDistrict district) {
-        return district == null ? "" : titleCase(district.name());
-    }
 
-    private static String titleCase(String constant) {
-        return Arrays.stream(constant.toLowerCase(Locale.ENGLISH).split("_"))
-                .filter(part -> !part.isEmpty())
-                .map(part -> Character.toUpperCase(part.charAt(0)) + part.substring(1))
-                .collect(Collectors.joining(" "));
-    }
 
-    /** {@code +94771234567} becomes {@code +94 77 123 4567}. */
-    private static String formatPhone(String phone) {
-        String digits = phone.replaceAll("\\s", "");
-        if (digits.matches("^\\+94\\d{9}$")) {
-            return "+94 " + digits.substring(3, 5) + " " + digits.substring(5, 8) + " " + digits.substring(8);
-        }
-        if (digits.matches("^0\\d{9}$")) {
-            return digits.substring(0, 3) + " " + digits.substring(3, 6) + " " + digits.substring(6);
-        }
-        return phone;
-    }
 
-    private static String addressLines(String line1, String line2) {
-        return has(line2) ? safe(line1) + ", " + line2.trim() : safe(line1);
-    }
 
-    private static String cityLine(String city, String postalCode) {
-        return has(postalCode) ? safe(city) + "  " + postalCode.trim() : safe(city);
-    }
 
-    private static boolean positive(BigDecimal value) {
-        return value != null && value.compareTo(BigDecimal.ZERO) > 0;
-    }
 
-    private static boolean has(String value) {
-        return value != null && !value.isBlank();
-    }
 
-    private static String safe(String value) {
-        return value == null ? "" : value.trim();
-    }
 }

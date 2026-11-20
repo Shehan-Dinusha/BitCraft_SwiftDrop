@@ -1,5 +1,6 @@
 package com.swiftdrop.analytics.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.analytics.ai.prompts.SystemPromptTemplates;
 import com.swiftdrop.analytics.ai.tools.ToolExecutor;
@@ -57,6 +58,7 @@ public class AiChatService {
             LlmClient.Turn turn;
             try { turn = llm.complete(List.copyOf(messages)); }
             catch (RuntimeException ex) {
+                // Any provider failure is reported as a generic 503; its message may contain prompts or keys.
                 tools.audit("chat", context, "PROVIDER_UNAVAILABLE", 0);
                 throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI provider unavailable; please try again later");
             }
@@ -80,7 +82,7 @@ public class AiChatService {
                 if ("REFUSED".equals(outcome)) return "I can only track a parcel or calculate a delivery estimate.";
                 try {
                     messages.add(Map.of("role", "tool", "tool_call_id", call.id(), "content", mapper.writeValueAsString(result)));
-                } catch (Exception ex) { throw new IllegalStateException("Cannot encode safe tool result"); }
+                } catch (JsonProcessingException ex) { throw new IllegalStateException("Cannot encode safe tool result", ex); }
             }
         }
         tools.audit("chat", context, "LIMIT_REACHED", 0);

@@ -134,14 +134,26 @@ spec:
       serviceAccountName: {{ $name }}-sa
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
-      {{- if get $persist "enabled" }}
+      # Least privilege: the images run as the non-root "swiftdrop" user (UID/GID 1001).
+      # fsGroup makes mounted volumes writable for that user.
       securityContext:
-        fsGroup: 1001          # the image's non-root user; makes the volume writable
+        runAsNonRoot: true
+        runAsUser: {{ $.Values.podSecurity.runAsUser }}
+        runAsGroup: {{ $.Values.podSecurity.runAsGroup }}
+        fsGroup: {{ $.Values.podSecurity.fsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
       volumes:
+        # Writable scratch space (JVM perf data, Tomcat/Netty temp files); the root
+        # filesystem itself is read-only.
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ $.Values.podSecurity.tmpSizeLimit }}
+        {{- if get $persist "enabled" }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ $name }}-data
-      {{- end }}
+        {{- end }}
       {{- with $.Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -172,7 +184,11 @@ spec:
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534
+            runAsGroup: 65534
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           resources:
             requests: { cpu: 10m, memory: 16Mi }
             limits: { cpu: 50m, memory: 32Mi }
@@ -222,13 +238,20 @@ spec:
                   optional: true
                   {{- end }}
             {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ $.Values.podSecurity.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
           resources:
             {{- toYaml $s.resources | nindent 12 }}
-          {{- if get $persist "enabled" }}
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if get $persist "enabled" }}
             - name: data
               mountPath: {{ required "persistence.mountPath is required" (get $persist "mountPath") }}
-          {{- end }}
+            {{- end }}
           startupProbe:
             httpGet:
               path: /actuator/health/liveness

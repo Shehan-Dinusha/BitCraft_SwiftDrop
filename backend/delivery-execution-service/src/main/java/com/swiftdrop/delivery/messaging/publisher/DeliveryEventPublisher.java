@@ -1,7 +1,6 @@
 package com.swiftdrop.delivery.messaging.publisher;
 
 import com.swiftdrop.contracts.events.delivery.DeliveryStateChangedEvent;
-import com.swiftdrop.contracts.events.delivery.LocationUpdatedEvent;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,6 @@ public class DeliveryEventPublisher {
     public static final String EVENTS_EXCHANGE = "swiftdrop.events.exchange";
 
     public static final String ROUTING_KEY_DELIVERY_STATE_CHANGED = "delivery.state.changed";
-    public static final String ROUTING_KEY_LOCATION_UPDATED = "delivery.location.updated";
     public static final String ROUTING_KEY_PARCEL_STATUS_CHANGED = "parcel.status.changed";
 
     private final RabbitTemplate rabbitTemplate;
@@ -31,16 +29,6 @@ public class DeliveryEventPublisher {
         rabbitTemplate.convertAndSend(
                 EVENTS_EXCHANGE,
                 ROUTING_KEY_DELIVERY_STATE_CHANGED,
-                event
-        );
-    }
-
-    public void publishLocationUpdated(LocationUpdatedEvent event) {
-        log.debug("Publishing LocationUpdatedEvent for delivery: {}, courier: {}",
-                event.deliveryId(), event.courierId());
-        rabbitTemplate.convertAndSend(
-                EVENTS_EXCHANGE,
-                ROUTING_KEY_LOCATION_UPDATED,
                 event
         );
     }

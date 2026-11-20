@@ -59,7 +59,7 @@ class OtpEmailDispatchTest {
     @Mock
     private EmailSender emailSender;
     @Spy
-    private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer("https://swiftdrop.lk");
+    private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer();
 
     @InjectMocks
     private MultiChannelNotificationDispatcher dispatcher;
@@ -139,6 +139,70 @@ class OtpEmailDispatchTest {
         verify(emailSender, never()).send(any(), any(), any(), any());
     }
 
+    private void stubLoginAlert(UUID recipient, String template) {
+        when(preferenceRepository.findByRecipientId(recipient)).thenReturn(Optional.of(
+                RecipientPreference.builder().recipientId(recipient).emailEnabled(false)
+                        .emailAddress("attacker@example.com").build()));
+        when(templateRenderer.renderTemplate(eq(template), any()))
+                .thenReturn(new TemplateRendererService.RenderedNotification("New sign-in to your SwiftDrop account",
+                        "Your SwiftDrop account was signed in to.", "EMAIL"));
+        when(contactClient.lookupContact(recipient)).thenReturn(Optional.of(new RecipientContact("alice@example.com")));
+        when(logRepository.save(any(NotificationDispatchLog.class))).thenAnswer(i -> i.getArgument(0));
+    }
+
+    @Test
+    @DisplayName("Sign-in alerts ignore the email-off preference, go only to the IAM address and are not redacted")
+    void loginAlertIsSecurityMail() {
+        UUID recipient = UUID.randomUUID();
+        stubLoginAlert(recipient, "LOGIN_SUCCESS");
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(recipient,
+                "EMAIL", "LOGIN_SUCCESS", null, Map.of("occurredAt", "19 Nov 2026, 9:26 p.m.", "device", "Chrome on Windows"), null));
+
+        assertThat(response.status()).isEqualTo("SENT");
+        assertThat(response.destination()).isEqualTo("alice@example.com");
+        assertThat(response.content()).doesNotContain("redacted");
+        verify(emailSender).send(eq("alice@example.com"), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Only one failed-sign-in alert is emailed per account every 15 minutes")
+    void failedLoginAlertsAreThrottled() {
+        UUID recipient = UUID.randomUUID();
+        stubLoginAlert(recipient, "LOGIN_FAILED");
+        when(logRepository.existsByRecipientIdAndTemplateCodeAndStatusAndCreatedAtAfter(
+                eq(recipient), eq("LOGIN_FAILED"), eq("SENT"), any())).thenReturn(true);
+
+        NotificationDispatchLogResponse response = dispatcher.dispatch(new DispatchNotificationRequest(recipient,
+                "EMAIL", "LOGIN_FAILED", null, Map.of(), null));
+
+        assertThat(response.status()).isEqualTo("SUPPRESSED");
+        assertThat(response.failureReason()).contains("15 minutes");
+        verify(emailSender, never()).send(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("A sign-in from a device and network used in the last 30 days sends no alert; a new one does")
+    void successAlertOnlyForANewDevice() {
+        UUID recipient = UUID.randomUUID();
+        stubLoginAlert(recipient, "LOGIN_SUCCESS");
+        String known = "Chrome on Windows · 203.94.x.x";
+        when(logRepository.existsByRecipientIdAndTemplateCodeAndReferenceIdAndStatusNotAndCreatedAtAfter(
+                eq(recipient), eq("LOGIN_SUCCESS"), any(), eq("FAILED"), any()))
+                .thenAnswer(i -> known.equals(i.getArgument(2)));
+
+        NotificationDispatchLogResponse again = dispatcher.dispatch(new DispatchNotificationRequest(recipient,
+                "EMAIL", "LOGIN_SUCCESS", null, Map.of(), known));
+        assertThat(again.status()).isEqualTo("SUPPRESSED");
+        assertThat(again.failureReason()).contains("30 days");
+        verify(emailSender, never()).send(any(), any(), any(), any());
+
+        NotificationDispatchLogResponse fresh = dispatcher.dispatch(new DispatchNotificationRequest(recipient,
+                "EMAIL", "LOGIN_SUCCESS", null, Map.of(), "Safari on iOS · 112.134.x.x"));
+        assertThat(fresh.status()).isEqualTo("SENT");
+        verify(emailSender).send(eq("alice@example.com"), any(), any(), any());
+    }
+
     @Test
     @DisplayName("Stores a redacted body in the dispatch log, never the code")
     void redactsTheAuditLog() {
@@ -177,7 +241,7 @@ class OtpEmailDispatchTest {
         ArgumentCaptor<DispatchNotificationRequest> dispatched = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
         verify(mockDispatcher).dispatch(dispatched.capture());
         assertThat(dispatched.getValue().templateCode()).isEqualTo("EMAIL_VERIFICATION");
-        verify(inbox, never()).saveNotification(any(), any(), any(), any());
+        verify(inbox, never()).saveNotification(any(), any(), any(), any(), any());
         verify(processed).save(any());
     }
 }

@@ -6,7 +6,6 @@ import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -26,12 +25,6 @@ public record CourierShiftResponse(
 
         @Schema(description = "Current assigned district")
         SriLankanDistrict currentDistrict,
-
-        @Schema(description = "Last known GPS latitude")
-        BigDecimal latitude,
-
-        @Schema(description = "Last known GPS longitude")
-        BigDecimal longitude,
 
         @Schema(description = "Current shift status")
         ShiftStatus shiftStatus,
@@ -59,8 +52,6 @@ public record CourierShiftResponse(
                 entity.getPhone(),
                 entity.getVehicleType(),
                 entity.getCurrentDistrict(),
-                entity.getLatitude(),
-                entity.getLongitude(),
                 entity.getShiftStatus(),
                 entity.getActiveParcelsCount(),
                 entity.getMaxCapacity(),

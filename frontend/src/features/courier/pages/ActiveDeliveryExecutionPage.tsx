@@ -5,8 +5,7 @@ import { deliveryApi } from '@/services/api/deliveryApi';
 import type {
   DeliverySessionResponse,
   DeliveryState,
-  DeliveryFailureReason,
-  TrackingBreadcrumbResponse
+  DeliveryFailureReason
 } from '@/services/api/deliveryApi';
 import { allowedTransitions } from '@/types/fsm';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
@@ -17,7 +16,6 @@ import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBa
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
 import { DeliveryFailureReportModal } from '../components/DeliveryFailureReportModal';
-import { GpsTelemetryPublisher } from '../components/GpsTelemetryPublisher';
 import {
   ArrowLeft,
   RefreshCw,
@@ -39,7 +37,6 @@ export function ActiveDeliveryExecutionPage() {
   const deliveryIdParam = id || searchParams.get('deliveryId');
 
   const [session, setSession] = useState<DeliverySessionResponse | null>(null);
-  const [breadcrumbs, setBreadcrumbs] = useState<TrackingBreadcrumbResponse[]>([]);
   const [isPoDVerified, setIsPoDVerified] = useState(false);
   const [isPoDModalOpen, setIsPoDModalOpen] = useState(false);
   const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
@@ -83,12 +80,6 @@ export function ActiveDeliveryExecutionPage() {
       if (activeDelivery) {
         setSession(activeDelivery);
         if (activeDelivery.deliveryId) {
-          try {
-            const crumbs = await deliveryApi.getBreadcrumbs(activeDelivery.deliveryId);
-            setBreadcrumbs(crumbs || []);
-          } catch {
-            // Non-fatal if breadcrumbs empty
-          }
           try {
             const pod = await deliveryApi.getProofOfDelivery(activeDelivery.deliveryId);
             if (pod && pod.verified) {
@@ -169,10 +160,6 @@ export function ActiveDeliveryExecutionPage() {
     }
   };
 
-  const handleBreadcrumbAdded = (crumb: TrackingBreadcrumbResponse) => {
-    setBreadcrumbs((prev) => [crumb, ...prev.slice(0, 9)]);
-  };
-
   return (
     <main className="mx-auto max-w-3xl space-y-5 p-4 md:p-6" data-density="touch">
       {/* Top Header Bar */}
@@ -191,7 +178,7 @@ export function ActiveDeliveryExecutionPage() {
               Active Delivery Execution
             </h1>
             <p className="text-xs text-slate-500">
-              One-tap FSM state machine transitions, GPS breadcrumb telemetry, and PoD handover.
+              One-tap delivery status updates and proof-of-delivery handover.
             </p>
           </div>
         </div>
@@ -340,52 +327,6 @@ export function ActiveDeliveryExecutionPage() {
             </div>
           </SurfaceCard>
 
-          {/* GPS Telemetry & Breadcrumb Publisher */}
-          {session.deliveryId && (
-            <div className="space-y-4">
-              <GpsTelemetryPublisher
-                deliveryId={session.deliveryId}
-                courierId={courierId}
-                onBreadcrumbAdded={handleBreadcrumbAdded}
-              />
-
-              {breadcrumbs.length > 0 && (
-                <SurfaceCard className="space-y-3 p-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Recent Telemetry Breadcrumbs ({breadcrumbs.length})
-                    </h4>
-                    <span className="text-xs text-slate-400">Streamed to Gateway</span>
-                  </div>
-                  <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
-                    {breadcrumbs.map((crumb, idx) => (
-                      <div
-                        key={`${crumb.deliveryId || 'crumb'}-${idx}`}
-                        className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs text-slate-700"
-                      >
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-3 w-3 text-indigo-500" />
-                          <span>
-                            {crumb.latitude !== undefined && crumb.longitude !== undefined
-                              ? `${crumb.latitude.toFixed(4)}, ${crumb.longitude.toFixed(4)}`
-                              : '0.0000, 0.0000'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 font-mono text-[11px] text-slate-500">
-                          <span>{crumb.speedKmh ? `${crumb.speedKmh} km/h` : 'Moving'}</span>
-                          <span>
-                            {crumb.recordedAt
-                              ? new Date(crumb.recordedAt).toLocaleTimeString()
-                              : 'Recent'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </SurfaceCard>
-              )}
-            </div>
-          )}
 
           {/* Ergonomic Action Bar: thumb-friendly sticky bar for next allowed action */}
           {allowedNextStates.length > 0 && (

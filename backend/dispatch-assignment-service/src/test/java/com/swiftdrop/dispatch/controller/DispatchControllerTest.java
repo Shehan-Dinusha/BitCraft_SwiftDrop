@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static com.swiftdrop.dispatch.support.TestCallers.dispatcher;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -87,7 +88,7 @@ class DispatchControllerTest {
 
         when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any())).thenReturn(assignment);
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -121,7 +122,7 @@ class DispatchControllerTest {
 
         when(dispatchAssignmentService.getUnassignedParcels()).thenReturn(List.of(item));
 
-        mockMvc.perform(get("/api/v1/dispatch/unassigned"))
+        mockMvc.perform(get("/api/v1/dispatch/unassigned").with(dispatcher()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].status").value("UNASSIGNED"))
@@ -144,7 +145,7 @@ class DispatchControllerTest {
         );
         when(dispatchAssignmentService.getSuggestions(orderId)).thenReturn(List.of(suggestion));
 
-        mockMvc.perform(get("/api/v1/dispatch/orders/{orderId}/suggestions", orderId))
+        mockMvc.perform(get("/api/v1/dispatch/orders/{orderId}/suggestions", orderId).with(dispatcher()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].courierId").value(courierId.toString()))
@@ -164,7 +165,7 @@ class DispatchControllerTest {
         when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any()))
                 .thenThrow(new ObjectOptimisticLockingFailureException(DispatchAssignment.class, 1L));
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -182,7 +183,7 @@ class DispatchControllerTest {
         when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any()))
                 .thenThrow(new AssignmentConflictException("Order is already assigned to a courier."));
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -207,7 +208,7 @@ class DispatchControllerTest {
         assignment.setStatus(AssignmentStatus.REASSIGNED);
         when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any())).thenReturn(assignment);
 
-        mockMvc.perform(post("/api/v1/dispatch/reassign")
+        mockMvc.perform(post("/api/v1/dispatch/reassign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -222,7 +223,7 @@ class DispatchControllerTest {
         ReassignCourierRequest request = new ReassignCourierRequest(
                 UUID.randomUUID(), null, UUID.randomUUID(), "DISPATCH_SUPERVISOR", null);
 
-        mockMvc.perform(post("/api/v1/dispatch/reassign")
+        mockMvc.perform(post("/api/v1/dispatch/reassign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -237,7 +238,7 @@ class DispatchControllerTest {
         UUID correlationId = UUID.randomUUID();
         when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any())).thenReturn(reassigned());
 
-        mockMvc.perform(post("/api/v1/dispatch/reassign")
+        mockMvc.perform(post("/api/v1/dispatch/reassign").with(dispatcher())
                         .header("X-Correlation-Id", correlationId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(reassignRequest())))
@@ -251,7 +252,7 @@ class DispatchControllerTest {
     void testReassign_IgnoresNonUuidCorrelationId() throws Exception {
         when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any())).thenReturn(reassigned());
 
-        mockMvc.perform(post("/api/v1/dispatch/reassign")
+        mockMvc.perform(post("/api/v1/dispatch/reassign").with(dispatcher())
                         .header("X-Correlation-Id", "client-trace-42")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(reassignRequest())))
@@ -267,7 +268,7 @@ class DispatchControllerTest {
         assignment.setStatus(AssignmentStatus.ASSIGNED);
         when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any())).thenReturn(assignment);
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new ManualAssignRequest(UUID.randomUUID(), UUID.randomUUID(), "DISPATCHER_ONE", null))))
@@ -282,7 +283,7 @@ class DispatchControllerTest {
         when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any()))
                 .thenThrow(new ReassignmentNotAllowedException("Order was picked up; reassignment is not allowed after pickup."));
 
-        mockMvc.perform(post("/api/v1/dispatch/reassign")
+        mockMvc.perform(post("/api/v1/dispatch/reassign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(reassignRequest())))
                 .andExpect(status().isConflict())
@@ -312,7 +313,7 @@ class DispatchControllerTest {
                 .thenThrow(new IllegalStateException(
                         "could not execute statement [ERROR: relation courier_shifts phone +94771234567]"));
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .header("X-Correlation-Id", correlationId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(assignRequest())))
@@ -331,7 +332,7 @@ class DispatchControllerTest {
         when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any()))
                 .thenThrow(new IllegalStateException("boom"));
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .header("X-Correlation-Id", "<script>alert(1)</script>")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(assignRequest())))
@@ -348,7 +349,7 @@ class DispatchControllerTest {
                 .thenThrow(new ObjectOptimisticLockingFailureException(CourierShift.class, 1L))
                 .thenReturn(assignment);
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(assignRequest())))
                 .andExpect(status().isOk())
@@ -363,13 +364,13 @@ class DispatchControllerTest {
         when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any()))
                 .thenThrow(new ObjectOptimisticLockingFailureException(CourierShift.class, 1L));
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(assignRequest())))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("Conflict"))
                 .andExpect(jsonPath("$.message").value(
-                        "The courier's record was changed by another operation, such as a location update or "
+                        "The courier's record was changed by another operation, such as a status update or "
                                 + "another assignment. Refresh and retry."));
 
         verify(manualOverrideService, times(3)).manualAssign(any(ManualAssignRequest.class), any());
@@ -381,7 +382,7 @@ class DispatchControllerTest {
         when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any()))
                 .thenThrow(new ObjectOptimisticLockingFailureException(DispatchAssignment.class, 1L));
 
-        mockMvc.perform(post("/api/v1/dispatch/assign")
+        mockMvc.perform(post("/api/v1/dispatch/assign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(assignRequest())))
                 .andExpect(status().isConflict())

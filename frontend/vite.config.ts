@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -41,6 +42,68 @@ function webhookDevProxy(env: Record<string, string>): ProxyOptions {
   };
 }
 
+/**
+ * Installable PWA, aimed at couriers and customers on phones.
+ *
+ * The service worker precaches only the app's own build output, so the shell opens instantly on
+ * a weak signal. It never caches API responses (they hold addresses, phone numbers and orders, and
+ * a shared phone must not show the previous user's data offline) and never answers /api, /ws or the
+ * gateway's docs with the app shell. Cross-origin requests (Google Fonts) are left to the network:
+ * the page CSP's connect-src would block the worker from fetching them anyway.
+ *
+ * registerType 'prompt': a new version waits until the user taps "Reload" (src/features/pwa), so a
+ * courier is never reloaded in the middle of a delivery.
+ *
+ * strategies 'injectManifest': the worker is our own src/sw.ts (precache, navigation fallback,
+ * SKIP_WAITING for "Reload", and lock-screen push notifications); only the precache list is injected.
+ */
+function pwa() {
+  return VitePWA({
+    registerType: 'prompt',
+    injectRegister: false,
+    strategies: 'injectManifest',
+    srcDir: 'src',
+    filename: 'sw.ts',
+    manifest: {
+      id: '/',
+      name: 'SwiftDrop',
+      short_name: 'SwiftDrop',
+      description: 'Book, track and deliver parcels across Sri Lanka.',
+      lang: 'en',
+      start_url: '/',
+      scope: '/',
+      display: 'standalone',
+      theme_color: '#f8fafc',
+      background_color: '#f8fafc',
+      icons: [
+        { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+        { src: '/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+      ],
+      shortcuts: [
+        {
+          name: 'Track a parcel',
+          url: '/track',
+          icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }]
+        },
+        {
+          name: 'My deliveries',
+          short_name: 'Deliveries',
+          url: '/courier/deliveries',
+          icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }]
+        }
+      ]
+    },
+    // Navigation fallback and its denylist live in src/sw.ts.
+    injectManifest: {
+      globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+      // The main bundle is ~1.3 MB; keep it precached.
+      maximumFileSizeToCacheInBytes: 3 * 1024 * 1024
+    }
+  });
+}
+
 export default defineConfig(({ command, mode, isPreview }) => {
   const env = loadEnv(mode, __dirname, '');
   const webhookDirect = command === 'serve' && !isPreview && env.WEBHOOK_DEV_DIRECT === 'true';
@@ -53,7 +116,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
   };
 
   return {
-    plugins: [react()],
+    plugins: [react(), pwa()],
     resolve: { alias: { '@': path.resolve(__dirname, './src') } },
     server: { proxy }
   };

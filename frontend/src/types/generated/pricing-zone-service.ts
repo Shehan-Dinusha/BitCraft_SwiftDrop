@@ -78,23 +78,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/geofence-zone/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Check geofence zone endpoint health */
-        get: operations["checkGeofenceZoneHealth"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/pricing/tariffs": {
         parameters: {
             query?: never;
@@ -396,45 +379,6 @@ export interface components {
              */
             strategy?: string;
         };
-        PricingZone: {
-            /**
-             * Format: int64
-             * @example 1
-             */
-            id?: number;
-            /** @example ZONE_WESTERN */
-            zoneCode?: string;
-            /** @example Western Province Metro */
-            zoneName?: string;
-            /** @example METRO */
-            tier?: string;
-            /**
-             * Format: double
-             * @example 350
-             */
-            baseFee?: number;
-            /**
-             * Format: double
-             * @example 80
-             */
-            perKgFee?: number;
-            /**
-             * Format: double
-             * @example 1.5
-             */
-            expressMultiplier?: number;
-            /**
-             * Format: double
-             * @example 2
-             */
-            sameDayMultiplier?: number;
-            /** @example ACTIVE */
-            status?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
         /** @description Error body returned by the global exception handler for 400 responses */
         ApiErrorResponse: {
             /** Format: date-time */
@@ -482,15 +426,6 @@ export interface components {
             /** @example Estimate calculated successfully */
             message?: string;
             data?: components["schemas"]["EstimateResponse"];
-            /** Format: date-time */
-            timestamp?: string;
-        };
-        ApiResponseListPricingZone: {
-            /** @example true */
-            success?: boolean;
-            /** @example Pricing zones retrieved successfully */
-            message?: string;
-            data?: components["schemas"]["PricingZone"][];
             /** Format: date-time */
             timestamp?: string;
         };
@@ -776,27 +711,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiResponseListPricingZone"];
-                };
-            };
-        };
-    };
-    checkGeofenceZoneHealth: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Service health response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseString"];
+                    "application/json": components["schemas"]["ApiResponseListZoneResponse"];
                 };
             };
         };

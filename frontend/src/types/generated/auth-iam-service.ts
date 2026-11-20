@@ -36,6 +36,15 @@ export interface paths {
                         "application/json": components["schemas"]["TokenResponse"];
                     };
                 };
+                /** @description Password accepted but a second factor is required (SYSTEM_ADMIN and DISPATCHER when AUTH_MFA_ENABLED=true). A 6-digit code was emailed; finish with POST /api/v1/auth/login/mfa. */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaChallengeResponse"];
+                    };
+                };
                 /** @description Invalid credentials */
                 401: {
                     headers: {
@@ -55,6 +64,76 @@ export interface paths {
                     };
                 };
                 /** @description Too many failed login attempts */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a sign-in with the emailed second-factor code
+         * @description Exchanges the challenge from a 202 /login response plus the emailed code for a token pair. The refresh token is set as the HttpOnly swiftdrop_refresh cookie. After 5 wrong codes the code is destroyed and the user must sign in again.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LoginMfaRequest"];
+                };
+            };
+            responses: {
+                /** @description Token pair issued */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TokenResponse"];
+                    };
+                };
+                /** @description Wrong or expired code */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Unknown or expired challenge; sign in again */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many incorrect codes */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -431,7 +510,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rotate a refresh token and issue a new access token */
+        /**
+         * Rotate a refresh token and issue a new access token
+         * @description Browsers send no body; the refresh token is read from the HttpOnly swiftdrop_refresh cookie (Path=/api/v1/auth, SameSite=Strict). Non-browser clients may send it in the body. The rotated token is returned as a new Set-Cookie, never in the JSON body.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -439,7 +521,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody: {
+            requestBody?: {
                 content: {
                     "application/json": components["schemas"]["RefreshTokenRequest"];
                 };
@@ -465,6 +547,83 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth2/google/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start Google OAuth 2.0 login
+         * @description Redirects the browser to Google's consent screen. Returns 503 if Google OAuth credentials are not configured.
+         */
+        get: operations["googleAuthorize"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth2/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Google OAuth 2.0 callback
+         * @description Receives the authorization code from Google, validates the state token, upserts the user, and redirects to the frontend callback page with a short-lived one-time exchange code in the query string.
+         */
+        get: operations["googleCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth2/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange OAuth one-time code for SwiftDrop tokens
+         * @description Accepts the short-lived code issued by the Google callback and returns a token pair. The code is consumed immediately and cannot be reused. The refresh token is set as the HttpOnly cookie.
+         */
+        post: operations["googleExchange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/.well-known/jwks.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the public JSON Web Key Set */
+        get: operations["jwks"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -617,7 +776,240 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Erase the authenticated customer's own account
+         * @description Needs the current password. Removes the username, email, phone, names and district, revokes every session and blocks sign-in. Orders already placed keep an owner id but no personal data. Customer accounts only.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DeleteAccountRequest"];
+                };
+            };
+            responses: {
+                /** @description Account erased */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseVoid"];
+                    };
+                };
+                /** @description Validation failure or incorrect current password */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Not a customer account */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Update the authenticated user's own profile
+         * @description Changes first name, last name, phone and district. Username, email, role and status cannot be changed here.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description Profile updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Phone number is already registered */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/users/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the authenticated user's profile picture */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The picture */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/png": string;
+                        "image/jpeg": string;
+                        "image/webp": string;
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description No profile picture */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /**
+         * Set the authenticated user's profile picture
+         * @description PNG, JPEG or WebP up to 512 KB in the multipart part `file`. The type is checked from the file content.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Profile picture updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description Not a PNG, JPEG or WebP image, or larger than 512 KB */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Remove the authenticated user's profile picture */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Profile picture removed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -977,6 +1369,25 @@ export interface components {
              */
             password: string;
         };
+        MfaChallengeResponse: {
+            /**
+             * @description Always true; lets clients tell this body apart from a TokenResponse.
+             * @example true
+             */
+            mfaRequired: boolean;
+            /** @description Opaque, single-use id of this sign-in attempt. Send it to /login/mfa. */
+            challengeId: string;
+            /**
+             * Format: int32
+             * @example 10
+             */
+            expiresInMinutes: number;
+        };
+        LoginMfaRequest: {
+            challengeId: string;
+            /** @example 123456 */
+            code: string;
+        };
         RegisterUserRequest: {
             /** @example customer.one */
             username: string;
@@ -1017,7 +1428,8 @@ export interface components {
             merchantId?: string | null;
         };
         RefreshTokenRequest: {
-            refreshToken: string;
+            /** @description Optional when the swiftdrop_refresh cookie is sent. */
+            refreshToken?: string;
         };
         LogoutRequest: {
             /** @description Optional refresh token to revoke. */
@@ -1065,6 +1477,26 @@ export interface components {
             /** Format: password */
             newPassword: string;
         };
+        /** @description Self-service profile update. */
+        UpdateProfileRequest: {
+            /** @example Nimal */
+            firstName: string;
+            /** @example Perera */
+            lastName: string;
+            /**
+             * @description Phone number; empty removes it.
+             * @example +94771234567
+             */
+            phone?: string;
+            district: components["schemas"]["SriLankanDistrict"];
+        };
+        DeleteAccountRequest: {
+            /**
+             * Format: password
+             * @description The account's current password, as confirmation.
+             */
+            currentPassword: string;
+        };
         /** @description Compatibility request to verify an existing role. Account roles cannot be changed after creation. */
         UpdateUserRoleRequest: {
             role: components["schemas"]["UserRole"];
@@ -1072,9 +1504,44 @@ export interface components {
         UpdateUserStatusRequest: {
             status: components["schemas"]["UserStatus"];
         };
+        /** @description One-time code returned from the Google OAuth callback, to be exchanged for tokens */
+        OAuthExchangeRequest: {
+            /** @description One-time exchange code from the OAuth callback redirect */
+            code: string;
+        };
+        /** @description JSON Web Key Set. Empty in HS256 mode unless an RSA pair has been configured for migration. */
+        JwksResponse: {
+            /** @description Public RSA signing keys. */
+            keys?: components["schemas"]["JwkResponse"][];
+        };
+        /** @description RSA public verification key. Contains no private or symmetric key material. */
+        JwkResponse: {
+            /**
+             * @description Key type.
+             * @enum {string}
+             */
+            kty?: "RSA";
+            /**
+             * @description Public key use.
+             * @enum {string}
+             */
+            use?: "sig";
+            /**
+             * @description Allowed signature algorithm.
+             * @enum {string}
+             */
+            alg?: "RS256";
+            /** @description Stable SHA-256 fingerprint of the X.509 public key, encoded as base64url. */
+            kid?: string;
+            /** @description Unsigned RSA modulus encoded as base64url without padding. */
+            n?: string;
+            /** @description Unsigned RSA exponent encoded as base64url without padding. */
+            e?: string;
+        };
         TokenResponse: {
             accessToken?: string;
-            refreshToken?: string;
+            /** @description Always null for /login, /refresh and /oauth2/exchange: the refresh token is set as the HttpOnly swiftdrop_refresh cookie instead. */
+            refreshToken?: string | null;
             /** @example Bearer */
             tokenType?: string;
             /**
@@ -1110,6 +1577,11 @@ export interface components {
             lastLoginAt?: string | null;
             /** Format: date-time */
             createdAt?: string;
+            /**
+             * Format: date-time
+             * @description When the profile picture last changed; null when there is none. The picture is served by GET /api/v1/users/me/avatar.
+             */
+            avatarUpdatedAt?: string | null;
         };
         ApiResponseUserProfile: {
             success?: boolean;
@@ -1188,4 +1660,96 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    googleAuthorize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to Google's consent screen */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Google OAuth is not configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    googleCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the frontend OAuth callback page */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    googleExchange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthExchangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Token pair issued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+        };
+    };
+    jwks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public RSA verification keys */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JwksResponse"];
+                };
+            };
+        };
+    };
+}

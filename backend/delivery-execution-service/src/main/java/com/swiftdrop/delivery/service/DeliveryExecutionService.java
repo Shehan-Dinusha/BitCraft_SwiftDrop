@@ -3,15 +3,10 @@ package com.swiftdrop.delivery.service;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
-import com.swiftdrop.contracts.events.delivery.LocationUpdatedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
-import com.swiftdrop.delivery.domain.entity.TrackingBreadcrumb;
 import com.swiftdrop.delivery.domain.repository.DeliverySessionRepository;
-import com.swiftdrop.delivery.domain.repository.TrackingBreadcrumbRepository;
-import com.swiftdrop.delivery.dto.CourierLocationUpdatePayload;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
-import com.swiftdrop.delivery.dto.TrackingBreadcrumbResponse;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
 import com.swiftdrop.delivery.exception.DeliveryNotFoundException;
 import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
@@ -26,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -40,7 +34,6 @@ public class DeliveryExecutionService {
     private static final Logger log = LoggerFactory.getLogger(DeliveryExecutionService.class);
 
     private final DeliverySessionRepository deliverySessionRepository;
-    private final TrackingBreadcrumbRepository breadcrumbRepository;
     private final DeliveryStateMachine stateMachine;
     private final ProofOfDeliveryGuard proofOfDeliveryGuard;
     private final AuditTransitionAction auditTransitionAction;
@@ -49,14 +42,12 @@ public class DeliveryExecutionService {
 
     public DeliveryExecutionService(
             DeliverySessionRepository deliverySessionRepository,
-            TrackingBreadcrumbRepository breadcrumbRepository,
             DeliveryStateMachine stateMachine,
             ProofOfDeliveryGuard proofOfDeliveryGuard,
             AuditTransitionAction auditTransitionAction,
             PublishStateTransitionAction publishStateTransitionAction,
             DeliveryEventPublisher eventPublisher) {
         this.deliverySessionRepository = deliverySessionRepository;
-        this.breadcrumbRepository = breadcrumbRepository;
         this.stateMachine = stateMachine;
         this.proofOfDeliveryGuard = proofOfDeliveryGuard;
         this.auditTransitionAction = auditTransitionAction;
@@ -108,9 +99,7 @@ public class DeliveryExecutionService {
                 DeliveryState.ASSIGNED,
                 "DISPATCH_ASSIGNMENT_EVENT",
                 "SYSTEM",
-                "Courier assigned by dispatch engine",
-                null,
-                null
+                "Courier assigned by dispatch engine"
         );
 
         publishStateTransitionAction.execute(
@@ -162,7 +151,7 @@ public class DeliveryExecutionService {
         if (toState == DeliveryState.DELIVERED) {
             if (!proofOfDeliveryGuard.isSatisfied(deliveryId)) {
                 throw new InvalidStateTransitionException(
-                        "Proof of delivery must be verified with recipient OTP or signature before marking delivery as DELIVERED");
+                        "Proof of delivery must be verified with an uploaded photo or signature before marking delivery as DELIVERED");
             }
             session.setDeliveredAt(Instant.now());
             session.setStatus("COMPLETED");
@@ -178,9 +167,6 @@ public class DeliveryExecutionService {
             session.setStatus("CANCELLED");
         }
 
-        if (request.latitude() != null) session.setCurrentLatitude(request.latitude());
-        if (request.longitude() != null) session.setCurrentLongitude(request.longitude());
-
         session.setPreviousState(fromState);
         session.setCurrentState(toState);
         session = deliverySessionRepository.save(session);
@@ -192,9 +178,7 @@ public class DeliveryExecutionService {
                 toState,
                 "COURIER_APP",
                 request.actorRole() != null ? request.actorRole() : "COURIER",
-                request.notes(),
-                request.latitude(),
-                request.longitude()
+                request.notes()
         );
 
         publishStateTransitionAction.execute(
@@ -213,51 +197,6 @@ public class DeliveryExecutionService {
 
         log.info("Delivery {} transitioned from {} to {}", deliveryId, fromState, toState);
         return session;
-    }
-
-    @Transactional
-    public TrackingBreadcrumb recordLocation(UUID deliveryId, CourierLocationUpdatePayload payload) {
-        return recordLocation(deliveryId, payload, null);
-    }
-
-    @Transactional
-    public TrackingBreadcrumb recordLocation(UUID deliveryId, CourierLocationUpdatePayload payload, CallerContext caller) {
-        DeliverySession session = deliverySessionRepository.findByDeliveryId(deliveryId)
-                .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found: " + deliveryId));
-
-        if (caller != null) {
-            DeliveryAccessPolicy.assertCanAccess(session, caller);
-        }
-
-        TrackingBreadcrumb breadcrumb = new TrackingBreadcrumb();
-        breadcrumb.setDeliveryId(deliveryId);
-        breadcrumb.setCourierId(session.getCourierId() != null ? session.getCourierId() : UUID.randomUUID());
-        breadcrumb.setLatitude(BigDecimal.valueOf(payload.latitude()));
-        breadcrumb.setLongitude(BigDecimal.valueOf(payload.longitude()));
-        breadcrumb.setBearingDegrees(BigDecimal.valueOf(payload.bearingDegrees()));
-        breadcrumb.setSpeedKmh(BigDecimal.valueOf(payload.speedKmh()));
-        breadcrumb.setAccuracy(BigDecimal.valueOf(payload.accuracy()));
-        breadcrumb.setRecordedAt(Instant.now());
-        breadcrumb = breadcrumbRepository.save(breadcrumb);
-
-        session.setCurrentLatitude(BigDecimal.valueOf(payload.latitude()));
-        session.setCurrentLongitude(BigDecimal.valueOf(payload.longitude()));
-        deliverySessionRepository.save(session);
-
-        eventPublisher.publishLocationUpdated(new LocationUpdatedEvent(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                deliveryId,
-                session.getCourierId(),
-                payload.latitude(),
-                payload.longitude(),
-                payload.bearingDegrees(),
-                payload.speedKmh(),
-                payload.accuracy(),
-                Instant.now()
-        ));
-
-        return breadcrumb;
     }
 
     @Transactional(readOnly = true)
@@ -331,23 +270,6 @@ public class DeliveryExecutionService {
             list = deliverySessionRepository.findByCourierId(courierId);
         }
         return list.stream().map(DeliverySessionResponse::fromEntity).toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<TrackingBreadcrumbResponse> getBreadcrumbs(UUID deliveryId) {
-        return getBreadcrumbs(deliveryId, null);
-    }
-
-    @Transactional(readOnly = true)
-    public List<TrackingBreadcrumbResponse> getBreadcrumbs(UUID deliveryId, CallerContext caller) {
-        if (caller != null) {
-            DeliverySession session = deliverySessionRepository.findByDeliveryId(deliveryId)
-                    .orElseThrow(() -> new DeliveryNotFoundException("Delivery session not found: " + deliveryId));
-            DeliveryAccessPolicy.assertCanAccess(session, caller);
-        }
-        return breadcrumbRepository.findTop50ByDeliveryIdOrderByRecordedAtDesc(deliveryId).stream()
-                .map(TrackingBreadcrumbResponse::fromEntity)
-                .toList();
     }
 
     @Transactional(readOnly = true)

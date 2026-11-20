@@ -463,40 +463,86 @@ These templates cannot be triggered through `POST /api/v1/notifications/logs/dis
 
 ---
 
-### 2.12 `delivery.location.updated` — `LocationUpdatedEvent`
+### 2.12 `notification.auth.login` — `AuthLoginEvent`
 
-* **Producer:** `delivery-execution-service` (:8085), from courier location pings
-* **Routing Key:** `delivery.location.updated`
-* **Destination Queues:** `delivery.events.queue` (via `delivery.#`)
-* **Consumers:** `delivery-execution-service` (internal)
+* **Producer:** `auth-iam-service` (:8081): after a successful sign-in (password, second factor or Google), and after a wrong password for an **existing** account. notification-service emails a success alert only for a device and network not used in the last 30 days
+* **Routing Key:** `notification.auth.login` (under `notification.` so the existing `notification.#` binding delivers it)
+* **Destination Queues:** `notification.events.queue`
+* **Consumers:** `notification-service` (`AuthLoginTrigger`)
 
 #### Field Specification
 
 | Field Name | Type | Nullable | Description | Privacy / PII |
 |---|---|---|---|---|
-| `eventId` | `UUID` | No | Unique event identifier | Safe |
+| `eventId` | `UUID` | No | Unique event identifier (deduplication) | Safe |
 | `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
-| `deliveryId` | `UUID` | No | Delivery record identifier | Safe |
-| `courierId` | `UUID` | No | Courier sending the location | Safe |
-| `latitude` | `double` | No | WGS-84 latitude | Courier location: share only through the sanitised tracking hub |
-| `longitude` | `double` | No | WGS-84 longitude | Courier location: share only through the sanitised tracking hub |
-| `bearingDegrees` | `double` | No | Heading in degrees (0 to 360) | Safe |
-| `speedKmh` | `double` | No | Speed in km/h | Safe |
-| `accuracy` | `double` | No | GPS accuracy in metres | Safe |
-| `timestamp` | `Instant` | No | Fix timestamp | Safe |
+| `recipientId` | `UUID` | No | IAM user the alert is for; notification-service resolves the registered email from IAM | Safe |
+| `outcome` | `LoginOutcome` | No | `SUCCESS` or `FAILED` (wrong password) | Safe |
+| `ipAddress` | `String` | Yes | Client IP; the email shows it partly masked (`203.94.x.x`) | **PII**: never logged |
+| `userAgent` | `String` | Yes | Browser user agent (max 300 characters); the email shows "Chrome on Windows" | Low |
+| `occurredAt` | `Instant` | No | When the sign-in happened | Safe |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+Failed attempts for unknown usernames publish nothing, so the event never reveals whether an
+account exists. notification-service emails at most one failed-sign-in alert per account every
+15 minutes, sends sign-in alerts even when email notifications are off, sends them only to the
+registered address, and never copies them to the in-app inbox.
 
 #### Example JSON Payload
 ```json
 {
-  "eventId": "9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e2f",
+  "eventId": "0a1b2c3d-4e5f-4a6b-8c7d-8e9f0a1b2c3d",
   "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
-  "deliveryId": "4c5d6e7f-8091-4a2b-b3c4-d5e6f708192a",
-  "courierId": "8b7c6d5e-4f3a-2b1c-0d9e-8f7a6b5c4d3e",
-  "latitude": 7.2906,
-  "longitude": 80.6337,
-  "bearingDegrees": 145.0,
-  "speedKmh": 32.5,
-  "accuracy": 8.0,
-  "timestamp": "2026-11-16T11:22:10Z"
+  "recipientId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "outcome": "FAILED",
+  "ipAddress": "203.94.12.7",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142.0 Safari/537.36",
+  "occurredAt": "2026-11-19T15:56:00Z",
+  "timestamp": "2026-11-19T15:56:00Z"
 }
 ```
+
+---
+
+## 3. Who receives which notification
+
+Rule: a notification goes only to the person or team the event is about, and only when it tells
+them something new or asks them to act. Routine steps nobody acts on (in transit, a retry that
+dispatch makes by itself, an order the merchant created themselves) send nothing.
+
+| Event | Customer (own orders) | Courier | Merchant company (team inbox) | Operations team (dispatchers and admins) |
+|---|---|---|---|---|
+| `order.created` | Email + in-app "Order confirmed" | | (nothing: they created it) | |
+| `dispatch.courier.assigned` | | Email + in-app + lock screen "New delivery assigned" (the assigned courier only) | In-app "Courier assigned" (have the parcel ready) | |
+| `parcel.status.changed` PICKED_UP | Email + in-app + lock screen "Picked up" | | | |
+| `parcel.status.changed` OUT_FOR_DELIVERY | Email + in-app + lock screen "Out for delivery" | | | |
+| `parcel.status.changed` DELIVERED | Email + in-app + lock screen "Delivered" | | | |
+| `parcel.status.changed` FAILED | Email + in-app + lock screen "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" (arrange a new attempt or a return) |
+| `dispatch.failed` (retryable = false only) | | | | In-app "Dispatch needs attention" |
+| `notification.auth.otp` | Email only | Email only | Email only (to the signing-in user) | Email only |
+| `notification.auth.login` SUCCESS (new device or network only) | Email only | Email only | Email only (to the signing-in user) | Email only |
+| `notification.auth.login` FAILED (max 1 per 15 min) | Email only | Email only | Email only (to the account owner) | Email only |
+
+Merchant orders: customer-order-service stores the merchant id in `customerId`, so parcel events for
+a merchant order name the company, not a person. notification-service records merchant ids from
+`order.created` events where `merchantId` = `customerId` (`merchant_accounts`, V10). Customer
+notifications addressed to a merchant id are not sent (nothing is emailed to a company id); the
+merchant team inbox gets the merchant rows instead. A merchant row is written only for a known
+merchant company.
+
+A successful sign-in is emailed only when the device and network (`"Chrome on Windows · 203.94.x.x"`,
+kept in the dispatch log `reference_id`) were not used by that account in the last 30 days.
+
+**Lock screen (Web Push).** Sent only to devices where the customer or courier turned on
+"Lock-screen notifications" (table `push_subscriptions`, V11), and only while the account's push
+preference (`push_enabled`) is on. Types: picked up, out for delivery, delivered, delivery failed
+(customers, normal urgency, 24 h TTL, opens `/customer/tracking/{trackingNumber}`) and new delivery
+assigned (couriers, high urgency, 15 min TTL, opens `/courier/deliveries`). The payload is only
+`{title, body, url, tag}` with the tracking number as tag: no names, addresses, phone numbers or
+amounts. Order created, team alerts and every security message are never pushed. The in-app inbox is
+always written, whatever the push preference. Without `WEB_PUSH_*` keys device push is off and
+everything else works.
+
+Team inboxes (`in_app_notifications.audience`): `OPERATIONS` is shown to every DISPATCHER and
+SYSTEM_ADMIN; `MERCHANT:<merchantId>` to every user of that merchant company. A team
+notification's read state is shared by the team.

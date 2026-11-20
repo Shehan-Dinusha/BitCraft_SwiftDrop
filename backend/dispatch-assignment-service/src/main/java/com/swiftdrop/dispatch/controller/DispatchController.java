@@ -2,18 +2,21 @@ package com.swiftdrop.dispatch.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.dto.PagedResult;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.dto.ReassignCourierRequest;
+import com.swiftdrop.dispatch.security.DispatchAccess;
 import com.swiftdrop.dispatch.service.CourierConflictRetry;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,11 +64,14 @@ public class DispatchController {
     @PostMapping("/assign")
     @Operation(summary = "Assign a courier to an unassigned order",
             description = "Dispatcher confirms a courier for an order in the unassigned queue. "
-                    + "Returns 409 if the order already has a courier; use /reassign to change it.")
+                    + "Returns 409 if the order already has a courier; use /reassign to change it. "
+                    + "Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<DispatchAssignmentResponse> manualAssign(
             @Valid @RequestBody ManualAssignRequest request,
             @Parameter(description = "Request correlation ID, propagated to the published events when it is a UUID")
-            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId) {
+            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         UUID eventCorrelationId = correlationIdOrNull(correlationId);
         var assignment = courierConflictRetry.run("Assignment",
                 () -> manualOverrideService.manualAssign(request, eventCorrelationId));
@@ -78,11 +84,14 @@ public class DispatchController {
     @PostMapping("/reassign")
     @Operation(summary = "Reassign an order to a different courier",
             description = "Explicitly moves an assigned order to another courier. The request must name the courier "
-                    + "currently assigned; returns 409 if the assignment changed since it was viewed.")
+                    + "currently assigned; returns 409 if the assignment changed since it was viewed. "
+                    + "Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<DispatchAssignmentResponse> reassign(
             @Valid @RequestBody ReassignCourierRequest request,
             @Parameter(description = "Request correlation ID, propagated to the published events when it is a UUID")
-            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId) {
+            @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) String correlationId,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         UUID eventCorrelationId = correlationIdOrNull(correlationId);
         var assignment = courierConflictRetry.run("Reassignment",
                 () -> manualOverrideService.reassign(request, eventCorrelationId));
@@ -93,12 +102,15 @@ public class DispatchController {
     }
 
     @GetMapping("/assignments")
-    @Operation(summary = "List dispatch assignments with pagination and optional status filter")
+    @Operation(summary = "List dispatch assignments with pagination and optional status filter",
+            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
     public ApiResponse<PagedResult<DispatchAssignmentResponse>> getAssignments(
             @RequestParam(required = false) AssignmentStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest httpRequest
     ) {
+        DispatchAccess.requireOperations(httpRequest);
         Page<DispatchAssignmentResponse> paged = dispatchAssignmentService.getAssignments(
                 status,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
@@ -114,26 +126,36 @@ public class DispatchController {
     }
 
     @GetMapping("/assignments/{assignmentId}")
-    @Operation(summary = "Get dispatch assignment by UUID")
-    public ApiResponse<DispatchAssignmentResponse> getAssignmentById(@PathVariable UUID assignmentId) {
-        return ApiResponse.success(
-                dispatchAssignmentService.getAssignmentById(assignmentId),
-                "Dispatch assignment retrieved"
-        );
+    @Operation(summary = "Get dispatch assignment by UUID",
+            description = "A COURIER sees only an assignment they currently hold (403 otherwise, "
+                    + "including UNASSIGNED orders); DISPATCHER and SYSTEM_ADMIN see any.")
+    public ApiResponse<DispatchAssignmentResponse> getAssignmentById(
+            @PathVariable UUID assignmentId,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = DispatchAccess.requireCourierResourceRole(httpRequest);
+        DispatchAssignmentResponse assignment = dispatchAssignmentService.getAssignmentById(assignmentId);
+        DispatchAccess.requireAssignmentAccess(caller, assignment.courierId());
+        return ApiResponse.success(assignment, "Dispatch assignment retrieved");
     }
 
     @GetMapping("/assignments/order/{orderId}")
-    @Operation(summary = "Get dispatch assignment by order UUID")
-    public ApiResponse<DispatchAssignmentResponse> getAssignmentByOrderId(@PathVariable UUID orderId) {
-        return ApiResponse.success(
-                dispatchAssignmentService.getAssignmentByOrderId(orderId),
-                "Dispatch assignment retrieved"
-        );
+    @Operation(summary = "Get dispatch assignment by order UUID",
+            description = "A COURIER sees only an assignment they currently hold (403 otherwise, "
+                    + "including UNASSIGNED orders); DISPATCHER and SYSTEM_ADMIN see any.")
+    public ApiResponse<DispatchAssignmentResponse> getAssignmentByOrderId(
+            @PathVariable UUID orderId,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = DispatchAccess.requireCourierResourceRole(httpRequest);
+        DispatchAssignmentResponse assignment = dispatchAssignmentService.getAssignmentByOrderId(orderId);
+        DispatchAccess.requireAssignmentAccess(caller, assignment.courierId());
+        return ApiResponse.success(assignment, "Dispatch assignment retrieved");
     }
 
     @GetMapping("/unassigned")
-    @Operation(summary = "List unassigned orders pending dispatch")
-    public ApiResponse<List<DispatchAssignmentResponse>> getUnassignedParcels() {
+    @Operation(summary = "List unassigned orders pending dispatch",
+            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
+    public ApiResponse<List<DispatchAssignmentResponse>> getUnassignedParcels(HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
                 dispatchAssignmentService.getUnassignedParcels(),
                 "Unassigned orders retrieved"
@@ -141,11 +163,14 @@ public class DispatchController {
     }
 
     @GetMapping("/couriers/{courierId}/assignments")
-    @Operation(summary = "List active assignments for a courier")
+    @Operation(summary = "List active assignments for a courier",
+            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
     public ApiResponse<List<DispatchAssignmentResponse>> getCourierAssignments(
             @PathVariable UUID courierId,
-            @RequestParam(required = false) AssignmentStatus status
+            @RequestParam(required = false) AssignmentStatus status,
+            HttpServletRequest httpRequest
     ) {
+        DispatchAccess.requireCourierSelfOrOperations(httpRequest, courierId);
         return ApiResponse.success(
                 dispatchAssignmentService.getAssignmentsForCourier(courierId, status),
                 "Courier assignments retrieved"
@@ -154,8 +179,13 @@ public class DispatchController {
 
     @GetMapping("/orders/{orderId}/suggestions")
     @Operation(summary = "Suggest available couriers for an order",
-            description = "Returns up to three available couriers, preferring the pickup district and then lowest workload.")
-    public ApiResponse<List<CourierSuggestionResponse>> getCourierSuggestions(@PathVariable UUID orderId) {
+            description = "Returns up to three available couriers, preferring the pickup district and then lowest workload. "
+                    + "For an assigned order the current courier is left out (reassignment suggestions); "
+                    + "a completed or cancelled order returns 409. Requires the DISPATCHER or SYSTEM_ADMIN role.")
+    public ApiResponse<List<CourierSuggestionResponse>> getCourierSuggestions(
+            @PathVariable UUID orderId,
+            HttpServletRequest httpRequest) {
+        DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
                 dispatchAssignmentService.getSuggestions(orderId),
                 "Courier suggestions retrieved"

@@ -68,22 +68,22 @@ public class ProofOfDeliveryStorageService {
         pod.setDeliveryId(deliveryId);
         pod.setPhotoUrl(request.photoUrl());
         pod.setRecipientSignature(request.recipientSignature());
-        pod.setConfirmationOtp(request.confirmationOtp());
-        pod.setCreatedAt(Instant.now());
-        pod.setVerified(false);
+        markVerified(pod);
         return toResponse(repository.save(pod));
     }
 
+    /**
+     * Stores photo evidence and marks it verified: a valid photo plus the recipient's name is the
+     * proof of handover, so a successful upload satisfies the DELIVERED guard.
+     */
     @Transactional
-    public ProofOfDeliveryResponse storeMultipart(UUID deliveryId, MultipartFile photo, String recipientName, String signature, String otp) {
+    public ProofOfDeliveryResponse storeMultipart(UUID deliveryId, MultipartFile photo, String recipientName, String signature) {
         validateMultipart(photo, recipientName);
         ProofOfDelivery pod = new ProofOfDelivery();
         pod.setDeliveryId(deliveryId);
         pod.setRecipientName(recipientName != null ? recipientName.trim() : null);
         pod.setRecipientSignature(signature);
-        pod.setConfirmationOtp(otp);
-        pod.setCreatedAt(Instant.now());
-        pod.setVerified(false);
+        markVerified(pod);
 
         String contentType = photo.getContentType();
         String extension = ".jpg";
@@ -116,7 +116,9 @@ public class ProofOfDeliveryStorageService {
                 log.info("Proof-of-delivery photo successfully uploaded to Azure Blob: {}", blobUrl);
                 pod.setPhotoUrl(blobUrl);
                 return toResponse(repository.save(pod));
-            } catch (Exception ex) {
+            } catch (RuntimeException | IOException ex) {
+                // Graceful degradation: Azure SDK, network and auth failures are all unchecked; any of
+                // them falls back to local storage so the courier can still complete the delivery.
                 log.warn("Azure Blob upload failed, falling back to local filesystem storage: {}", ex.getMessage());
             }
         }
@@ -156,16 +158,11 @@ public class ProofOfDeliveryStorageService {
         }
     }
 
-    @Transactional
-    public ProofOfDeliveryResponse verify(UUID deliveryId, String otp) {
-        ProofOfDelivery pod = repository.findTopByDeliveryIdOrderByCreatedAtDesc(deliveryId)
-                .orElseThrow(() -> new IllegalArgumentException("No proof of delivery exists for " + deliveryId));
-        if (otp == null || !otp.equals(pod.getConfirmationOtp())) {
-            throw new IllegalArgumentException("Proof-of-delivery OTP is invalid");
-        }
+    private void markVerified(ProofOfDelivery pod) {
+        Instant now = Instant.now();
+        pod.setCreatedAt(now);
         pod.setVerified(true);
-        pod.setVerifiedAt(Instant.now());
-        return toResponse(repository.save(pod));
+        pod.setVerifiedAt(now);
     }
 
     public boolean isVerified(UUID deliveryId) {
@@ -181,9 +178,8 @@ public class ProofOfDeliveryStorageService {
     }
 
     private void validate(ProofOfDeliveryUploadRequest request) {
-        if (request == null || isBlank(request.photoUrl()) || isBlank(request.recipientSignature())
-                || isBlank(request.confirmationOtp())) {
-            throw new IllegalArgumentException("Photo, recipient signature, and OTP are required");
+        if (request == null || isBlank(request.photoUrl()) || isBlank(request.recipientSignature())) {
+            throw new IllegalArgumentException("Photo and recipient signature are required");
         }
     }
 

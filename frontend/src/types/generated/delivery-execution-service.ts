@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deliveries/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List deliveries assigned to the authenticated courier
+         * @description Returns today's deliveries (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
+         */
+        get: operations["getMyDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/deliveries/{deliveryId}": {
         parameters: {
             query?: never;
@@ -109,40 +129,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/deliveries/{deliveryId}/location": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Record courier GPS telemetry breadcrumb */
-        post: operations["recordLocation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/deliveries/{deliveryId}/breadcrumbs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get recent GPS telemetry breadcrumbs */
-        get: operations["getBreadcrumbs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/deliveries/{deliveryId}/proof-of-delivery": {
         parameters: {
             query?: never;
@@ -155,23 +141,6 @@ export interface paths {
         put?: never;
         /** Upload proof-of-delivery evidence */
         post: operations["uploadProofOfDelivery"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/deliveries/{deliveryId}/proof-of-delivery/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Verify proof-of-delivery with recipient OTP */
-        post: operations["verifyProofOfDelivery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -191,22 +160,12 @@ export interface components {
         TransitionDeliveryRequest: {
             targetState: components["schemas"]["DeliveryState"];
             notes?: string;
-            latitude?: number;
-            longitude?: number;
             failureReason?: components["schemas"]["DeliveryFailureReason"];
             actorRole?: string;
-        };
-        CourierLocationUpdatePayload: {
-            latitude: number;
-            longitude: number;
-            bearingDegrees?: number;
-            speedKmh?: number;
-            accuracy?: number;
         };
         ProofOfDeliveryUploadRequest: {
             photoUrl: string;
             recipientSignature: string;
-            confirmationOtp: string;
         };
         ProofOfDeliveryResponse: {
             id?: number;
@@ -237,25 +196,10 @@ export interface components {
             pickupAt?: string;
             /** Format: date-time */
             deliveredAt?: string;
-            currentLatitude?: number;
-            currentLongitude?: number;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-        };
-        TrackingBreadcrumbResponse: {
-            /** Format: uuid */
-            deliveryId?: string;
-            /** Format: uuid */
-            courierId?: string;
-            latitude?: number;
-            longitude?: number;
-            bearingDegrees?: number;
-            speedKmh?: number;
-            accuracy?: number;
-            /** Format: date-time */
-            recordedAt?: string;
         };
         ApiResponseString: {
             success?: boolean;
@@ -275,20 +219,6 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["DeliverySessionResponse"][];
-            /** Format: date-time */
-            timestamp?: string;
-        };
-        ApiResponseTrackingBreadcrumbResponse: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["TrackingBreadcrumbResponse"];
-            /** Format: date-time */
-            timestamp?: string;
-        };
-        ApiResponseListTrackingBreadcrumbResponse: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["TrackingBreadcrumbResponse"][];
             /** Format: date-time */
             timestamp?: string;
         };
@@ -324,6 +254,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseString"];
+                };
+            };
+        };
+    };
+    getMyDeliveries: {
+        parameters: {
+            query?: {
+                /** @description Day to list, as yyyy-MM-dd. Defaults to today. */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier deliveries retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDeliverySessionResponse"];
                 };
             };
         };
@@ -479,54 +432,6 @@ export interface operations {
             };
         };
     };
-    recordLocation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                deliveryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CourierLocationUpdatePayload"];
-            };
-        };
-        responses: {
-            /** @description GPS breadcrumb recorded */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseTrackingBreadcrumbResponse"];
-                };
-            };
-        };
-    };
-    getBreadcrumbs: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                deliveryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GPS breadcrumbs retrieved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseListTrackingBreadcrumbResponse"];
-                };
-            };
-        };
-    };
     getProofOfDelivery: {
         parameters: {
             query?: never;
@@ -564,7 +469,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Evidence uploaded successfully */
+            /** @description Evidence uploaded successfully; the proof is marked verified, unlocking DELIVERED */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -572,37 +477,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseProofOfDeliveryResponse"];
                 };
-            };
-        };
-    };
-    verifyProofOfDelivery: {
-        parameters: {
-            query: {
-                otp: string;
-            };
-            header?: never;
-            path: {
-                deliveryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Proof-of-delivery verified */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseProofOfDeliveryResponse"];
-                };
-            };
-            /** @description Invalid OTP */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

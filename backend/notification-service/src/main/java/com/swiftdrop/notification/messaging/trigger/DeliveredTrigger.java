@@ -2,6 +2,7 @@ package com.swiftdrop.notification.messaging.trigger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
+import com.swiftdrop.notification.util.DisplayText;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -38,26 +39,20 @@ public class DeliveredTrigger implements NotificationTrigger {
         }
 
         String trackingNumber = envelope.extractTrackingNumber();
-        String deliveredAt = "just now";
         JsonNode payload = envelope.payload();
-        if (payload != null && payload.hasNonNull("deliveredAt")) {
-            deliveredAt = payload.get("deliveredAt").asText();
-        } else if (payload != null && payload.hasNonNull("timestamp")) {
-            deliveredAt = payload.get("timestamp").asText();
-        }
+        String raw = payload == null ? null
+                : payload.hasNonNull("deliveredAt") ? payload.get("deliveredAt").asText()
+                : payload.hasNonNull("timestamp") ? payload.get("timestamp").asText()
+                : null;
+        // "19 Nov 2026, 9:26 p.m." (Sri Lanka time), never a raw ISO timestamp.
+        String formatted = DisplayText.when(raw);
+        String deliveredAt = formatted != null ? formatted : "today";
 
         Map<String, String> params = new HashMap<>();
         params.put("trackingNumber", trackingNumber);
         params.put("deliveredAt", deliveredAt);
         params.put("status", "DELIVERED");
 
-        return List.of(new DispatchNotificationRequest(
-                recipientIdOpt.get(),
-                "EMAIL",
-                "PARCEL_DELIVERED",
-                null,
-                params,
-                trackingNumber
-        ));
+        return NotificationTrigger.email(recipientIdOpt.get(), "PARCEL_DELIVERED", params, trackingNumber);
     }
 }

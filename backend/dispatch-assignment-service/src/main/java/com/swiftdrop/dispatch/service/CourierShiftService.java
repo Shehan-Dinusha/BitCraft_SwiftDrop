@@ -4,7 +4,6 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
-import com.swiftdrop.dispatch.dto.CourierLocationPingRequest;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
@@ -84,23 +83,6 @@ public class CourierShiftService {
 
         shift.setShiftStatus(status);
         shift.setLastHeartbeatAt(Instant.now());
-        shift = courierShiftRepository.save(shift);
-        return CourierShiftResponse.fromEntity(shift);
-    }
-
-    @Transactional
-    public CourierShiftResponse updateLocation(CourierLocationPingRequest request) {
-        log.debug("Heartbeat location ping for courier: {} at {},{}",
-                request.courierId(), request.latitude(), request.longitude());
-
-        CourierShift shift = courierShiftRepository.findByCourierId(request.courierId())
-                .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + request.courierId()));
-
-        shift.setCurrentDistrict(request.district());
-        if (request.latitude() != null) shift.setLatitude(request.latitude());
-        if (request.longitude() != null) shift.setLongitude(request.longitude());
-        shift.setLastHeartbeatAt(Instant.now());
-
         shift = courierShiftRepository.save(shift);
         return CourierShiftResponse.fromEntity(shift);
     }

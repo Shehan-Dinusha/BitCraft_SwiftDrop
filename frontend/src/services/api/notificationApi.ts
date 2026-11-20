@@ -6,6 +6,8 @@ export type UpdatePreferenceRequest = components['schemas']['UpdatePreferenceReq
 export type NotificationDispatchLogResponse = components['schemas']['NotificationDispatchLogResponse'];
 export type DispatchNotificationRequest = components['schemas']['DispatchNotificationRequest'];
 export type InAppNotificationResponse = components['schemas']['InAppNotificationResponse'];
+export type PushPublicKeyResponse = components['schemas']['PushPublicKeyResponse'];
+export type PushSubscriptionRequest = components['schemas']['PushSubscriptionRequest'];
 
 export const notificationApi = {
   getCurrentPreferences: async (recipientId?: string) => {
@@ -79,4 +81,22 @@ export const notificationApi = {
   markAllAsRead: async (): Promise<void> => {
     await apiClient.post('/v1/notifications/me/read-all');
   },
+
+  /** VAPID key for pushManager.subscribe; enabled is false when the server has no keys. */
+  getPushPublicKey: async (): Promise<PushPublicKeyResponse> => {
+    const { data } = await apiClient.get<{ success?: boolean; data?: PushPublicKeyResponse }>(
+      '/v1/notifications/push/public-key'
+    );
+    return data.data ?? { enabled: false, publicKey: null };
+  },
+
+  /** Registers this device (the browser's PushSubscription.toJSON()). */
+  registerPushSubscription: async (subscription: PushSubscriptionRequest): Promise<void> => {
+    await apiClient.post('/v1/notifications/me/push-subscriptions', subscription);
+  },
+
+  /** Stops notifications on this device; the server only removes it when it belongs to the caller. */
+  removePushSubscription: async (endpoint: string): Promise<void> => {
+    await apiClient.delete('/v1/notifications/me/push-subscriptions', { data: { endpoint } });
+  }
 };

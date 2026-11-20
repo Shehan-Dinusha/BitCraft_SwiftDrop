@@ -7,6 +7,29 @@ import type {
 } from '@/services/api/dispatchApi';
 import { useEffect, useState } from 'react';
 
+const STATUS_REASONS: Record<string, string> = {
+  BUSY: 'Busy',
+  ON_BREAK: 'On break',
+  OFFLINE: 'Offline'
+};
+
+/**
+ * Mirrors the backend check used by /assign and /reassign (CourierShift.canAcceptParcel):
+ * a courier can take a parcel only when AVAILABLE and below their own maxCapacity.
+ * Returns why a courier cannot be chosen, or null when they can.
+ */
+function getIneligibilityReason(
+  status: CourierShiftResponse['shiftStatus'],
+  active: number | undefined,
+  capacity: number | undefined
+): string | null {
+  if (!status) return 'Status unknown';
+  if (status !== 'AVAILABLE') return STATUS_REASONS[status] ?? status;
+  if (active === undefined || capacity === undefined) return 'Workload unknown';
+  if (active >= capacity) return 'At capacity';
+  return null;
+}
+
 export function ManualDispatchOverrideModal({
   open,
   onClose,
@@ -30,22 +53,70 @@ export function ManualDispatchOverrideModal({
   const [reason, setReason] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // When reassigning, the courier who already holds the order cannot be its replacement.
+  const currentCourierId = order?.courierId;
+  const isReassignment = Boolean(currentCourierId);
+  const courierOptions = couriers
+    .filter((courier) => courier.courierId !== currentCourierId)
+    .map((courier) => {
+      // Suggestions are fetched when the modal opens, so their counts are the freshest.
+      const suggestion = suggestions.find((item) => item.courierId === courier.courierId);
+      const active = suggestion?.activeParcels ?? courier.activeParcelsCount;
+      const capacity = suggestion?.maxCapacity ?? courier.maxCapacity;
+      return {
+        courier,
+        active,
+        capacity,
+        unavailableReason: getIneligibilityReason(courier.shiftStatus, active, capacity)
+      };
+    });
+  const eligibleOptions = courierOptions.filter((option) => option.unavailableReason === null);
+  // Offline couriers are not on shift, so they are counted rather than listed.
+  const unavailableOptions = courierOptions.filter(
+    (option) => option.unavailableReason !== null && option.courier.shiftStatus !== 'OFFLINE'
+  );
+  const offlineCount = courierOptions.length - eligibleOptions.length - unavailableOptions.length;
+  const eligibleIds = new Set(eligibleOptions.map((option) => option.courier.courierId));
+  const selectableSuggestions = suggestions.filter(
+    (suggestion) => suggestion.courierId !== currentCourierId && eligibleIds.has(suggestion.courierId)
+  );
+
+  // Preselect the top-ranked suggestion that is still eligible.
+  const defaultCourierId = selectableSuggestions[0]?.courierId ?? '';
   useEffect(() => {
     if (!open) return;
-    setCourierId(suggestions[0]?.courierId ?? '');
+    setCourierId(defaultCourierId);
     setReason('');
     setValidationError(null);
-  }, [open, order?.orderId, suggestions]);
+  }, [open, order?.orderId, defaultCourierId]);
 
-  const selectableCouriers = couriers.filter((courier) => courier.shiftStatus !== 'OFFLINE');
+  const courierHint = loadingSuggestions
+    ? 'Loading ranked suggestions...'
+    : eligibleOptions.length === 0
+      ? 'No courier can take this order right now: a courier must be AVAILABLE and below their capacity.'
+      : offlineCount > 0
+        ? `${offlineCount} offline courier${offlineCount === 1 ? '' : 's'} not listed.`
+        : undefined;
 
   const submit = async () => {
     if (!courierId) {
       setValidationError('Select an available courier before confirming.');
       return;
     }
+    if (courierId === currentCourierId) {
+      setValidationError('Select a courier other than the one currently assigned.');
+      return;
+    }
+    if (!eligibleIds.has(courierId)) {
+      setValidationError('This courier is not available or has reached capacity. Select another.');
+      return;
+    }
     setValidationError(null);
-    await onSubmit(courierId, reason.trim() || 'Dispatcher console assignment');
+    await onSubmit(
+      courierId,
+      reason.trim() ||
+        (isReassignment ? 'Dispatcher console reassignment' : 'Dispatcher console assignment')
+    );
   };
 
   return (
@@ -76,11 +147,16 @@ export function ManualDispatchOverrideModal({
               {order.pickupDistrict ?? 'Unknown pickup'} to{' '}
               {order.deliveryDistrict ?? 'Unknown destination'} · {order.orderSpeed ?? 'STANDARD'}
             </p>
+            {isReassignment ? (
+              <p className="mt-1">
+                Currently assigned to {order.courierName ?? currentCourierId}
+              </p>
+            ) : null}
           </div>
 
           <Field
             label="Courier"
-            hint={loadingSuggestions ? 'Loading ranked suggestions...' : undefined}
+            hint={courierHint}
             error={validationError ?? undefined}
           >
             <select
@@ -94,17 +170,23 @@ export function ManualDispatchOverrideModal({
               aria-label="Courier"
             >
               <option value="">Select a courier</option>
-              {selectableCouriers.map((courier) => {
-                const suggestion = suggestions.find((item) => item.courierId === courier.courierId);
-                return (
-                  <option key={courier.courierId} value={courier.courierId}>
-                    {courier.courierName ?? courier.courierId} ·{' '}
-                    {courier.currentDistrict ?? 'Unknown district'} ·{' '}
-                    {suggestion?.activeParcels ?? courier.activeParcelsCount ?? 0}/
-                    {suggestion?.maxCapacity ?? courier.maxCapacity ?? 0} · {courier.shiftStatus}
-                  </option>
-                );
-              })}
+              {eligibleOptions.map(({ courier, active, capacity }) => (
+                <option key={courier.courierId} value={courier.courierId}>
+                  {courier.courierName ?? courier.courierId} ·{' '}
+                  {courier.currentDistrict ?? 'Unknown district'} · {active ?? 0}/{capacity ?? 0} ·{' '}
+                  {courier.shiftStatus}
+                </option>
+              ))}
+              {unavailableOptions.length > 0 ? (
+                <optgroup label="Unavailable">
+                  {unavailableOptions.map(({ courier, active, capacity, unavailableReason }) => (
+                    <option key={courier.courierId} value={courier.courierId} disabled>
+                      {courier.courierName ?? courier.courierId} · {active ?? 0}/{capacity ?? 0} ·{' '}
+                      {unavailableReason}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
             </select>
           </Field>
 
@@ -119,13 +201,13 @@ export function ManualDispatchOverrideModal({
             />
           </Field>
 
-          {suggestions.length > 0 ? (
+          {selectableSuggestions.length > 0 ? (
             <div className="rounded-lg border border-border-subtle p-3">
               <p className="text-overline font-semibold uppercase text-secondary">
                 Recommended couriers
               </p>
               <div className="mt-2 space-y-1.5">
-                {suggestions.slice(0, 3).map((suggestion) => (
+                {selectableSuggestions.slice(0, 3).map((suggestion) => (
                   <button
                     key={suggestion.courierId}
                     type="button"

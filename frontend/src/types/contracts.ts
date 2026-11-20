@@ -34,19 +34,6 @@ export type DeliveryStateChangedEvent = {
   notes: string;
   timestamp: string;
 };
-export type LocationUpdatedEvent = {
-  eventId: string;
-  correlationId: string;
-  deliveryId: string;
-  courierId: string;
-  latitude: number;
-  longitude: number;
-  bearingDegrees: number;
-  speedKmh: number;
-  accuracy: number;
-  timestamp: string;
-};
-
 /** Mirrors `PublicOrderStatus` in the generated api-gateway / customer-order-service types. */
 export const PUBLIC_ORDER_STATUSES = [
   'CREATED',

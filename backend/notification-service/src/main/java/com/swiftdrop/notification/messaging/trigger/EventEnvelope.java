@@ -54,23 +54,25 @@ public record EventEnvelope(
         return parseUuid(payload, "recipientId");
     }
 
-    public Optional<UUID> extractMerchantOwnerId() {
-        Optional<UUID> ownerId = parseUuid(payload, "merchantOwnerId");
-        if (ownerId.isPresent()) {
-            return ownerId;
+    /**
+     * The merchant company of a merchant order. customer-order-service stores the merchant id in
+     * customerId for those orders, so an event is a merchant order when merchantId is set and customerId
+     * is the same id (or absent). A customer order that merely names a merchant is not one.
+     */
+    public Optional<UUID> merchantOrderMerchantId() {
+        Optional<UUID> merchantId = parseUuid(payload, "merchantId");
+        if (merchantId.isEmpty()) {
+            return Optional.empty();
         }
-        Optional<UUID> ownerUserId = parseUuid(payload, "ownerUserId");
-        if (ownerUserId.isPresent()) {
-            return ownerUserId;
-        }
-        return parseUuid(payload, "merchantId");
+        Optional<UUID> customerId = parseUuid(payload, "customerId");
+        return customerId.isEmpty() || customerId.get().equals(merchantId.get()) ? merchantId : Optional.empty();
     }
 
     public String extractTrackingNumber() {
-        if (payload.hasNonNull("trackingNumber")) {
-            return payload.get("trackingNumber").asText();
+        if (payload.hasNonNull("trackingNumber") && !payload.get("trackingNumber").asText().isBlank()) {
+            return payload.get("trackingNumber").asText().trim();
         }
-        return "SD-PARCEL";
+        return null; // no placeholder: a made-up number in a message is worse than none
     }
 
     public Optional<String> extractStatus() {

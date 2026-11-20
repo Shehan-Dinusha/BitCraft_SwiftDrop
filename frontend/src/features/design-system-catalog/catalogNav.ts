@@ -1,7 +1,7 @@
 export const FIGMA_FILE =
   'https://www.figma.com/design/XX3u7zxTDat0l2MbG27niR/BitCraft-SwiftDrop-Web-Design--Copy-';
 
-/** Link to a node in the Velocity Figma file. `node` looks like `2029:1849`. */
+/** Link to a node in the SwiftDrop Figma file. `node` looks like `2029:1849`. */
 export const figmaLink = (node: string) => `${FIGMA_FILE}?node-id=${node.replace(':', '-')}`;
 
 export interface CatalogPageDef {

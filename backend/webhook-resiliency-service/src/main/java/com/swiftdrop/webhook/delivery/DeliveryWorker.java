@@ -83,6 +83,7 @@ public class DeliveryWorker {
                 dispatch(job);
             }
         } catch (RuntimeException failure) {
+            // Scheduler boundary: one failed poll (DB or HTTP) must not stop future polls.
             log.error("Delivery poll failed ({}); will retry on the next poll", failure.getClass().getSimpleName());
         }
     }

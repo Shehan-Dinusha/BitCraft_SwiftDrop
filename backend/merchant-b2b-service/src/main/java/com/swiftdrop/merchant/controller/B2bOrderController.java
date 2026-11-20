@@ -4,7 +4,9 @@ import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.merchant.dto.*;
 import com.swiftdrop.merchant.service.B2bOrderSubmissionService;
+import com.swiftdrop.merchant.config.OpenApiConfig;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/b2b/orders")
+@SecurityRequirement(name = OpenApiConfig.API_KEY_SCHEME)
 @Tag(name = "B2bOrders", description = "API-key caller identity must be authenticated and injected by the gateway")
 @RequiredArgsConstructor
 public class B2bOrderController {

@@ -30,7 +30,7 @@ export const catalogFamilies: CatalogEntry[] = [
     id: 'typography',
     title: 'Typography',
     description:
-      'Twelve Velocity text styles (Display to Mono L), exposed as Tailwind text-* utilities.',
+      'Twelve SwiftDrop text styles (Display to Mono L), exposed as Tailwind text-* utilities.',
     content: <TypographySection />
   },
   {

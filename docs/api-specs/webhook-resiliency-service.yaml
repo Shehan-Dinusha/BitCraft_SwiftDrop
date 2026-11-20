@@ -53,7 +53,8 @@ info:
                    and constant_time_equals(expected, signatureHeader without "sha256=")
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
 security:
   - bearerAuth: []
 paths:

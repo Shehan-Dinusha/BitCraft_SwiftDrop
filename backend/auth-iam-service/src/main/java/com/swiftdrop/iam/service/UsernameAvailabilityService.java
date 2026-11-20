@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import org.springframework.dao.DataAccessException;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.dto.UsernameAvailabilityResponse;
 import com.swiftdrop.iam.exception.AuthException;
@@ -62,7 +63,7 @@ public class UsernameAvailabilityService {
                 redisTemplate.expire(key, Duration.ofMinutes(1));
             }
             count = current == null ? 0 : current;
-        } catch (RuntimeException exception) {
+        } catch (DataAccessException exception) {
             // A convenience check: fail open rather than break the sign-up form when Redis is down.
             log.warn("Username availability limiter unavailable: {}", exception.getMessage());
             return;

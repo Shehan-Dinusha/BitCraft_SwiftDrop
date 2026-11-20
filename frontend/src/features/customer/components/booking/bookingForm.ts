@@ -19,7 +19,7 @@ export interface BookingForm {
   pickupStreet: string;
   pickupArea: string;
   pickupLandmark: string;
-  /** Only narrows the district list; the order stores the district. */
+  /** Filled in from the district and read-only; the order stores the district. */
   pickupProvince: ProvinceId | '';
   pickupCity: string;
   pickupDistrict: SriLankanDistrict | '';
@@ -42,13 +42,8 @@ export interface BookingForm {
   heightCm: string;
   actualWeightKg: string;
   speed: OrderSpeed;
-  itemDescription: string;
   /** Optional notes for the courier, such as a gate code or a landmark. */
   customerNotes: string;
-  declaredValue: string;
-  /** UI only: the customer turned on "Collect cash on delivery", so an amount is required. */
-  collectCash: boolean;
-  codAmount: string;
   prohibitedItemsDeclared: boolean;
 }
 
@@ -83,11 +78,7 @@ export const initialBookingForm: BookingForm = {
   heightCm: '',
   actualWeightKg: '',
   speed: 'STANDARD',
-  itemDescription: '',
   customerNotes: '',
-  declaredValue: '',
-  collectCash: false,
-  codAmount: '',
   prohibitedItemsDeclared: false
 };
 
@@ -149,6 +140,12 @@ export const PROVINCES: { id: ProvinceId; label: string; districts: SriLankanDis
 
 export function provinceOf(district: SriLankanDistrict | '' | undefined): ProvinceId | '' {
   return PROVINCES.find((province) => district && province.districts.includes(district))?.id ?? '';
+}
+
+/** "Western" for COLOMBO; empty while no district is chosen. */
+export function provinceLabelOf(district: SriLankanDistrict | '' | undefined): string {
+  const id = provinceOf(district);
+  return PROVINCES.find((province) => province.id === id)?.label ?? '';
 }
 
 /**
@@ -229,10 +226,8 @@ export function toCreateOrderRequest(form: BookingForm): CreateOrderRequest {
     heightCm: toNumber(form.heightCm),
     actualWeightKg: toNumber(form.actualWeightKg),
     speed: form.speed,
-    itemDescription: optionalText(form.itemDescription),
     customerNotes: optionalText(form.customerNotes),
-    declaredValue: form.declaredValue.trim() ? toNumber(form.declaredValue) : 0,
-    codAmount: form.collectCash && form.codAmount.trim() ? toNumber(form.codAmount) : 0,
+    declaredValue: 0,
     prohibitedItemsDeclared: form.prohibitedItemsDeclared
   };
 }

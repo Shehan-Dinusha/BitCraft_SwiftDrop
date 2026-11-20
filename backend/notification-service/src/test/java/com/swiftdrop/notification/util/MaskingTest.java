@@ -2,7 +2,6 @@ package com.swiftdrop.notification.util;
 
 import com.swiftdrop.notification.client.ContactClient;
 import com.swiftdrop.notification.domain.entity.NotificationDispatchLog;
-import com.swiftdrop.notification.domain.entity.RecipientPreference;
 import com.swiftdrop.notification.domain.repository.NotificationDispatchLogRepository;
 import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
@@ -153,7 +152,7 @@ class MaskingTest {
         private EmailSender emailSender = new MockEmailSender();
 
         @Spy
-        private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer("https://swiftdrop.lk");
+        private EmailHtmlRenderer emailHtmlRenderer = new EmailHtmlRenderer();
 
         @InjectMocks
         private MultiChannelNotificationDispatcher dispatcher;

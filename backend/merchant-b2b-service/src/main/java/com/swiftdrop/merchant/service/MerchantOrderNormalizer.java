@@ -55,8 +55,9 @@ public class MerchantOrderNormalizer {
     }
 
     public SriLankanDistrict district(String value) {
+        if (value == null) throw new IllegalArgumentException("Invalid Sri Lankan district");
         try { return SriLankanDistrict.valueOf(value.trim().toUpperCase(Locale.ROOT).replaceAll("[\\s-]+", "_")); }
-        catch (RuntimeException ex) { throw new IllegalArgumentException("Invalid Sri Lankan district"); }
+        catch (IllegalArgumentException ex) { throw new IllegalArgumentException("Invalid Sri Lankan district"); }
     }
 
     public String phone(String value) {

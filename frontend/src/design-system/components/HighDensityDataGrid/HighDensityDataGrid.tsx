@@ -19,6 +19,8 @@ export interface HighDensityDataGridProps<T extends { id: string | number }> {
   emptyMessage?: string;
   density?: DensityMode;
   className?: string;
+  /** Shows the filter box and the row count. Defaults to true. */
+  searchable?: boolean;
 }
 
 export function HighDensityDataGrid<T extends { id: string | number }>({
@@ -28,7 +30,8 @@ export function HighDensityDataGrid<T extends { id: string | number }>({
   filterPlaceholder = 'Filter records',
   emptyMessage = 'No records match this filter.',
   density,
-  className
+  className,
+  searchable = true
 }: HighDensityDataGridProps<T>) {
   const contextDensity = useDensityMode();
   const resolvedDensity = density ?? contextDensity;
@@ -48,21 +51,23 @@ export function HighDensityDataGrid<T extends { id: string | number }>({
 
   return (
     <div className={cn('flex flex-col', recipe.stackGap, className)}>
-      <div className="flex items-center gap-2">
-        <Input
-          variant="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onClear={() => setQuery('')}
-          placeholder={filterPlaceholder}
-          aria-label={filterPlaceholder}
-          density={resolvedDensity}
-          className="max-w-xs"
-        />
-        <p className={cn('ml-auto shrink-0 text-muted tabular-nums', recipe.caption)}>
-          {filtered.length} / {rows.length}
-        </p>
-      </div>
+      {searchable ? (
+        <div className="flex items-center gap-2">
+          <Input
+            variant="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onClear={() => setQuery('')}
+            placeholder={filterPlaceholder}
+            aria-label={filterPlaceholder}
+            density={resolvedDensity}
+            className="max-w-xs"
+          />
+          <p className={cn('ml-auto shrink-0 text-muted tabular-nums', recipe.caption)}>
+            {filtered.length} / {rows.length}
+          </p>
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto rounded-lg border border-border-subtle bg-card">
         <table

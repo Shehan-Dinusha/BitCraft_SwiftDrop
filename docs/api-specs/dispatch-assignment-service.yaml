@@ -8,8 +8,10 @@ info:
     X-Correlation-Id header is a UUID, that correlationId; internal details are never returned.
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
-    description: API Gateway
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
+security:
+  - bearerAuth: []
 paths:
   /api/v1/dispatch/health:
     get:
@@ -33,6 +35,7 @@ paths:
       description: >-
         Dispatcher confirms a courier for an order in the unassigned queue. An order that
         already has a courier is never replaced by this operation; use /api/v1/dispatch/reassign.
+        Requires the DISPATCHER or SYSTEM_ADMIN role.
       operationId: manualAssign
       parameters:
         - name: X-Correlation-Id
@@ -54,6 +57,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "400":
           description: Validation failed
         "404":
@@ -62,7 +77,7 @@ paths:
           description: >-
             Order already assigned (Assignment Conflict), courier not available, assignment in a
             terminal state, or the record was changed by a concurrent operation (Conflict). A conflict
-            on the courier's record only, such as a location update, is retried automatically up to
+            on the courier's record only, such as a status update, is retried automatically up to
             three times before a 409 is returned.
           content:
             application/json:
@@ -79,6 +94,7 @@ paths:
         currently assigned, so a reassignment based on a stale view is rejected instead of
         overwriting another dispatcher's decision. Not allowed once dispatch has recorded the parcel
         as picked up. Publishes dispatch.courier.assigned only; the public status is unchanged.
+        Requires the DISPATCHER or SYSTEM_ADMIN role.
       operationId: reassign
       parameters:
         - name: X-Correlation-Id
@@ -100,6 +116,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "400":
           description: Validation failed, or the new courier is the current courier
         "404":
@@ -109,7 +137,7 @@ paths:
             Order has no courier yet or is no longer assigned to the expected courier
             (Assignment Conflict), order already picked up (Reassignment Not Allowed), courier not
             available, assignment in a terminal state, or the record was changed by a concurrent
-            operation (Conflict). A conflict on the courier's record only, such as a location update,
+            operation (Conflict). A conflict on the courier's record only, such as a status update,
             is retried automatically up to three times before a 409 is returned.
           content:
             application/json:
@@ -121,6 +149,7 @@ paths:
       tags:
         - Dispatch
       summary: List dispatch assignments with pagination and optional status filter
+      description: Requires the DISPATCHER or SYSTEM_ADMIN role.
       operationId: getAssignments
       parameters:
         - name: status
@@ -147,12 +176,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponsePagedResultDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/assignments/{assignmentId}:
     get:
       tags:
         - Dispatch
       summary: Get dispatch assignment by UUID
+      description: >-
+        A COURIER sees only an assignment they currently hold; DISPATCHER and SYSTEM_ADMIN see any, including UNASSIGNED orders.
       operationId: getAssignmentById
       parameters:
         - name: assignmentId
@@ -168,6 +211,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier who does not hold this assignment (including UNASSIGNED orders)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "404":
           description: Assignment not found
 
@@ -176,6 +231,8 @@ paths:
       tags:
         - Dispatch
       summary: Get dispatch assignment by order UUID
+      description: >-
+        A COURIER sees only an assignment they currently hold; DISPATCHER and SYSTEM_ADMIN see any, including UNASSIGNED orders.
       operationId: getAssignmentByOrderId
       parameters:
         - name: orderId
@@ -191,6 +248,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier who does not hold this assignment (including UNASSIGNED orders)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "404":
           description: Assignment not found
 
@@ -199,6 +268,7 @@ paths:
       tags:
         - Dispatch
       summary: List unassigned orders pending dispatch
+      description: Requires the DISPATCHER or SYSTEM_ADMIN role.
       operationId: getUnassignedParcels
       responses:
         "200":
@@ -207,13 +277,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/orders/{orderId}/suggestions:
     get:
       tags:
         - Dispatch
       summary: Suggest available couriers for an order
-      description: Returns up to three available couriers, preferring the pickup district and then lowest workload.
+      description: >-
+        Returns up to three AVAILABLE couriers below capacity, preferring the pickup district, then
+        lower active workload, then the most recent heartbeat (couriers without one last), then courier
+        ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or
+        REASSIGNED order they are reassignment suggestions and leave out the courier currently holding
+        the order. An empty list means no courier is eligible. Requires the DISPATCHER or SYSTEM_ADMIN role.
       operationId: getCourierSuggestions
       parameters:
         - name: orderId
@@ -229,14 +316,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListCourierSuggestionResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "404":
           description: Assignment or order not found
+        "409":
+          description: >-
+            Invalid Assignment Transition: the order is COMPLETED or CANCELLED, so it cannot be
+            assigned or reassigned and no suggestions are returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/couriers/{courierId}/assignments:
     get:
       tags:
         - Dispatch
       summary: List active assignments for a courier
+      description: >-
+        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
       operationId: getCourierAssignments
       parameters:
         - name: courierId
@@ -257,6 +366,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/couriers/health:
     get:
@@ -277,6 +398,7 @@ paths:
       tags:
         - CourierAvailability
       summary: List couriers with optional district and shift status filters
+      description: Requires the DISPATCHER or SYSTEM_ADMIN role.
       operationId: getCouriers
       parameters:
         - name: district
@@ -296,12 +418,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListCourierShiftResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/couriers/workload:
     get:
       tags:
         - CourierAvailability
       summary: List current courier workloads
+      description: Requires the DISPATCHER or SYSTEM_ADMIN role.
       operationId: getWorkloads
       responses:
         "200":
@@ -310,12 +445,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListCourierWorkloadResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/couriers/{courierId}:
     get:
       tags:
         - CourierAvailability
       summary: Get courier shift status and live metrics
+      description: >-
+        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
       operationId: getCourier
       parameters:
         - name: courierId
@@ -331,6 +480,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "404":
           description: Courier not found
 
@@ -339,6 +500,8 @@ paths:
       tags:
         - CourierAvailability
       summary: Start or register courier shift
+      description: >-
+        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
       operationId: startShift
       requestBody:
         required: true
@@ -353,6 +516,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "409":
           description: >-
             Data Conflict: the shift record was created by a concurrent request for the same courier
@@ -376,6 +551,8 @@ paths:
       tags:
         - CourierAvailability
       summary: End courier shift
+      description: >-
+        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
       operationId: endShift
       parameters:
         - name: courierId
@@ -391,6 +568,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "409":
           description: >-
             Shift Conflict: the courier still has active parcels, so the shift is left unchanged.
@@ -415,6 +604,8 @@ paths:
       tags:
         - CourierAvailability
       summary: Update courier shift status
+      description: >-
+        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
       operationId: updateShiftStatus
       requestBody:
         required: true
@@ -429,48 +620,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
-
-  /api/v1/dispatch/couriers/shifts/location:
-    put:
-      tags:
-        - CourierAvailability
-      summary: Record courier GPS location heartbeat ping
-      operationId: updateLocation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CourierLocationPingRequest"
-      responses:
-        "200":
-          description: Location updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
-        "409":
-          description: >-
-            Conflict: the courier's record kept changing concurrently (for example during an
-            assignment) after up to three automatic attempts, or Courier Not Available for an
-            unknown courier.
+        "401":
+          description: Missing or invalid gateway identity headers (X-User-Id, X-User-Role)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
-              examples:
-                courierRecordChanged:
-                  summary: Courier record changed by another operation
-                  value:
-                    status: 409
-                    error: Conflict
-                    message: >-
-                      The courier's record was changed by another operation, such as a location
-                      update or another assignment. Refresh and retry.
-                    path: /api/v1/dispatch/couriers/shifts/location
-                    timestamp: "2026-11-15T08:30:00Z"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     AssignmentStatus:
       type: string
@@ -594,24 +762,6 @@ components:
         status:
           $ref: "#/components/schemas/ShiftStatus"
 
-    CourierLocationPingRequest:
-      type: object
-      required:
-        - courierId
-        - district
-      properties:
-        courierId:
-          type: string
-          format: uuid
-        district:
-          $ref: "#/components/schemas/SriLankanDistrict"
-        latitude:
-          type: number
-          example: 6.9271
-        longitude:
-          type: number
-          example: 79.8612
-
     DispatchAssignmentResponse:
       type: object
       properties:
@@ -669,10 +819,6 @@ components:
           $ref: "#/components/schemas/VehicleType"
         currentDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
-        latitude:
-          type: number
-        longitude:
-          type: number
         shiftStatus:
           $ref: "#/components/schemas/ShiftStatus"
         activeParcelsCount:

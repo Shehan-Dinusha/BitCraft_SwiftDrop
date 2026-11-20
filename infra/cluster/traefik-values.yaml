@@ -23,7 +23,9 @@ providers:
       enabled: true
 
 service:
-  type: LoadBalancer
+  # Traefik chart v42+ takes Service spec fields under service.spec (service.type is rejected).
+  spec:
+    type: LoadBalancer
   annotations:
     # Plain TCP health probe: Traefik answers 404 on "/" for unknown hosts, which
     # would make an HTTP probe mark the node unhealthy.

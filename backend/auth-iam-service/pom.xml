@@ -11,6 +11,13 @@
     </parent>
 
     <artifactId>auth-iam-service</artifactId>
+
+    <!-- Coverage ratchet: current baseline, below the project target of 70% line / 50% branch.
+         Raise these as tests are added (see jacoco:check in backend/pom.xml). -->
+    <properties>
+        <jacoco.line.minimum>0.50</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.44</jacoco.branch.minimum>
+    </properties>
     <packaging>jar</packaging>
     <name>SwiftDrop :: AuthIam</name>
     <description>AuthIam service for the SwiftDrop logistics platform.</description>

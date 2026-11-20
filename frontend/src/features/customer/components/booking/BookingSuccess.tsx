@@ -1,5 +1,4 @@
-import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, FileDown, Plus, Route } from 'lucide-react';
+import { CheckCircle2, FileDown, Plus } from 'lucide-react';
 import { Alert, Button, MoneyAmount, SpeedTag, SurfaceCard, TrackingNumber } from '@/design-system';
 import type { CustomerOrderResponse } from '@/services/api/orderApi';
 import { placeLabel } from './bookingForm';
@@ -17,7 +16,6 @@ interface BookingSuccessProps {
 }
 
 export function BookingSuccess({ order, quotedFee, onBookAnother }: BookingSuccessProps) {
-  const navigate = useNavigate();
   const receipts = useReceiptDownload();
   const trackingNumber = order.trackingNumber ?? '';
   const currency = order.currency ?? 'LKR';
@@ -92,17 +90,6 @@ export function BookingSuccess({ order, quotedFee, onBookAnother }: BookingSucce
         >
           Download label and receipt
         </Button>
-        {trackingNumber ? (
-          <Button
-            type="button"
-            variant="secondary"
-            className="sm:flex-1"
-            leftIcon={<Route />}
-            onClick={() => navigate(`/track/${encodeURIComponent(trackingNumber)}`)}
-          >
-            Track parcel
-          </Button>
-        ) : null}
       </div>
       <Button type="button" variant="ghost" leftIcon={<Plus />} onClick={onBookAnother}>
         Book another parcel

@@ -10,7 +10,7 @@ Fills SwiftDrop with realistic demo data **through the public APIs**, the way re
 | Couriers | Start their shifts |
 | Customers | Cancel ~10% of parcels before dispatch |
 | Dispatchers | Assign ~80% of parcels to a courier in the pickup district; ~10% stay unassigned so the board has work |
-| Couriers | Move parcels along: ~58% delivered (photo + OTP proof of delivery), ~7% out for delivery, ~10% failed with a reason, the rest picked up / in transit |
+| Couriers | Move parcels along: ~58% delivered (photo proof of delivery), ~7% out for delivery, ~10% failed with a reason, the rest picked up / in transit |
 | Customers | Read the older ~60% of their in-app notifications |
 
 Nothing is written with SQL. Dispatch, delivery, notification and analytics fill themselves from the
@@ -103,14 +103,40 @@ node scripts/seed/timeshift.mjs             # apply (run-local.sh does this as i
 
 ## A cluster that runs everything (AKS)
 
-Every service runs at once, so no switching is needed. Open a port-forward or use the public API URL:
+Every service runs at once, so no switching is needed. Open a port-forward or use the public API URL.
+
+> [!IMPORTANT]
+> **Switch e-mail to mock while seeding.** When `secrets.acsEmail` is set, notification-service
+> e-mails the customer at every order step. The seed creates about 240 orders for
+> `@example.com` addresses, which cannot receive mail: that is roughly 700–900 bounced e-mails.
+> They use up the Azure managed domain's small sending quota, and a high bounce rate can get ACS
+> sending throttled or suspended, which would also stop real sign-up verification codes.
+> In-app notifications are unaffected by the switch.
 
 ```bash
+# 1. Mock e-mail for the duration of the seed (overrides the chart's value).
+kubectl set env deploy/notification-service -n swiftdrop-apps NOTIFICATION_EMAIL_PROVIDER=mock
+kubectl rollout status deploy/notification-service -n swiftdrop-apps
+
+# 2. Seed.
 SEED_API=https://api.swiftdrop.bitcraft.biz \
 SEED_ADMIN_PASSWORD='<bootstrap admin password>' SEED_PASSWORD='Demo-pass-2026' \
 node scripts/seed/seed.mjs all
 node scripts/seed/timeshift.mjs     # needs kubectl pointed at the AKS cluster
+
+# 3. Wait until notification-service has consumed every seed event (messages = 0) ...
+kubectl exec -n swiftdrop-messaging rabbitmq-0 -- \
+  rabbitmqctl list_queues name messages | grep notification.events.queue
+
+# 4. ... then remove the override so the chart's real e-mail setting applies again.
+kubectl set env deploy/notification-service -n swiftdrop-apps NOTIFICATION_EMAIL_PROVIDER-
+kubectl rollout status deploy/notification-service -n swiftdrop-apps
 ```
+
+Do step 4 only after step 3 shows `0`: events still queued when e-mail is switched back are sent
+as real e-mails. Always run step 4 when you finish, and don't run a CD deploy in the middle of a
+seed. Seeded accounts are created by the admin and start verified, so the seed itself never
+needs an e-mailed code (as long as `AUTH_MFA_ENABLED` stays `false`).
 
 ## Proof-of-delivery photos
 

@@ -86,7 +86,10 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-swiftdrop-iam}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-swiftdrop}
       JWT_ACCESS_TOKEN_EXPIRATION_MS: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:-3600000}
-      JWT_REFRESH_TOKEN_EXPIRATION_DAYS: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:-30}
+      JWT_REFRESH_TOKEN_EXPIRATION_DAYS: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:-14}
+      # Local compose serves plain HTTP; production keeps the Secure flag.
+      AUTH_REFRESH_COOKIE_SECURE: ${AUTH_REFRESH_COOKIE_SECURE:-false}
+      AUTH_MFA_ENABLED: ${AUTH_MFA_ENABLED:-false}
       JWT_BLACKLIST_PREFIX: ${JWT_BLACKLIST_PREFIX:-jwt:blacklist:}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
@@ -382,11 +385,13 @@ services:
       AUTH_SERVICE_URL: http://auth-iam-service:8081
       CONTACT_MODE: ${CONTACT_MODE:-fake}
       CONTACT_CACHE_TTL_MINUTES: ${CONTACT_CACHE_TTL_MINUTES:-10}
-      PUBLIC_TRACKING_BASE_URL: ${PUBLIC_TRACKING_BASE_URL:-https://swiftdrop.lk}
       NOTIFICATION_EMAIL_PROVIDER: ${NOTIFICATION_EMAIL_PROVIDER:-mock}
       ACS_EMAIL_ENDPOINT: ${ACS_EMAIL_ENDPOINT:-}
       ACS_EMAIL_ACCESS_KEY: ${ACS_EMAIL_ACCESS_KEY:-}
       ACS_EMAIL_SENDER_ADDRESS: ${ACS_EMAIL_SENDER_ADDRESS:-}
+      WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+      WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+      WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-}
     depends_on:
       notify-postgres:
         condition: service_healthy
@@ -438,7 +443,7 @@ services:
     container_name: swiftdrop-frontend
     profiles: ["apps", "frontend"]
     ports:
-      - "5173:80"
+      - "5173:8080"
     depends_on:
       api-gateway:
         condition: service_started

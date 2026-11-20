@@ -1,11 +1,13 @@
 openapi: 3.1.0
 info:
   title: SwiftDrop Delivery Execution API
-  description: Delivery FSM lifecycle, courier transitions, GPS telemetry, and Proof-of-Delivery verification APIs.
+  description: Delivery FSM lifecycle, courier transitions, and Proof-of-Delivery verification APIs.
   version: v1.0.0
 servers:
-  - url: http://localhost:8080
-    description: API Gateway
+  - url: /
+    description: API Gateway (same origin as this Swagger UI)
+security:
+  - bearerAuth: []
 paths:
   /api/v1/deliveries/health:
     get:
@@ -20,6 +22,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseString"
+
+  /api/v1/deliveries/me:
+    get:
+      tags:
+        - DeliveryExecution
+      summary: List deliveries assigned to the authenticated courier
+      description: Returns today's deliveries (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
+      operationId: getMyDeliveries
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Day to list, as yyyy-MM-dd. Defaults to today.
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Courier deliveries retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDeliverySessionResponse"
 
   /api/v1/deliveries/{deliveryId}:
     get:
@@ -147,54 +172,6 @@ paths:
         "409":
           description: Invalid state transition or guard requirement failed
 
-  /api/v1/deliveries/{deliveryId}/location:
-    post:
-      tags:
-        - DeliveryExecution
-      summary: Record courier GPS telemetry breadcrumb
-      operationId: recordLocation
-      parameters:
-        - name: deliveryId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CourierLocationUpdatePayload"
-      responses:
-        "200":
-          description: GPS breadcrumb recorded
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseTrackingBreadcrumbResponse"
-
-  /api/v1/deliveries/{deliveryId}/breadcrumbs:
-    get:
-      tags:
-        - DeliveryExecution
-      summary: Get recent GPS telemetry breadcrumbs
-      operationId: getBreadcrumbs
-      parameters:
-        - name: deliveryId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: GPS breadcrumbs retrieved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseListTrackingBreadcrumbResponse"
-
   /api/v1/deliveries/{deliveryId}/proof-of-delivery:
     post:
       tags:
@@ -216,7 +193,7 @@ paths:
               $ref: "#/components/schemas/ProofOfDeliveryUploadRequest"
       responses:
         "201":
-          description: Evidence uploaded successfully
+          description: Evidence uploaded successfully; the proof is marked verified, unlocking DELIVERED
           content:
             application/json:
               schema:
@@ -242,35 +219,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseProofOfDeliveryResponse"
 
-  /api/v1/deliveries/{deliveryId}/proof-of-delivery/verify:
-    post:
-      tags:
-        - ProofOfDelivery
-      summary: Verify proof-of-delivery with recipient OTP
-      operationId: verifyProofOfDelivery
-      parameters:
-        - name: deliveryId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: otp
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Proof-of-delivery verified
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseProofOfDeliveryResponse"
-        "400":
-          description: Invalid OTP
-
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     DeliveryState:
       type: string
@@ -334,44 +288,20 @@ components:
           $ref: "#/components/schemas/DeliveryState"
         notes:
           type: string
-        latitude:
-          type: number
-        longitude:
-          type: number
         failureReason:
           $ref: "#/components/schemas/DeliveryFailureReason"
         actorRole:
           type: string
-
-    CourierLocationUpdatePayload:
-      type: object
-      required:
-        - latitude
-        - longitude
-      properties:
-        latitude:
-          type: number
-        longitude:
-          type: number
-        bearingDegrees:
-          type: number
-        speedKmh:
-          type: number
-        accuracy:
-          type: number
 
     ProofOfDeliveryUploadRequest:
       type: object
       required:
         - photoUrl
         - recipientSignature
-        - confirmationOtp
       properties:
         photoUrl:
           type: string
         recipientSignature:
-          type: string
-        confirmationOtp:
           type: string
 
     ProofOfDeliveryResponse:
@@ -425,37 +355,10 @@ components:
         deliveredAt:
           type: string
           format: date-time
-        currentLatitude:
-          type: number
-        currentLongitude:
-          type: number
         createdAt:
           type: string
           format: date-time
         updatedAt:
-          type: string
-          format: date-time
-
-    TrackingBreadcrumbResponse:
-      type: object
-      properties:
-        deliveryId:
-          type: string
-          format: uuid
-        courierId:
-          type: string
-          format: uuid
-        latitude:
-          type: number
-        longitude:
-          type: number
-        bearingDegrees:
-          type: number
-        speedKmh:
-          type: number
-        accuracy:
-          type: number
-        recordedAt:
           type: string
           format: date-time
 
@@ -496,34 +399,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DeliverySessionResponse"
-        timestamp:
-          type: string
-          format: date-time
-
-    ApiResponseTrackingBreadcrumbResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        message:
-          type: string
-        data:
-          $ref: "#/components/schemas/TrackingBreadcrumbResponse"
-        timestamp:
-          type: string
-          format: date-time
-
-    ApiResponseListTrackingBreadcrumbResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        message:
-          type: string
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/TrackingBreadcrumbResponse"
         timestamp:
           type: string
           format: date-time

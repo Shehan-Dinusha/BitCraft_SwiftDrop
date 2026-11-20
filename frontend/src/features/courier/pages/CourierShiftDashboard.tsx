@@ -21,7 +21,6 @@ import {
   Package,
   Power,
   RefreshCw,
-  Send,
   ShieldCheck,
   CheckCircle2,
   Clock,
@@ -80,10 +79,19 @@ export function CourierShiftDashboard() {
         console.warn('Could not load deliveries from /deliveries/me:', err);
       }
 
-      // Fetch active dispatch assignments
+      // Fetch active dispatch assignments: an order moved to this courier by a dispatcher
+      // has status REASSIGNED, so both statuses are requested and merged, one entry each.
       try {
-        const assignedOrders = await dispatchApi.getCourierAssignments(courierId, 'ASSIGNED');
-        setAssignments(assignedOrders || []);
+        const [assignedOrders, reassignedOrders] = await Promise.all([
+          dispatchApi.getCourierAssignments(courierId, 'ASSIGNED'),
+          dispatchApi.getCourierAssignments(courierId, 'REASSIGNED')
+        ]);
+        const activeOrders = new Map<string, DispatchAssignmentResponse>();
+        for (const item of [...(assignedOrders || []), ...(reassignedOrders || [])]) {
+          const key = item.assignmentId ?? item.orderId;
+          if (key && !activeOrders.has(key)) activeOrders.set(key, item);
+        }
+        setAssignments([...activeOrders.values()]);
       } catch {
         setAssignments([]);
       }
@@ -137,27 +145,6 @@ export function CourierShiftDashboard() {
       setSuccessMsg(`Status updated to ${newStatus}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update shift status';
-      setErrorMsg(msg);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleLocationPing = async () => {
-    if (!courierId) return;
-    try {
-      setUpdating(true);
-      setErrorMsg(null);
-      const res = await dispatchApi.updateLocation({
-        courierId,
-        district: shift?.currentDistrict || selectedDistrict,
-        latitude: 6.9271,
-        longitude: 79.8612
-      });
-      setShift(res);
-      setSuccessMsg('GPS location heartbeat sent successfully!');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send location heartbeat';
       setErrorMsg(msg);
     } finally {
       setUpdating(false);
@@ -332,16 +319,6 @@ export function CourierShiftDashboard() {
                   Break
                 </Button>
                 <Button
-                  variant="outline"
-                  onClick={handleLocationPing}
-                  disabled={updating}
-                  className="min-h-[44px]"
-                  title="Ping live GPS heartbeat"
-                >
-                  <Send className="mr-1.5 h-4 w-4 text-indigo-500" />
-                  Ping GPS
-                </Button>
-                <Button
                   variant="destructive"
                   onClick={handleEndShift}
                   disabled={updating || capacityUsed > 0}
@@ -439,7 +416,15 @@ export function CourierShiftDashboard() {
             {todayDeliveries.map((delivery) => (
               <div
                 key={delivery.deliveryId}
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate(`/courier/delivery/${delivery.deliveryId}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate(`/courier/delivery/${delivery.deliveryId}`);
+                  }
+                }}
                 className="group flex min-h-[56px] h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm transition-all hover:border-indigo-300 hover:bg-slate-50/80 active:scale-[0.99] touch-manipulation cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">

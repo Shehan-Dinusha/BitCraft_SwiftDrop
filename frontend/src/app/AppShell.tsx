@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
-import { LogOut, Package } from 'lucide-react';
+import { LogOut, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  AccountMenu,
   BottomNav,
+  BrandMark,
   IconButton,
   NavItem,
   SideNav,
@@ -14,10 +16,15 @@ import {
   type ShellRole
 } from '@/design-system';
 import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
-import { NotificationBell } from '@/features/notifications/NotificationBell';
+import { leaveToLogin } from '@/features/auth/leaveToLogin';
+import { NOTIFICATIONS_PATH } from '@/features/notifications/notificationTypes';
+import { PROFILE_PATH, displayName } from '@/features/profile/profileFormat';
+import { useMyAvatarUrl, useSyncCurrentUser } from '@/features/profile/avatar';
+import { useUnreadNotificationCount } from '@/features/notifications/useNotificationInbox';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
 import { logoutUser } from '@/services/api/authApi';
+import { forgetDeviceOnSignOut } from '@/features/pwa/webPush';
 import { roleHome } from '@/app/roleHome';
 import type { PersonaRole } from '@/types/contracts';
 
@@ -115,12 +122,7 @@ function MobileBrand({ to }: { to: string }) {
       aria-label="SwiftDrop home"
       className="mr-1 flex shrink-0 items-center gap-2 md:hidden"
     >
-      <span
-        aria-hidden="true"
-        className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
-      >
-        <Package className="size-[18px]" />
-      </span>
+      <BrandMark size={32} />
       <span className="text-body-strong text-primary">SwiftDrop</span>
     </Link>
   );
@@ -129,7 +131,6 @@ function MobileBrand({ to }: { to: string }) {
 export function AppShell() {
   const role = useAuthStore((state) => state.role);
   const user = useAuthStore((state) => state.user);
-  const refreshToken = useAuthStore((state) => state.refreshToken);
   const signOut = useAuthStore((state) => state.signOut);
   const isDevSession = useAuthStore((state) => state.isDevSession);
   const navigate = useNavigate();
@@ -140,19 +141,35 @@ export function AppShell() {
   const spec = roleShellSpec[shellRole];
   const hasTabs = shellRole === 'customer' || shellRole === 'courier';
 
-  const groups = useMemo<NavGroup[]>(
-    // The design catalog is a developer tool, so real users never see it in their menu.
-    () =>
-      import.meta.env.DEV && isDevSession
-        ? [...routedNav[shellRole], { label: 'Design system', items: [catalogEntry] }]
-        : routedNav[shellRole],
-    [shellRole, isDevSession]
+  const unreadCount = useUnreadNotificationCount();
+  useSyncCurrentUser();
+  const avatarUrl = useMyAvatarUrl();
+  // Every workspace has a Notifications page in its own "Updates" section, with the unread count.
+  const notificationsEntry = useMemo<NavEntry>(
+    () => ({
+      id: 'notifications',
+      label: 'Notifications',
+      icon: 'bell',
+      to: NOTIFICATIONS_PATH[role],
+      count: unreadCount > 0 ? unreadCount : undefined
+    }),
+    [role, unreadCount]
   );
+
+  const groups = useMemo<NavGroup[]>(() => {
+    const withUpdates = [...routedNav[shellRole], { label: 'Updates', items: [notificationsEntry] }];
+    // The design catalog is a developer tool, so real users never see it in their menu.
+    return import.meta.env.DEV && isDevSession
+      ? [...withUpdates, { label: 'Design system', items: [catalogEntry] }]
+      : withUpdates;
+  }, [shellRole, isDevSession, notificationsEntry]);
   const entries = groups.flatMap((group) => group.items);
   const activeEntry = entries
     .filter((entry) => entry.to && (pathname === entry.to || pathname.startsWith(`${entry.to}/`)))
     .sort((left, right) => (right.to?.length ?? 0) - (left.to?.length ?? 0))[0];
-  const pageTitle = activeEntry?.label ?? spec.label;
+  const profilePath = PROFILE_PATH[role];
+  const onProfile = pathname === profilePath;
+  const pageTitle = onProfile ? 'Your profile' : activeEntry?.label ?? spec.label;
 
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -163,17 +180,16 @@ export function AppShell() {
   const confirmSignOut = () => {
     setSigningOut(true);
     void (async () => {
+      // While the token is still valid: stop lock-screen notifications on this device, so the next
+      // person on a shared phone never gets this user's alerts. Never throws, waits at most 3 s.
+      await forgetDeviceOnSignOut();
       try {
         // Revokes the refresh token and blacklists the access token on the server.
-        await logoutUser(refreshToken);
+        await logoutUser();
       } catch {
         // Already expired or the API is unreachable: the local session is still cleared below.
       } finally {
-        signOut();
-        navigate('/login', {
-          replace: true,
-          state: { notice: 'You have been signed out.' }
-        });
+        leaveToLogin(signOut, navigate, 'You have been signed out.');
       }
     })();
   };
@@ -185,9 +201,15 @@ export function AppShell() {
           role={shellRole}
           groups={groups}
           workspace={spec.label}
-          activeId={activeEntry?.id}
+          activeId={onProfile ? undefined : activeEntry?.id}
           rail={!isWide}
-          account={{ name: user?.username ?? spec.label, email: user?.email }}
+          account={{
+            name: user ? displayName(user) : spec.label,
+            email: user?.email,
+            onOpen: () => navigate(profilePath),
+            active: onProfile,
+            avatarUrl
+          }}
           onSignOut={handleSignOut}
           renderItem={(entry, active, rail) => (
             <NavItem
@@ -214,12 +236,56 @@ export function AppShell() {
           section={spec.label}
           page={pageTitle}
           showUtilities={role !== 'ADMIN_OPS'}
+          // Nothing handles search or language yet, and the customer assistant has its own button,
+          // so none of them are shown rather than left as controls that do nothing.
+          showSearch={false}
+          showLanguage={false}
+          showAssistant={false}
           district={shellRole === 'dispatcher' ? user?.district : undefined}
-          notificationSlot={<NotificationBell />}
+          // Notifications live in the left navigation; an empty slot hides the top bar's default bell.
+          notificationSlot={<></>}
           leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}
+          trailing={
+            shellRole === 'customer' ? (
+              <AccountMenu
+                name={user ? displayName(user) : 'Account'}
+                email={user?.email}
+                onSignOut={handleSignOut}
+                items={[
+                  {
+                    id: 'profile',
+                    label: 'Profile and security',
+                    icon: <UserRound aria-hidden="true" className="size-4" />,
+                    render: ({ className, onClick, children }) => (
+                      <Link
+                        to={profilePath}
+                        role="menuitem"
+                        className={className}
+                        onClick={onClick}
+                      >
+                        {children}
+                      </Link>
+                    )
+                  }
+                ]}
+              />
+            ) : undefined
+          }
         >
-          {hasTabs ? (
-            // Phones hide the sidebar (and its account footer), so sign-out lives in the top bar there.
+          {shellRole === 'courier' ? (
+            // Phones hide the sidebar (and its account footer), so the profile and sign-out live in the
+            // top bar there. Customers have the account menu instead.
+            <IconButton
+              variant="ghost"
+              density="compact"
+              aria-label="Your profile"
+              title="Your profile"
+              icon={<UserRound aria-hidden="true" />}
+              onClick={() => navigate(profilePath)}
+              className="size-9 text-secondary md:hidden"
+            />
+          ) : null}
+          {shellRole === 'courier' ? (
             <IconButton
               variant="ghost"
               density="compact"
@@ -230,6 +296,8 @@ export function AppShell() {
               className="size-9 text-secondary md:hidden"
             />
           ) : null}
+          {/* The customer assistant lives in the header; it renders nothing for other roles. */}
+          <AiAssistantSlot />
         </TopBar>
         <main className={hasTabs ? 'flex-1 pb-[68px] md:pb-0' : 'flex-1'}>
           <Outlet />
@@ -239,8 +307,8 @@ export function AppShell() {
       {hasTabs ? (
         <BottomNav
           role={shellRole}
-          tabs={groups[0].items}
-          activeId={activeEntry?.id}
+          tabs={[...groups[0].items, notificationsEntry]}
+          activeId={onProfile ? undefined : activeEntry?.id}
           renderTab={(entry, active, content, tabClassName) => (
             <Link
               to={entry.to ?? pathname}
@@ -252,10 +320,6 @@ export function AppShell() {
           )}
         />
       ) : null}
-
-      <div className="fixed bottom-6 right-6 z-40">
-        <AiAssistantSlot />
-      </div>
 
       <SignOutDialog
         open={confirmingSignOut}

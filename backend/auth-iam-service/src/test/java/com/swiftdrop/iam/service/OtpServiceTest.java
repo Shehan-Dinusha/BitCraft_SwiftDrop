@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import org.springframework.data.redis.RedisConnectionFailureException;
 import com.swiftdrop.contracts.events.auth.AuthOtpRequestedEvent;
 import com.swiftdrop.contracts.events.auth.OtpPurpose;
 import com.swiftdrop.iam.config.OtpProperties;
@@ -177,9 +178,9 @@ class OtpServiceTest {
 
     @Test
     void failsClosedWhenRedisIsDown() {
-        when(ops.get(anyString())).thenThrow(new IllegalStateException("redis down"));
+        when(ops.get(anyString())).thenThrow(new RedisConnectionFailureException("redis down"));
         when(ops.setIfAbsent(anyString(), anyString(), any(Duration.class)))
-                .thenThrow(new IllegalStateException("redis down"));
+                .thenThrow(new RedisConnectionFailureException("redis down"));
 
         assertThatThrownBy(() -> service.verify(OtpPurpose.EMAIL_VERIFICATION, userId, "123456"))
                 .isInstanceOf(AuthException.class)

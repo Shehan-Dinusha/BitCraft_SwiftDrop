@@ -1,4 +1,4 @@
-# SwiftDrop Velocity components
+# SwiftDrop components
 
 This is the shared component contract for the SwiftDrop frontend. The library is
 TypeScript-first: JSX is the syntax emitted by TSX, but every reusable component
@@ -9,7 +9,7 @@ must be authored as `.tsx` with explicit props and accessible behavior.
 1. **Use semantic tokens, not raw colors.** Prefer `bg-card`, `text-primary`,
    `border-border-subtle`, `bg-brand-primary`, and `text-status-danger`. The
    theme is **light only** (a product decision) and is defined as CSS variables
-   in `src/index.css`, mirroring the Figma "Velocity / Theme" collection. Do not
+   in `src/index.css`, mirroring the Figma "Theme" variable collection. Do not
    add `dark:` variants. Note that
    nested palette keys are flattened: the border color is `border-border-subtle`
    (not `border-subtle`), and the focus color is `outline-border-focus`.
@@ -20,7 +20,7 @@ must be authored as `.tsx` with explicit props and accessible behavior.
 3. **Choose density by persona.** `ADMIN_OPS` and `MERCHANT` use `compact`,
    `COURIER` uses `kinetic` (formerly `touch`, kept as an alias) with 56px
    minimum targets, and `CUSTOMER` uses `comfortable`. These are the Figma
-   "Velocity / Density" modes Kinetic, Comfortable and Compact.
+   "Density" modes Kinetic, Comfortable and Compact.
 4. **Use `cn()` for class composition.** This keeps consumer overrides
    predictable and resolves Tailwind conflicts.
 5. **Accessible states are part of the API.** Labels, focus rings,
@@ -62,14 +62,14 @@ must be authored as `.tsx` with explicit props and accessible behavior.
 | `DropdownMenu`            | Floating option panel used by `SelectDropdown` and by action menus.                                                                                                                                                                                                                    |
 | `DropdownItem`            | One option row inside a `DropdownMenu`.                                                                                                                                                                                                                                                |
 
-### Velocity v2 components (from the new Figma)
+### Design system v2 components (from the new Figma)
 
-Source file and node ids: [figma-source.md](../docs/velocity-design-system/figma-source.md).
+Source file and node ids: [figma-source.md](../docs/design-system/figma-source.md).
 Figma is the source of truth; every component below has a section in `/catalog`.
 
 | Figma section                      | Components                                                                                                                                                                                                          |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundations                        | tokens in `src/index.css` and `tokens/swiftdrop-velocity-tokens.json`, text styles (`text-display` ... `text-mono-l`, `velocityTextStyles`)                                                                         |
+| Foundations                        | tokens in `src/index.css` and `tokens/swiftdrop-tokens.json`, text styles (`text-display` ... `text-mono-l`, `textStyles`)                                                                         |
 | 01 Domain tags                     | `RoleTag`, `SpeedTag`, `QueueChip`, `CashState`                                                                                                                                                                     |
 | 02 Identifiers and money           | `TrackingNumber`, `MoneyAmount`                                                                                                                                                                                     |
 | 03 Status timeline                 | `TimelineStep`, `StatusTimeline`, `StatusProgress`, `LiveIndicator`                                                                                                                                                 |

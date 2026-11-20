@@ -41,6 +41,7 @@ public class AuthOtpTrigger implements NotificationTrigger {
         String templateCode = switch (text(payload, "purpose")) {
             case "EMAIL_VERIFICATION" -> SensitiveTemplates.EMAIL_VERIFICATION;
             case "PASSWORD_RESET" -> SensitiveTemplates.PASSWORD_RESET;
+            case "LOGIN_MFA" -> SensitiveTemplates.LOGIN_MFA;
             default -> null;
         };
         String code = text(payload, "code");

@@ -3,8 +3,6 @@ import type { components } from '@/types/generated/delivery-execution-service';
 
 export type DeliverySessionResponse = components['schemas']['DeliverySessionResponse'];
 export type TransitionDeliveryRequest = components['schemas']['TransitionDeliveryRequest'];
-export type CourierLocationUpdatePayload = components['schemas']['CourierLocationUpdatePayload'];
-export type TrackingBreadcrumbResponse = components['schemas']['TrackingBreadcrumbResponse'];
 export type ProofOfDeliveryUploadRequest = components['schemas']['ProofOfDeliveryUploadRequest'];
 export type ProofOfDeliveryResponse = components['schemas']['ProofOfDeliveryResponse'];
 export type DeliveryState = components['schemas']['DeliveryState'];
@@ -56,21 +54,6 @@ export const deliveryApi = {
     return data.data;
   },
 
-  recordLocation: async (deliveryId: string, payload: CourierLocationUpdatePayload) => {
-    const { data } = await apiClient.post<{ success: boolean; data: TrackingBreadcrumbResponse }>(
-      `/v1/deliveries/${deliveryId}/location`,
-      payload
-    );
-    return data.data;
-  },
-
-  getBreadcrumbs: async (deliveryId: string) => {
-    const { data } = await apiClient.get<{ success: boolean; data: TrackingBreadcrumbResponse[] }>(
-      `/v1/deliveries/${deliveryId}/breadcrumbs`
-    );
-    return data.data;
-  },
-
   uploadProofOfDelivery: async (deliveryId: string, request: ProofOfDeliveryUploadRequest) => {
     const { data } = await apiClient.post<{ success: boolean; data: ProofOfDeliveryResponse }>(
       `/v1/deliveries/${deliveryId}/proof-of-delivery`,
@@ -83,27 +66,16 @@ export const deliveryApi = {
     deliveryId: string,
     photo: File | Blob,
     recipientName: string,
-    signature?: string,
-    otp?: string
+    signature?: string
   ) => {
     const formData = new FormData();
     formData.append('photo', photo);
     formData.append('recipientName', recipientName);
     if (signature) formData.append('signature', signature);
-    if (otp) formData.append('otp', otp);
 
     const { data } = await apiClient.post<{ success: boolean; data: ProofOfDeliveryResponse }>(
       `/v1/deliveries/${deliveryId}/proof-of-delivery`,
       formData
-    );
-    return data.data;
-  },
-
-  verifyProofOfDelivery: async (deliveryId: string, otp: string) => {
-    const { data } = await apiClient.post<{ success: boolean; data: ProofOfDeliveryResponse }>(
-      `/v1/deliveries/${deliveryId}/proof-of-delivery/verify`,
-      null,
-      { params: { otp } }
     );
     return data.data;
   },

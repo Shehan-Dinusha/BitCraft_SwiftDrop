@@ -7,8 +7,8 @@
 
 | Token | Algorithm | Lifetime | Storage (client) |
 |---|---|---|---|
-| **Access token** | RS256 (HS256 fallback if `JWT_ALGORITHM=HS256`) | 15 minutes (`swiftdrop.jwt.expiration-ms`) | In-memory only (Zustand store) |
-| **Refresh token** | Opaque UUID | 7 days (`swiftdrop.jwt.refresh-expiration-ms`) | `localStorage` via Zustand persist |
+| **Access token** | RS256 (HS256 only for local dev; the `aks` profile refuses to start without RS256) | 1 hour (`swiftdrop.jwt.access-token-expiration-ms`) | Zustand store, persisted to `sessionStorage` (tab-scoped, cleared when the tab closes) |
+| **Refresh token** | Opaque random value, stored hashed (SHA-256) | 14 days (`swiftdrop.jwt.refresh-token-expiration-days`) | **`HttpOnly` cookie** `swiftdrop_refresh` (`Secure`, `SameSite=Strict`, `Path=/api/v1/auth`); never readable by JavaScript |
 
 ## 2. Access Token Structure
 
@@ -59,7 +59,7 @@ sequenceDiagram
     IAM->>IAM: BCrypt.verify(password, hash)
     IAM->>DB: INSERT refresh_tokens (token_hash, user_id, ip, user_agent, expires_at)
     IAM->>IAM: Sign access token with RS256 private key<br/>(or HS256 secret in legacy mode)
-    IAM-->>C: { accessToken, refreshToken, role, expiresIn }
+    IAM-->>C: { accessToken, role, expiresIn } + Set-Cookie: swiftdrop_refresh (HttpOnly)
 ```
 
 ## 4. Token Validation (per-request)
@@ -102,13 +102,13 @@ sequenceDiagram
     participant IAM as auth-iam-service
     participant DB  as PostgreSQL
 
-    C->>IAM: POST /api/v1/auth/refresh { refreshToken }
+    C->>IAM: POST /api/v1/auth/refresh (Cookie: swiftdrop_refresh)
     IAM->>DB: SELECT refresh_tokens WHERE token_hash = SHA-256(refreshToken)
     alt Token valid and not revoked
         IAM->>DB: UPDATE refresh_tokens SET revoked=true (old token)
         IAM->>DB: INSERT refresh_tokens (new rotated token)
         IAM->>IAM: Sign new access token
-        IAM-->>C: { accessToken, refreshToken (new) }
+        IAM-->>C: { accessToken } + Set-Cookie: swiftdrop_refresh (rotated)
     else Token revoked (replay attack)
         IAM->>DB: Revoke ALL tokens for this user
         IAM-->>C: 401 Unauthorized
@@ -122,8 +122,9 @@ sequenceDiagram
 ### Logout
 
 ```
-POST /api/v1/auth/logout { refreshToken }
+POST /api/v1/auth/logout (Cookie: swiftdrop_refresh)
   → DB: revoke refresh_token row
+  → Set-Cookie: swiftdrop_refresh=; Max-Age=0
   → Redis: SET jwt:<prefix>:jti:<jti> = "1"  TTL = remaining access token lifetime
 ```
 
@@ -191,8 +192,8 @@ stateDiagram-v2
     Authenticated --> Unauthenticated: 403 from server (role revoked)
 ```
 
-- **Access token** is kept only in Zustand in-memory state (not persisted).  
-- **Refresh token** is persisted in `localStorage` via Zustand-persist.  
+- **Access token** is kept in the Zustand store and persisted to `sessionStorage` so a page reload keeps the session; it is short-lived.  
+- **Refresh token** never reaches JavaScript: it is the `HttpOnly` cookie `swiftdrop_refresh`, so an XSS bug cannot steal it. Non-browser clients may still send `refreshToken` in the body of `/refresh` and `/logout`.  
 - The axios interceptor in [`apiClient.ts`](../../frontend/src/services/api/apiClient.ts) handles single-flight refresh — concurrent requests queue behind one refresh call.
 
 ## 9. Environment Variables
@@ -200,10 +201,11 @@ stateDiagram-v2
 | Variable | Description | Default |
 |---|---|---|
 | `JWT_SECRET` | HS256 signing secret (≥ 32 chars; ignored when RS256 active) | — |
-| `JWT_ALGORITHM` | `HS256` or `RS256` | `HS256` |
-| `JWT_EXPIRATION_MS` | Access token lifetime in ms | `900000` (15 min) |
-| `JWT_REFRESH_EXPIRATION_MS` | Refresh token lifetime in ms | `604800000` (7 days) |
-| `JWT_BLACKLIST_PREFIX` | Redis key namespace for token blacklists | `jwt:iam:` |
+| `JWT_ALGORITHM` | `HS256` or `RS256` | `HS256` locally, `RS256` in the `aks` profile (required) |
+| `JWT_ACCESS_TOKEN_EXPIRATION_MS` | Access token lifetime in ms (`JWT_EXPIRATION_MS` is accepted as a fallback) | `3600000` (1 hour) |
+| `JWT_REFRESH_TOKEN_EXPIRATION_DAYS` | Refresh token lifetime in days | `14` |
+| `AUTH_REFRESH_COOKIE_SECURE` | `Secure` flag on the refresh cookie (`false` only for plain-HTTP local runs) | `true` |
+| `JWT_BLACKLIST_PREFIX` | Redis key namespace for token blacklists | `jwt:blacklist:` |
 
 ## 10. Related Files
 

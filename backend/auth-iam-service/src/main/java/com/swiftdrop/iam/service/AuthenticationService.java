@@ -27,6 +27,7 @@ public class AuthenticationService {
     private final TokenIssuanceService tokenIssuanceService;
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
+    private final AuthLoginPublisher loginPublisher;
     /** bcrypt hash of a random value, used only to equalize login timing for unknown users. */
     private volatile String timingEqualizerHash;
 
@@ -34,16 +35,39 @@ public class AuthenticationService {
                                  PasswordEncoder passwordEncoder,
                                  TokenIssuanceService tokenIssuanceService,
                                  RefreshTokenService refreshTokenService,
-                                 LoginAttemptService loginAttemptService) {
+                                 LoginAttemptService loginAttemptService,
+                                 AuthLoginPublisher loginPublisher) {
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenIssuanceService = tokenIssuanceService;
         this.refreshTokenService = refreshTokenService;
         this.loginAttemptService = loginAttemptService;
+        this.loginPublisher = loginPublisher;
     }
 
+    /** Password sign-in without a second factor (see {@link LoginMfaService} for privileged roles). */
     @Transactional
     public TokenResponse login(String identifier, String password, String ipAddress, String userAgent) {
+        return issueSession(authenticate(identifier, password, ipAddress, userAgent), ipAddress, userAgent);
+    }
+
+    /**
+     * Checks the password, account status and email verification, applying the login throttle.
+     * Issues nothing: the caller decides whether a second factor is needed first.
+     *
+     * @return the authenticated account
+     */
+    @Transactional
+    public UserAccount authenticate(String identifier, String password, String ipAddress) {
+        return authenticate(identifier, password, ipAddress, null);
+    }
+
+    /**
+     * As {@link #authenticate(String, String, String)}; a wrong password for an existing account also
+     * emails the owner a "failed sign-in" alert (notification-service limits how often).
+     */
+    @Transactional
+    public UserAccount authenticate(String identifier, String password, String ipAddress, String userAgent) {
         loginAttemptService.assertAllowed(identifier, ipAddress);
 
         Optional<UserAccount> candidate = userAccountRepository
@@ -56,6 +80,8 @@ public class AuthenticationService {
                 : burnPasswordCheck(password);
         if (!passwordMatches) {
             loginAttemptService.recordFailure(identifier, ipAddress);
+            // Only real accounts get an alert; the response stays identical, so nothing is revealed.
+            candidate.ifPresent(account -> loginPublisher.publishFailure(account, ipAddress, userAgent));
             throw new InvalidCredentialsException();
         }
 
@@ -70,6 +96,12 @@ public class AuthenticationService {
         }
 
         loginAttemptService.clear(identifier, ipAddress);
+        return user;
+    }
+
+    /** Records the sign-in and issues an access token plus a new refresh token. */
+    @Transactional
+    public TokenResponse issueSession(UserAccount user, String ipAddress, String userAgent) {
         user.setLastLoginAt(Instant.now());
         userAccountRepository.save(user);
 
@@ -77,6 +109,7 @@ public class AuthenticationService {
         RefreshTokenService.IssuedRefreshToken refreshToken =
                 refreshTokenService.create(user, userAgent, ipAddress);
 
+        loginPublisher.publishSuccess(user, ipAddress, userAgent);
         return AuthMapper.toTokenResponse(user, accessToken, refreshToken.rawToken());
     }
 

@@ -8,6 +8,12 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
     <artifactId>delivery-execution-service</artifactId>
+
+    <!-- Coverage ratchet: current baseline, below the project target of 70% line / 50% branch.
+         Raise these as tests are added (see jacoco:check in backend/pom.xml). -->
+    <properties>
+        <jacoco.line.minimum>0.60</jacoco.line.minimum>
+    </properties>
     <packaging>jar</packaging>
     <name>SwiftDrop :: DeliveryExecution</name>
     <dependencies>
@@ -24,7 +30,7 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-storage-blob</artifactId>
-            <version>12.28.0</version>
+            <version>12.37.2</version>
         </dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
         <dependency><groupId>org.testcontainers</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>

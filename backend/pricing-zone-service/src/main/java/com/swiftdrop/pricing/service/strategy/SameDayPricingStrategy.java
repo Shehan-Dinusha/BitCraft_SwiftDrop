@@ -6,6 +6,10 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+/**
+ * SAME_DAY delivery: the subtotal times the zone's same-day multiplier, the highest surcharge,
+ * because it reserves a courier for a dedicated run.
+ */
 @Component
 public class SameDayPricingStrategy implements PricingStrategy {
 

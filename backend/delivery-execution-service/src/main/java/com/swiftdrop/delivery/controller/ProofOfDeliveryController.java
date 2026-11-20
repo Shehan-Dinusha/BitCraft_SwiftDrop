@@ -42,13 +42,13 @@ public class ProofOfDeliveryController {
     @PostMapping(value = "/{deliveryId}/proof-of-delivery", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Upload proof-of-delivery evidence via multipart/form-data",
-               description = "Accepts photo (<= 5MB, jpeg/png), recipientName, optional signature and OTP")
+               description = "Accepts photo (<= 5MB, jpeg/png), recipientName and an optional signature. "
+                       + "A successful upload marks the proof verified, allowing the DELIVERED transition.")
     public ApiResponse<ProofOfDeliveryResponse> uploadMultipart(
             @PathVariable UUID deliveryId,
             @RequestParam("photo") MultipartFile photo,
             @RequestParam("recipientName") String recipientName,
             @RequestParam(value = "signature", required = false) String signature,
-            @RequestParam(value = "otp", required = false) String otp,
             HttpServletRequest httpRequest) {
         CallerContext caller = resolveCaller(httpRequest);
         if (caller != null && deliveryService != null) {
@@ -67,7 +67,7 @@ public class ProofOfDeliveryController {
         if (recipientName == null || recipientName.isBlank()) {
             throw new IllegalArgumentException("Recipient name is required");
         }
-        ProofOfDeliveryResponse response = storageService.storeMultipart(deliveryId, photo, recipientName, signature, otp);
+        ProofOfDeliveryResponse response = storageService.storeMultipart(deliveryId, photo, recipientName, signature);
         return ApiResponse.success(response, "Proof-of-delivery evidence uploaded");
     }
 
@@ -84,20 +84,6 @@ public class ProofOfDeliveryController {
         }
         ProofOfDeliveryResponse response = storageService.store(deliveryId, request);
         return ApiResponse.success(response, "Proof-of-delivery evidence uploaded");
-    }
-
-    @PostMapping("/{deliveryId}/proof-of-delivery/verify")
-    @Operation(summary = "Verify proof-of-delivery with recipient OTP")
-    public ApiResponse<ProofOfDeliveryResponse> verify(
-            @PathVariable UUID deliveryId,
-            @RequestParam String otp,
-            HttpServletRequest httpRequest) {
-        CallerContext caller = resolveCaller(httpRequest);
-        if (caller != null && deliveryService != null) {
-            deliveryService.assertCanAccess(deliveryId, caller);
-        }
-        ProofOfDeliveryResponse response = storageService.verify(deliveryId, otp);
-        return ApiResponse.success(response, "Proof-of-delivery verified successfully");
     }
 
     @GetMapping("/{deliveryId}/proof-of-delivery")

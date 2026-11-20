@@ -159,13 +159,13 @@ export function OneTapStateTransitionCard({
                   className="min-h-[40px] text-xs"
                   onClick={onOpenPoD}
                 >
-                  {isPoDVerified ? 'View / Update PoD' : 'Capture PoD (OTP / Photo)'}
+                  {isPoDVerified ? 'View / Update PoD' : 'Capture PoD (Photo)'}
                 </Button>
               </div>
               <p className="mt-2 text-xs text-slate-600">
                 {isPoDVerified
                   ? 'Proof of delivery verified! You can now complete the final delivery handover.'
-                  : 'Recipient OTP or photographic/signature evidence must be captured before handover can be completed.'}
+                  : 'A photo of the delivered package and the recipient name must be captured before handover can be completed.'}
               </p>
             </div>
 
@@ -240,10 +240,10 @@ export function OneTapStateTransitionCard({
                   Select the failure reason and provide operational notes to mark this delivery attempt as failed.
                 </p>
 
-                <label className="block text-xs font-semibold text-slate-700">
+                <label htmlFor="failure-reason" className="block text-xs font-semibold text-slate-700">
                   Failure Reason:
                 </label>
-                <select
+                <select id="failure-reason"
                   value={failureReason}
                   onChange={(e) => setFailureReason(e.target.value as DeliveryFailureReason)}
                   className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
@@ -258,10 +258,10 @@ export function OneTapStateTransitionCard({
                   <option value="OTHER">Other Reason</option>
                 </select>
 
-                <label className="block text-xs font-semibold text-slate-700">
+                <label htmlFor="failure-notes" className="block text-xs font-semibold text-slate-700">
                   Courier Note / Explanation:
                 </label>
-                <input
+                <input id="failure-notes"
                   type="text"
                   placeholder="e.g. Phoned recipient 3 times, gate locked, no neighbor response"
                   value={failureNotes}

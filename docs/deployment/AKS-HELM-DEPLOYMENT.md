@@ -8,6 +8,8 @@ This guide deploys the **whole system**: the frontend, the API gateway, the nine
 > [!TIP]
 > AKS costs money for every hour it runs. To learn and test for free first, run the same chart on Docker Desktop: see [LOCAL-KUBERNETES.md](LOCAL-KUBERNETES.md).
 
+This guide is for setting the cluster up. Once it is running, use the [operations runbook](OPERATIONS-RUNBOOK.md) for releases, pause/resume, backups and incidents.
+
 ## Contents
 
 1. [What gets deployed](#1-what-gets-deployed)
@@ -94,7 +96,7 @@ A few extras come with the chart:
 | Database storage | Azure Managed Disks (Premium/Standard SSD) | `local-path` (the node's own disk) |
 | Requested CPU / memory | ~14.5 vCPU / ~15 GiB | ~1.7 vCPU / ~6 GiB |
 
-**Why the student profile uses `local-path`:** a 4-vCPU Azure VM can attach at most **8** managed disks. SwiftDrop needs **11** volumes: 9 PostgreSQL, RabbitMQ and Redis. With local-path, the databases are still StatefulSets with PersistentVolumeClaims, but the data lives on the node's disk. That data survives pod restarts and node reboots. It is **lost if AKS replaces the node**, which is why the cluster below is created with automatic node upgrades turned off.
+**Why the student profile uses `local-path`:** a 4-vCPU Azure VM can attach at most **8** managed disks. SwiftDrop needs **11** volumes: 9 PostgreSQL, RabbitMQ and Redis. With local-path, the databases are still StatefulSets with PersistentVolumeClaims, but the data lives on the node's disk. That data survives pod restarts and node reboots. It is **lost whenever AKS replaces the node**, and `az aks start` does that: on 19 Nov 2026 a stop/start brought the cluster back on a new VM. Automatic node upgrades are turned off below, and `scripts/aks/pause.sh` / `resume.sh` back up and restore the databases around a stop.
 
 CD uses the student profile by default. To switch, set the GitHub repository variable `DEPLOY_PROFILE` to `production`.
 
@@ -120,6 +122,7 @@ You also need:
 Run in **Git Bash**. Change the values in the first block if needed.
 
 ```bash
+export MSYS_NO_PATHCONV=1       # stop Git Bash rewriting /subscriptions/... scopes into Windows paths
 LOCATION=indiasouthcentral      # Hyderabad; must be in your subscription's allowed list (see below)
 RG=rg-swiftdrop-prod
 AKS=swiftdrop-aks
@@ -152,7 +155,7 @@ az aks create -g $RG -n $AKS -l $LOCATION \
   --network-plugin azure --network-plugin-mode overlay --network-dataplane cilium \
   --auto-upgrade-channel none --node-os-upgrade-channel Unmanaged \
   --attach-acr $ACR \
-  --generate-ssh-keys
+  --no-ssh-key
 
 az aks get-credentials -g $RG -n $AKS
 kubectl get nodes
@@ -161,10 +164,11 @@ kubectl get nodes
 What the important flags do:
 - **`--attach-acr`** lets the cluster pull images from your registry without an image pull secret.
 - **`--network-dataplane cilium`** enforces the chart's NetworkPolicy. Without a policy engine, NetworkPolicies are ignored.
+- **`--no-ssh-key`**: nothing needs SSH on the node. `--generate-ssh-keys` failed with `Incorrect padding` on a Windows profile path containing a space.
 - **`--auto-upgrade-channel none --node-os-upgrade-channel Unmanaged`** stops AKS from re-imaging the node automatically, which would wipe `local-path` data. The OS still installs its own security updates. Upgrade the cluster deliberately when you choose to.
 
 > [!TIP]
-> **Saving credit.** The cluster costs money for every hour it runs. Stop it when you're not using it with `az aks stop -g $RG -n $AKS`, and start it again with `az aks start -g $RG -n $AKS`. Do one stop/start test early and confirm the database data is still there, before you rely on it for a demo.
+> **Saving credit.** The cluster costs money for every hour it runs. Once SwiftDrop is deployed, **don't use plain `az aks stop`**: `az aks start` can return a new node, and the databases on the old node's disk are gone. Use `bash scripts/aks/pause.sh` (backs up all databases, then stops) and `bash scripts/aks/resume.sh` (starts, rebuilds the volumes on the new node, restores the newest backup). Before SwiftDrop is deployed, plain stop/start is fine.
 
 If your ACR name is not `swiftdropacr`, set it as a repository variable:
 
@@ -177,7 +181,7 @@ gh variable set ACR_NAME --body "$ACR"
 
 ## 6. Step 2 — Install the cluster add-ons
 
-These are installed once per cluster and are not part of the SwiftDrop chart. Pin the versions you install by adding `--version`; `helm search repo <chart>` lists them.
+These are installed once per cluster and are not part of the SwiftDrop chart. The versions below were installed on 19 Nov 2026; `helm search repo <chart>` lists newer ones. Traefik chart v42+ rejects `service.type`, so `traefik-values.yaml` uses `service.spec.type`.
 
 ```bash
 # 1. Storage for the student profile (skip for production: it uses Azure Disks).
@@ -188,14 +192,14 @@ kubectl get storageclass local-path
 # 2. Ingress controller (Traefik).
 helm repo add traefik https://traefik.github.io/charts
 helm repo update
-helm upgrade --install traefik traefik/traefik -n traefik --create-namespace \
-  -f infra/cluster/traefik-values.yaml
+helm upgrade --install traefik traefik/traefik --version 42.4.1 -n traefik --create-namespace \
+  -f infra/cluster/traefik-values.yaml --wait
 
 # 3. cert-manager (issues the Let's Encrypt certificate).
 helm repo add jetstack https://charts.jetstack.io
 helm repo update
-helm upgrade --install cert-manager jetstack/cert-manager -n cert-manager --create-namespace \
-  --set crds.enabled=true
+helm upgrade --install cert-manager jetstack/cert-manager --version v1.21.3 -n cert-manager --create-namespace \
+  --set crds.enabled=true --wait
 
 kubectl get pods -n traefik
 kubectl get pods -n cert-manager
@@ -229,7 +233,16 @@ This writes `infra/helm/swiftdrop/values-secrets.yaml`, which is git-ignored. It
 > [!WARNING]
 > Keep a copy of this file somewhere safe, such as a password manager. PostgreSQL saves its password into the data volume on first start. If you regenerate the file later, the services can't log in to the existing databases.
 
-Optional: to enable Google sign-in, fill in `googleOAuth`. Then register `https://swiftdrop.bitcraft.biz/api/v1/auth/oauth2/google/callback` as a redirect URI in Google Cloud Console.
+Optional integrations: each block below stays off while it is empty.
+
+| Block | Turns on | Notes |
+|---|---|---|
+| `googleOAuth` | Google sign-in | Register `https://swiftdrop.bitcraft.biz/api/v1/auth/oauth2/google/callback` as a redirect URI in Google Cloud Console |
+| `acsEmail` | Real e-mail (`NOTIFICATION_EMAIL_PROVIDER=azure`) | Needs `endpoint`, `senderAddress` and `accessKey`. **Without it, self-registered users never receive their verification code** and cannot sign in |
+| `aiProvider` | Real AI assistant instead of `mock` | `provider` is `openai` or `azure-openai`; `model` is required; Azure needs `endpoint` = `https://<resource>.openai.azure.com/openai/v1` |
+| `podStorage` | PoD photos in Azure Blob | Full storage connection string |
+
+The chart refuses to render if a block is half filled (for example an ACS key without a sender address).
 
 ## 9. Step 5 — Connect GitHub Actions to Azure
 
@@ -257,14 +270,23 @@ az role assignment create --assignee-object-id $PRINCIPAL_ID --assignee-principa
 az role assignment create --assignee-object-id $PRINCIPAL_ID --assignee-principal-type ServicePrincipal \
   --role "Azure Kubernetes Service Cluster User Role" --scope $(az aks show -g $RG -n $AKS --query id -o tsv)
 
-# GitHub secrets.
+# GitHub secrets (these three are IDs, not passwords; Azure only trusts tokens from main/production).
 gh secret set AZURE_CLIENT_ID --body "$CLIENT_ID"
 gh secret set AZURE_TENANT_ID --body "$(az account show --query tenantId -o tsv)"
 gh secret set AZURE_SUBSCRIPTION_ID --body "$(az account show --query id -o tsv)"
-gh secret set HELM_SECRETS_VALUES < infra/helm/swiftdrop/values-secrets.yaml
+
+# "production" environment: you approve every deploy, and only main may use it.
+ME_ID=$(gh api user --jq .id)
+gh api -X PUT repos/$REPO/environments/production --input - <<EOF
+{"reviewers":[{"type":"User","id":$ME_ID}],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+EOF
+gh api -X POST repos/$REPO/environments/production/deployment-branch-policies -f name=main -f type=branch
+
+# The real passwords and keys live ONLY on the environment, never as a repository secret.
+gh secret set HELM_SECRETS_VALUES --env production < infra/helm/swiftdrop/values-secrets.yaml
 ```
 
-Finally, create the `production` environment. In GitHub, go to **Settings → Environments → New environment** and name it `production`. Adding yourself as a required reviewer is a good idea, so every deploy waits for your approval.
+**Why an environment secret:** the repository is public and has many collaborators with write access. A repository secret is readable by any workflow on any branch, so anyone who can push could print it. An environment secret is only handed to jobs that run in `production`, which only `main` can do, and only after the required reviewer approves.
 
 ## 10. Step 6 — First deployment
 
@@ -304,19 +326,43 @@ helm upgrade --install swiftdrop infra/helm/swiftdrop -n default \
 
 ## 11. Day-to-day operations
 
+The step-by-step release procedure (`dev` → `main`), and what to do when something breaks, are in the [operations runbook](OPERATIONS-RUNBOOK.md).
+
 | Task | Command |
 |---|---|
 | Deploy after a merge | Automatic on push to `main`. Only the changed components are rebuilt |
 | Re-apply config only | Run the workflow with `target_service=none` |
 | Change a non-secret setting | Edit `services.<name>.config` in `values.yaml` and merge. Pods roll automatically because of a checksum annotation |
-| Rotate a secret | Edit `values-secrets.yaml`, run `gh secret set HELM_SECRETS_VALUES < …`, then run the workflow with `none` |
+| Rotate a secret | Edit `values-secrets.yaml`, run `gh secret set HELM_SECRETS_VALUES --env production < …`, then run the workflow with `none` |
 | Release history / rollback | `helm history swiftdrop -n default` · `helm rollback swiftdrop <revision> -n default` |
 | Logs | `kubectl logs -n swiftdrop-apps deploy/customer-order-service -f` |
 | Gateway health | `kubectl port-forward -n swiftdrop-apps svc/api-gateway 8080:8080`, then open `http://localhost:8080/actuator/health` |
 | RabbitMQ UI | `kubectl port-forward -n swiftdrop-messaging svc/rabbitmq 15672:15672` |
 | Database shell | `kubectl exec -it -n swiftdrop-data order-postgres-0 -- psql -U swiftdrop -d swiftdrop_order` |
-| Stop / start (save credit) | `az aks stop -g $RG -n $AKS` · `az aks start -g $RG -n $AKS` |
+| pgAdmin | `kubectl port-forward -n swiftdrop-data svc/order-postgres-headless 5434:5432`, then connect to `localhost:5434`, user `swiftdrop`, password from `secrets.postgres.order.password` |
+| Back up all databases | `bash scripts/db/backup-aks.sh` → `backups/<timestamp>/` (see [Backups](#backups)) |
+| Restore | `bash scripts/db/restore-aks.sh backups/<timestamp>` (asks you to type `restore`) |
+| Pause / resume (save credit) | `bash scripts/aks/pause.sh` · `bash scripts/aks/resume.sh` (backup → stop; start → repair volumes → restore). Plain `az aks stop` loses the databases if the node is replaced |
 | Remove the app | `helm uninstall swiftdrop -n default`. Namespaces and database volumes are kept on purpose |
+
+### Backups
+
+On the student profile the databases live on the node's own disk (`local-path`). The data survives pod restarts, deploys and `helm uninstall`, but **not** a node replacement: `az aks start` after a stop (observed), a cluster or node-image upgrade, scaling the node pool, or Azure repairing the node all give a fresh disk. There are no automatic backups, so take one before anything risky and before a demo:
+
+```bash
+bash scripts/db/backup-aks.sh                 # all 9 databases → backups/<UTC timestamp>/
+bash scripts/db/backup-aks.sh iam order       # or just some
+```
+
+Each database becomes a compressed `pg_dump` file. The dump runs inside the postgres pod, so it needs no port-forward or password, and it is safe while the app is live. `backups/` is git-ignored because the files contain real user data; copy them somewhere safe.
+
+To restore, use the **same** backup folder for all databases (the services reference each other's ids):
+
+```bash
+bash scripts/db/restore-aks.sh backups/20261120T101500Z
+```
+
+For each database it scales the owning service to 0, replaces the data in a single transaction (a failed restore leaves the database unchanged), then scales the service back.
 
 ### Adding an environment variable to a service
 

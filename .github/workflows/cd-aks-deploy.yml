@@ -12,7 +12,8 @@
 #   (blank)      same detection as a push
 #
 # Required repository secrets:   AZURE_CLIENT_ID, AZURE_TENANT_ID,
-#   AZURE_SUBSCRIPTION_ID (OIDC), HELM_SECRETS_VALUES (values-secrets.yaml content)
+#   AZURE_SUBSCRIPTION_ID (OIDC). Environment secret on "production":
+#   HELM_SECRETS_VALUES (values-secrets.yaml content)
 # Optional repository variables: ACR_NAME, AKS_CLUSTER, AKS_RESOURCE_GROUP,
 #   DEPLOY_PROFILE (student | production; default student)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ jobs:
       services: ${{ steps.filter.outputs.services }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -127,10 +128,10 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -141,7 +142,8 @@ jobs:
 
       # Backend Dockerfiles copy backend/pom.xml and common-contracts, so the build
       # context must be backend/ (the Maven build runs inside the image).
-      - name: Build & push image
+      - name: Build image
+        id: build
         env:
           SERVICE: ${{ matrix.service }}
         run: |
@@ -152,8 +154,40 @@ jobs:
             context="backend"; dockerfile="backend/${SERVICE}/Dockerfile"
           fi
           image="${ACR_NAME}.azurecr.io/${SERVICE}"
-          docker build -t "${image}:${IMAGE_TAG}" -t "${image}:latest" -f "$dockerfile" "$context"
-          docker push --all-tags "$image"
+          # Up to 3 attempts. With 11 images building in parallel, Maven Central occasionally
+          # refuses one runner's download (seen twice: "spring-boot-starter-parent ... absent",
+          # failing in ~1 s while the other builds fetched it fine). A short pause clears it.
+          for attempt in 1 2 3; do
+            if docker build -t "${image}:${IMAGE_TAG}" -t "${image}:latest" -f "$dockerfile" "$context"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::docker build failed 3 times for ${SERVICE}"
+              exit 1
+            fi
+            echo "::warning::docker build attempt ${attempt} failed for ${SERVICE}; retrying in $((attempt * 30))s"
+            sleep $((attempt * 30))
+          done
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+
+      # Security gate: an image with a fixable HIGH/CRITICAL CVE is never pushed.
+      - name: Scan image (Trivy)
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          # .trivyignore.yaml lists the few accepted findings, each with a reason and an expiry.
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/src:ro" -w /src \
+            aquasec/trivy:0.58.1 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --ignorefile .trivyignore.yaml \
+            --exit-code 1 \
+            "${IMAGE}:${IMAGE_TAG}"
+
+      - name: Push image
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: docker push --all-tags "$IMAGE"
 
   deploy:
     name: Helm Deploy to AKS
@@ -167,23 +201,23 @@ jobs:
     environment: production
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Set AKS context
-        uses: azure/aks-set-context@v4
+        uses: azure/aks-set-context@v5
         with:
           cluster-name: ${{ env.AKS_CLUSTER }}
           resource-group: ${{ env.AKS_RESOURCE_GROUP }}
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
           version: ${{ env.HELM_VERSION }}
 
@@ -192,7 +226,7 @@ jobs:
           HELM_SECRETS_VALUES: ${{ secrets.HELM_SECRETS_VALUES }}
         run: |
           if [ -z "$HELM_SECRETS_VALUES" ]; then
-            echo "::error::Repository secret HELM_SECRETS_VALUES is not set (see docs/deployment/AKS-HELM-DEPLOYMENT.md)."
+            echo "::error::Environment secret HELM_SECRETS_VALUES (production) is not set (see docs/deployment/AKS-HELM-DEPLOYMENT.md)."
             exit 1
           fi
           umask 077

@@ -19,16 +19,16 @@ permissions:
 
 jobs:
   lint-typecheck-build:
-    name: Lint, Type-Check & Build
+    name: Lint, Type-Check, Test & Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -38,8 +38,12 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Lint and type check
+      - name: Lint (ESLint) and type check
         run: npm run lint
+        working-directory: frontend
+
+      - name: Unit tests (Vitest)
+        run: npm test
         working-directory: frontend
 
       - name: Build (Vite + Tailwind)
@@ -49,7 +53,7 @@ jobs:
           NODE_ENV: production
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/

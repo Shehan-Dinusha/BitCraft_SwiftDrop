@@ -25,6 +25,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import readline from 'node:readline/promises';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
@@ -137,12 +138,28 @@ async function api(method, urlPath, { token, body, form, headers: extra = {}, ex
   }
 }
 
+// Admin and dispatcher sign-ins need an emailed code when AUTH_MFA_ENABLED=true.
+async function completeMfa(username, challengeId) {
+  if (!process.stdin.isTTY) {
+    throw new Error(`"${username}" needs a second sign-in factor (AUTH_MFA_ENABLED=true). ` +
+      'Run the seed in a terminal to type the emailed code, or seed with AUTH_MFA_ENABLED=false.');
+  }
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const code = (await rl.question(`Sign-in code emailed to ${username}: `)).trim();
+    return await api('POST', '/api/v1/auth/login/mfa', { body: { challengeId, code } });
+  } finally {
+    rl.close();
+  }
+}
+
 const sessions = new Map();
 async function login(username, password = PASSWORD) {
   if (sessions.has(username)) return sessions.get(username);
   let res;
   try {
-    res = await api('POST', '/api/v1/auth/login', { body: { username, password } });
+    res = await api('POST', '/api/v1/auth/login', { body: { username, password }, expect: [200, 202] });
+    if (res && res.mfaRequired) res = await completeMfa(username, res.challengeId);
   } catch (e) {
     if (e.status === 401) {
       throw new Error(`Login failed for "${username}". If the account already existed before this seed, its password differs from SEED_PASSWORD.`);
@@ -592,14 +609,12 @@ async function ensureProof(token, delivery, courier) {
   const r = rng(`pod:${delivery.deliveryId}`);
   const photo = photos()[hash(delivery.deliveryId) % photos().length];
   const who = personName(r, courier.district);
-  const otp = String(r.int(1000, 9999));
   const form = new FormData();
   form.append('photo', new Blob([photo.bytes], { type: photo.type }), photo.name);
   form.append('recipientName', `${who.first} ${who.last}`);
   form.append('signature', `Signed by ${who.first} ${who.last}`);
-  form.append('otp', otp);
+  // A successful upload marks the proof verified, which unlocks the DELIVERED transition.
   await api('POST', `/api/v1/deliveries/${delivery.deliveryId}/proof-of-delivery`, { token, form });
-  await api('POST', `/api/v1/deliveries/${delivery.deliveryId}/proof-of-delivery/verify?otp=${otp}`, { token });
   count('proof photos uploaded');
 }
 
@@ -620,8 +635,6 @@ async function stageDeliver() {
           body: {
             targetState: target,
             actorRole: 'COURIER',
-            latitude: Math.round((c.district.lat + (r.next() - 0.5) * 0.08) * 1e6) / 1e6,
-            longitude: Math.round((c.district.lng + (r.next() - 0.5) * 0.08) * 1e6) / 1e6,
             failureReason: target === 'FAILED' ? r.pick(FAILURES[plan.leg]) : undefined,
             notes: target === 'FAILED' ? 'Reported by courier' : undefined,
           },

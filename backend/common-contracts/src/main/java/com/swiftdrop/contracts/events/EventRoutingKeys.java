@@ -28,4 +28,10 @@ public final class EventRoutingKeys {
      * binding delivers it; the {@code auth.#} queue has no consumer.
      */
     public static final String AUTH_OTP_REQUESTED = "notification.auth.otp";
+
+    /**
+     * A sign-in succeeded or failed with a wrong password; notification-service emails a security alert.
+     * Under {@code notification.} for the same reason as {@link #AUTH_OTP_REQUESTED}.
+     */
+    public static final String AUTH_LOGIN = "notification.auth.login";
 }

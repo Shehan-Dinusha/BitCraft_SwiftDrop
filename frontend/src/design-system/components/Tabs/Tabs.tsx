@@ -74,6 +74,8 @@ export function Tabs({ tabs, value, onChange, className, ...props }: TabsProps) 
   };
 
   return (
+    // Roving tabindex: each tab is the tab stop, the tablist only handles arrow keys.
+    // eslint-disable-next-line jsx-a11y/interactive-supports-focus
     <div
       role="tablist"
       aria-label={props['aria-label']}

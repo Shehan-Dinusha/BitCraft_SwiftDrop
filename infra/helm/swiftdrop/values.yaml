@@ -20,6 +20,16 @@ global:
   # Dockerfile still take precedence over this.
   javaToolOptions: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
 
+# Least privilege for every application pod (backend services and frontend).
+# The backend images create a non-root "swiftdrop" user with UID/GID 1001.
+podSecurity:
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  # The container filesystem is read-only; /tmp is an emptyDir of this size.
+  readOnlyRootFilesystem: true
+  tmpSizeLimit: 256Mi
+
 # Optional image pull secrets (not needed on AKS when the cluster is attached to ACR).
 imagePullSecrets: []
 
@@ -59,9 +69,10 @@ secrets:
   # Per-database credentials, keyed like postgres.databases (iam, order, ...).
   # Each becomes "<key>-postgres-credentials" in the data AND apps namespaces.
   postgres: {}
+  # Passwords have no default on purpose: they must come from values-secrets.yaml.
+  # The chart fails to render without secrets.rabbitmq.password (templates/secrets.yaml).
   rabbitmq:
     username: swiftdrop
-    password: ""
     erlangCookie: ""
   jwt:
     # HS256 shared secret (>= 32 chars). Still read by the gateway and auth-iam.
@@ -70,16 +81,38 @@ secrets:
     # auth-iam-service refuses to start in the aks profile without both keys.
     privateKey: ""
     publicKey: ""
+  # The admin account is only created when values-secrets.yaml sets username AND password.
   bootstrapAdmin:
     username: ""
-    password: ""
     email: ""
     district: COLOMBO
   googleOAuth:
     clientId: ""
     clientSecret: ""
+  # Optional — Azure Blob for proof-of-delivery photos (else the delivery volume).
+  podStorage:
+    azureConnectionString: ""
+  # Optional — analytics AI assistant. Empty apiKey = AI_PROVIDER=mock.
+  # provider: openai | azure-openai. For Azure, model is the deployment name and
+  # endpoint is https://<resource>.openai.azure.com/openai/v1 (openai may leave it empty).
   aiProvider:
+    provider: ""
+    model: ""
+    endpoint: ""
     apiKey: ""
+  # Optional — Azure Communication Services Email. Empty accessKey = mock (sends nothing).
+  # endpoint and senderAddress are not secret; they sit here so one file holds the setup.
+  acsEmail:
+    endpoint: ""
+    senderAddress: ""
+    accessKey: ""
+  # Optional — Web Push (lock-screen notifications). Empty privateKey = device push off; the in-app
+  # inbox still works. scripts/generate-helm-secrets.sh creates the VAPID pair. publicKey and subject
+  # are not secret; they sit here so one file holds the setup.
+  webPush:
+    publicKey: ""       # base64url P-256 point (65 bytes)
+    privateKey: ""      # base64url P-256 scalar (32 bytes)
+    subject: ""         # mailto:you@example.com or https://your-site
 
 # ── Shared config (ConfigMap "swiftdrop-common-config", mounted into every backend service) ──
 commonConfig:
@@ -196,7 +229,12 @@ services:
       JWT_ISSUER: swiftdrop-iam
       JWT_AUDIENCE: swiftdrop
       JWT_ACCESS_TOKEN_EXPIRATION_MS: "3600000"
-      JWT_REFRESH_TOKEN_EXPIRATION_DAYS: "30"
+      JWT_REFRESH_TOKEN_EXPIRATION_DAYS: "14"
+      # The refresh token travels in an HttpOnly cookie; Secure whenever the site is served over TLS.
+      AUTH_REFRESH_COOKIE_SECURE: '{{ .Values.ingress.tls.enabled }}'
+      # Emailed second factor for SYSTEM_ADMIN/DISPATCHER. Turn on once notification-service
+      # sends real email (NOTIFICATION_EMAIL_PROVIDER=azure), otherwise admins cannot sign in.
+      AUTH_MFA_ENABLED: "false"
       JWT_BLACKLIST_PREFIX: "jwt:blacklist:"
       GOOGLE_REDIRECT_URI: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}/api/v1/auth/oauth2/google/callback'
       FRONTEND_URL: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}'
@@ -338,6 +376,16 @@ services:
       AUTH_SERVICE_URL: "http://auth-iam-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       CONTACT_MODE: iam
       CONTACT_CACHE_TTL_MINUTES: "10"
+      # Real e-mail (OTP codes, order notices) once secrets.acsEmail.accessKey is set.
+      NOTIFICATION_EMAIL_PROVIDER: '{{ if .Values.secrets.acsEmail.accessKey }}azure{{ else }}mock{{ end }}'
+      ACS_EMAIL_ENDPOINT: '{{ if .Values.secrets.acsEmail.accessKey }}{{ required "secrets.acsEmail.endpoint is required when acsEmail.accessKey is set" .Values.secrets.acsEmail.endpoint }}{{ end }}'
+      ACS_EMAIL_SENDER_ADDRESS: '{{ if .Values.secrets.acsEmail.accessKey }}{{ required "secrets.acsEmail.senderAddress is required when acsEmail.accessKey is set" .Values.secrets.acsEmail.senderAddress }}{{ end }}'
+      # Lock-screen (Web Push) notifications once secrets.webPush.privateKey is set.
+      WEB_PUSH_PUBLIC_KEY: '{{ if .Values.secrets.webPush.privateKey }}{{ required "secrets.webPush.publicKey is required when webPush.privateKey is set" .Values.secrets.webPush.publicKey }}{{ end }}'
+      WEB_PUSH_SUBJECT: '{{ if .Values.secrets.webPush.privateKey }}{{ required "secrets.webPush.subject (mailto: or https:) is required when webPush.privateKey is set" .Values.secrets.webPush.subject }}{{ end }}'
+    secretEnv:
+      - { name: ACS_EMAIL_ACCESS_KEY, secretName: notification-acs-email, key: access-key, optional: true }
+      - { name: WEB_PUSH_PRIVATE_KEY, secretName: notification-web-push, key: private-key, optional: true }
 
   analytics-ai-service:
     enabled: true
@@ -353,9 +401,10 @@ services:
       readinessInitialDelaySeconds: 30
       livenessInitialDelaySeconds: 60
     config:
-      AI_PROVIDER: mock
-      AI_MODEL: ""
-      AI_ENDPOINT: ""
+      # mock unless secrets.aiProvider.apiKey is set; then provider and model are required.
+      AI_PROVIDER: '{{ if .Values.secrets.aiProvider.apiKey }}{{ required "secrets.aiProvider.provider (openai | azure-openai) is required when aiProvider.apiKey is set" .Values.secrets.aiProvider.provider }}{{ else }}mock{{ end }}'
+      AI_MODEL: '{{ if .Values.secrets.aiProvider.apiKey }}{{ required "secrets.aiProvider.model is required when aiProvider.apiKey is set" .Values.secrets.aiProvider.model }}{{ end }}'
+      AI_ENDPOINT: '{{ if .Values.secrets.aiProvider.apiKey }}{{ .Values.secrets.aiProvider.endpoint }}{{ end }}'
       GATEWAY_URL: "http://api-gateway.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
     secretEnv:
       - {
@@ -379,10 +428,31 @@ frontend:
   # The Ingress already sends /api and /ws straight to the gateway; these proxy
   # blocks keep the pod usable on its own (kubectl port-forward).
   nginxConfig: |
+    # PWA: the service worker, its manifest and the HTML shell must be revalidated on every load,
+    # or phones keep running an old build for days. A map (not a separate location) keeps the
+    # server-level security headers below: any add_header inside a location would drop them.
+    map $uri $swiftdrop_cache_control {
+      default               "";
+      /sw.js                "no-cache";
+      /manifest.webmanifest "no-cache";
+      /index.html           "no-cache";
+    }
+
     server {
-      listen 80;
+      listen 8080;
       root /usr/share/nginx/html;
       index index.html;
+
+      # Browser hardening; keep in sync with frontend/nginx.conf.
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Cache-Control $swiftdrop_cache_control always;
+      add_header Permissions-Policy "camera=(self), geolocation=(), microphone=()" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' wss:; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'" always;
+      {{- if .Values.ingress.tls.enabled }}
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+      {{- end }}
 
       location = /healthz {
         access_log off;

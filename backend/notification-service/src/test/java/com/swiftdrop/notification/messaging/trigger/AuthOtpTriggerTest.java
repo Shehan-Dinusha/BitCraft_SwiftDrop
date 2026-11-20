@@ -58,6 +58,16 @@ class AuthOtpTriggerTest {
     }
 
     @Test
+    @DisplayName("Maps the sign-in second factor to its own redacted template")
+    void buildsLoginMfa() {
+        EventEnvelope envelope = envelope("notification.auth.otp", payload(UUID.randomUUID(), "LOGIN_MFA", "654321"));
+
+        assertThat(trigger.build(envelope)).singleElement()
+                .satisfies(request -> assertThat(request.templateCode()).isEqualTo("LOGIN_MFA"));
+        assertThat(com.swiftdrop.notification.util.SensitiveTemplates.isSensitive("LOGIN_MFA")).isTrue();
+    }
+
+    @Test
     @DisplayName("Ignores other routing keys and does not collide with parcel triggers")
     void ignoresOtherEvents() {
         EventEnvelope otp = envelope("notification.auth.otp", payload(UUID.randomUUID(), "EMAIL_VERIFICATION", "482913"));

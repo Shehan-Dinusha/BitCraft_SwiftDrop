@@ -49,6 +49,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.swiftdrop.dispatch.support.TestCallers.dispatcher;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -268,7 +269,7 @@ class PickupAwareReassignmentIT {
     }
 
     private MvcResult reassign(UUID orderId, UUID expectedCourier, UUID newCourier) throws Exception {
-        return mockMvc.perform(post("/api/v1/dispatch/reassign")
+        return mockMvc.perform(post("/api/v1/dispatch/reassign").with(dispatcher())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new ReassignCourierRequest(
                                 orderId, expectedCourier, newCourier, "IT_SUPERVISOR", null))))

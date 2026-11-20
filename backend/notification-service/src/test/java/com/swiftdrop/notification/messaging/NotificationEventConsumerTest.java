@@ -6,6 +6,7 @@ import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.messaging.consumer.NotificationEventConsumer;
 import com.swiftdrop.notification.messaging.trigger.*;
 import com.swiftdrop.notification.service.InAppNotificationService;
+import com.swiftdrop.notification.service.MerchantDirectory;
 import com.swiftdrop.notification.service.MultiChannelNotificationDispatcher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -81,7 +82,7 @@ class NotificationEventConsumerTest {
         assertThat(request.channel()).isEqualTo("EMAIL");
         assertThat(request.referenceId()).isEqualTo("SD-1111");
         assertThat(request.templateParams()).containsEntry("courierName", "Kamal Perera");
-        verify(inAppNotificationService).saveNotification(eq(customerId), any(), any(), eq("SD-1111"));
+        verify(inAppNotificationService).saveNotification(eq(customerId), eq("PARCEL_PICKED_UP"), any(), any(), eq("SD-1111"));
     }
 
     @Test
@@ -112,7 +113,7 @@ class NotificationEventConsumerTest {
             assertThat(request.templateCode()).isEqualTo("PARCEL_OUT_FOR_DELIVERY");
             assertThat(request.templateParams()).containsEntry("courierName", "Sunil Shantha");
         });
-        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), any(), any(), eq("SD-3333"));
+        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), eq("PARCEL_OUT_FOR_DELIVERY"), any(), any(), eq("SD-3333"));
     }
 
     @Test
@@ -141,7 +142,7 @@ class NotificationEventConsumerTest {
         assertThat(request.recipientId()).isEqualTo(customerId);
         assertThat(request.templateCode()).isEqualTo("PARCEL_DELIVERED");
         assertThat(request.channel()).isEqualTo("EMAIL");
-        assertThat(request.templateParams()).containsEntry("deliveredAt", "2026-11-10T08:30:00Z");
+        assertThat(request.templateParams()).containsEntry("deliveredAt", "10 Nov 2026, 2:00 p.m.");
     }
 
     @Test
@@ -172,7 +173,7 @@ class NotificationEventConsumerTest {
             assertThat(request.templateCode()).isEqualTo("PARCEL_FAILED");
             assertThat(request.templateParams()).containsEntry("failureReason", "Customer unavailable at delivery address");
         });
-        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), any(), any(), eq("SD-4444"));
+        verify(inAppNotificationService, times(1)).saveNotification(eq(customerId), eq("PARCEL_FAILED"), any(), any(), eq("SD-4444"));
     }
 
     @Test
@@ -204,5 +205,102 @@ class NotificationEventConsumerTest {
         consumer.onNotificationEvent(message);
 
         verify(dispatcher, never()).dispatch(any());
+    }
+
+    @Test
+    @DisplayName("Team notifications are written once per audience; a failed dispatch reaches the operations team")
+    void writesTeamNotifications() {
+        NotificationEventConsumer teamConsumer = new NotificationEventConsumer(objectMapper, dispatcher,
+                List.of(new com.swiftdrop.notification.messaging.trigger.DispatchFailedTrigger()),
+                processedEventRepository, inAppNotificationService);
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("dispatch.failed");
+        String json = "{\"eventId\":\"%s\",\"orderId\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\"failureReason\":\"No courier\"}"
+                .formatted(UUID.randomUUID());
+
+        teamConsumer.onNotificationEvent(new Message(json.getBytes(StandardCharsets.UTF_8), props));
+
+        verify(inAppNotificationService).saveTeamNotification(eq("OPERATIONS"), eq("DISPATCH_FAILED"),
+                eq("Dispatch needs attention"), any(), any());
+        verify(dispatcher, never()).dispatch(any());
+    }
+
+    @Test
+    @DisplayName("Sign-in alerts are emailed but never copied to the in-app inbox")
+    void loginAlertsSkipTheInbox() {
+        UUID userId = UUID.randomUUID();
+        NotificationEventConsumer loginConsumer = new NotificationEventConsumer(objectMapper, dispatcher,
+                List.of(new com.swiftdrop.notification.messaging.trigger.AuthLoginTrigger()),
+                processedEventRepository, inAppNotificationService);
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("notification.auth.login");
+        String json = "{\"eventId\":\"%s\",\"recipientId\":\"%s\",\"outcome\":\"SUCCESS\"}"
+                .formatted(UUID.randomUUID(), userId);
+
+        loginConsumer.onNotificationEvent(new Message(json.getBytes(StandardCharsets.UTF_8), props));
+
+        verify(dispatcher).dispatch(any());
+        verify(inAppNotificationService, never()).saveNotification(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("A merchant parcel is never emailed to the company id; the merchant and operations teams are told")
+    void merchantParcelGoesToTeamInboxes() {
+        UUID merchantId = UUID.randomUUID();
+        MerchantDirectory merchants = mock(MerchantDirectory.class);
+        when(merchants.isMerchant(merchantId)).thenReturn(true);
+        NotificationEventConsumer merchantConsumer = new NotificationEventConsumer(objectMapper, dispatcher,
+                List.of(new FailedTrigger()), processedEventRepository, inAppNotificationService, merchants);
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("parcel.status.changed");
+        String json = """
+                {"customerId":"%s","trackingNumber":"SD-4444-5555","newPublicStatus":"FAILED","failureReason":"WRONG_ADDRESS"}
+                """.formatted(merchantId);
+
+        merchantConsumer.onNotificationEvent(new Message(json.getBytes(StandardCharsets.UTF_8), props));
+
+        verify(dispatcher, never()).dispatch(any());
+        verify(inAppNotificationService, never()).saveNotification(any(), any(), any(), any(), any());
+        verify(inAppNotificationService).saveTeamNotification(eq("OPERATIONS"), eq("OPS_DELIVERY_FAILED"),
+                eq("Delivery failed"), contains("the delivery address could not be found"), eq("SD-4444-5555"));
+        verify(inAppNotificationService).saveTeamNotification(eq("MERCHANT:" + merchantId), eq("MERCHANT_DELIVERY_FAILED"),
+                eq("Delivery failed"), any(), eq("SD-4444-5555"));
+    }
+
+    @Test
+    @DisplayName("A customer's failed delivery never creates a merchant row for the customer's own id")
+    void customerParcelHasNoMerchantRow() {
+        UUID customerId = UUID.randomUUID();
+        MerchantDirectory merchants = mock(MerchantDirectory.class);
+        NotificationEventConsumer c = new NotificationEventConsumer(objectMapper, dispatcher,
+                List.of(new FailedTrigger()), processedEventRepository, inAppNotificationService, merchants);
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("parcel.status.changed");
+        String json = "{\"customerId\":\"%s\",\"trackingNumber\":\"SD-1\",\"newPublicStatus\":\"FAILED\"}".formatted(customerId);
+
+        c.onNotificationEvent(new Message(json.getBytes(StandardCharsets.UTF_8), props));
+
+        verify(dispatcher).dispatch(any());
+        verify(inAppNotificationService).saveTeamNotification(eq("OPERATIONS"), any(), any(), any(), any());
+        verify(inAppNotificationService, never()).saveTeamNotification(startsWith("MERCHANT:"), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("A merchant order is remembered and its order confirmation is not emailed to the company id")
+    void merchantOrderIsRememberedAndNotEmailed() {
+        UUID merchantId = UUID.randomUUID();
+        MerchantDirectory merchants = mock(MerchantDirectory.class);
+        when(merchants.isMerchant(merchantId)).thenReturn(true);
+        NotificationEventConsumer c = new NotificationEventConsumer(objectMapper, dispatcher,
+                List.of(new OrderCreatedTrigger()), processedEventRepository, inAppNotificationService, merchants);
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("order.created");
+        String json = "{\"customerId\":\"%s\",\"merchantId\":\"%s\",\"trackingNumber\":\"SD-2\"}".formatted(merchantId, merchantId);
+
+        c.onNotificationEvent(new Message(json.getBytes(StandardCharsets.UTF_8), props));
+
+        verify(merchants).remember(merchantId);
+        verify(dispatcher, never()).dispatch(any());
+        verify(inAppNotificationService, never()).saveTeamNotification(any(), any(), any(), any(), any());
     }
 }

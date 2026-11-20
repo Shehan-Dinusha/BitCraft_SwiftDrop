@@ -64,29 +64,49 @@ public class TemplateRendererService {
             // Default fallbacks for operational resilience
             channel = "EMAIL";
             switch (templateCode) {
+                case "PARCEL_CREATED" -> {
+                    subjectTmpl = "Your SwiftDrop order is confirmed";
+                    bodyTmpl = "Order {{trackingNumber}} is confirmed. We will let you know when a courier collects it.";
+                }
                 case "PARCEL_OUT_FOR_DELIVERY" -> {
-                    subjectTmpl = "SwiftDrop Out for Delivery";
-                    bodyTmpl = "Parcel {{trackingNumber}} is out for delivery with {{courierName}}. Delivery expected shortly.";
+                    subjectTmpl = "Your parcel is out for delivery";
+                    bodyTmpl = "Parcel {{trackingNumber}} is out for delivery and should arrive today.";
                 }
                 case "PARCEL_DELIVERED" -> {
-                    subjectTmpl = "Parcel Delivered - SwiftDrop";
-                    bodyTmpl = "Your parcel {{trackingNumber}} was successfully delivered at {{deliveredAt}}. Thank you for choosing SwiftDrop.";
+                    subjectTmpl = "Your parcel has been delivered";
+                    bodyTmpl = "Parcel {{trackingNumber}} was delivered on {{deliveredAt}}. Thank you for choosing SwiftDrop.";
                 }
                 case "PARCEL_PICKED_UP" -> {
-                    subjectTmpl = "SwiftDrop Parcel Picked Up";
-                    bodyTmpl = "Courier {{courierName}} has picked up parcel {{trackingNumber}}. In-transit to distribution hub.";
+                    subjectTmpl = "Your parcel has been picked up";
+                    bodyTmpl = "Parcel {{trackingNumber}} has been collected and is on its way.";
                 }
                 case "PARCEL_FAILED" -> {
-                    subjectTmpl = "SwiftDrop Delivery Exception";
-                    bodyTmpl = "Delivery attempt failed for parcel {{trackingNumber}}: {{failureReason}}.";
+                    subjectTmpl = "We could not deliver your parcel";
+                    bodyTmpl = "We could not deliver parcel {{trackingNumber}}: {{failureReason}}. Our operations team has been notified and will arrange the next step.";
                 }
                 case "EMAIL_VERIFICATION" -> {
                     subjectTmpl = "Your SwiftDrop verification code";
                     bodyTmpl = "Your SwiftDrop verification code is {{code}}. It expires in {{expiresInMinutes}} minutes. If you did not create a SwiftDrop account, you can ignore this email.";
                 }
+                case "LOGIN_MFA" -> {
+                    subjectTmpl = "Your SwiftDrop sign-in code";
+                    bodyTmpl = "Your SwiftDrop sign-in code is {{code}}. It expires in {{expiresInMinutes}} minutes. If you did not just try to sign in, change your password now.";
+                }
                 case "PASSWORD_RESET" -> {
                     subjectTmpl = "Reset your SwiftDrop password";
                     bodyTmpl = "Your SwiftDrop password reset code is {{code}}. It expires in {{expiresInMinutes}} minutes. If you did not request a password reset, ignore this email and your password will stay the same.";
+                }
+                case "COURIER_ASSIGNED" -> {
+                    subjectTmpl = "New delivery job assigned to you";
+                    bodyTmpl = "Parcel {{trackingNumber}} has been assigned to you for pickup in {{pickupDistrict}} and delivery to {{deliveryDistrict}}.";
+                }
+                case "LOGIN_SUCCESS" -> {
+                    subjectTmpl = "New sign-in to your SwiftDrop account";
+                    bodyTmpl = "Your SwiftDrop account was signed in to on {{occurredAt}} from {{device}}. If this was not you, reset your password straight away.";
+                }
+                case "LOGIN_FAILED" -> {
+                    subjectTmpl = "Failed sign-in attempt on your SwiftDrop account";
+                    bodyTmpl = "Someone tried to sign in to your SwiftDrop account with a wrong password on {{occurredAt}} from {{device}}. If this was not you, consider changing your password.";
                 }
                 default -> {
                     subjectTmpl = "SwiftDrop Notification";

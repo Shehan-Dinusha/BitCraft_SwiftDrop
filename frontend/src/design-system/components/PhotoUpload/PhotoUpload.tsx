@@ -52,7 +52,7 @@ export function PhotoUpload({
         {previewSrc ? (
           <img
             src={previewSrc}
-            alt="Delivery photo preview"
+            alt="Proof of delivery preview"
             className="h-[100px] w-full rounded-lg object-cover"
           />
         ) : (

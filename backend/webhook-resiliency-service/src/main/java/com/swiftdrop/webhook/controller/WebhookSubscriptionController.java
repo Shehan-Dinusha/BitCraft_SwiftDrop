@@ -21,7 +21,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping({"/api/v1/webhooks/subscriptions", "/api/v1/webhook-subscription"})
+@RequestMapping("/api/v1/webhooks/subscriptions")
 @Tag(name = "WebhookSubscription", description = "Webhook subscription registration, testing, and lifecycle management")
 @RequiredArgsConstructor
 public class WebhookSubscriptionController {

@@ -128,7 +128,7 @@ Open http://localhost:8081/actuator/health and http://localhost:8081/swagger-ui.
 mvn -f backend\pom.xml -pl auth-iam-service -am test
 ```
 
-**A9. Read before coding:** `AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `docs/LOCAL-DEVELOPMENT.md`, `frontend/COMPONENTS.md`, and `.agents/rules/*.md`. They define package layout, DTO rules (Java records + `@Schema`), Flyway rules (new `V<N>__*.sql`, never edit an old one), and the Velocity design-system rules.
+**A9. Read before coding:** `AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `docs/LOCAL-DEVELOPMENT.md`, `frontend/COMPONENTS.md`, and `.agents/rules/*.md`. They define package layout, DTO rules (Java records + `@Schema`), Flyway rules (new `V<N>__*.sql`, never edit an old one), and the SwiftDrop design-system rules.
 
 > **Your service is different:** `auth-iam-service/application.yml` hard-codes the DB URL (port 5432), user and password, and RabbitMQ defaults to `guest`/`guest`. Until you fix that (Phase 1), override them with Spring's standard variables instead of `DB_PASSWORD`:
 >

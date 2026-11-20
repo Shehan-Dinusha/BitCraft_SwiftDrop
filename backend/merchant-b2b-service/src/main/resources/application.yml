@@ -30,5 +30,8 @@ management:
 springdoc:
   api-docs:
     version: OPENAPI_3_1
+  # Service-to-service endpoints: the gateway never routes /internal/**, so keep them out of the public docs.
+  paths-to-exclude:
+    - /internal/**
   swagger-ui:
     path: /swagger-ui.html

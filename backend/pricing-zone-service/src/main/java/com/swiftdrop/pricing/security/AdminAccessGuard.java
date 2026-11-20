@@ -9,11 +9,12 @@ import org.springframework.stereotype.Component;
 public class AdminAccessGuard {
 
     /**
-     * Reads the gateway-verified identity headers and allows only dispatchers and system admins.
+     * Reads the gateway-verified identity headers and allows only system admins.
+     * Used for all zone and tariff write operations. Read endpoints are not guarded.
      */
     public CallerContext requireAdmin(HttpServletRequest request) {
         CallerContext caller = CallerContext.from(request::getHeader);
-        caller.requireRole(UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN);
+        caller.requireRole(UserRole.SYSTEM_ADMIN);
         return caller;
     }
 }
