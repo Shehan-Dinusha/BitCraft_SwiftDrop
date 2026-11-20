@@ -262,6 +262,8 @@ export function AppShell() {
               className="size-9 text-secondary md:hidden"
             />
           ) : null}
+          {/* The customer assistant lives in the header; it renders nothing for other roles. */}
+          <AiAssistantSlot />
         </TopBar>
         <main className={hasTabs ? 'flex-1 pb-[68px] md:pb-0' : 'flex-1'}>
           <Outlet />
@@ -284,10 +286,6 @@ export function AppShell() {
           )}
         />
       ) : null}
-
-      <div className="fixed bottom-6 right-6 z-40">
-        <AiAssistantSlot />
-      </div>
 
       <SignOutDialog
         open={confirmingSignOut}

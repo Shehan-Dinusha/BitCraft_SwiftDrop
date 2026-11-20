@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { AssistantLauncher, AssistantPanel, Button, type AssistantMessage } from '@/design-system';
-import { useHideOnScrollDown } from '@/hooks/useHideOnScrollDown';
+import { Sparkles } from 'lucide-react';
+import { AssistantPanel, Button, type AssistantMessage } from '@/design-system';
 import { analyticsAiApi } from '@/services/api/analyticsAiApi';
-import { cn } from '@/utils/cn';
 
 export function CustomerAiAssistant() {
   const [open, setOpen] = useState(false);
-  const scrollingDown = useHideOnScrollDown();
   const [conversationId, setConversationId] = useState<string>();
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [pending, setPending] = useState(false);
@@ -111,12 +109,21 @@ export function CustomerAiAssistant() {
   }
 
   return (
-    <div
-      ref={wrapper}
-      className="relative bottom-20 flex max-w-[calc(100vw-3rem)] flex-col items-end gap-2 md:bottom-0"
-    >
+    <div ref={wrapper} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-label="Ask SwiftDrop"
+        className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-primary px-3 text-label font-semibold text-brand-on transition-colors hover:bg-brand-hover active:bg-brand-pressed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+      >
+        <Sparkles aria-hidden="true" className="size-4" />
+        <span className="hidden sm:inline">Ask SwiftDrop</span>
+      </button>
+
       {open ? (
-        <>
+        // Opens just under the header, on the right, and stays put while the page scrolls.
+        <div className="fixed right-4 top-16 z-50 flex w-[min(380px,calc(100vw-2rem))] flex-col items-end gap-2">
           <AssistantPanel
             title="SwiftDrop order assistant"
             subtitle="Your orders and delivery estimates"
@@ -124,7 +131,7 @@ export function CustomerAiAssistant() {
             messages={messages}
             typing={pending}
             disabled={retrySeconds > 0}
-            className="max-h-[calc(100dvh-11rem)] md:max-h-[calc(100dvh-4rem)]"
+            className="max-h-[calc(100dvh-5rem)] w-full"
             suggestions={
               messages.length
                 ? undefined
@@ -156,19 +163,8 @@ export function CustomerAiAssistant() {
               </Button>
             </div>
           )}
-        </>
-      ) : (
-        // Slides out of the way while the page scrolls down, and returns on scroll up. `invisible`
-        // also takes it out of the tab order and the accessibility tree while it is away.
-        <div
-          className={cn(
-            'transition-all duration-200 motion-reduce:transition-none',
-            scrollingDown && 'invisible translate-y-24 opacity-0'
-          )}
-        >
-          <AssistantLauncher label="Ask SwiftDrop" expanded={open} onClick={() => setOpen(true)} />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
