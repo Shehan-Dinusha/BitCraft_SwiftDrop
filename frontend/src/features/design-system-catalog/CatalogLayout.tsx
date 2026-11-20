@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ExternalLink, Package, Search } from 'lucide-react';
+import { ExternalLink, Search } from 'lucide-react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { BrandMark } from '@/design-system/components/BrandMark/BrandMark';
 import { cn } from '@/utils/cn';
 import { catalogFamilies } from './families';
 import { FIGMA_FILE, catalogPages } from './catalogNav';
@@ -37,13 +38,8 @@ export function CatalogLayout() {
     <div className="light min-h-screen bg-canvas text-primary">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border-subtle bg-card px-4 sm:px-6">
         <Link to="/catalog" className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
-          >
-            <Package className="size-[18px]" />
-          </span>
-          <span className="text-body-strong text-primary">SwiftDrop Velocity</span>
+          <BrandMark size={32} />
+          <span className="text-body-strong text-primary">SwiftDrop</span>
           <span className="hidden text-label text-muted sm:inline">Design system</span>
         </Link>
         <div className="ml-auto flex items-center gap-4 text-label">

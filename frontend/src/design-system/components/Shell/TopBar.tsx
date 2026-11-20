@@ -2,7 +2,6 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
-  Package,
   Pencil,
   Search,
   Sparkles,
@@ -13,6 +12,7 @@ import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/utils/cn';
 import { useMediaQuery } from '@/design-system/components/Shell/useMediaQuery';
 import { Button } from '@/design-system/primitives/Button';
+import { BrandMark } from '@/design-system/components/BrandMark/BrandMark';
 import {
   LiveIndicator,
   type LiveIndicatorState
@@ -253,12 +253,7 @@ export function PublicHeader({
       <div className="flex items-center justify-between gap-4 px-4 py-3.5 w-full max-w-screen-2xl mx-auto">
         <div className="flex items-center gap-4 shrink-0">
           <span className="flex items-center gap-2.5 shrink-0">
-            <span
-              aria-hidden="true"
-              className="flex size-8 items-center justify-center rounded-lg bg-brand-primary text-brand-on"
-            >
-              <Package className="size-[18px]" />
-            </span>
+            <BrandMark size={32} />
             <span className="text-h3 text-primary">SwiftDrop</span>
           </span>
           <nav

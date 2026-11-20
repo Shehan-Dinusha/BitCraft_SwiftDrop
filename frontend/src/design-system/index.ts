@@ -195,6 +195,8 @@ export type {
   AssistantMessage,
   AssistantPanelProps
 } from './components/AiAssistant/AiAssistant';
+export { BrandMark } from './components/BrandMark/BrandMark';
+export type { BrandMarkProps } from './components/BrandMark/BrandMark';
 export { NavItem } from './components/Shell/NavItem';
 export type { NavItemProps } from './components/Shell/NavItem';
 export { SideNav } from './components/Shell/SideNav';
