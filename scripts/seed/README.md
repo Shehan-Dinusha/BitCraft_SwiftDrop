@@ -6,8 +6,8 @@ Fills SwiftDrop with realistic demo data **through the public APIs**, the way re
 |---|---|
 | System admin (bootstrap account) | Creates 25 dispatchers (one per district), 50 couriers (two per district), 40 customers and 6 merchant owners |
 | 40 customers | Book 4–6 parcels each (≈200 orders, real towns and postcodes) |
-| 6 merchant businesses | Apply; the admin approves 4, leaves 1 pending and rejects 1 with a reason. Approved merchants create an API key and send 8–12 B2B orders each (≈40) through the B2B API |
-| Couriers | Start their shifts |
+| 6 merchant businesses | Apply, and the admin approves all 6 (their e-mail addresses are not real, so decision e-mails could not be read). Each creates an API key and sends 8–12 B2B orders (≈58) through the B2B API. To demo the review flow, sign up a business with a real address at `/register/business` and approve it as that district's dispatcher |
+| Couriers | Are created ready to work (active, no invite), register their own vehicle, get capacity 20 from their dispatcher, and start their shifts. To demo the invite flow, register a courier with a real address as a dispatcher on **Couriers** |
 | Customers | Cancel ~10% of parcels before dispatch |
 | Dispatchers | Assign ~80% of parcels to a courier in the pickup district; ~10% stay unassigned so the board has work |
 | Couriers | Move parcels along: ~58% delivered (photo proof of delivery), ~7% out for delivery, ~10% failed with a reason, the rest picked up / in transit |
@@ -155,5 +155,5 @@ placeholder images.
 | `SEED_CUSTOMERS` | `40` | Number of customers |
 
 Demo logins: `dispatcher.<district>` (for example `dispatcher.colombo`, `dispatcher.nuwara-eliya`),
-`courier.<district>.1` and `.2`, `merchant.kandy-valley-spice` (approved; the summary lists the others),
+`courier.<district>.1` and `.2`, `merchant.kandy-valley-spice` (all six merchants are approved; the summary lists them),
 and the customer usernames printed by the summary stage.

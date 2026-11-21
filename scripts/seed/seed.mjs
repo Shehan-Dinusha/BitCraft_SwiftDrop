@@ -395,7 +395,19 @@ async function stageMerchants() {
       });
       count('businesses applied');
     }
-    // 2. The admin decides.
+    // A database seeded before every demo merchant was approved may hold a rejected application:
+    // the owner corrects and resubmits it (allowed after a rejection), so it can be approved below.
+    if (app.status === 'REJECTED' && plan.outcome === 'APPROVED') {
+      app = await api('POST', '/api/v1/merchants/register', {
+        token: owner.token,
+        body: {
+          businessName: plan.business, businessRegNo: m.regNo, contactEmail: m.email, contactPhone: m.phone,
+          pickupAddress: `${m.street}, ${m.town[0]} ${m.town[1]}`, operatingDistrict: plan.district,
+        },
+      });
+      count('resubmitted');
+    }
+    // 2. The admin decides (in production the district dispatcher does; the admin can for any district).
     if (app.status === 'PENDING_APPROVAL' && plan.outcome === 'APPROVED') {
       app = await api('POST', `/api/v1/admin/merchants/${app.merchantId}/approve`, { token: admin.token });
       count('approved');
