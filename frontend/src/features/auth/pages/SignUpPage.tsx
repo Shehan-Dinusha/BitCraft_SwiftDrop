@@ -158,12 +158,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
       below={
         <>
           Already have an account? <AuthLink to="/login">Sign in</AuthLink>
-          <span className="mx-2 text-muted">·</span>
-          {business ? (
-            <AuthLink to="/register">Sign up to send parcels</AuthLink>
-          ) : (
-            <AuthLink to="/register/business">Sign up as a business</AuthLink>
-          )}
         </>
       }
     >
