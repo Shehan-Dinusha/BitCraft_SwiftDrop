@@ -364,8 +364,13 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
         </Button>
       </form>
 
-      <AuthDivider label="Or sign up with" />
-      <GoogleTile label="Sign up with Google" />
+      {/* Google sign-up always creates a customer account, so businesses sign up with the form only. */}
+      {!business && (
+        <>
+          <AuthDivider label="Or sign up with" />
+          <GoogleTile label="Sign up with Google" />
+        </>
+      )}
     </AuthShell>
   );
 }
