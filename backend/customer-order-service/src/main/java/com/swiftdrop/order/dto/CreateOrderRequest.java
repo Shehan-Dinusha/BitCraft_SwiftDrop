@@ -32,6 +32,11 @@ public class CreateOrderRequest {
     @Schema(description = "Merchant UUID (optional for B2B)")
     private UUID merchantId;
 
+    @Schema(description = "Optional ID the client generates once per booking. Sending the same value again (a retry "
+            + "after a dropped connection) returns the order already created instead of a second one.",
+            example = "3f2a9c1e-7b4d-4c1a-9e5f-2b8d6a1c0e74")
+    private UUID clientRequestId;
+
     // Pickup Details
     @NotBlank(message = "Pickup address line 1 is mandatory")
     @Schema(description = "Pickup address line 1", example = "No. 42, Galle Road")

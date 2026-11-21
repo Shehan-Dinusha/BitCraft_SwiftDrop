@@ -31,5 +31,7 @@ public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Lo
 
     Optional<CustomerOrder> findByMerchantIdAndExternalRef(UUID merchantId, String externalRef);
 
+    Optional<CustomerOrder> findByCustomerIdAndClientRequestId(UUID customerId, UUID clientRequestId);
+
     Page<CustomerOrder> findByCustomerIdOrderByCreatedAtDesc(UUID customerId, Pageable pageable);
 }

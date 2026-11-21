@@ -1,5 +1,8 @@
 package com.swiftdrop.order.controller;
 
+import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
+import com.swiftdrop.order.service.CustomerOrderBookingService;
+import org.springframework.context.annotation.Import;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.FeeRevisionStatus;
 import com.swiftdrop.contracts.enums.OrderSpeed;
@@ -33,7 +36,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderController.class)
+@Import(CustomerOrderBookingService.class)
 class OrderControllerTest {
+
+    /** Used by the real {@link CustomerOrderBookingService}; bookings here carry no clientRequestId. */
+    @MockitoBean
+    private CustomerOrderRepository customerOrderRepository;
 
     @Autowired
     private MockMvc mockMvc;

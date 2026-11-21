@@ -229,6 +229,133 @@ paths:
         "404":
           description: Order not found, or not owned by the caller
 
+  /api/v1/orders/addresses:
+    get:
+      tags: [Address book]
+      summary: List my saved addresses, most recently changed first
+      operationId: listSavedAddresses
+      parameters:
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway; only CUSTOMER has an address book
+      responses:
+        "200":
+          description: Saved addresses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseSavedAddressList"
+        "401":
+          description: No signed-in caller
+        "403":
+          description: The caller is not a customer
+    post:
+      tags: [Address book]
+      summary: Save a new address
+      description: Up to 20 per customer.
+      operationId: createSavedAddress
+      parameters:
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway; only CUSTOMER has an address book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedAddressRequest"
+      responses:
+        "201":
+          description: Address saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseSavedAddress"
+        "400":
+          description: An invalid field
+        "409":
+          description: The address book is full
+  /api/v1/orders/addresses/{addressId}:
+    put:
+      tags: [Address book]
+      summary: Change a saved address
+      operationId: updateSavedAddress
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway; only CUSTOMER has an address book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedAddressRequest"
+      responses:
+        "200":
+          description: Address updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseSavedAddress"
+        "404":
+          description: Not one of the caller's addresses
+    delete:
+      tags: [Address book]
+      summary: Delete a saved address
+      operationId: deleteSavedAddress
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-User-Id
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Authenticated user UUID
+        - name: X-User-Role
+          in: header
+          schema:
+            type: string
+          description: Caller role set by the gateway; only CUSTOMER has an address book
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not one of the caller's addresses
   /api/v1/orders/tracking/{trackingNumber}:
     get:
       tags: [Order]
@@ -628,6 +755,57 @@ components:
           type: string
           example: PRICING-2026-V1
 
+    SavedAddressRequest:
+      type: object
+      description: A saved pickup or drop-off address, in the same parts as the booking form.
+      required: [label, contactName, contactPhone, house, street, city, district, postalCode]
+      properties:
+        label: { type: string, minLength: 2, maxLength: 40, description: "The customer's name for it, such as Home" }
+        contactName: { type: string, minLength: 2, maxLength: 100 }
+        contactPhone: { type: string, pattern: "^(0\\d{9}|\\+94\\d{9})$", description: Stored as +94 and 9 digits }
+        alternatePhone: { type: string, pattern: "^(0\\d{9}|\\+94\\d{9})$" }
+        house: { type: string, maxLength: 40, description: Must contain a letter or digit }
+        street: { type: string, minLength: 2, maxLength: 150 }
+        area: { type: string, maxLength: 98 }
+        landmark: { type: string, maxLength: 100 }
+        city: { type: string, minLength: 2, maxLength: 100 }
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        postalCode: { type: string, pattern: "^\\d{5}$" }
+    SavedAddressResponse:
+      type: object
+      properties:
+        addressId: { type: string, format: uuid }
+        label: { type: string }
+        contactName: { type: string }
+        contactPhone: { type: string }
+        alternatePhone: { type: string }
+        house: { type: string }
+        street: { type: string }
+        area: { type: string }
+        landmark: { type: string }
+        city: { type: string }
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        postalCode: { type: string }
+        updatedAt: { type: string, format: date-time }
+    ApiResponseSavedAddress:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/SavedAddressResponse"
+    ApiResponseSavedAddressList:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedAddressResponse"
+
     CreateOrderRequest:
       type: object
       required:
@@ -650,6 +828,12 @@ components:
         - actualWeightKg
         - prohibitedItemsDeclared
       properties:
+        clientRequestId:
+          type: string
+          format: uuid
+          description: >-
+            Optional ID the client generates once per booking. Sending the same value again (a retry after a
+            dropped connection) returns the order already created instead of a second one.
         customerId:
           type: string
           format: uuid
