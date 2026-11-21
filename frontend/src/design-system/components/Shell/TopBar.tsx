@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 import { useMediaQuery } from '@/design-system/components/Shell/useMediaQuery';
 import { Button } from '@/design-system/primitives/Button';
@@ -194,6 +195,7 @@ export function TopBar({
 export interface PublicHeaderProps {
   /** Quick-track submit. */
   onTrack?: (trackingNumber: string) => void;
+  /** Shows the sign-in button. Leave it out when the visitor is already signed in. */
   onSignIn?: () => void;
   /** Active tracking number; shows the tracking chip with edit and clear. */
   trackingNumber?: string;
@@ -273,10 +275,14 @@ export function PublicHeader({
   return (
     <header className={cn('border-b border-border-subtle bg-card', className)}>
       <div className="flex items-center justify-between gap-4 px-4 py-3.5 w-full max-w-screen-2xl mx-auto">
-        <span className="flex items-center gap-2.5 shrink-0">
+        <Link
+          to="/"
+          aria-label="SwiftDrop home"
+          className="flex items-center gap-2.5 shrink-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+        >
           <BrandMark size={32} />
           <span className="text-h3 text-primary">SwiftDrop</span>
-        </span>
+        </Link>
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Active tracking chip with edit and clear */}
@@ -396,14 +402,16 @@ export function PublicHeader({
             </form>
           )}
 
-          <Button
-            variant="ghost"
-            density="compact"
-            onClick={onSignIn}
-            className={cn('shrink-0', hasTracking && 'hidden sm:inline-flex')}
-          >
-            Sign in
-          </Button>
+          {onSignIn && (
+            <Button
+              variant="ghost"
+              density="compact"
+              onClick={onSignIn}
+              className={cn('shrink-0', hasTracking && 'hidden sm:inline-flex')}
+            >
+              Sign in
+            </Button>
+          )}
         </div>
       </div>
     </header>

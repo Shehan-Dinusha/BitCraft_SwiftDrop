@@ -4,13 +4,7 @@ import { BrandMark } from '@/design-system/components/BrandMark/BrandMark';
 import { DensityProvider } from '@/design-system/providers/DensityProvider';
 import { googleAuthorizeUrl } from '@/services/api/authApi';
 import { cn } from '@/utils/cn';
-
-/**
- * Colour mixes of existing tokens only. The palette has no alpha or "sky" tokens, so the backdrop,
- * rings and card tint are blends of the brand, card and canvas tokens rather than new colours.
- */
-const mix = (token: string, percent: number, base = 'transparent') =>
-  `color-mix(in srgb, var(${token}) ${percent}%, ${base})`;
+import { mix, SkyBackdrop } from './SkyBackdrop';
 
 /**
  * Filled field style for the auth screens: the design-system `Input`, with the border softened into a
@@ -124,48 +118,15 @@ export function AuthShell({
   below,
   width = 'md'
 }: AuthShellProps) {
-  const ring = mix('--color-surface-card', 60);
-
   return (
     <DensityProvider density="comfortable">
-      <div
-        className="relative flex min-h-screen flex-col overflow-hidden text-primary"
-        style={{
-          background: `linear-gradient(180deg, ${mix('--color-brand-primary', 30, 'var(--color-surface-canvas)')} 0%, ${mix('--color-brand-primary', 14, 'var(--color-surface-canvas)')} 38%, var(--color-surface-canvas) 78%)`
-        }}
-      >
-        {/* Two faint arcs behind the card, centred low so they read as arcs at its sides. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 hidden justify-center sm:flex"
-        >
-          {[1100, 1500].map((size) => (
-            <span
-              key={size}
-              className="absolute top-[78%] -translate-y-1/2 rounded-full border"
-              style={{ width: size, height: size, borderColor: ring }}
-            />
-          ))}
-        </div>
-        {/* Cloud glows along the bottom. */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[45%]">
-          {[
-            'left-[-8%] bottom-[-12%] h-[60%] w-[45%]',
-            'left-[25%] bottom-[-20%] h-[70%] w-[50%]',
-            'right-[-10%] bottom-[-10%] h-[65%] w-[45%]'
-          ].map((position) => (
-            <span
-              key={position}
-              className={cn('absolute rounded-full blur-3xl', position)}
-              style={{ backgroundColor: mix('--color-surface-card', 90) }}
-            />
-          ))}
-        </div>
+      <div className="relative flex min-h-screen flex-col overflow-hidden bg-canvas text-primary">
+        <SkyBackdrop />
 
         <header className="relative px-5 py-6 sm:px-10 sm:py-8">
           <Link
-            to="/login"
-            aria-label="SwiftDrop sign in"
+            to="/"
+            aria-label="SwiftDrop home"
             className="inline-flex items-center gap-2.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
           >
             <BrandMark size={40} />

@@ -1,17 +1,10 @@
 import type { ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import {
-  Bike,
-  Calculator,
-  Camera,
-  LayoutDashboard,
-  MapPin,
-  Store,
-  Truck,
-  User
-} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calculator, Camera, Check, MapPin, Store, Truck, User } from 'lucide-react';
 import { BrandMark, Button, Card, DensityProvider, PublicHeader } from '@/design-system';
 import { TrackingSearchForm } from '@/features/public-tracking/components/TrackingSearchForm';
+import { SkyBackdrop } from '@/features/auth/components/SkyBackdrop';
+import { PAYMENT_NOTE } from '@/features/customer/components/orders/orderDisplay';
 import { roleHome } from '@/app/roleHome';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -23,8 +16,8 @@ const steps = [
   },
   {
     icon: <Truck className="size-5" />,
-    title: 'A courier is assigned',
-    text: 'Dispatch matches your parcel with an available courier in the zone.'
+    title: 'A courier picks it up',
+    text: `A courier in your district collects the parcel. ${PAYMENT_NOTE}`
   },
   {
     icon: <MapPin className="size-5" />,
@@ -33,31 +26,40 @@ const steps = [
   },
   {
     icon: <Camera className="size-5" />,
-    title: 'Proof of delivery',
-    text: 'The courier records a photo at the door, so you know it arrived.'
+    title: 'Proof at the door',
+    text: "The courier can only mark it delivered after a photo and the recipient's name. You get an email when it lands."
   }
 ];
 
 const audiences = [
   {
     icon: <User className="size-5" />,
-    title: 'Customers',
-    text: 'Book a pickup, pay cash to the courier, and keep every order and receipt in one place.'
+    title: 'For individuals',
+    points: [
+      'Send a parcel to any of the 25 districts',
+      'See the fee before you book, pay cash at pickup',
+      'Track every order and keep your receipts in one place'
+    ],
+    cta: { label: 'Create a free account', to: '/register' }
   },
   {
     icon: <Store className="size-5" />,
-    title: 'Merchants',
-    text: 'Send orders one by one, in bulk or by CSV, connect with API keys, and get webhook updates.'
-  },
+    title: 'For businesses',
+    points: [
+      'Book orders one at a time or upload a CSV for a whole batch',
+      'Connect your store with API keys and get webhook status updates',
+      'Pickups from your business location, every order on one dashboard'
+    ],
+    cta: { label: 'Register your business', to: '/register/business' }
+  }
+];
+
+const businessSteps = [
+  { title: 'Sign up', text: 'Create a business account and confirm your email.' },
+  { title: 'Add your details', text: 'Enter your business details and a pickup location.' },
   {
-    icon: <Bike className="size-5" />,
-    title: 'Couriers',
-    text: "Start a shift, see today's deliveries, and move each parcel through pickup to drop-off."
-  },
-  {
-    icon: <LayoutDashboard className="size-5" />,
-    title: 'Operations',
-    text: 'Assign couriers, manage zones and pricing, approve merchants, and watch delivery KPIs.'
+    title: 'Get approved',
+    text: 'The dispatcher for your district reviews it. Once approved, you can start sending.'
   }
 ];
 
@@ -72,7 +74,7 @@ function IconBadge({ children }: { children: ReactNode }) {
   );
 }
 
-/** Public home page: what SwiftDrop does, quick parcel tracking, and the way in for each role. */
+/** Public home page: what SwiftDrop does, quick parcel tracking, and the way in for senders and businesses. */
 export function LandingPage() {
   const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
@@ -80,53 +82,55 @@ export function LandingPage() {
   const signedIn = Boolean(token);
   const dashboard = roleHome[role];
 
-  const track = (trackingNumber: string) => navigate(`/track/${encodeURIComponent(trackingNumber)}`);
+  const track = (trackingNumber: string) =>
+    navigate(`/track/${encodeURIComponent(trackingNumber)}`);
 
   return (
     <DensityProvider density="comfortable">
       <div className="min-h-screen bg-canvas text-primary">
-        <PublicHeader
-          onTrack={track}
-          onSignIn={() => navigate(signedIn ? dashboard : '/login')}
-          showEmptySearch={false}
-        />
+        {/* Header and hero on the same sky as the sign-in page. */}
+        <div className="relative">
+          <SkyBackdrop />
+          <div className="relative">
+            <PublicHeader
+              onTrack={track}
+              onSignIn={signedIn ? undefined : () => navigate('/login')}
+              showEmptySearch={false}
+              className="border-transparent bg-transparent"
+            />
+
+            <section className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-20">
+              <div className="flex flex-col gap-5">
+                <p className="text-label font-semibold uppercase tracking-wider text-brand-primary">
+                  Parcel delivery across Sri Lanka
+                </p>
+                <h1 className="text-display text-primary">Send it today. Follow it all the way.</h1>
+                <p className="max-w-xl text-body-l text-secondary">
+                  SwiftDrop picks up parcels from homes and businesses, delivers them across all 25
+                  districts, and lets you track every step live. {PAYMENT_NOTE}
+                </p>
+                <div>
+                  <Button
+                    density="comfortable"
+                    onClick={() => navigate(signedIn ? dashboard : '/login')}
+                  >
+                    {signedIn ? 'Open your dashboard' : 'Send a parcel'}
+                  </Button>
+                </div>
+              </div>
+
+              <Card variant="elevated" className="p-6 sm:p-8">
+                <h2 className="text-h3 text-primary">Track a parcel</h2>
+                <p className="pb-4 pt-1 text-body text-secondary">
+                  No account needed. Enter the tracking number from your receipt or SMS.
+                </p>
+                <TrackingSearchForm onTrack={track} />
+              </Card>
+            </section>
+          </div>
+        </div>
 
         <main>
-          {/* Hero */}
-          <section className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-20">
-            <div className="flex flex-col gap-5">
-              <p className="text-label font-semibold uppercase tracking-wider text-brand-primary">
-                Parcel delivery across Sri Lanka
-              </p>
-              <h1 className="text-display text-primary">Send it today. Follow it all the way.</h1>
-              <p className="max-w-xl text-body-l text-secondary">
-                SwiftDrop picks up your parcel, delivers it across all 25 districts, and lets you
-                track every step live. Pay the courier in cash at pickup.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  density="comfortable"
-                  onClick={() => navigate(signedIn ? dashboard : '/register')}
-                >
-                  {signedIn ? 'Open your dashboard' : 'Send a parcel'}
-                </Button>
-                {!signedIn && (
-                  <Button variant="outline" density="comfortable" onClick={() => navigate('/login')}>
-                    Sign in
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <Card variant="elevated" className="p-6 sm:p-8">
-              <h2 className="text-h3 text-primary">Track a parcel</h2>
-              <p className="pb-4 pt-1 text-body text-secondary">
-                No account needed. Enter the tracking number from your receipt or SMS.
-              </p>
-              <TrackingSearchForm onTrack={track} />
-            </Card>
-          </section>
-
           {/* How it works */}
           <section aria-labelledby="how-it-works" className="border-y border-border-subtle bg-card">
             <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
@@ -150,42 +154,82 @@ export function LandingPage() {
             </div>
           </section>
 
-          {/* Roles */}
-          <section aria-labelledby="who-its-for" className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
+          {/* Individuals and businesses */}
+          <section
+            aria-labelledby="who-its-for"
+            className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6"
+          >
             <h2 id="who-its-for" className="text-h1 text-primary">
-              One platform for everyone in the delivery
+              Sending one parcel or a thousand
             </h2>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
               {audiences.map((audience) => (
-                <Card key={audience.title} className="flex flex-col gap-3 p-5">
-                  <IconBadge>{audience.icon}</IconBadge>
-                  <h3 className="text-h3 text-primary">{audience.title}</h3>
-                  <p className="text-body text-secondary">{audience.text}</p>
+                <Card key={audience.title} className="p-2">
+                  <div className="flex h-full flex-col gap-5">
+                    <div className="flex items-center gap-3">
+                      <IconBadge>{audience.icon}</IconBadge>
+                      <h3 className="text-h2 text-primary">{audience.title}</h3>
+                    </div>
+                    <ul className="flex flex-1 flex-col gap-3">
+                      {audience.points.map((point) => (
+                        <li key={point} className="flex gap-3 text-body text-secondary">
+                          <Check
+                            aria-hidden="true"
+                            className="mt-0.5 size-4 shrink-0 text-brand-primary"
+                          />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {!signedIn && (
+                      <div>
+                        <Button
+                          density="comfortable"
+                          variant="outline"
+                          onClick={() => navigate(audience.cta.to)}
+                        >
+                          {audience.cta.label}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </Card>
               ))}
             </div>
           </section>
 
-          {/* Call to action */}
+          {/* Business onboarding */}
           {!signedIn && (
-            <section className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">
-              <Card
-                variant="selected"
-                className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8"
-              >
-                <div>
-                  <h2 className="text-h2 text-primary">Ready to send your first parcel?</h2>
-                  <p className="pt-1 text-body text-secondary">
-                    Create a free account in a minute. Businesses apply for a merchant account.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button density="comfortable" onClick={() => navigate('/register')}>
-                    Create an account
-                  </Button>
-                  <Button density="comfortable" variant="outline" onClick={() => navigate('/register/business')}>
-                    Sign up as a business
-                  </Button>
+            <section
+              aria-labelledby="for-business"
+              className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6"
+            >
+              <Card variant="selected" className="p-2 sm:p-4">
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 id="for-business" className="text-h2 text-primary">
+                      Run a business? Open an account in three steps
+                    </h2>
+                    <Button density="comfortable" onClick={() => navigate('/register/business')}>
+                      Register your business
+                    </Button>
+                  </div>
+                  <ol className="grid gap-5 sm:grid-cols-3">
+                    {businessSteps.map((step, index) => (
+                      <li key={step.title} className="flex gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-primary text-caption font-semibold text-brand-on tabular-nums"
+                        >
+                          {index + 1}
+                        </span>
+                        <div>
+                          <h3 className="text-body-strong text-primary">{step.title}</h3>
+                          <p className="pt-0.5 text-body text-secondary">{step.text}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               </Card>
             </section>
@@ -193,22 +237,9 @@ export function LandingPage() {
         </main>
 
         <footer className="border-t border-border-subtle bg-card">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 text-caption text-secondary sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <span className="flex items-center gap-2">
-              <BrandMark size={20} />
-              <span>© {new Date().getFullYear()} SwiftDrop</span>
-            </span>
-            <nav aria-label="Footer" className="flex gap-5">
-              <Link to="/track" className="hover:text-primary">
-                Track a parcel
-              </Link>
-              <Link to="/register" className="hover:text-primary">
-                Create an account
-              </Link>
-              <Link to="/login" className="hover:text-primary">
-                Sign in
-              </Link>
-            </nav>
+          <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-6 text-caption text-secondary sm:px-6">
+            <BrandMark size={20} />
+            <span>© {new Date().getFullYear()} SwiftDrop</span>
           </div>
         </footer>
       </div>
