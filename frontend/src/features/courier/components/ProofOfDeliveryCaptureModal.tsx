@@ -161,7 +161,6 @@ export function ProofOfDeliveryCaptureModal({
         <form onSubmit={handleSubmitPhotoAndComplete} className="space-y-4 py-1">
           <Field label="Received by" required>
             <Input
-              placeholder="Nimal Fernando"
               value={recipientName}
               onChange={(e) => setRecipientName(e.target.value)}
               className="min-h-[48px]"

@@ -196,7 +196,6 @@ export function ManualDispatchOverrideModal({
               disabled={submitting}
               rows={2}
               className="w-full rounded-md border border-border-subtle bg-card px-2 py-1.5 text-caption text-primary outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus/20"
-              placeholder="e.g. Colombo hub overflow"
             />
           </Field>
 

@@ -460,7 +460,6 @@ export function WebhookResiliencyConsolePage() {
             <input id="webhook-target-url"
               type="url"
               required
-              placeholder="https://api.yourdomain.com/webhooks/swiftdrop"
               value={targetUrl}
               onChange={(e) => setTargetUrl(e.target.value)}
               className="mt-1 w-full rounded-lg border border-border-subtle bg-canvas px-3 py-2 text-xs text-primary focus:border-brand-primary focus:outline-none"
@@ -471,11 +470,10 @@ export function WebhookResiliencyConsolePage() {
           </div>
 
           <div>
-            <label htmlFor="webhook-events" className="block font-medium text-primary">Subscribed Event Patterns</label>
+            <label htmlFor="webhook-events" className="block font-medium text-primary">Event patterns (comma-separated)</label>
             <input id="webhook-events"
               type="text"
               required
-              placeholder="parcel.status.changed,order.created"
               value={subscribedEvents}
               onChange={(e) => setSubscribedEvents(e.target.value)}
               className="mt-1 w-full rounded-lg border border-border-subtle bg-canvas px-3 py-2 text-xs text-primary focus:border-brand-primary focus:outline-none"
@@ -489,7 +487,6 @@ export function WebhookResiliencyConsolePage() {
             <label htmlFor="webhook-description" className="block font-medium text-primary">Description (Optional)</label>
             <input id="webhook-description"
               type="text"
-              placeholder="e.g. Production ERP System Webhook Listener"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="mt-1 w-full rounded-lg border border-border-subtle bg-canvas px-3 py-2 text-xs text-primary focus:border-brand-primary focus:outline-none"

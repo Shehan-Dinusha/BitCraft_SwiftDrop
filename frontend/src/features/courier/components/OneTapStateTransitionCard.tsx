@@ -249,7 +249,6 @@ export function OneTapStateTransitionCard({
                 </label>
                 <input id="failure-notes"
                   type="text"
-                  placeholder="e.g. Called 3 times, gate locked"
                   value={failureNotes}
                   onChange={(e) => setFailureNotes(e.target.value)}
                   className="w-full rounded-lg border border-border-subtle bg-card p-2.5 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-status-danger min-h-[44px]"

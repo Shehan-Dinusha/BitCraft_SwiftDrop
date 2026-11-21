@@ -140,7 +140,7 @@ export function ResetPasswordPage() {
           onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
           inputMode="numeric"
           autoComplete="one-time-code"
-          placeholder="000000"
+          placeholder="6-digit code"
           pattern="\d{6}"
           maxLength={6}
           required
