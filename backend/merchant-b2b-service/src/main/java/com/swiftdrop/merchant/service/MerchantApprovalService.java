@@ -60,11 +60,23 @@ public class MerchantApprovalService {
         } else {
             account = MerchantAccount.builder().ownerUserId(owner).build();
         }
+        String regNo = blankToNull(request.businessRegNo());
+        String website = website(request.websiteUrl());
+        if (regNo == null && website == null) {
+            // The dispatcher needs something to verify; many small sellers have a page but no registration.
+            throw new IllegalArgumentException(
+                    "Give a business registration number or a link to your website or social media page");
+        }
         account.setBusinessName(request.businessName().trim());
-        account.setBusinessRegNo(request.businessRegNo().trim());
+        account.setBusinessCategory(request.businessCategory());
+        account.setMonthlyParcelVolume(request.monthlyParcelVolume());
+        account.setBusinessRegNo(regNo == null ? null : regNo.toUpperCase(java.util.Locale.ROOT));
+        account.setWebsiteUrl(website);
         account.setContactEmail(request.contactEmail().trim());
-        account.setContactPhone(request.contactPhone().trim());
+        account.setContactPhone(phone(request.contactPhone()));
         account.setPickupAddress(request.pickupAddress().trim());
+        account.setPickupCity(request.pickupCity().trim());
+        account.setPickupPostalCode(request.pickupPostalCode().trim());
         account.setOperatingDistrict(request.operatingDistrict());
         account.setStatus(MerchantStatus.PENDING_APPROVAL);
         account.setRejectionReason(null);
@@ -163,6 +175,23 @@ public class MerchantApprovalService {
     private MerchantAccount locked(UUID merchantId) {
         return accounts.findForUpdate(merchantId)
                 .orElseThrow(() -> new MerchantNotFoundException("Merchant not found: " + merchantId));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /** "facebook.com/shop" -> "https://facebook.com/shop". The request pattern has already checked the shape. */
+    static String website(String value) {
+        String url = blankToNull(value);
+        if (url == null) return null;
+        return url.matches("(?i)^https?://.*") ? url : "https://" + url;
+    }
+
+    /** "0771234567" -> "+94771234567", the format the rest of the platform stores. */
+    static String phone(String value) {
+        String number = value.trim();
+        return number.startsWith("0") ? "+94" + number.substring(1) : number;
     }
 
     private void announce(MerchantAccount account, MerchantApplicationEvent.Outcome outcome, String reason,

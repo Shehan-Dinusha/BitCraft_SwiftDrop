@@ -63,6 +63,9 @@ public class UserAccountService {
         if (request.role() != UserRole.CUSTOMER && request.role() != UserRole.MERCHANT) {
             throw new IllegalArgumentException("Self-service registration supports only CUSTOMER and MERCHANT roles");
         }
+        if (request.role() == UserRole.CUSTOMER && request.district() == null) {
+            throw new IllegalArgumentException("District is required");
+        }
         // An abandoned, never-verified sign-up must not lock the real owner out of their own email:
         // a repeat registration for the same address replaces the pending details.
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);

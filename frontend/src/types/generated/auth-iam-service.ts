@@ -1879,7 +1879,8 @@ export interface components {
             password: string;
             /** @description Self-service registration supports CUSTOMER and MERCHANT only. */
             role: components["schemas"]["UserRole"];
-            district: components["schemas"]["SriLankanDistrict"];
+            /** @description Home district. Required for CUSTOMER (400 otherwise); a MERCHANT gives its pickup district on the business application instead. */
+            district?: components["schemas"]["SriLankanDistrict"];
             /** Format: uuid */
             merchantId?: string | null;
         };

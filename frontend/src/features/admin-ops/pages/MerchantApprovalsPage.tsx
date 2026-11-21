@@ -12,6 +12,31 @@ import { Button } from '@/design-system/primitives/Button';
 import { Modal } from '@/design-system/primitives/Modal';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
 import { HighDensityDataGrid } from '@/design-system/components/HighDensityDataGrid/HighDensityDataGrid';
+import { categoryLabel, volumeLabel } from '@/features/merchant/components/merchantApplication';
+
+/** What the dispatcher can check: the registration number and/or the website or social page. */
+function VerifyWith({ regNo, url }: { regNo?: string | null; url?: string | null }) {
+  // Only http(s) links are clickable; the backend stores the scheme, so anything else is shown as text.
+  const safeUrl = url && /^https?:\/\//i.test(url) ? url : null;
+  if (!regNo && !url) return <>—</>;
+  return (
+    <span className="flex flex-col gap-0.5">
+      {regNo && <span className="font-mono">{regNo}</span>}
+      {safeUrl ? (
+        <a
+          href={safeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="max-w-[16rem] truncate text-brand-primary hover:underline"
+        >
+          {safeUrl.replace(/^https?:\/\//i, '')}
+        </a>
+      ) : (
+        url && <span>{url}</span>
+      )}
+    </span>
+  );
+}
 
 function districtName(value?: string | null) {
   return value
@@ -87,7 +112,9 @@ export function MerchantApprovalsPage() {
       else await merchantApi.reactivate(id);
       setMessage(
         `${decision.merchant.businessName} ${ACTION_PAST[decision.action]}.` +
-          (decision.action === 'approve' || decision.action === 'reject' ? ' The owner has been emailed.' : '')
+          (decision.action === 'approve' || decision.action === 'reject'
+            ? ' The owner has been emailed.'
+            : '')
       );
       setDecision(null);
       setRevision((v) => v + 1);
@@ -186,10 +213,29 @@ export function MerchantApprovalsPage() {
           rows={rows.filter((r) => r.merchantId).map((r) => ({ ...r, id: r.merchantId! }))}
           columns={[
             { key: 'businessName', label: 'Business' },
-            { key: 'businessRegNo', label: 'Registration' },
+            {
+              key: 'businessCategory',
+              label: 'Sells',
+              render: (r) => categoryLabel(r.businessCategory)
+            },
+            {
+              key: 'monthlyParcelVolume',
+              label: 'Parcels / month',
+              render: (r) => volumeLabel(r.monthlyParcelVolume)
+            },
+            {
+              key: 'businessRegNo',
+              label: 'Verify with',
+              render: (r) => <VerifyWith regNo={r.businessRegNo} url={r.websiteUrl} />
+            },
             { key: 'contactEmail', label: 'Email' },
             { key: 'contactPhone', label: 'Phone' },
-            { key: 'pickupAddress', label: 'Pickup address' },
+            {
+              key: 'pickupAddress',
+              label: 'Pickup address',
+              render: (r) =>
+                [r.pickupAddress, r.pickupCity, r.pickupPostalCode].filter(Boolean).join(', ')
+            },
             {
               key: 'operatingDistrict',
               label: 'District',
@@ -229,7 +275,10 @@ export function MerchantApprovalsPage() {
                     disabled={busy}
                     onClick={() => {
                       setError('');
-                      setDecision({ merchant: r, action: r.status === 'APPROVED' ? 'suspend' : 'reactivate' });
+                      setDecision({
+                        merchant: r,
+                        action: r.status === 'APPROVED' ? 'suspend' : 'reactivate'
+                      });
                     }}
                   >
                     {r.status === 'APPROVED' ? 'Suspend' : 'Reactivate'}
