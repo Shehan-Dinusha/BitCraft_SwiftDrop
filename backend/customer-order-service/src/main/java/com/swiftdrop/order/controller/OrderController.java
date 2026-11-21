@@ -10,6 +10,7 @@ import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
+import com.swiftdrop.order.service.CustomerOrderBookingService;
 import com.swiftdrop.order.service.CustomerOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,6 +45,7 @@ import java.util.UUID;
 public class OrderController {
 
     private final CustomerOrderService customerOrderService;
+    private final CustomerOrderBookingService customerOrderBookingService;
 
     @GetMapping("/health")
     @Operation(summary = "Check order service health")
@@ -67,7 +69,7 @@ public class OrderController {
         UUID authUserId = HeaderParsing.parseUuidSafe(userIdHeader);
         UUID correlationId = HeaderParsing.parseUuidSafe(correlationIdHeader);
 
-        CustomerOrderResponse response = customerOrderService.createOrder(request, authUserId, correlationId);
+        CustomerOrderResponse response = customerOrderBookingService.book(request, authUserId, correlationId);
         return ApiResponse.success(response, "Order created successfully with tracking number " + response.getTrackingNumber());
     }
 

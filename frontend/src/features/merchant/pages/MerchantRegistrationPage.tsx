@@ -252,8 +252,7 @@ export function MerchantRegistrationPage() {
                 maxLength={255}
                 inputMode="url"
                 autoComplete="url"
-                placeholder="facebook.com/yourshop"
-                hint="Required if you have no registration number"
+                hint="A link such as facebook.com/yourshop. Required if you have no registration number"
                 {...text('websiteUrl')}
               />
             </Section>
@@ -273,7 +272,7 @@ export function MerchantRegistrationPage() {
                 variant="phone"
                 inputMode="numeric"
                 autoComplete="tel-national"
-                placeholder="77 123 4567"
+                hint="9 digits after +94"
                 {...text('contactPhone')}
                 onChange={(event) =>
                   change('contactPhone', normalisePhoneDigits(event.target.value))
@@ -304,7 +303,7 @@ export function MerchantRegistrationPage() {
                 inputMode="numeric"
                 maxLength={5}
                 autoComplete="postal-code"
-                placeholder="10250"
+                hint="5 digits"
                 {...text('pickupPostalCode')}
                 onChange={(event) =>
                   change('pickupPostalCode', event.target.value.replace(/\D/g, '').slice(0, 5))

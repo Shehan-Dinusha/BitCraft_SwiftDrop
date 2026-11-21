@@ -52,14 +52,12 @@ export function AddressFields({
           maxLength={40}
           value={form[house]}
           error={errors[house]}
-          placeholder="45 or 12/A"
           hint="For example No. 45 or 12/A"
           onChange={(event) => onChange(house, event.target.value)}
           onBlur={() => onBlur(house)}
         />
         <Field
           label="Street or road"
-          placeholder="Galle Road"
           required
           autoComplete={`section-${side} address-line2`}
           maxLength={150}
@@ -70,7 +68,6 @@ export function AddressFields({
         />
         <Field
           label="Area or locality"
-          placeholder="Kollupitiya"
           maxLength={98}
           value={form[area]}
           error={errors[area]}
@@ -80,7 +77,6 @@ export function AddressFields({
         />
         <Field
           label="Landmark"
-          placeholder="Opposite Liberty Plaza"
           maxLength={100}
           value={form[landmark]}
           error={errors[landmark]}
@@ -118,7 +114,6 @@ export function AddressFields({
         />
         <Field
           label="City or town"
-          placeholder="Colombo 03"
           required
           autoComplete={`section-${side} address-level2`}
           maxLength={100}
@@ -129,7 +124,6 @@ export function AddressFields({
         />
         <Field
           label="Postal code"
-          placeholder="00300"
           required
           inputMode="numeric"
           autoComplete={`section-${side} postal-code`}

@@ -26,8 +26,6 @@ const SPEEDS: { value: OrderSpeed; title: string; caption: string; icon: JSX.Ele
   }
 ];
 
-const SIZE_EXAMPLE = { lengthCm: '30', widthCm: '20', heightCm: '10' } as const;
-
 const decimal = (value: string) => value.replace(',', '.').replace(/[^\d.]/g, '');
 const unit = (text: string) => <span className="shrink-0 text-body text-muted">{text}</span>;
 
@@ -39,7 +37,6 @@ export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps)
     <Field
       label={label}
       required
-      placeholder={SIZE_EXAMPLE[field]}
       inputMode="decimal"
       value={form[field]}
       error={errors[field]}
@@ -58,7 +55,6 @@ export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps)
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
         <Field
           label="Weight"
-          placeholder="2.5"
           required
           inputMode="decimal"
           className="sm:max-w-[220px]"

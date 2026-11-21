@@ -95,6 +95,7 @@ public class CustomerOrderService {
                 .merchantId(request.getMerchantId())
                 .source(source)
                 .externalRef(externalRef)
+                .clientRequestId(source == OrderSource.CUSTOMER ? request.getClientRequestId() : null)
                 .orderSpeed(estimate.getSpeed())
                 .status(PublicOrderStatus.CREATED)
                 .internalQueueStatus(InternalQueueStatus.CREATED)

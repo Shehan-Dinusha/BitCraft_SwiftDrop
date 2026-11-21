@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { AtSign, ChevronDown, Lock, Mail, MapPin, UserPlus, UserRound } from 'lucide-react';
+import { AtSign, Lock, Mail, UserPlus, UserRound } from 'lucide-react';
 import { Alert } from '@/design-system/components/Alert/Alert';
 import { Button } from '@/design-system/primitives/Button';
 import { Field } from '@/design-system/primitives/Field';
 import { Input } from '@/design-system/primitives/Input';
-import { registerUser, SRI_LANKAN_DISTRICTS, type RegisterUserInput } from '@/services/api/authApi';
+import { registerUser } from '@/services/api/authApi';
 import { parseApiError } from '@/services/api/apiError';
 import { validatePassword } from '@/features/auth/passwordPolicy';
 import {
@@ -19,18 +19,10 @@ import {
   AuthLink,
   AuthShell,
   authFieldClass,
-  authNativeFieldClass,
   FieldIcon,
   GoogleTile
 } from '@/features/auth/components/AuthShell';
 import { cn } from '@/utils/cn';
-
-function districtLabel(value: string): string {
-  return value
-    .split('_')
-    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
-    .join(' ');
-}
 
 /** Shape check only; the server is the authority. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,7 +39,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [district, setDistrict] = useState<RegisterUserInput['district']>('COLOMBO');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -127,9 +118,9 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
           email: normalizedEmail,
           password,
           firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          // A business picks its pickup district once, on the application in step 2.
-          district: business ? undefined : district
+          lastName: lastName.trim()
+          // No district: each order's pickup district decides who handles it, and a business gives
+          // its pickup district on the application in step 2.
         },
         business ? 'MERCHANT' : 'CUSTOMER'
       );
@@ -177,7 +168,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
               onChange={(event) => setFirstName(event.target.value)}
               onBlur={touch('firstName')}
               autoComplete="given-name"
-              placeholder="Nimal"
               maxLength={100}
               required
               autoFocus
@@ -196,7 +186,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
               onChange={(event) => setLastName(event.target.value)}
               onBlur={touch('lastName')}
               autoComplete="family-name"
-              placeholder="Perera"
               maxLength={100}
               required
               className={fieldClass('lastName')}
@@ -219,7 +208,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
             autoComplete="email"
             autoCapitalize="none"
             spellCheck={false}
-            placeholder="name@example.com"
             maxLength={320}
             required
             className={fieldClass('email')}
@@ -231,7 +219,7 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
           />
         </Field>
 
-        <div className={cn('grid grid-cols-1 items-start gap-4', !business && 'sm:grid-cols-2')}>
+        <div className="grid grid-cols-1 items-start gap-4">
           <Field
             label="Username"
             required
@@ -249,7 +237,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
-              placeholder="nimal.perera"
               maxLength={50}
               required
               className={fieldClass('username')}
@@ -261,42 +248,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
             />
           </Field>
 
-          {!business && (
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="signup-district"
-                className="text-xs font-semibold leading-4 text-primary"
-              >
-                District <span className="text-status-danger">*</span>
-              </label>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
-                  <FieldIcon>
-                    <MapPin />
-                  </FieldIcon>
-                </span>
-                <select
-                  id="signup-district"
-                  value={district}
-                  onChange={(event) =>
-                    setDistrict(event.target.value as RegisterUserInput['district'])
-                  }
-                  required
-                  className={authNativeFieldClass}
-                >
-                  {SRI_LANKAN_DISTRICTS.map((value) => (
-                    <option key={value} value={value}>
-                      {districtLabel(value)}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  aria-hidden="true"
-                  className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted"
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex flex-col gap-2">

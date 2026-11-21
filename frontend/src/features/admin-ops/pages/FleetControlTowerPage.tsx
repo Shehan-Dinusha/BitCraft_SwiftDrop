@@ -466,7 +466,6 @@ export function FleetControlTowerPage() {
               </label>
               <input id="fleet-reassign-reason"
                 type="text"
-                placeholder="e.g. VIP express customer, area re-route"
                 value={overrideReason}
                 onChange={(e) => setOverrideReason(e.target.value)}
                 className="w-full rounded border border-border-subtle bg-card p-2 text-xs"

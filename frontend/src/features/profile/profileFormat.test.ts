@@ -34,9 +34,9 @@ describe('profile helpers', () => {
 
   it('validates with the same rules as the server', () => {
     expect(validateProfile(valid)).toEqual({});
+    // The district is not required: customers and merchants have none.
     expect(validateProfile({ ...valid, firstName: ' ', district: '' })).toEqual({
-      firstName: 'Enter your first name',
-      district: 'Choose your district'
+      firstName: 'Enter your first name'
     });
     expect(validateProfile({ ...valid, phone: '12' }).phone).toBeDefined();
     expect(validateProfile({ ...valid, phone: '+94 77 123-4567' })).toEqual({});

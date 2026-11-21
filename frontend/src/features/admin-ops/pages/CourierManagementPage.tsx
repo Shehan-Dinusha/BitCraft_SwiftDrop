@@ -505,7 +505,6 @@ function AddCourierModal({
           variant="phone"
           value={form.phone}
           onChange={set('phone')}
-          placeholder="+94771234567"
           inputMode="tel"
         />
         <Field

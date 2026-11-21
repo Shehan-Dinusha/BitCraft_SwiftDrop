@@ -23,6 +23,8 @@ Use only the design-token colours from [tailwind.config.ts](tailwind.config.ts) 
 
 Keep copy short. Use a title and the controls; add text only when it changes what the user does next (an irreversible consequence, a real limit, an error with a next step). No page subtitles that restate the title, no hints that repeat the label, no explanations of system internals.
 
+Placeholders never show an example answer (a name, phone, address, postal code, plate, "e.g. ..."): an example in the box looks already filled in. Put a format or example in the field's hint instead. Placeholders may only give an instruction, such as "Search orders", "Choose a district" or, on the sign-in screens whose labels are visually hidden, the field name.
+
 Use `tabular-nums` for tracking IDs, ETAs, prices, and currency. Use the semantic delivery-state mapping in [colors.ts](src/design-system/tokens/colors.ts) for every `DeliveryState`; do not invent per-view colors.
 
 ## API and real-time integration

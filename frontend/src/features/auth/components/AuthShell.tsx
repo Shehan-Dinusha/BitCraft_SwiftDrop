@@ -13,9 +13,6 @@ import { mix, SkyBackdrop } from './SkyBackdrop';
 export const authFieldClass =
   'border-transparent bg-elevated hover:border-border-subtle focus-within:bg-card';
 
-/** The same look for native controls the `Input` has no variant for (the district `<select>`). */
-export const authNativeFieldClass =
-  'h-11 w-full appearance-none rounded-lg border border-transparent bg-elevated pl-11 pr-10 text-sm text-primary outline-none transition-colors hover:border-border-subtle focus:bg-card focus:outline focus:outline-2 focus:outline-offset-[-2px] focus:outline-border-focus';
 
 /** Muted leading icon inside a field. */
 export function FieldIcon({ children }: { children: ReactNode }) {

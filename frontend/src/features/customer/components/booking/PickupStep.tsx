@@ -1,8 +1,13 @@
+import type { ReactNode } from 'react';
 import { Field } from '@/design-system';
 import { normalisePhoneDigits } from './bookingForm';
 import { AddressFields, type BookingStepProps } from './AddressFields';
 
-export function PickupStep(props: BookingStepProps) {
+export function PickupStep({
+  addressPicker,
+  saveOption,
+  ...props
+}: BookingStepProps & { addressPicker?: ReactNode; saveOption?: ReactNode }) {
   const { form, errors, onChange, onBlur } = props;
 
   return (
@@ -12,10 +17,11 @@ export function PickupStep(props: BookingStepProps) {
       </legend>
       <p className="text-body text-secondary">The courier collects the parcel from this address.</p>
 
+      {addressPicker}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Field
           label="Contact name"
-          placeholder="Nimal Perera"
           required
           autoComplete="section-pickup name"
           maxLength={100}
@@ -26,7 +32,7 @@ export function PickupStep(props: BookingStepProps) {
         />
         <Field
           label="Contact phone"
-          placeholder="77 123 4567"
+          hint="9 digits after +94"
           required
           variant="phone"
           autoComplete="section-pickup tel-national"
@@ -40,7 +46,6 @@ export function PickupStep(props: BookingStepProps) {
         />
         <Field
           label="Backup phone"
-          placeholder="11 234 5678"
           variant="phone"
           autoComplete="section-pickup tel-national"
           inputMode="numeric"
@@ -55,6 +60,8 @@ export function PickupStep(props: BookingStepProps) {
       </div>
 
       <AddressFields side="pickup" {...props} />
+
+      {saveOption}
     </fieldset>
   );
 }

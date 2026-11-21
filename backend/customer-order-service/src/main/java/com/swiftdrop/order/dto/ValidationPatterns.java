@@ -17,6 +17,14 @@ public final class ValidationPatterns {
     public static final String ADDRESS = "^[\\p{L}\\p{M}\\p{N} .,/#()&'’:-]*$";
     public static final String ADDRESS_MESSAGE = "Contains characters that are not allowed";
 
+    /** One part of an address (house, street): the address characters, with at least one letter or digit. */
+    public static final String ADDRESS_PART = "^(?=.*[\\p{L}\\p{N}])[\\p{L}\\p{M}\\p{N} .,/#()&'’:-]*$";
+    /** An optional address part: empty, or an {@link #ADDRESS_PART}. */
+    public static final String OPTIONAL_ADDRESS_PART = "^$|" + ADDRESS_PART;
+
+    /** A short name for a saved address such as "Home" or "Shop 2": letters, digits and simple punctuation. */
+    public static final String NAME_OR_LABEL = "^[\\p{L}\\p{M}\\p{N} .'’&/-]*$";
+
     /** Person names. */
     public static final String NAME = "^[\\p{L}\\p{M} .'’-]*$";
     public static final String NAME_MESSAGE = "Contains characters that are not allowed";

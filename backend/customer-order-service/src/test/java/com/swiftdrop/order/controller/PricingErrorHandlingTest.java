@@ -1,5 +1,8 @@
 package com.swiftdrop.order.controller;
 
+import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
+import com.swiftdrop.order.service.CustomerOrderBookingService;
+import org.springframework.context.annotation.Import;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
@@ -28,7 +31,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(OutputCaptureExtension.class)
 @WebMvcTest(OrderController.class)
+@Import(CustomerOrderBookingService.class)
 class PricingErrorHandlingTest {
+
+    /** Used by the real {@link CustomerOrderBookingService}; bookings here carry no clientRequestId. */
+    @MockitoBean
+    private CustomerOrderRepository customerOrderRepository;
 
     private static final String DOWNSTREAM_DETAIL =
             "http://pricing-zone-service:8083/api/v1/pricing/quote returned secret-downstream-body";

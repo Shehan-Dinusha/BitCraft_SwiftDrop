@@ -36,6 +36,14 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(404, "Not Found", "Order not found", safePath(request)));
     }
 
+    /** The message is fixed text written by {@link AddressBookException}, never request data. */
+    @ExceptionHandler(AddressBookException.class)
+    public ResponseEntity<ApiErrorResponse> handleAddressBook(AddressBookException ex, HttpServletRequest request) {
+        HttpStatus status = ex.getStatus();
+        return ResponseEntity.status(status)
+                .body(ApiErrorResponse.of(status.value(), status.getReasonPhrase(), ex.getMessage(), safePath(request)));
+    }
+
     @ExceptionHandler(InvalidOrderStateException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidState(InvalidOrderStateException ex, HttpServletRequest request) {
         log.warn("Invalid order state transition on {}", safePath(request));

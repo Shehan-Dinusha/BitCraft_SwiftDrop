@@ -78,16 +78,15 @@ class UserAccountServiceTest {
     }
 
     @Test
-    void registerRequiresADistrictForACustomerOnly() {
+    void registerNeedsNoDistrict() {
+        // Orders are routed by each order's pickup district, so a customer's own district is not asked.
+        when(userAccountRepository.save(any(UserAccount.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         RegisterUserRequest customer = new RegisterUserRequest(
                 "alice", "alice@example.com", null, "Alice", "Perera",
                 "Secret123", UserRole.CUSTOMER, null, null);
-        assertThatThrownBy(() -> userAccountService.register(customer))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("District is required");
+        assertThat(userAccountService.register(customer).role()).isEqualTo(UserRole.CUSTOMER);
 
-        when(userAccountRepository.save(any(UserAccount.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
         RegisterUserRequest business = new RegisterUserRequest(
                 "shop", "shop@example.com", null, "Nimal", "Perera",
                 "Secret123", UserRole.MERCHANT, null, null);

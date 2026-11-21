@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { clearAllDrafts } from '@/features/customer/components/booking/bookingDraft';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { PersonaRole } from '@/types/contracts';
 import type { AuthTokenResponse, AuthUserProfile, UserRole } from '@/services/api/authApi';
@@ -68,13 +69,16 @@ export const useAuthStore = create<Session>()(
           isDevSession: false
         }),
       setUser: (user) => set({ user, role: personaForRole(user.role), isDevSession: false }),
-      signOut: () =>
+      signOut: () => {
+        // A shared phone must not show the previous person's unfinished booking (addresses, phones).
+        clearAllDrafts();
         set({
           token: null,
           user: null,
           role: 'CUSTOMER',
           isDevSession: false
-        })
+        });
+      }
     }),
     {
       name: 'swiftdrop-auth',

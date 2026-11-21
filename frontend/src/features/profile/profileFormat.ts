@@ -56,7 +56,6 @@ export function validateProfile(form: ProfileForm): ProfileErrors {
   else if (form.lastName.trim().length > 100) errors.lastName = 'Use 100 characters or fewer';
   const phone = normalizePhone(form.phone);
   if (phone && !PHONE.test(phone)) errors.phone = 'Enter 7 to 15 digits, optionally starting with +';
-  if (!form.district) errors.district = 'Choose your district';
   return errors;
 }
 
@@ -65,7 +64,8 @@ export function toUpdateRequest(form: ProfileForm): UpdateProfileInput {
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     phone: normalizePhone(form.phone),
-    district: form.district as UpdateProfileInput['district']
+    // Customers and merchants have no district; staff send their assigned one back unchanged.
+    district: (form.district || undefined) as UpdateProfileInput['district']
   };
 }
 
