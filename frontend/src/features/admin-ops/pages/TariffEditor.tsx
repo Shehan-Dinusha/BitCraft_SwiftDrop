@@ -220,7 +220,7 @@ export function TariffEditor({ readOnly = false }: TariffEditorProps) {
         open={confirming}
         onClose={() => setConfirming(false)}
         title="Publish tariff"
-        description="Publishing creates a new tariff version and the current version becomes inactive."
+        description="This replaces the active tariff."
         footer={
           <span className="flex gap-2">
             <Button variant="ghost" onClick={() => setConfirming(false)}>
@@ -233,8 +233,7 @@ export function TariffEditor({ readOnly = false }: TariffEditorProps) {
         }
       >
         <p className="text-body text-secondary">
-          New estimates will use the new version. Existing orders keep the pricing version they
-          were quoted with.
+          Existing orders keep their quoted price.
         </p>
       </Modal>
     </SurfaceCard>

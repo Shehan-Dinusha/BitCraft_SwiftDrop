@@ -88,10 +88,10 @@ export function WebhookDlqReplayTable() {
       label: 'Event Type',
       render: (row) => (
         <div className="flex flex-col">
-          <span className="font-mono text-xs font-semibold text-indigo-600">
+          <span className="font-mono text-xs font-semibold text-brand-primary">
             {row.eventType || 'webhook.event'}
           </span>
-          <span className="text-[10px] text-slate-400">
+          <span className="text-[10px] text-muted">
             {row.createdAt ? new Date(row.createdAt).toLocaleString() : 'N/A'}
           </span>
         </div>
@@ -102,7 +102,7 @@ export function WebhookDlqReplayTable() {
       label: 'Failure Diagnostic',
       render: (row) => (
         <span
-          className="block max-w-[240px] truncate text-xs text-rose-600"
+          className="block max-w-[240px] truncate text-xs text-status-danger-fg"
           title={row.failureReason || row.failureSummary || 'Dispatch failure'}
         >
           {row.failureSummary || 'Failed delivery attempts'}
@@ -113,7 +113,7 @@ export function WebhookDlqReplayTable() {
       key: 'totalAttempts',
       label: 'Retries',
       render: (row) => (
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-700">
+        <span className="rounded bg-canvas px-1.5 py-0.5 font-mono text-[11px] font-medium text-primary">
           {row.totalAttempts || 3}/3
         </span>
       )
@@ -123,12 +123,12 @@ export function WebhookDlqReplayTable() {
       label: 'State',
       render: (row) =>
         row.replayed ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-success-bg px-2 py-0.5 text-[11px] font-semibold text-status-success-fg">
             <CheckCircle2 className="h-3 w-3" />
             REPLAYED
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-danger-bg px-2 py-0.5 text-[11px] font-semibold text-status-danger-fg">
             <AlertOctagon className="h-3 w-3" />
             DEAD-LETTERED
           </span>
@@ -187,7 +187,7 @@ export function WebhookDlqReplayTable() {
             <History className="h-4 w-4 text-brand-primary" />
             <span className="font-semibold text-primary">{records.length}</span> Total Records
             {unreplayedCount > 0 && (
-              <span className="ml-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
+              <span className="ml-1 rounded-full bg-status-danger-bg px-2 py-0.5 text-[11px] font-bold text-status-danger-fg">
                 {unreplayedCount} Pending
               </span>
             )}
@@ -198,7 +198,7 @@ export function WebhookDlqReplayTable() {
               type="checkbox"
               checked={unreplayedOnly}
               onChange={(e) => setUnreplayedOnly(e.target.checked)}
-              className="rounded border-slate-300 text-brand-primary focus:ring-brand-primary"
+              className="rounded border-border-subtle text-brand-primary focus:ring-brand-primary"
             />
             <span>Unreplayed Only</span>
           </label>
@@ -233,9 +233,9 @@ export function WebhookDlqReplayTable() {
       <HighDensityDataGrid
         rows={rows}
         columns={columns}
-        label="Dead-Letter Webhook Queue"
-        filterPlaceholder="Search DLQ records by event type, reason..."
-        emptyMessage="No dead-lettered webhook events recorded."
+        label="Failed events"
+        filterPlaceholder="Search by event or reason"
+        emptyMessage="No failed events."
         density="compact"
       />
 
@@ -243,7 +243,7 @@ export function WebhookDlqReplayTable() {
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Dead-Letter Webhook Diagnostics"
+        title="Failed event"
         size="lg"
       >
         {selectedRecord && (
@@ -268,8 +268,8 @@ export function WebhookDlqReplayTable() {
             </div>
 
             <div>
-              <span className="font-semibold text-rose-600">Terminal Failure Reason:</span>
-              <p className="mt-1 rounded bg-rose-50 p-2 font-mono text-rose-800">
+              <span className="font-semibold text-status-danger-fg">Terminal Failure Reason:</span>
+              <p className="mt-1 rounded bg-status-danger-bg p-2 font-mono text-status-danger-fg">
                 {selectedRecord.failureSummary || 'Delivery failed'}
                 {selectedRecord.errorClass ? ` [${selectedRecord.errorClass}]` : ''}
               </p>
@@ -284,7 +284,7 @@ export function WebhookDlqReplayTable() {
             <div>
               <span className="font-semibold text-secondary">JSON Payload Content:</span>
               {selectedRecord.payload ? (
-                <pre className="mt-1 max-h-60 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-[11px] text-emerald-400">
+                <pre className="mt-1 max-h-60 overflow-auto rounded-lg border border-border-subtle bg-canvas p-3 font-mono text-[11px] text-primary">
                   {(() => {
                     try {
                       return JSON.stringify(JSON.parse(selectedRecord.payload), null, 2);

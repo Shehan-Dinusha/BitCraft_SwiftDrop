@@ -93,7 +93,7 @@ export function VerifyEmailPage() {
       description={
         masked
           ? `We sent a 6-digit code to ${masked}. It expires in 10 minutes.`
-          : 'Enter the 6-digit code we sent to your email. It expires in 10 minutes.'
+          : 'Enter the 6-digit code we emailed you. It expires in 10 minutes.'
       }
       below={
         <>

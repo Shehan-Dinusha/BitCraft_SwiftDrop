@@ -72,16 +72,13 @@ export function AiDeliveryAssistantPanel() {
 
   return (
     <SurfaceCard className="space-y-4 p-4 text-xs">
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3">
+      <div className="flex flex-wrap items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-2">
-          <div className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-600 text-white">
+          <div className="grid h-7 w-7 place-items-center rounded-lg bg-brand-primary text-brand-on">
             <Bot className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Operational Delay Risk & Audits</h2>
-            <p className="text-[11px] text-slate-500">
-              Operational delay risk scoring and safe tool audit records
-            </p>
+            <h2 className="text-sm font-bold text-primary">Delay risk</h2>
           </div>
         </div>
 
@@ -92,8 +89,8 @@ export function AiDeliveryAssistantPanel() {
             onClick={() => setActiveTab('predictor')}
             className={`rounded px-2.5 py-1 font-medium transition-colors ${
               activeTab === 'predictor'
-                ? 'bg-indigo-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-brand-primary text-brand-on'
+                : 'text-secondary hover:bg-canvas'
             }`}
           >
             Delay Risk Predictor
@@ -106,8 +103,8 @@ export function AiDeliveryAssistantPanel() {
             }}
             className={`rounded px-2.5 py-1 font-medium transition-colors ${
               activeTab === 'audits'
-                ? 'bg-indigo-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-brand-primary text-brand-on'
+                : 'text-secondary hover:bg-canvas'
             }`}
           >
             Audit Trail
@@ -120,11 +117,11 @@ export function AiDeliveryAssistantPanel() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <div>
-              <label htmlFor="ai-origin-district" className="text-[11px] text-slate-500">Origin District</label>
+              <label htmlFor="ai-origin-district" className="text-[11px] text-secondary">Origin District</label>
               <select id="ai-origin-district"
                 value={origin}
                 onChange={(e) => setOrigin(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                className="mt-1 w-full rounded border border-border-subtle bg-card px-2 py-1 text-xs"
               >
                 {SRI_LANKAN_DISTRICTS.map((d) => (
                   <option key={d} value={d}>
@@ -135,11 +132,11 @@ export function AiDeliveryAssistantPanel() {
             </div>
 
             <div>
-              <label htmlFor="ai-destination-district" className="text-[11px] text-slate-500">Destination</label>
+              <label htmlFor="ai-destination-district" className="text-[11px] text-secondary">Destination</label>
               <select id="ai-destination-district"
                 value={dest}
                 onChange={(e) => setDest(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                className="mt-1 w-full rounded border border-border-subtle bg-card px-2 py-1 text-xs"
               >
                 {SRI_LANKAN_DISTRICTS.map((d) => (
                   <option key={d} value={d}>
@@ -150,11 +147,11 @@ export function AiDeliveryAssistantPanel() {
             </div>
 
             <div>
-              <label htmlFor="ai-delivery-speed" className="text-[11px] text-slate-500">Delivery Speed</label>
+              <label htmlFor="ai-delivery-speed" className="text-[11px] text-secondary">Delivery Speed</label>
               <select id="ai-delivery-speed"
                 value={speed}
                 onChange={(e) => setSpeed(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                className="mt-1 w-full rounded border border-border-subtle bg-card px-2 py-1 text-xs"
               >
                 <option value="STANDARD">STANDARD</option>
                 <option value="EXPRESS">EXPRESS</option>
@@ -163,11 +160,11 @@ export function AiDeliveryAssistantPanel() {
             </div>
 
             <div>
-              <label htmlFor="ai-weather" className="text-[11px] text-slate-500">Weather Condition</label>
+              <label htmlFor="ai-weather" className="text-[11px] text-secondary">Weather Condition</label>
               <select id="ai-weather"
                 value={weather}
                 onChange={(e) => setWeather(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                className="mt-1 w-full rounded border border-border-subtle bg-card px-2 py-1 text-xs"
               >
                 <option value="CLEAR">CLEAR (Sunny)</option>
                 <option value="RAINY">RAINY (+20% delay)</option>
@@ -176,11 +173,11 @@ export function AiDeliveryAssistantPanel() {
             </div>
 
             <div>
-              <label htmlFor="ai-traffic" className="text-[11px] text-slate-500">Traffic Congestion</label>
+              <label htmlFor="ai-traffic" className="text-[11px] text-secondary">Traffic Congestion</label>
               <select id="ai-traffic"
                 value={traffic}
                 onChange={(e) => setTraffic(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                className="mt-1 w-full rounded border border-border-subtle bg-card px-2 py-1 text-xs"
               >
                 <option value="LOW">LOW</option>
                 <option value="MODERATE">MODERATE (+15%)</option>
@@ -202,32 +199,32 @@ export function AiDeliveryAssistantPanel() {
           </div>
 
           {prediction && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+            <div className="rounded-lg border border-border-subtle bg-canvas p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span
                     className={`rounded px-2 py-0.5 font-bold ${
                       prediction.riskLevel === 'CRITICAL'
-                        ? 'bg-rose-100 text-rose-800'
+                        ? 'bg-status-danger-bg text-status-danger-fg'
                         : prediction.riskLevel === 'HIGH'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-status-warning-bg text-status-warning-fg'
+                          : 'bg-status-success-bg text-status-success-fg'
                     }`}
                   >
                     Risk Level: {prediction.riskLevel} ({prediction.riskScore}%)
                   </span>
-                  <span className="text-slate-500">
+                  <span className="text-secondary">
                     Delay Variance: <strong>+{prediction.predictedDelayMinutes} mins</strong>
                   </span>
                 </div>
 
-                <span className="font-mono text-[11px] text-slate-500">
+                <span className="font-mono text-[11px] text-secondary">
                   Mitigation:{' '}
-                  <strong className="text-indigo-600">{prediction.recommendedAction}</strong>
+                  <strong className="text-brand-primary">{prediction.recommendedAction}</strong>
                 </span>
               </div>
 
-              <p className="mt-2 text-slate-600">{prediction.reasoning}</p>
+              <p className="mt-2 text-secondary">{prediction.reasoning}</p>
             </div>
           )}
         </div>
@@ -237,23 +234,23 @@ export function AiDeliveryAssistantPanel() {
       {activeTab === 'audits' && (
         <div className="space-y-2">
           {auditsLoading ? (
-            <p className="py-4 text-center text-slate-500">Loading AI audit logs...</p>
+            <p className="py-4 text-center text-secondary">Loading AI audit logs...</p>
           ) : audits.length === 0 ? (
-            <p className="py-4 text-center text-slate-500">
-              No recent AI tool invocations logged yet.
+            <p className="py-4 text-center text-secondary">
+              No AI activity yet.
             </p>
           ) : (
             <div className="space-y-1.5">
               {audits.map((a) => (
                 <div
                   key={a.auditId}
-                  className="flex items-center justify-between rounded border border-slate-200 bg-white px-3 py-2 text-[11px]"
+                  className="flex items-center justify-between rounded border border-border-subtle bg-card px-3 py-2 text-[11px]"
                 >
                   <div className="space-y-0.5">
-                    <span className="font-mono font-bold text-indigo-600">{a.toolName}</span>
-                    <p className="text-slate-600">{a.outputResult ?? 'No outcome recorded'}</p>
+                    <span className="font-mono font-bold text-brand-primary">{a.toolName}</span>
+                    <p className="text-secondary">{a.outputResult ?? 'No outcome recorded'}</p>
                   </div>
-                  <div className="text-right text-slate-500">
+                  <div className="text-right text-secondary">
                     <span>{a.executionTimeMs} ms</span>
                     <span className="ml-2 font-semibold">
                       {a.success ? 'SUCCESS' : 'NOT COMPLETED'}

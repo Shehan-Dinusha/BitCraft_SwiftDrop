@@ -115,10 +115,7 @@ export function MerchantRegistrationPage() {
           {previous ? 'Resubmit your application' : 'Step 2 of 2'}
         </p>
         <h1 className="text-h1 text-primary">Tell us about your business</h1>
-        <p className="text-sm text-secondary">
-          The SwiftDrop team of your pickup district reviews these details. Once approved you can create API
-          keys and send orders from your own system.
-        </p>
+        <p className="text-sm text-secondary">Your district team reviews this.</p>
       </header>
       {previous?.rejectionReason && (
         <StatusBanner tone="warning" title="Your application needs changes">

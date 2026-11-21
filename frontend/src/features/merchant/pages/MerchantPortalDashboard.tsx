@@ -18,6 +18,9 @@ import {
 } from '@/services/api/merchantApi';
 import { fetchCurrentUser, refreshTokens } from '@/services/api/authApi';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
+import { districtLabel } from '@/features/profile/profileFormat';
+
+const sentenceCase = (value: string) => value.charAt(0) + value.slice(1).toLowerCase();
 import {
   Store,
   Layers,
@@ -149,34 +152,44 @@ export function MerchantPortalDashboard() {
     return <MerchantApplicationStatus application={application} />;
   }
 
+  // Only real values: a missing district or email is left out, never replaced by a sample.
+  const headerDetails = [
+    profile?.operatingDistrict ? districtLabel(profile.operatingDistrict) : null,
+    profile?.contactEmail || null
+  ].filter((part): part is string => !!part);
+
   return (
     <main className="space-y-4 p-4 md:p-6" data-density="compact">
       {/* Top Header Bar */}
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <div className="flex items-center gap-2">
-            <Store className="h-5 w-5 text-indigo-500" />
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              {profile?.businessName || user?.username || 'Merchant Partner Portal'}
+            <Store className="h-5 w-5 text-brand-primary" />
+            <h1 className="text-xl font-bold tracking-tight text-primary">
+              {profile?.businessName || user?.username || 'Your business'}
             </h1>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-              {profile?.status || 'Status unavailable'}
-            </span>
+            {profile?.status ? (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  profile.status === 'APPROVED'
+                    ? 'bg-status-success-bg text-status-success-fg'
+                    : 'bg-status-warning-bg text-status-warning-fg'
+                }`}
+              >
+                {sentenceCase(profile.status)}
+              </span>
+            ) : null}
           </div>
-          <p className="flex items-center gap-2 text-xs text-slate-500">
-            <span>
-              Operating District: <strong>{profile?.operatingDistrict || 'COLOMBO'}</strong>
-            </span>
-            <span>?</span>
-            <span>{profile?.contactEmail || 'merchants@swiftdrop.lk'}</span>
-          </p>
+          {headerDetails.length > 0 ? (
+            <p className="text-xs text-secondary">{headerDetails.join(' · ')}</p>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <Link to="/merchant/webhooks">
             <Button variant="outline" className="h-8 text-xs">
               <Webhook className="mr-1.5 h-3.5 w-3.5 text-brand-primary" />
-              Webhook Console
+              Webhooks
             </Button>
           </Link>
 
@@ -200,7 +213,7 @@ export function MerchantPortalDashboard() {
 
       {merchantId === null && !errorMsg && (
         <StatusBanner tone="info" title="Merchant access pending">
-          If you have already applied, wait for approval and sign in again. Otherwise,{' '}
+          Applied already? Sign in again once approved. Otherwise,{' '}
           <Link to="/merchant/register" className="underline">
             register your business
           </Link>
@@ -209,47 +222,45 @@ export function MerchantPortalDashboard() {
       )}
       {profile && profile.status !== 'APPROVED' && (
         <StatusBanner tone="warning" title="Approval required">
-          API keys and order ingestion are available only after approval.
+          API keys and order uploads unlock once you're approved.
         </StatusBanner>
       )}
       {/* KPI Stats Strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Total Batches</span>
-            <Layers className="h-4 w-4 text-indigo-500" />
+          <div className="flex items-center justify-between text-xs text-secondary">
+            <span>Uploads</span>
+            <Layers className="h-4 w-4 text-brand-primary" />
           </div>
-          <div className="mt-1 text-lg font-bold text-slate-900">{batches.length}</div>
-          <p className="text-[11px] text-slate-400">Automated CSV / JSON files</p>
+          <div className="mt-1 text-lg font-bold text-primary">{batches.length}</div>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Accepted Orders</span>
-            <PackageCheck className="h-4 w-4 text-emerald-500" />
+          <div className="flex items-center justify-between text-xs text-secondary">
+            <span>Orders accepted</span>
+            <PackageCheck className="h-4 w-4 text-status-success-fg" />
           </div>
-          <div className="mt-1 text-lg font-bold text-slate-900">{totalOrdersDispatched}</div>
-          <p className="text-[11px] text-slate-400">Successfully submitted batch rows</p>
+          <div className="mt-1 text-lg font-bold text-primary">{totalOrdersDispatched}</div>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Success Rate</span>
-            <CheckCircle2 className="h-4 w-4 text-cyan-500" />
+          <div className="flex items-center justify-between text-xs text-secondary">
+            <span>Valid rows</span>
+            <CheckCircle2 className="h-4 w-4 text-status-info-fg" />
           </div>
-          <div className="mt-1 text-lg font-bold text-slate-900">{overallSuccessRate}%</div>
-          <p className="text-[11px] text-slate-400">Valid address & schema</p>
+          <div className="mt-1 text-lg font-bold text-primary">{overallSuccessRate}%</div>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Warehouse Hub</span>
-            <MapPin className="h-4 w-4 text-amber-500" />
+          <div className="flex items-center justify-between text-xs text-secondary">
+            <span>Pickup address</span>
+            <MapPin className="h-4 w-4 text-status-warning-fg" />
           </div>
-          <div className="mt-1 truncate text-xs font-semibold text-slate-900">
-            {profile?.pickupAddress || 'Colombo Central Hub'}
+          <div
+            className={`mt-1 truncate text-xs font-semibold ${profile?.pickupAddress ? 'text-primary' : 'text-muted'}`}
+          >
+            {profile?.pickupAddress || 'Not set'}
           </div>
-          <p className="text-[11px] text-slate-400">Default dispatch pickup</p>
         </SurfaceCard>
       </div>
 
@@ -262,8 +273,7 @@ export function MerchantPortalDashboard() {
           </>
         ) : merchantId === null ? (
           <SurfaceCard className="p-4 text-xs text-secondary lg:col-span-2">
-            Your account is not linked to a merchant, so bulk ingestion and API keys are
-            unavailable. Contact SwiftDrop support to link your login to your merchant account.
+            Your login isn't linked to a business yet. Contact SwiftDrop support.
           </SurfaceCard>
         ) : null}
       </div>
@@ -280,18 +290,18 @@ export function MerchantPortalDashboard() {
       <SurfaceCard className="space-y-3 p-4" data-density="compact">
         <div className="flex items-center justify-between border-b border-border-subtle pb-2">
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4 text-indigo-500" />
-            <h3 className="text-sm font-bold text-slate-900">
+            <FileSpreadsheet className="h-4 w-4 text-brand-primary" />
+            <h3 className="text-sm font-bold text-primary">
               Recent Ingestion Batches ({batches.length})
             </h3>
           </div>
-          <span className="text-xs text-slate-500">Automated Delivery Generation</span>
+          <span className="text-xs text-secondary">Automated Delivery Generation</span>
         </div>
 
         <div className="overflow-x-auto text-xs">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-border-subtle text-slate-500">
+              <tr className="border-b border-border-subtle text-secondary">
                 <th className="pb-2 font-semibold">File / Batch</th>
                 <th className="pb-2 font-semibold">Status</th>
                 <th className="pb-2 font-semibold">Records</th>
@@ -304,33 +314,33 @@ export function MerchantPortalDashboard() {
             <tbody className="divide-y divide-border-subtle">
               {batches.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-500">
-                    No ingestion batches found. Upload your first CSV order batch above.
+                  <td colSpan={7} className="py-6 text-center text-secondary">
+                    No uploads yet.
                   </td>
                 </tr>
               ) : (
                 batches.map((b) => (
-                  <tr key={b.batchId} className="hover:bg-slate-50/50">
-                    <td className="py-2.5 font-medium text-slate-900">{b.fileName}</td>
+                  <tr key={b.batchId} className="hover:bg-canvas">
+                    <td className="py-2.5 font-medium text-primary">{b.fileName}</td>
                     <td className="py-2.5">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           b.batchStatus === 'COMPLETED'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-status-success-bg text-status-success-fg'
                             : b.batchStatus === 'PROCESSING'
-                              ? 'bg-cyan-100 text-cyan-800'
-                              : 'bg-rose-100 text-rose-800'
+                              ? 'bg-status-info-bg text-status-info-fg'
+                              : 'bg-status-danger-bg text-status-danger-fg'
                         }`}
                       >
                         {b.batchStatus}
                       </span>
                     </td>
-                    <td className="py-2.5 font-mono text-slate-700">{b.totalRecords}</td>
-                    <td className="py-2.5 font-mono font-semibold text-emerald-600">
+                    <td className="py-2.5 font-mono text-primary">{b.totalRecords}</td>
+                    <td className="py-2.5 font-mono font-semibold text-status-success-fg">
                       {b.successCount}
                     </td>
-                    <td className="py-2.5 font-mono text-rose-600">{b.failedCount}</td>
-                    <td className="py-2.5 text-slate-500">
+                    <td className="py-2.5 font-mono text-status-danger-fg">{b.failedCount}</td>
+                    <td className="py-2.5 text-secondary">
                       {b.createdAt
                         ? new Date(b.createdAt).toLocaleString([], {
                             dateStyle: 'short',
@@ -342,7 +352,7 @@ export function MerchantPortalDashboard() {
                       <button
                         type="button"
                         onClick={() => handleViewBatchItems(b)}
-                        className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
+                        className="inline-flex items-center gap-1 rounded bg-canvas px-2 py-1 text-[11px] font-medium text-primary hover:bg-border-subtle"
                       >
                         <Eye className="h-3 w-3" />
                         Parcels
@@ -360,20 +370,19 @@ export function MerchantPortalDashboard() {
       <Modal
         open={isItemsModalOpen}
         onClose={() => setIsItemsModalOpen(false)}
-        title={selectedBatch ? `Batch Items: ${selectedBatch.fileName}` : 'Batch Items'}
-        description={`Showing generated tracking numbers and order dispatches for batch #${selectedBatch?.batchId?.substring(0, 8)}`}
+        title={selectedBatch?.fileName ?? 'Upload'}
         size="lg"
       >
         <div className="space-y-3 pt-2 text-xs">
           {itemsLoading ? (
-            <div className="py-8 text-center text-slate-500">Loading batch parcels...</div>
+            <div className="py-8 text-center text-secondary">Loading batch parcels...</div>
           ) : batchItems.length === 0 ? (
-            <div className="py-8 text-center text-slate-500">No items found for this batch.</div>
+            <div className="py-8 text-center text-secondary">No items found for this batch.</div>
           ) : (
             <div className="max-h-96 overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-border-subtle text-slate-500">
+                  <tr className="border-b border-border-subtle text-secondary">
                     <th className="pb-2 font-semibold">#</th>
                     <th className="pb-2 font-semibold">Tracking #</th>
                     <th className="pb-2 font-semibold">Recipient</th>
@@ -384,23 +393,23 @@ export function MerchantPortalDashboard() {
                 </thead>
                 <tbody className="divide-y divide-border-subtle">
                   {batchItems.map((item) => (
-                    <tr key={item.rowIndex} className="hover:bg-slate-50">
-                      <td className="py-2 text-slate-400">{item.rowIndex}</td>
-                      <td className="py-2 font-mono font-bold text-indigo-600">
-                        {item.trackingNumber || 'PENDING'}
+                    <tr key={item.rowIndex} className="hover:bg-canvas">
+                      <td className="py-2 text-muted">{item.rowIndex}</td>
+                      <td className="py-2 font-mono font-bold text-brand-primary">
+                        {item.trackingNumber || 'Pending'}
                       </td>
                       <td className="py-2">
-                        <div className="font-medium text-slate-900">{item.recipientName}</div>
-                        <div className="text-[11px] text-slate-400">{item.recipientPhone}</div>
+                        <div className="font-medium text-primary">{item.recipientName}</div>
+                        <div className="text-[11px] text-muted">{item.recipientPhone}</div>
                       </td>
-                      <td className="py-2 font-medium text-slate-700">{item.deliveryDistrict}</td>
-                      <td className="py-2 font-semibold text-slate-600">{item.deliverySpeed}</td>
+                      <td className="py-2 font-medium text-primary">{item.deliveryDistrict}</td>
+                      <td className="py-2 font-semibold text-secondary">{item.deliverySpeed}</td>
                       <td className="py-2">
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                             item.itemStatus === 'SUCCESS'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-rose-100 text-rose-800'
+                              ? 'bg-status-success-bg text-status-success-fg'
+                              : 'bg-status-danger-bg text-status-danger-fg'
                           }`}
                         >
                           {item.itemStatus}

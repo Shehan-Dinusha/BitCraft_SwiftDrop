@@ -121,14 +121,17 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
     setLoading(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      await registerUser({
-        username: username.trim(),
-        email: normalizedEmail,
-        password,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        district
-      }, business ? 'MERCHANT' : 'CUSTOMER');
+      await registerUser(
+        {
+          username: username.trim(),
+          email: normalizedEmail,
+          password,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          district
+        },
+        business ? 'MERCHANT' : 'CUSTOMER'
+      );
       // The account is unverified until the emailed code is confirmed; after that the user signs in.
       navigate(`/verify-email?identifier=${encodeURIComponent(normalizedEmail)}`, {
         replace: true
@@ -151,11 +154,7 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
       icon={<UserPlus />}
       width="lg"
       title={business ? 'Create your business account' : 'Create your account'}
-      description={
-        business
-          ? "Step 1 of 2: your login. After you confirm your email, you add your business details for your district team to approve."
-          : "Start sending parcels in minutes. We'll email you a code to confirm your address."
-      }
+      description={business ? 'Step 1 of 2: your sign-in details.' : undefined}
       below={
         <>
           Already have an account? <AuthLink to="/login">Sign in</AuthLink>
@@ -175,10 +174,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
       ) : null}
 
       <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-        <p className="text-caption text-muted">
-          Fields marked <span className="text-status-danger">*</span> are required.
-        </p>
-
         <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
           <Field label="First name" required error={errorFor('firstName')}>
             <Input
@@ -276,7 +271,8 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
               htmlFor="signup-district"
               className="text-xs font-semibold leading-4 text-primary"
             >
-              {business ? 'Business district' : 'District'} <span className="text-status-danger">*</span>
+              {business ? 'Business district' : 'District'}{' '}
+              <span className="text-status-danger">*</span>
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">

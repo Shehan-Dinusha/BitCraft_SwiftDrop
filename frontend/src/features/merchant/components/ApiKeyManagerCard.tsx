@@ -192,8 +192,8 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
     <SurfaceCard className="space-y-4 p-4" data-density="compact">
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-2">
-          <Key className="h-4 w-4 text-indigo-500" />
-          <h3 className="text-sm font-bold text-slate-900">API Keys & Machine Integration</h3>
+          <Key className="h-4 w-4 text-brand-primary" />
+          <h3 className="text-sm font-bold text-primary">API Keys & Machine Integration</h3>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -215,13 +215,13 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             disabled={mutating || generating}
           >
             <Plus className="mr-1 h-3.5 w-3.5" />
-            Generate New Key
+            New key
           </Button>
         </div>
       </div>
 
       {errorMsg && (
-        <StatusBanner tone="danger" title="API Key Error" onDismiss={() => setErrorMsg(null)}>
+        <StatusBanner tone="danger" title="Something went wrong" onDismiss={() => setErrorMsg(null)}>
           {errorMsg}
         </StatusBanner>
       )}
@@ -235,7 +235,7 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-border-subtle text-slate-500">
+            <tr className="border-b border-border-subtle text-secondary">
               <th className="pb-2 font-semibold">Key Name</th>
               <th className="pb-2 font-semibold">Key Prefix</th>
               <th className="pb-2 font-semibold">Status</th>
@@ -247,7 +247,7 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
           <tbody className="divide-y divide-border-subtle">
             {keys.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-slate-500">
+                <td colSpan={6} className="py-6 text-center text-secondary">
                   {loading
                     ? 'Loading API keys…'
                     : 'No API keys found. Generate a key to connect your integration.'}
@@ -255,13 +255,13 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
               </tr>
             ) : (
               keys.map((k) => (
-                <tr key={k.keyId} className="hover:bg-slate-50/50">
-                  <td className="py-2.5 font-medium text-slate-900">{k.keyName}</td>
-                  <td className="py-2.5 font-mono text-slate-600">{k.keyPrefix}</td>
+                <tr key={k.keyId} className="hover:bg-canvas">
+                  <td className="py-2.5 font-medium text-primary">{k.keyName}</td>
+                  <td className="py-2.5 font-mono text-secondary">{k.keyPrefix}</td>
                   <td className="py-2.5">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        k.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
+                        k.active ? 'bg-status-success-bg text-status-success-fg' : 'bg-canvas text-primary'
                       }`}
                     >
                       {!k.active
@@ -271,10 +271,10 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
                           : 'ACTIVE'}
                     </span>
                   </td>
-                  <td className="py-2.5 text-slate-500">
+                  <td className="py-2.5 text-secondary">
                     {k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : 'Never'}
                   </td>
-                  <td className="py-2.5 text-slate-500">
+                  <td className="py-2.5 text-secondary">
                     {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : 'Never'}
                   </td>
                   <td className="py-2.5 text-right">
@@ -292,7 +292,7 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
                         type="button"
                         onClick={() => handleRevokeKey(k.keyId)}
                         disabled={mutating}
-                        className="inline-flex items-center gap-1 rounded p-1 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                        className="inline-flex items-center gap-1 rounded p-1 text-status-danger-fg hover:bg-status-danger-bg hover:text-danger-hover"
                         title="Revoke Key"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -324,7 +324,7 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
       >
         {newlyCreatedKey ? (
           <div className="space-y-4 pt-2">
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800">
+            <div className="rounded-xl border border-status-warning-border bg-status-warning-bg p-3 text-xs text-status-warning-fg">
               <div className="flex items-center gap-2 font-bold">
                 <ShieldAlert className="h-4 w-4" />
                 <span>Save Your Secret Token</span>
@@ -336,13 +336,13 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="new-api-key-token" className="text-xs font-semibold text-slate-700">Secret API Key Token:</label>
+              <label htmlFor="new-api-key-token" className="text-xs font-semibold text-primary">Secret API Key Token:</label>
               <div className="flex items-center gap-2">
                 <input id="new-api-key-token"
                   type="text"
                   readOnly
                   value={newlyCreatedKey.rawApiKey || ''}
-                  className="flex-1 rounded-lg border border-border-subtle bg-slate-100 p-2 font-mono text-xs text-slate-800 select-all"
+                  className="flex-1 rounded-lg border border-border-subtle bg-canvas p-2 font-mono text-xs text-primary select-all"
                 />
                 <Button
                   variant="primary"
@@ -357,10 +357,6 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
 
             <div className="space-y-2 text-xs">
               <p className="font-semibold">Usage examples</p>
-              <p>
-                Replace the sample business and parcel details before submitting. Keep your secret
-                out of shared files.
-              </p>
               <textarea
                 aria-label="cURL example"
                 className="w-full rounded border border-border-subtle bg-card p-2 font-mono"
@@ -413,7 +409,7 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
         ) : (
           <form onSubmit={handleGenerateKey} className="space-y-4 pt-2">
             <div className="space-y-1">
-              <label htmlFor="api-key-label" className="text-xs font-semibold text-slate-700">
+              <label htmlFor="api-key-label" className="text-xs font-semibold text-primary">
                 Key Label / Description *
               </label>
               <Input id="api-key-label"
@@ -425,7 +421,7 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="api-key-expiration-days" className="text-xs font-semibold text-slate-700">Expiration (Days)</label>
+              <label htmlFor="api-key-expiration-days" className="text-xs font-semibold text-primary">Expiration (Days)</label>
               <div className="relative">
                 <Input id="api-key-expiration-days"
                   inputMode="numeric"
@@ -436,7 +432,7 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
                     setExpiresInDays(e.target.value === '' ? '' : Number(e.target.value))
                   }
                 />
-                <Clock className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+                <Clock className="absolute right-3 top-2.5 h-4 w-4 text-muted" />
               </div>
             </div>
 

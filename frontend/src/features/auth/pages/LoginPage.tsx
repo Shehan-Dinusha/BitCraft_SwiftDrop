@@ -111,7 +111,7 @@ export function LoginPage() {
       <AuthShell
         icon={<ShieldCheck />}
         title="Enter your sign-in code"
-        description={`For your security we emailed a 6-digit code. It expires in ${challenge.expiresInMinutes} minutes.`}
+        description={`We emailed you a 6-digit code. It expires in ${challenge.expiresInMinutes} minutes.`}
       >
         {error ? (
           <Alert tone="danger" title="Sign-in failed" className="mb-5">
@@ -163,7 +163,6 @@ export function LoginPage() {
     <AuthShell
       icon={<LogIn />}
       title="Sign in to SwiftDrop"
-      description="Send, track and manage your parcels across all 25 districts."
       below={
         <>
           Don&apos;t have an account? <AuthLink to="/register">Create one</AuthLink>

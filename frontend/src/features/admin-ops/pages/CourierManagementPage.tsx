@@ -169,9 +169,6 @@ export function CourierManagementPage() {
             {isAdmin ? 'All districts' : `${districtName(user?.district)} district`}
           </p>
           <h1 className="text-3xl font-bold tracking-tight">Couriers</h1>
-          <p className="mt-2 text-sm text-secondary">
-            Register couriers, check their vehicles and control their access.
-          </p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -476,7 +473,7 @@ function AddCourierModal({
       open={open}
       onClose={close}
       title="Add courier"
-      description="The courier gets an email invite to choose their password and add their vehicle. The link is valid for 72 hours."
+      description="We'll email them an invite. The link is valid for 72 hours."
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" density="compact" disabled={saving} onClick={close}>
@@ -601,7 +598,6 @@ function EditVehicleModal({
       open
       onClose={() => !saving && onClose()}
       title={`Vehicle for ${courier.firstName ?? courier.username}`}
-      description="Correct the vehicle after checking the courier's documents. An active shift picks up the change at once."
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" density="compact" disabled={saving} onClick={onClose}>

@@ -49,28 +49,28 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
     switch (status) {
       case 'SENT':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-caption font-medium text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-success-bg px-2 py-0.5 text-caption font-medium text-status-success-fg border border-status-success-border">
             <CheckCircle2 className="size-3" />
             SENT
           </span>
         );
       case 'FAILED':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-caption font-medium text-rose-700 border border-rose-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-danger-bg px-2 py-0.5 text-caption font-medium text-status-danger-fg border border-status-danger-border">
             <XCircle className="size-3" />
             FAILED
           </span>
         );
       case 'SUPPRESSED':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-caption font-medium text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-warning-bg px-2 py-0.5 text-caption font-medium text-status-warning-fg border border-status-warning-border">
             <AlertTriangle className="size-3" />
             SUPPRESSED
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-caption font-medium text-slate-700 border border-slate-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-canvas px-2 py-0.5 text-caption font-medium text-primary border border-border-subtle">
             {status ?? 'UNKNOWN'}
           </span>
         );
@@ -80,9 +80,9 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
   const getChannelIcon = (channel?: string) => {
     switch (channel?.toUpperCase()) {
       case 'EMAIL':
-        return <Mail className="size-3.5 text-purple-600" />;
+        return <Mail className="size-3.5 text-brand-primary" />;
       default:
-        return <Smartphone className="size-3.5 text-emerald-600" />;
+        return <Smartphone className="size-3.5 text-status-success-fg" />;
     }
   };
 
@@ -92,12 +92,11 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
       size="lg"
       open={open}
       onClose={onClose}
-      title="Notification Dispatch Audit Logs"
-      description="Inspect real-time dispatch events, masked recipients, and template output across Email and Push channels."
+      title="Notification log"
       footer={
         <div className="flex w-full items-center justify-between">
           <span className="text-caption text-muted">
-            {logs.length} audit {logs.length === 1 ? 'record' : 'records'} found · Auto-refreshing every 10s
+            {logs.length} {logs.length === 1 ? 'record' : 'records'}
           </span>
           <Button variant="outline" className="h-8 text-caption" onClick={onClose}>
             Close
@@ -158,10 +157,7 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
         ) : logs.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
             <Bell className="size-8 text-muted opacity-40" />
-            <p className="text-body-strong text-primary">No notification logs recorded</p>
-            <p className="text-caption text-muted">
-              Trigger a parcel status update or order creation to generate simulated dispatch logs.
-            </p>
+            <p className="text-body-strong text-primary">No notifications yet</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -262,7 +258,7 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
                   </div>
 
                   {selectedLog.failureReason && (
-                    <div className="rounded-md bg-rose-50 p-2.5 text-caption text-rose-800 border border-rose-200">
+                    <div className="rounded-md bg-status-danger-bg p-2.5 text-caption text-status-danger-fg border border-status-danger-border">
                       <span className="font-semibold">Failure Reason:</span>
                       <p className="mt-0.5">{selectedLog.failureReason}</p>
                     </div>

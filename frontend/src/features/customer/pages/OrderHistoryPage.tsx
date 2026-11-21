@@ -93,7 +93,6 @@ export function OrderHistoryPage() {
       <PageHeader
         title="My parcels"
         className="border-0 bg-transparent p-0"
-        subtitle="Follow your parcels, answer fee changes and download labels and receipts."
         actions={
           isEmpty ? undefined : (
             <Button type="button" leftIcon={<Plus />} onClick={() => navigate('/customer/book')}>
@@ -121,8 +120,7 @@ export function OrderHistoryPage() {
             </Button>
           }
         >
-          The courier measured the parcel at pickup and the fee changed. Delivery continues once you
-          accept or decline.
+          The fee changed after the courier measured the parcel. Accept or decline to continue.
         </Alert>
       ) : null}
 

@@ -42,7 +42,7 @@ export function ForgotPasswordPage() {
     <AuthShell
       icon={<KeyRound />}
       title="Forgot your password?"
-      description="Enter your username or email and we'll send you a 6-digit reset code."
+      description="We'll email you a 6-digit reset code."
       below={
         <>
           Remembered it? <AuthLink to="/login">Back to sign in</AuthLink>

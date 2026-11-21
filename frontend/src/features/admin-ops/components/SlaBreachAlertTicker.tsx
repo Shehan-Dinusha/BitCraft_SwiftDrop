@@ -19,8 +19,7 @@ export function SlaBreachAlertTicker({
         className="flex items-center gap-2 rounded-lg border border-border-subtle bg-card px-4 py-3 text-sm text-secondary"
       >
         <AlertTriangle className="size-4 shrink-0" />
-        SLA performance is unavailable. Delivery counts and courier workload remain available in
-        Analytics.
+        SLA data is unavailable right now.
       </div>
     );
   }
@@ -31,14 +30,14 @@ export function SlaBreachAlertTicker({
       className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-xs transition-all ${
         isBreached
           ? `${slaColors.critical.background} ${slaColors.critical.foreground} ${slaColors.critical.border}`
-          : 'border-emerald-200 bg-emerald-50/80 text-emerald-800'
+          : 'border-status-success-border bg-status-success-bg text-status-success-fg'
       }`}
     >
       <div className="flex items-center gap-2">
         {isBreached ? (
-          <ShieldAlert className="h-4 w-4 shrink-0 animate-pulse text-rose-500" />
+          <ShieldAlert className="h-4 w-4 shrink-0 animate-pulse text-status-danger-fg" />
         ) : (
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-fg" />
         )}
         <div className="flex flex-wrap items-center gap-1.5 font-medium">
           <span className="font-bold">
@@ -46,7 +45,7 @@ export function SlaBreachAlertTicker({
               ? `${breachCount} Active SLA Breaches Detected`
               : 'All Island Deliveries Within SLA'}
           </span>
-          <span className="text-slate-400">|</span>
+          <span className="text-muted">|</span>
           <span>
             System On-Time Adherence:{' '}
             <strong className="font-mono">{onTimeRate.toFixed(1)}%</strong>
@@ -56,12 +55,12 @@ export function SlaBreachAlertTicker({
 
       {isBreached && criticalDistricts.length > 0 && (
         <div className="flex items-center gap-1.5 text-[11px]">
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+          <AlertTriangle className="h-3.5 w-3.5 text-status-warning-fg" />
           <span>Hotspots:</span>
           {criticalDistricts.map((d) => (
             <span
               key={d}
-              className="rounded bg-rose-200/80 px-1.5 py-0.5 font-mono font-bold text-rose-900"
+              className="rounded bg-status-danger-bg px-1.5 py-0.5 font-mono font-bold text-status-danger-fg"
             >
               {d}
             </span>
