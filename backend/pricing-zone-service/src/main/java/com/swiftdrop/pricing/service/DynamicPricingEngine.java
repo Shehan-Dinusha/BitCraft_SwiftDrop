@@ -49,6 +49,8 @@ public class DynamicPricingEngine {
                 .orElseThrow(() -> new IllegalStateException("Pricing zone not found: " + pickupZoneCode));
 
         boolean isIntraDistrict = request.pickupDistrict() == request.deliveryDistrict();
+        // Fees depend on the zone, not the district: districts in one zone share the zone fees
+        boolean isSameZone = pickupZoneCode.equals(deliveryZoneCode);
 
         // 2. Volumetric and chargeable weight calculation
         BigDecimal volumetricWeight = BigDecimal.ZERO;
@@ -67,11 +69,12 @@ public class DynamicPricingEngine {
         BigDecimal baseFee;
         BigDecimal perStepFee;
 
-        if (isIntraDistrict) {
+        if (isSameZone) {
+            // Same-zone deliveries use the zone's own fees
             baseFee = pickupZone.getBaseFee();
             perStepFee = pickupZone.getPerKgFee();
         } else {
-            // Inter-district fees come from the active default tariff rule
+            // Cross-zone fees come from the active default tariff rule
             baseFee = rule.getBasePrice();
             perStepFee = rule.getPricePerStep();
         }
