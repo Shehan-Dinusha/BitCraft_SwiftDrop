@@ -50,7 +50,10 @@ public enum InternalQueueStatus {
             case CREATED -> CREATED;
             case ASSIGNED -> PICKUP_ASSIGNED;
             case PICKED_UP -> PICKED_UP;
+            case AT_ORIGIN_HUB -> AT_HUB;
             case IN_TRANSIT -> OUTBOUND;
+            // At the drop-off district's hub, waiting for a last-mile courier.
+            case AT_DESTINATION_HUB -> INCOMING;
             case OUT_FOR_DELIVERY -> OUT_FOR_DELIVERY;
             case DELIVERED -> DELIVERED;
             case FAILED -> FAILED_ATTEMPT;

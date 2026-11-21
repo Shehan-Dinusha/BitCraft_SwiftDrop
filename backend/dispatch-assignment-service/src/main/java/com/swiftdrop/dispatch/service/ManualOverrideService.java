@@ -1,5 +1,6 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
 import com.swiftdrop.dispatch.security.DistrictScope;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
@@ -85,7 +86,11 @@ public class ManualOverrideService {
 
         DispatchAssignment assignment = findActiveAssignment(request.orderId());
         if (caller != null) {
-            DistrictScope.requireManage(caller, assignment.getPickupDistrict());
+            DistrictScope.requireManage(caller, assignment.getResponsibleDistrict());
+        }
+        if (assignment.getStatus() == AssignmentStatus.IN_TRANSFER) {
+            throw new AssignmentConflictException("Order " + request.orderId()
+                    + " is between district hubs. The drop-off district assigns a courier once its hub accepts it.");
         }
         if (assignment.getStatus() != AssignmentStatus.UNASSIGNED || assignment.getCourierId() != null) {
             throw new AssignmentConflictException("Order " + request.orderId()
@@ -99,7 +104,13 @@ public class ManualOverrideService {
         incrementWorkload(courier);
 
         assignment = applyCourier(assignment, courier, AssignmentStatus.ASSIGNED, request.assignedBy());
-        publishAssignmentEvents(assignment, courier, previousPublicStatus, correlationId);
+        if (assignment.getLeg() == AssignmentLeg.LAST_MILE) {
+            // The parcel waits at the drop-off hub: customers already see it in transit, so only the
+            // courier assignment is published (a PICKUP_ASSIGNED status would move it backwards).
+            publishCourierAssigned(assignment, courier, eventCorrelationId(correlationId));
+        } else {
+            publishAssignmentEvents(assignment, courier, previousPublicStatus, correlationId);
+        }
         return assignment;
     }
 
@@ -142,7 +153,7 @@ public class ManualOverrideService {
 
         DispatchAssignment assignment = findActiveAssignment(request.orderId());
         if (caller != null) {
-            DistrictScope.requireManage(caller, assignment.getPickupDistrict());
+            DistrictScope.requireManage(caller, assignment.getResponsibleDistrict());
         }
         UUID currentCourierId = assignment.getCourierId();
         if (assignment.getStatus() == AssignmentStatus.UNASSIGNED || currentCourierId == null) {
@@ -182,6 +193,7 @@ public class ManualOverrideService {
         return switch (status) {
             case UNASSIGNED -> PublicOrderStatus.CREATED;
             case ASSIGNED, REASSIGNED -> PublicOrderStatus.PICKUP_ASSIGNED;
+            case IN_TRANSFER -> PublicOrderStatus.IN_TRANSIT;
             case COMPLETED -> PublicOrderStatus.DELIVERED;
             case CANCELLED -> PublicOrderStatus.CANCELLED;
         };
@@ -212,12 +224,17 @@ public class ManualOverrideService {
         return courier;
     }
 
-    /** A courier collects parcels in the district they work in, never in another one. */
+    /**
+     * A courier works only in their own district: the pickup district for the first leg, the drop-off
+     * district for the last.
+     */
     private void requireCourierInPickupDistrict(CourierShift courier, DispatchAssignment assignment) {
-        if (assignment.getPickupDistrict() != null && courier.getCurrentDistrict() != assignment.getPickupDistrict()) {
+        var district = assignment.getResponsibleDistrict();
+        if (district != null && courier.getCurrentDistrict() != district) {
             throw new CourierNotAvailableException("Courier " + courier.getCourierName() + " works in "
-                    + DistrictScope.label(courier.getCurrentDistrict()) + ", but this parcel is picked up in "
-                    + DistrictScope.label(assignment.getPickupDistrict()));
+                    + DistrictScope.label(courier.getCurrentDistrict()) + ", but this parcel is "
+                    + (assignment.getLeg() == AssignmentLeg.LAST_MILE ? "delivered from the " : "picked up in ")
+                    + DistrictScope.label(district) + (assignment.getLeg() == AssignmentLeg.LAST_MILE ? " hub" : ""));
         }
     }
 

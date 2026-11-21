@@ -228,11 +228,18 @@ components:
   schemas:
     DeliveryState:
       type: string
+      description: >-
+        Same district: PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY. Different districts go through both
+        hubs: PICKED_UP -> AT_ORIGIN_HUB (the first courier hands it in) -> IN_TRANSIT (the pickup
+        district's dispatcher marks it Outbound) -> AT_DESTINATION_HUB (the drop-off district's
+        dispatcher accepts it) -> OUT_FOR_DELIVERY (a courier of the drop-off district collects it).
       enum:
         - CREATED
         - ASSIGNED
         - PICKED_UP
+        - AT_ORIGIN_HUB
         - IN_TRANSIT
+        - AT_DESTINATION_HUB
         - OUT_FOR_DELIVERY
         - DELIVERED
         - FAILED

@@ -34,9 +34,15 @@ public final class AssignmentStateMachine {
             case UNASSIGNED -> target == AssignmentStatus.ASSIGNED
                     || target == AssignmentStatus.CANCELLED;
             case ASSIGNED -> target == AssignmentStatus.REASSIGNED
+                    || target == AssignmentStatus.IN_TRANSFER
                     || target == AssignmentStatus.COMPLETED
                     || target == AssignmentStatus.CANCELLED;
-            case REASSIGNED -> target == AssignmentStatus.COMPLETED
+            case REASSIGNED -> target == AssignmentStatus.IN_TRANSFER
+                    || target == AssignmentStatus.COMPLETED
+                    || target == AssignmentStatus.CANCELLED;
+            // Accepted at the drop-off hub, the order waits for its last-mile courier.
+            case IN_TRANSFER -> target == AssignmentStatus.UNASSIGNED
+                    || target == AssignmentStatus.COMPLETED
                     || target == AssignmentStatus.CANCELLED;
             case CANCELLED, COMPLETED -> false;
         };

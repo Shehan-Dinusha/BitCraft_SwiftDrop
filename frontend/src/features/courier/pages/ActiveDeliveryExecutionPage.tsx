@@ -7,7 +7,7 @@ import type {
   DeliveryState,
   DeliveryFailureReason
 } from '@/services/api/deliveryApi';
-import { allowedTransitions } from '@/types/fsm';
+import { courierNextStep, crossesDistricts } from '@/types/fsm';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
@@ -45,15 +45,12 @@ export function ActiveDeliveryExecutionPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Compute allowed next states for ErgonomicActionBar from FSM definition
+  // A parcel going to another district goes through both hubs; the courier's next step depends on it.
+  const viaHubs = session ? crossesDistricts(session) : false;
   const allowedNextStates = useMemo(() => {
-    if (!session?.currentState || !(session.currentState in allowedTransitions)) {
-      return [] as DeliveryState[];
-    }
-    return (allowedTransitions[session.currentState as DeliveryState] || []).filter(
-      (s) => s !== 'CANCELLED' && s !== 'FAILED'
-    ) as DeliveryState[];
-  }, [session?.currentState]);
+    const next = courierNextStep(session?.currentState as DeliveryState | undefined, viaHubs);
+    return next ? [next] : ([] as DeliveryState[]);
+  }, [session?.currentState, viaHubs]);
 
   // Load delivery session
   const loadDelivery = useCallback(async () => {
@@ -261,6 +258,7 @@ export function ActiveDeliveryExecutionPage() {
             <div className="py-2">
               <DeliveryProgressStepper
                 current={(session.currentState || 'CREATED') as DeliveryState}
+                viaHubs={viaHubs}
                 density="touch"
               />
             </div>

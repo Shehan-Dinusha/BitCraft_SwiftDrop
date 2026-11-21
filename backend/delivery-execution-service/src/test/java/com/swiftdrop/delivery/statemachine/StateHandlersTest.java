@@ -51,23 +51,25 @@ class StateHandlersTest {
     }
 
     @Test
-    @DisplayName("PickedUpState allows only IN_TRANSIT and FAILED")
+    @DisplayName("PickedUpState allows IN_TRANSIT, AT_ORIGIN_HUB and FAILED")
     void testPickedUpState() {
         PickedUpState state = new PickedUpState();
         assertThat(state.state()).isEqualTo(DeliveryState.PICKED_UP);
         assertThat(state.allowedNext()).containsExactlyInAnyOrder(
                 DeliveryState.IN_TRANSIT,
+                DeliveryState.AT_ORIGIN_HUB,
                 DeliveryState.FAILED
         );
     }
 
     @Test
-    @DisplayName("InTransitState allows only OUT_FOR_DELIVERY and FAILED")
+    @DisplayName("InTransitState allows OUT_FOR_DELIVERY, AT_DESTINATION_HUB and FAILED")
     void testInTransitState() {
         InTransitState state = new InTransitState();
         assertThat(state.state()).isEqualTo(DeliveryState.IN_TRANSIT);
         assertThat(state.allowedNext()).containsExactlyInAnyOrder(
                 DeliveryState.OUT_FOR_DELIVERY,
+                DeliveryState.AT_DESTINATION_HUB,
                 DeliveryState.FAILED
         );
     }

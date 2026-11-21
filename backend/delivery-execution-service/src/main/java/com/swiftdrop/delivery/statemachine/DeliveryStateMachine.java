@@ -1,5 +1,7 @@
 package com.swiftdrop.delivery.statemachine;
 
+import com.swiftdrop.delivery.statemachine.states.AtDestinationHubState;
+import com.swiftdrop.delivery.statemachine.states.AtOriginHubState;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 import com.swiftdrop.delivery.statemachine.states.AssignedState;
@@ -37,7 +39,9 @@ public class DeliveryStateMachine {
                 new CreatedState(),
                 new AssignedState(),
                 new PickedUpState(),
+                new AtOriginHubState(),
                 new InTransitState(),
+                new AtDestinationHubState(),
                 new OutForDeliveryState(),
                 new DeliveredState(),
                 new FailedState(),

@@ -151,8 +151,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @enum {string} */
-        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED" | "CANCELLED";
+        /**
+         * @description Same district: PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY. Different districts go through both hubs: PICKED_UP -> AT_ORIGIN_HUB (the first courier hands it in) -> IN_TRANSIT (the pickup district's dispatcher marks it Outbound) -> AT_DESTINATION_HUB (the drop-off district's dispatcher accepts it) -> OUT_FOR_DELIVERY (a courier of the drop-off district collects it).
+         * @enum {string}
+         */
+        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "AT_ORIGIN_HUB" | "IN_TRANSIT" | "AT_DESTINATION_HUB" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED" | "CANCELLED";
         /** @enum {string} */
         DeliveryFailureReason: "RECIPIENT_UNAVAILABLE" | "INCORRECT_ADDRESS" | "ACCESS_RESTRICTED" | "RECIPIENT_REJECTED" | "DAMAGED_IN_TRANSIT" | "ADVERSE_WEATHER" | "SYSTEM_CANCELLATION" | "OTHER";
         /** @enum {string} */

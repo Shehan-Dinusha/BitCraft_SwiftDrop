@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
 import com.swiftdrop.delivery.statemachine.DeliveryStateHandler;
+import com.swiftdrop.delivery.statemachine.HubRoute;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumSet;
@@ -19,12 +20,13 @@ public class PickedUpState implements DeliveryStateHandler {
 
     @Override
     public Set<DeliveryState> allowedNext() {
-        return EnumSet.of(DeliveryState.IN_TRANSIT, DeliveryState.FAILED);
+        return EnumSet.of(DeliveryState.IN_TRANSIT, DeliveryState.AT_ORIGIN_HUB, DeliveryState.FAILED);
     }
 
     @Override
     public void validate(TransitionDeliveryRequest request, DeliverySession session) {
-        // Preconditions evaluated when moving from PICKED_UP
+        // Same district goes straight on; different districts go through the hubs (see HubRoute).
+        HubRoute.requireRoute(DeliveryState.PICKED_UP, request.targetState(), session);
     }
 }
 

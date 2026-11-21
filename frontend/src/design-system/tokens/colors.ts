@@ -26,11 +26,23 @@ export const deliveryStateColors: Record<DeliveryState, DeliveryStateTokens> = {
     border: 'border-fsm-picked-up-border',
     glyph: '↑'
   },
+  AT_ORIGIN_HUB: {
+    background: 'bg-fsm-in-transit-bg',
+    foreground: 'text-fsm-in-transit-fg',
+    border: 'border-fsm-in-transit-border',
+    glyph: '⌂'
+  },
   IN_TRANSIT: {
     background: 'bg-fsm-in-transit-bg',
     foreground: 'text-fsm-in-transit-fg',
     border: 'border-fsm-in-transit-border',
     glyph: '»'
+  },
+  AT_DESTINATION_HUB: {
+    background: 'bg-fsm-in-transit-bg',
+    foreground: 'text-fsm-in-transit-fg',
+    border: 'border-fsm-in-transit-border',
+    glyph: '⌂'
   },
   OUT_FOR_DELIVERY: {
     background: 'bg-fsm-out-for-delivery-bg',
@@ -143,7 +155,10 @@ export const publicStatusColors: Record<PublicOrderStatus, PublicStatusTokens> =
   }
 };
 
-/** Accepts the older frontend `ASSIGNED` state as an alias of `PICKUP_ASSIGNED`. */
+/** Accepts the older frontend `ASSIGNED` state as an alias of `PICKUP_ASSIGNED`, and hub steps as in transit. */
 export function toPublicStatus(state: DeliveryState | PublicOrderStatus): PublicOrderStatus {
-  return state === 'ASSIGNED' ? 'PICKUP_ASSIGNED' : state;
+  if (state === 'ASSIGNED') return 'PICKUP_ASSIGNED';
+  // Customers see the hub steps as "in transit", the same as the delivery service publishes them.
+  if (state === 'AT_ORIGIN_HUB' || state === 'AT_DESTINATION_HUB') return 'IN_TRANSIT';
+  return state;
 }
