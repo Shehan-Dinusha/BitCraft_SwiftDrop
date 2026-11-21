@@ -3,6 +3,7 @@ import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard'
 import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 import { Button } from '@/design-system/primitives/Button';
 import { SlideToTransitionBar } from '@/design-system/components/SlideToTransitionBar/SlideToTransitionBar';
+import { FAILURE_REASONS } from './DeliveryFailureReportModal';
 import type { DeliverySessionResponse, DeliveryState, DeliveryFailureReason } from '@/services/api/deliveryApi';
 import {
   PackageCheck,
@@ -45,14 +46,7 @@ export function OneTapStateTransitionCard({
   return (
     <SurfaceCard variant="elevated" className="space-y-4 p-5" data-density="touch">
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            FSM Transition Action
-          </span>
-          <h3 className="text-base font-bold text-slate-900">
-            Current Stage: {currentState}
-          </h3>
-        </div>
+        <h3 className="text-base font-bold text-slate-900">Next step</h3>
         <FsmStatusBadge state={currentState} size="lg" />
       </div>
 
@@ -61,7 +55,7 @@ export function OneTapStateTransitionCard({
         {currentState === 'ASSIGNED' && (
           <div className="space-y-3">
             <p className="text-sm text-slate-600">
-              You are assigned to this delivery. Arrive at pickup point and confirm receipt of package.
+              Go to the pickup point and collect the parcel.
             </p>
             <SlideToTransitionBar
               label="Slide to confirm pickup"
@@ -79,7 +73,7 @@ export function OneTapStateTransitionCard({
               disabled={isPending}
             >
               <PackageCheck className="mr-2 h-4 w-4 text-emerald-500" />
-              One-Tap: Confirm Package Pickup
+              Confirm pickup
             </Button>
           </div>
         )}
@@ -87,7 +81,7 @@ export function OneTapStateTransitionCard({
         {currentState === 'PICKED_UP' && (
           <div className="space-y-3">
             <p className="text-sm text-slate-600">
-              Package securely in your possession. Start the transit to customer delivery address.
+              Head to the delivery address.
             </p>
             <SlideToTransitionBar
               label="Slide to start transit"
@@ -105,7 +99,7 @@ export function OneTapStateTransitionCard({
               disabled={isPending}
             >
               <Truck className="mr-2 h-4 w-4" />
-              One-Tap: Start Delivery Transit
+              Start trip
             </Button>
           </div>
         )}
@@ -113,10 +107,10 @@ export function OneTapStateTransitionCard({
         {currentState === 'IN_TRANSIT' && (
           <div className="space-y-3">
             <p className="text-sm text-slate-600">
-              Package in transit. Arrive at recipient delivery destination and confirm you are Out for Delivery.
+              Confirm when you reach the recipient.
             </p>
             <SlideToTransitionBar
-              label="Slide to mark Out for Delivery"
+              label="Slide when you arrive"
               confirmLabel="Release to confirm arrival"
               onConfirm={() => onTransition('OUT_FOR_DELIVERY', undefined, 'Courier arrived at destination')}
               disabled={isPending}
@@ -131,7 +125,7 @@ export function OneTapStateTransitionCard({
               disabled={isPending}
             >
               <MapPin className="mr-2 h-4 w-4" />
-              One-Tap: Arrived (Out for Delivery)
+              I've arrived
             </Button>
           </div>
         )}
@@ -151,7 +145,7 @@ export function OneTapStateTransitionCard({
                     <FileCheck className="h-5 w-5 text-amber-600" />
                   )}
                   <span className="text-sm font-bold text-slate-900">
-                    {isPoDVerified ? 'PoD Guard: Cleared' : 'PoD Guard: Required'}
+                    {isPoDVerified ? 'Proof captured' : 'Proof of delivery needed'}
                   </span>
                 </div>
                 <Button
@@ -159,14 +153,9 @@ export function OneTapStateTransitionCard({
                   className="min-h-[40px] text-xs"
                   onClick={onOpenPoD}
                 >
-                  {isPoDVerified ? 'View / Update PoD' : 'Capture PoD (Photo)'}
+                  {isPoDVerified ? 'Update' : 'Take photo'}
                 </Button>
               </div>
-              <p className="mt-2 text-xs text-slate-600">
-                {isPoDVerified
-                  ? 'Proof of delivery verified! You can now complete the final delivery handover.'
-                  : 'A photo of the delivered package and the recipient name must be captured before handover can be completed.'}
-              </p>
             </div>
 
             {isPoDVerified ? (
@@ -184,7 +173,7 @@ export function OneTapStateTransitionCard({
                 className="w-full min-h-[48px] text-sm opacity-60"
                 onClick={onOpenPoD}
               >
-                Complete Delivery (Capture PoD first)
+                Take a photo to complete
               </Button>
             )}
           </div>
@@ -193,9 +182,9 @@ export function OneTapStateTransitionCard({
         {currentState === 'DELIVERED' && (
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
             <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" />
-            <h4 className="mt-2 font-bold text-slate-900">Delivery Completed</h4>
+            <h4 className="mt-2 font-bold text-slate-900">Delivered</h4>
             <p className="mt-1 text-xs text-slate-500">
-              Completed at: {session.deliveredAt ? new Date(session.deliveredAt).toLocaleTimeString() : 'Recently'}
+              {session.deliveredAt ? new Date(session.deliveredAt).toLocaleTimeString() : 'Recently'}
             </p>
           </div>
         )}
@@ -203,9 +192,12 @@ export function OneTapStateTransitionCard({
         {(currentState === 'FAILED' || currentState === 'CANCELLED') && (
           <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-center">
             <AlertTriangle className="mx-auto h-8 w-8 text-rose-600" />
-            <h4 className="mt-2 font-bold text-slate-900">Order {currentState}</h4>
+            <h4 className="mt-2 font-bold text-slate-900">
+              {currentState === 'FAILED' ? 'Delivery failed' : 'Cancelled'}
+            </h4>
             <p className="mt-1 text-xs text-slate-500">
-              Reason: {session.failedReason || 'Not specified'}
+              {FAILURE_REASONS.find((r) => r.value === session.failedReason)?.label ??
+                (session.failedReason || 'No reason given')}
             </p>
           </div>
         )}
@@ -218,7 +210,7 @@ export function OneTapStateTransitionCard({
               className="flex w-full items-center justify-between text-xs font-semibold text-rose-600 hover:text-rose-700"
               onClick={() => setShowFailurePanel(!showFailurePanel)}
             >
-              <span>Need to report delivery issue or failure?</span>
+              <span>Can't deliver?</span>
               {showFailurePanel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
 
@@ -233,37 +225,31 @@ export function OneTapStateTransitionCard({
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-rose-600" />
                   <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900">
-                    Report Delivery Failure Form
+                    Report failed delivery
                   </h4>
                 </div>
-                <p className="text-xs text-rose-700">
-                  Select the failure reason and provide operational notes to mark this delivery attempt as failed.
-                </p>
 
                 <label htmlFor="failure-reason" className="block text-xs font-semibold text-slate-700">
-                  Failure Reason:
+                  Reason
                 </label>
                 <select id="failure-reason"
                   value={failureReason}
                   onChange={(e) => setFailureReason(e.target.value as DeliveryFailureReason)}
                   className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
                 >
-                  <option value="RECIPIENT_UNAVAILABLE">Recipient Unavailable / Not Home</option>
-                  <option value="INCORRECT_ADDRESS">Incorrect / Incomplete Address</option>
-                  <option value="ACCESS_RESTRICTED">Access Restricted / Gated Area</option>
-                  <option value="RECIPIENT_REJECTED">Customer Refused Package</option>
-                  <option value="DAMAGED_IN_TRANSIT">Package Damaged During Transit</option>
-                  <option value="ADVERSE_WEATHER">Severe Weather / Road Block</option>
-                  <option value="SYSTEM_CANCELLATION">Order Cancelled by System</option>
-                  <option value="OTHER">Other Reason</option>
+                  {FAILURE_REASONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
                 </select>
 
                 <label htmlFor="failure-notes" className="block text-xs font-semibold text-slate-700">
-                  Courier Note / Explanation:
+                  Note
                 </label>
                 <input id="failure-notes"
                   type="text"
-                  placeholder="e.g. Phoned recipient 3 times, gate locked, no neighbor response"
+                  placeholder="e.g. Called 3 times, gate locked"
                   value={failureNotes}
                   onChange={(e) => setFailureNotes(e.target.value)}
                   className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
@@ -278,7 +264,7 @@ export function OneTapStateTransitionCard({
                   disabled={isPending || !failureNotes.trim()}
                 >
                   <AlertTriangle className="mr-2 h-4 w-4" />
-                  Confirm & Report Delivery Failure
+                  Report failed delivery
                 </Button>
               </form>
             )}

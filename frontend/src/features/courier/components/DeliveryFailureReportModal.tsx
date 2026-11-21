@@ -15,47 +15,15 @@ export interface DeliveryFailureReportModalProps {
   loading?: boolean;
 }
 
-export const FAILURE_REASONS: { value: DeliveryFailureReason; label: string; description: string }[] = [
-  {
-    value: 'RECIPIENT_UNAVAILABLE',
-    label: 'Recipient Unavailable / Not Home',
-    description: 'Customer not at address and unreachable by phone.'
-  },
-  {
-    value: 'INCORRECT_ADDRESS',
-    label: 'Incorrect / Incomplete Address',
-    description: 'Address does not exist or missing house/building number.'
-  },
-  {
-    value: 'ACCESS_RESTRICTED',
-    label: 'Access Restricted / Gated Area',
-    description: 'Security gate refused entry or location inaccessible.'
-  },
-  {
-    value: 'RECIPIENT_REJECTED',
-    label: 'Customer Refused Package',
-    description: 'Recipient rejected delivery or cancelled order.'
-  },
-  {
-    value: 'DAMAGED_IN_TRANSIT',
-    label: 'Package Damaged in Transit',
-    description: 'Parcel seal broken or merchandise visibly damaged.'
-  },
-  {
-    value: 'ADVERSE_WEATHER',
-    label: 'Severe Weather / Road Block',
-    description: 'Flooding, storm, or impassable road conditions.'
-  },
-  {
-    value: 'SYSTEM_CANCELLATION',
-    label: 'Order Cancelled by System / Dispatch',
-    description: 'Dispatch or merchant aborted the delivery run.'
-  },
-  {
-    value: 'OTHER',
-    label: 'Other Operational Issue',
-    description: 'Any other unforeseen delivery disruption.'
-  }
+export const FAILURE_REASONS: { value: DeliveryFailureReason; label: string }[] = [
+  { value: 'RECIPIENT_UNAVAILABLE', label: 'Recipient not home' },
+  { value: 'INCORRECT_ADDRESS', label: 'Wrong or incomplete address' },
+  { value: 'ACCESS_RESTRICTED', label: "Couldn't get access" },
+  { value: 'RECIPIENT_REJECTED', label: 'Recipient refused it' },
+  { value: 'DAMAGED_IN_TRANSIT', label: 'Parcel damaged' },
+  { value: 'ADVERSE_WEATHER', label: 'Weather or road blocked' },
+  { value: 'SYSTEM_CANCELLATION', label: 'Cancelled by dispatch' },
+  { value: 'OTHER', label: 'Other' }
 ];
 
 export function DeliveryFailureReportModal({
@@ -72,7 +40,7 @@ export function DeliveryFailureReportModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!notes.trim()) {
-      setValidationError('Please provide a brief explanatory note describing the issue.');
+      setValidationError('Add a short note.');
       return;
     }
     setValidationError(null);
@@ -85,15 +53,15 @@ export function DeliveryFailureReportModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Report Delivery Failure"
-      description={`Report an issue for parcel ${trackingNumber || 'in progress'}. This will mark the attempt as failed.`}
+      title="Report failed delivery"
+      description={trackingNumber || undefined}
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4 pt-2" data-density="touch">
         <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
           <p>
-            Marking this delivery as failed will increment the attempt count and notify dispatch operations.
+            This counts as a failed attempt and alerts dispatch.
           </p>
         </div>
 
@@ -103,7 +71,7 @@ export function DeliveryFailureReportModal({
           </div>
         )}
 
-        <Field label="Failure Reason" required>
+        <Field label="Reason" required>
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value as DeliveryFailureReason)}
@@ -117,10 +85,10 @@ export function DeliveryFailureReportModal({
           </select>
         </Field>
 
-        <Field label="Explanatory Note / Remarks" required>
+        <Field label="Note" required>
           <div className="relative">
             <Input
-              placeholder="e.g. Phoned recipient 3 times, gate locked, no neighbor response"
+              placeholder="e.g. Called 3 times, gate locked"
               value={notes}
               onChange={(e) => {
                 setNotes(e.target.value);
@@ -151,7 +119,7 @@ export function DeliveryFailureReportModal({
             loading={loading}
           >
             <AlertTriangle className="mr-2 h-4 w-4" />
-            Report Failure
+            Report
           </Button>
         </div>
       </form>

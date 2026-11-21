@@ -178,11 +178,8 @@ export function CourierShiftDashboard() {
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Courier Shift Dashboard
+            My shift
           </h1>
-          <p className="text-sm text-slate-500">
-            Real-time shift controls, vehicle capacity, and live dispatch assignments.
-          </p>
         </div>
         <Button
           variant="outline"
@@ -293,7 +290,7 @@ export function CourierShiftDashboard() {
                   className="min-h-[48px] px-6 font-semibold shadow-md"
                 >
                   <Power className="mr-2 h-5 w-5" />
-                  Start Shift
+                  Start shift
                 </Button>
               </div>
             ) : (
@@ -324,7 +321,7 @@ export function CourierShiftDashboard() {
                   title={capacityUsed > 0 ? 'Deliver active parcels before ending shift' : 'End Shift'}
                 >
                   <Power className="mr-1.5 h-4 w-4" />
-                  End Shift
+                  End shift
                 </Button>
               </>
             )}
@@ -405,10 +402,7 @@ export function CourierShiftDashboard() {
           <SurfaceCard className="p-6 text-center">
             <Package className="mx-auto h-8 w-8 text-slate-400" />
             <p className="mt-2 text-sm font-medium text-slate-700">
-              No deliveries assigned for today
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Assigned parcels from the dispatch engine will appear here.
+              No deliveries today
             </p>
           </SurfaceCard>
         ) : (
@@ -471,12 +465,12 @@ export function CourierShiftDashboard() {
           <SurfaceCard className="p-8 text-center">
             <ShieldCheck className="mx-auto h-10 w-10 text-emerald-500/80" />
             <h3 className="mt-3 font-semibold text-slate-900">
-              No Pending Pickups
+              No pickups yet
             </h3>
             <p className="mt-1 text-sm text-slate-500">
               {isOnline
-                ? 'You are active and ready. Orders will appear here as soon as customers book in your district.'
-                : 'Start your shift above to receive automated dispatch assignments.'}
+                ? 'New pickups in your district appear here.'
+                : 'Start your shift to get pickups.'}
             </p>
           </SurfaceCard>
         ) : (
@@ -523,7 +517,7 @@ export function CourierShiftDashboard() {
                       window.location.href = `/courier/deliveries?orderId=${item.orderId}`;
                     }}
                   >
-                    Execute Pickup
+                    Start pickup
                   </Button>
                 </div>
               </SurfaceCard>

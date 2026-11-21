@@ -78,10 +78,7 @@ export function AiDeliveryAssistantPanel() {
             <Bot className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Operational Delay Risk & Audits</h2>
-            <p className="text-[11px] text-slate-500">
-              Operational delay risk scoring and safe tool audit records
-            </p>
+            <h2 className="text-sm font-bold text-slate-900">Delay risk</h2>
           </div>
         </div>
 
@@ -240,7 +237,7 @@ export function AiDeliveryAssistantPanel() {
             <p className="py-4 text-center text-slate-500">Loading AI audit logs...</p>
           ) : audits.length === 0 ? (
             <p className="py-4 text-center text-slate-500">
-              No recent AI tool invocations logged yet.
+              No AI activity yet.
             </p>
           ) : (
             <div className="space-y-1.5">

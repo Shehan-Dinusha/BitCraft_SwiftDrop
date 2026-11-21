@@ -20,7 +20,6 @@ import {
   Trash2,
   Power,
   Activity,
-  ShieldCheck,
   History,
   AlertTriangle,
   RefreshCw
@@ -201,15 +200,12 @@ export function WebhookResiliencyConsolePage() {
           <div className="flex items-center gap-2">
             <Webhook className="h-6 w-6 text-brand-primary" />
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Webhook Resiliency Console
+              Webhooks
             </h1>
             <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-800">
               HMAC-SHA256 Signed
             </span>
           </div>
-          <p className="text-xs text-slate-500">
-            Real-time event streaming, 3-attempt exponential backoff retries, and manual Dead-Letter Queue (DLQ) replay.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -269,7 +265,7 @@ export function WebhookResiliencyConsolePage() {
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-bold text-primary">
             <Activity className="h-4 w-4 text-brand-primary" />
-            Registered Webhook Endpoints
+            Endpoints
           </h2>
           <span className="text-xs text-secondary">{endpoints.length} configured</span>
         </div>
@@ -277,9 +273,9 @@ export function WebhookResiliencyConsolePage() {
         {endpoints.length === 0 ? (
           <SurfaceCard className="p-8 text-center">
             <Webhook className="mx-auto h-8 w-8 text-secondary opacity-40" />
-            <p className="mt-2 text-sm font-semibold text-primary">No webhook endpoints registered</p>
+            <p className="mt-2 text-sm font-semibold text-primary">No endpoints yet</p>
             <p className="mt-1 text-xs text-secondary">
-              Configure an HTTPS endpoint to receive live parcel status transitions and order events.
+              Add an HTTPS URL to receive parcel and order events.
             </p>
             <Button
               variant="outline"
@@ -328,13 +324,6 @@ export function WebhookResiliencyConsolePage() {
                         ))}
                       </div>
 
-                      {/* Signing secret: never returned after creation, so only a note is shown here. */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="flex items-center gap-1 text-[11px] text-secondary">
-                          <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                          HMAC signing secret: shown once at registration and not retrievable afterwards.
-                        </span>
-                      </div>
                     </div>
 
                     {/* Endpoint Control Actions */}
@@ -403,11 +392,9 @@ export function WebhookResiliencyConsolePage() {
           <div>
             <h2 className="flex items-center gap-2 text-sm font-bold text-primary">
               <AlertTriangle className="h-4 w-4 text-rose-500" />
-              Dead-Letter Queue (DLQ) & Manual Replay Hub
+              Failed events
             </h2>
-            <p className="text-xs text-secondary">
-              Dispatches that exhausted all 3 exponential retries are captured here for failure diagnostics and one-click replay.
-            </p>
+            <p className="text-xs text-secondary">Events that failed after 3 retries. Replay them here.</p>
           </div>
         </div>
 
@@ -419,14 +406,12 @@ export function WebhookResiliencyConsolePage() {
         open={oneTimeSecret !== null}
         onClose={() => setOneTimeSecret(null)}
         title="Copy your signing secret"
-        description="This secret is shown only once. SwiftDrop will not display it again."
         size="md"
       >
         {oneTimeSecret && (
           <div className="space-y-4 p-4 text-xs">
             <StatusBanner tone="warning" title="Shown only once">
-              Copy this secret now and store it securely (for example in your server&apos;s secret store). After you
-              close this dialog it cannot be viewed again, including after a page refresh.
+              Copy it now and store it securely. You can&apos;t view it again.
             </StatusBanner>
             <div className="flex items-center gap-2">
               <code className="flex-1 break-all rounded bg-surface-subtle px-2 py-1.5 font-mono text-[11px] text-primary">
@@ -460,7 +445,7 @@ export function WebhookResiliencyConsolePage() {
       <Modal
         open={isCreateModalOpen}
         onClose={closeCreateModal}
-        title="Register New Webhook Endpoint"
+        title="Add endpoint"
         size="md"
       >
         <form onSubmit={handleCreateEndpoint} className="space-y-4 p-4 text-xs">
@@ -481,8 +466,7 @@ export function WebhookResiliencyConsolePage() {
               className="mt-1 w-full rounded-lg border border-border-subtle bg-canvas px-3 py-2 text-xs text-primary focus:border-brand-primary focus:outline-none"
             />
             <p className="mt-1 text-[11px] text-secondary">
-              Must be a public HTTPS URL. Private, loopback and internal addresses, and URLs containing a
-              username or password, are rejected.
+              Public HTTPS URL only.
             </p>
           </div>
 
@@ -531,7 +515,7 @@ export function WebhookResiliencyConsolePage() {
       <Modal
         open={isAttemptsModalOpen}
         onClose={() => setIsAttemptsModalOpen(false)}
-        title={`Delivery Attempts History - ${selectedEndpoint?.description || selectedEndpoint?.targetUrl}`}
+        title={`Delivery attempts: ${selectedEndpoint?.description || selectedEndpoint?.targetUrl}`}
         size="lg"
       >
         <div className="space-y-3 p-4 text-xs">

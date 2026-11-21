@@ -220,13 +220,7 @@ export function DispatchBoardPage() {
     <main className="mx-auto max-w-[1600px] space-y-5 p-4 md:p-6" data-density="compact">
       <header className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <p className="text-overline font-semibold uppercase tracking-wide text-brand-primary">
-            Admin operations
-          </p>
           <h1 className="text-2xl font-bold tracking-tight text-primary">Dispatch console</h1>
-          <p className="text-caption text-secondary">
-            Allocate parcels across Sri Lanka with district-aware courier visibility.
-          </p>
         </div>
         <Button variant="outline" onClick={() => void loadData()} disabled={loading}>
           <RefreshCw className={`mr-1.5 size-4 ${loading ? 'animate-spin' : ''}`} />
@@ -418,13 +412,10 @@ export function DispatchBoardPage() {
             <Search className="size-4 text-secondary" />
             <h2 className="text-label font-semibold text-primary">Assigned orders</h2>
           </div>
-          <span className="text-caption text-secondary">
-            Select an order to reassign when permitted.
-          </span>
         </div>
         {assignments.length === 0 ? (
           <p className="py-8 text-center text-caption text-muted">
-            No assigned or reassigned orders returned.
+            No assigned orders.
           </p>
         ) : (
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">

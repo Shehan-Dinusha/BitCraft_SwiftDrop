@@ -165,7 +165,7 @@ export function MerchantPortalDashboard() {
           </div>
           <p className="flex items-center gap-2 text-xs text-slate-500">
             <span>
-              Operating District: <strong>{profile?.operatingDistrict || 'COLOMBO'}</strong>
+              District: <strong>{profile?.operatingDistrict || 'COLOMBO'}</strong>
             </span>
             <span>?</span>
             <span>{profile?.contactEmail || 'merchants@swiftdrop.lk'}</span>
@@ -176,7 +176,7 @@ export function MerchantPortalDashboard() {
           <Link to="/merchant/webhooks">
             <Button variant="outline" className="h-8 text-xs">
               <Webhook className="mr-1.5 h-3.5 w-3.5 text-brand-primary" />
-              Webhook Console
+              Webhooks
             </Button>
           </Link>
 
@@ -200,7 +200,7 @@ export function MerchantPortalDashboard() {
 
       {merchantId === null && !errorMsg && (
         <StatusBanner tone="info" title="Merchant access pending">
-          If you have already applied, wait for approval and sign in again. Otherwise,{' '}
+          Applied already? Sign in again once approved. Otherwise,{' '}
           <Link to="/merchant/register" className="underline">
             register your business
           </Link>
@@ -209,7 +209,7 @@ export function MerchantPortalDashboard() {
       )}
       {profile && profile.status !== 'APPROVED' && (
         <StatusBanner tone="warning" title="Approval required">
-          API keys and order ingestion are available only after approval.
+          API keys and order uploads unlock once you're approved.
         </StatusBanner>
       )}
       {/* KPI Stats Strip */}
@@ -262,8 +262,7 @@ export function MerchantPortalDashboard() {
           </>
         ) : merchantId === null ? (
           <SurfaceCard className="p-4 text-xs text-secondary lg:col-span-2">
-            Your account is not linked to a merchant, so bulk ingestion and API keys are
-            unavailable. Contact SwiftDrop support to link your login to your merchant account.
+            Your login isn't linked to a business yet. Contact SwiftDrop support.
           </SurfaceCard>
         ) : null}
       </div>
@@ -305,7 +304,7 @@ export function MerchantPortalDashboard() {
               {batches.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-6 text-center text-slate-500">
-                    No ingestion batches found. Upload your first CSV order batch above.
+                    No uploads yet.
                   </td>
                 </tr>
               ) : (
@@ -360,8 +359,7 @@ export function MerchantPortalDashboard() {
       <Modal
         open={isItemsModalOpen}
         onClose={() => setIsItemsModalOpen(false)}
-        title={selectedBatch ? `Batch Items: ${selectedBatch.fileName}` : 'Batch Items'}
-        description={`Showing generated tracking numbers and order dispatches for batch #${selectedBatch?.batchId?.substring(0, 8)}`}
+        title={selectedBatch?.fileName ?? 'Upload'}
         size="lg"
       >
         <div className="space-y-3 pt-2 text-xs">

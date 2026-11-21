@@ -26,7 +26,7 @@ export function MerchantApplicationStatus({ application }: { application: Mercha
         icon: <FileText className="size-6" />,
         tone: 'bg-brand-subtle text-brand-primary',
         title: 'Tell us about your business',
-        body: 'Your account is ready. Add your business details and pickup address so your district team can approve you.',
+        body: 'Add your business details and pickup address for approval.',
         action: { to: '/merchant/register', label: 'Add business details' }
       }
     : application.status === 'REJECTED'
@@ -42,14 +42,14 @@ export function MerchantApplicationStatus({ application }: { application: Mercha
             icon: <PauseCircle className="size-6" />,
             tone: 'bg-status-danger-bg text-status-danger-fg',
             title: 'Your business account is suspended',
-            body: 'API keys and order uploads are paused. Contact SwiftDrop support to restore access.',
+            body: 'Contact SwiftDrop support to restore access.',
             action: null
           }
         : {
             icon: <Clock className="size-6" />,
             tone: 'bg-canvas text-secondary',
             title: 'Your application is under review',
-            body: `The SwiftDrop ${district} team is checking your business details. We will email you as soon as they decide.`,
+            body: `The ${district} team will email you when they decide.`,
             action: null
           };
 

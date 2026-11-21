@@ -54,9 +54,6 @@ export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps)
       <legend className="mb-1">
         <h2 className="text-h3 text-primary">What are you sending?</h2>
       </legend>
-      <p className="text-body text-secondary">
-        Weight and size set the fee. The courier checks them at pickup.
-      </p>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
         <Field
@@ -82,7 +79,7 @@ export function ParcelStep({ form, errors, onChange, onBlur }: BookingStepProps)
             {sizeField('heightCm', 'Height')}
           </div>
           <span id="parcel-size-label" className="text-caption text-secondary">
-            Size of the packed parcel, in centimetres
+            Size in centimetres
           </span>
         </div>
       </div>

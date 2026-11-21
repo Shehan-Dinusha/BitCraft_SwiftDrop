@@ -93,7 +93,7 @@ export function ActiveDeliveryExecutionPage() {
         setSession(null);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load delivery execution session';
+      const msg = err instanceof Error ? err.message : 'The delivery could not be loaded.';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -175,11 +175,8 @@ export function ActiveDeliveryExecutionPage() {
           </Button>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-              Active Delivery Execution
+              Active delivery
             </h1>
-            <p className="text-xs text-slate-500">
-              One-tap delivery status updates and proof-of-delivery handover.
-            </p>
           </div>
         </div>
 
@@ -192,7 +189,7 @@ export function ActiveDeliveryExecutionPage() {
               className="text-xs text-rose-600 hover:border-rose-300 hover:bg-rose-50 min-h-[44px]"
             >
               <AlertTriangle className="mr-1.5 h-4 w-4 text-rose-500" />
-              Report Failure
+              Can't deliver
             </Button>
           )}
 
@@ -229,16 +226,16 @@ export function ActiveDeliveryExecutionPage() {
         <SurfaceCard className="p-8 text-center">
           <Package className="mx-auto h-12 w-12 text-slate-400" />
           <h2 className="mt-3 text-lg font-bold text-slate-900">
-            No Active Delivery Found
+            No active delivery
           </h2>
           <p className="mt-1 text-sm text-slate-500">
             {orderIdParam
-              ? `No delivery session linked to order ID ${orderIdParam}.`
-              : 'You do not have any active deliveries assigned right now.'}
+              ? `Nothing found for order ${orderIdParam}.`
+              : 'New jobs appear on your shift.'}
           </p>
           <div className="mt-5">
             <Button variant="primary" onClick={() => navigate('/courier')}>
-              Return to Shift Dashboard
+              Back to my shift
             </Button>
           </div>
         </SurfaceCard>
@@ -281,7 +278,7 @@ export function ActiveDeliveryExecutionPage() {
           {/* Location & Districts Card */}
           <SurfaceCard className="space-y-4 p-5">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              Delivery Route & Contact
+              Route and contact
             </h3>
 
             <div className="space-y-3">

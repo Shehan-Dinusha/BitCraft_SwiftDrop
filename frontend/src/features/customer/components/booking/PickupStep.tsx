@@ -21,7 +21,6 @@ export function PickupStep(props: BookingStepProps) {
           maxLength={100}
           value={form.pickupContactName}
           error={errors.pickupContactName}
-          hint="Who hands the parcel to the courier"
           onChange={(event) => onChange('pickupContactName', event.target.value)}
           onBlur={() => onBlur('pickupContactName')}
         />
@@ -34,7 +33,6 @@ export function PickupStep(props: BookingStepProps) {
           inputMode="numeric"
           value={form.pickupContactPhone}
           error={errors.pickupContactPhone}
-          hint="The courier calls this number on arrival"
           onChange={(event) =>
             onChange('pickupContactPhone', normalisePhoneDigits(event.target.value))
           }
@@ -48,7 +46,7 @@ export function PickupStep(props: BookingStepProps) {
           inputMode="numeric"
           value={form.pickupContactAlternatePhone}
           error={errors.pickupContactAlternatePhone}
-          hint="Optional. Called if the main number can't be reached"
+          hint="Optional"
           onChange={(event) =>
             onChange('pickupContactAlternatePhone', normalisePhoneDigits(event.target.value))
           }

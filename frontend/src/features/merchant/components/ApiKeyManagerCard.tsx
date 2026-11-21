@@ -215,13 +215,13 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             disabled={mutating || generating}
           >
             <Plus className="mr-1 h-3.5 w-3.5" />
-            Generate New Key
+            New key
           </Button>
         </div>
       </div>
 
       {errorMsg && (
-        <StatusBanner tone="danger" title="API Key Error" onDismiss={() => setErrorMsg(null)}>
+        <StatusBanner tone="danger" title="Something went wrong" onDismiss={() => setErrorMsg(null)}>
           {errorMsg}
         </StatusBanner>
       )}
@@ -357,10 +357,6 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
 
             <div className="space-y-2 text-xs">
               <p className="font-semibold">Usage examples</p>
-              <p>
-                Replace the sample business and parcel details before submitting. Keep your secret
-                out of shared files.
-              </p>
               <textarea
                 aria-label="cURL example"
                 className="w-full rounded border border-border-subtle bg-card p-2 font-mono"

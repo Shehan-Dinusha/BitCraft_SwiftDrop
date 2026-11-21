@@ -73,7 +73,7 @@ export function FleetControlTowerPage() {
         setKpiSummary(kpiData);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch dispatch fleet data';
+      const msg = err instanceof Error ? err.message : 'The fleet could not be loaded.';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -123,11 +123,8 @@ export function FleetControlTowerPage() {
       <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Fleet Control Tower
+            Fleet
           </h1>
-          <p className="text-xs text-slate-500">
-            Real-time courier telemetry, dynamic capacity load-balancing, and dispatch manual override.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">

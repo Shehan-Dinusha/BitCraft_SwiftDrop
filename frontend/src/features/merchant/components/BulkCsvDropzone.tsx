@@ -112,16 +112,16 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
-          <h3 className="text-sm font-bold text-slate-900">Bulk CSV Order Ingestion</h3>
+          <h3 className="text-sm font-bold text-slate-900">Upload orders (CSV)</h3>
         </div>
         <Button variant="outline" className="h-8 px-2 text-xs" onClick={handleDownloadTemplate}>
           <Download className="mr-1 h-3.5 w-3.5 text-slate-500" />
-          CSV Template
+          Template
         </Button>
       </div>
 
       {errorMsg && (
-        <StatusBanner tone="danger" title="Ingestion Error" onDismiss={() => setErrorMsg(null)}>
+        <StatusBanner tone="danger" title="Upload failed" onDismiss={() => setErrorMsg(null)}>
           {errorMsg}
         </StatusBanner>
       )}
@@ -145,10 +145,10 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
         <div className="text-center">
           <UploadCloud className="mx-auto h-8 w-8 text-indigo-500" />
           <p className="mt-2 text-xs font-semibold text-slate-700">
-            {selectedFile ? selectedFile.name : 'Select a CSV batch file'}
+            {selectedFile ? selectedFile.name : 'Choose a CSV file'}
           </p>
           <p className="mt-0.5 text-[11px] text-slate-400">
-            Supports standardized UTF-8 CSV with recipient address and Sri Lankan district
+            Use the template format
           </p>
         </div>
       </label>

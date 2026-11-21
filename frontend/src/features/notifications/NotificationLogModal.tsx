@@ -92,12 +92,11 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
       size="lg"
       open={open}
       onClose={onClose}
-      title="Notification Dispatch Audit Logs"
-      description="Inspect real-time dispatch events, masked recipients, and template output across Email and Push channels."
+      title="Notification log"
       footer={
         <div className="flex w-full items-center justify-between">
           <span className="text-caption text-muted">
-            {logs.length} audit {logs.length === 1 ? 'record' : 'records'} found · Auto-refreshing every 10s
+            {logs.length} {logs.length === 1 ? 'record' : 'records'}
           </span>
           <Button variant="outline" className="h-8 text-caption" onClick={onClose}>
             Close
@@ -158,10 +157,7 @@ export function NotificationLogModal({ open, onClose }: NotificationLogModalProp
         ) : logs.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
             <Bell className="size-8 text-muted opacity-40" />
-            <p className="text-body-strong text-primary">No notification logs recorded</p>
-            <p className="text-caption text-muted">
-              Trigger a parcel status update or order creation to generate simulated dispatch logs.
-            </p>
+            <p className="text-body-strong text-primary">No notifications yet</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">

@@ -233,9 +233,9 @@ export function WebhookDlqReplayTable() {
       <HighDensityDataGrid
         rows={rows}
         columns={columns}
-        label="Dead-Letter Webhook Queue"
-        filterPlaceholder="Search DLQ records by event type, reason..."
-        emptyMessage="No dead-lettered webhook events recorded."
+        label="Failed events"
+        filterPlaceholder="Search by event or reason"
+        emptyMessage="No failed events."
         density="compact"
       />
 
@@ -243,7 +243,7 @@ export function WebhookDlqReplayTable() {
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Dead-Letter Webhook Diagnostics"
+        title="Failed event"
         size="lg"
       >
         {selectedRecord && (

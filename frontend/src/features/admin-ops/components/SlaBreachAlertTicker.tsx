@@ -19,8 +19,7 @@ export function SlaBreachAlertTicker({
         className="flex items-center gap-2 rounded-lg border border-border-subtle bg-card px-4 py-3 text-sm text-secondary"
       >
         <AlertTriangle className="size-4 shrink-0" />
-        SLA performance is unavailable. Delivery counts and courier workload remain available in
-        Analytics.
+        SLA data is unavailable right now.
       </div>
     );
   }

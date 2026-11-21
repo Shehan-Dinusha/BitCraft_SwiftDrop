@@ -107,12 +107,9 @@ export function NotificationConsolePage() {
           <div className="flex items-center gap-2">
             <Bell className="size-5 text-brand-primary" />
             <h1 className="text-2xl font-bold tracking-tight text-primary">
-              Notification Audit Console
+              Notification log
             </h1>
           </div>
-          <p className="mt-1 text-caption text-secondary">
-            Inspect real-time multi-channel dispatch logs, PII masking compliance, and template deliveries.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -233,10 +230,7 @@ export function NotificationConsolePage() {
             ) : filteredLogs.length === 0 ? (
               <div className="flex h-72 flex-col items-center justify-center gap-2 p-8 text-center">
                 <Bell className="size-8 text-muted opacity-40" />
-                <p className="text-body-strong text-primary">No notification records found</p>
-                <p className="text-caption text-muted">
-                  Logs appear automatically when parcel status transitions occur.
-                </p>
+                <p className="text-body-strong text-primary">No notifications yet</p>
               </div>
             ) : (
               <div className="max-h-[540px] overflow-y-auto">
@@ -355,7 +349,7 @@ export function NotificationConsolePage() {
                 <Bell className="size-8 opacity-40" />
                 <p className="text-body font-medium text-secondary">No record selected</p>
                 <p className="text-caption text-muted">
-                  Click any row in the audit log to inspect rendered template body, masked phone/email, and status.
+                  Select a row to see its details.
                 </p>
               </div>
             )}
