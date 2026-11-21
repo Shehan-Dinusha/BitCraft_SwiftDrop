@@ -1322,15 +1322,31 @@ export interface components {
     schemas: {
         /** @enum {string} */
         MerchantStatus: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "SUSPENDED";
+        /** @description Business application. businessRegNo and websiteUrl are each optional, but at least one is required (400 otherwise) so the district dispatcher has something to verify. */
         RegisterMerchantRequest: {
             businessName: string;
-            businessRegNo: string;
+            businessCategory: components["schemas"]["BusinessCategory"];
+            monthlyParcelVolume: components["schemas"]["MonthlyParcelVolume"];
+            /** @description Business registration number, if registered. */
+            businessRegNo?: string;
+            /**
+             * @description Website or social media page; https:// is added when no scheme is given.
+             * @example facebook.com/lankacrafts
+             */
+            websiteUrl?: string;
             /** Format: email */
             contactEmail: string;
+            /** @description Sri Lankan number; stored as +94 followed by 9 digits. */
             contactPhone: string;
             pickupAddress: string;
+            pickupCity: string;
+            pickupPostalCode: string;
             operatingDistrict: components["schemas"]["SriLankanDistrict"];
         };
+        /** @enum {string} */
+        BusinessCategory: "FASHION_AND_CLOTHING" | "ELECTRONICS" | "HOME_AND_LIVING" | "HEALTH_AND_BEAUTY" | "FOOD_AND_GROCERY" | "BOOKS_AND_STATIONERY" | "GIFTS_AND_CRAFTS" | "OTHER";
+        /** @enum {string} */
+        MonthlyParcelVolume: "UP_TO_50" | "FROM_51_TO_200" | "FROM_201_TO_1000" | "OVER_1000";
         RejectMerchantRequest: {
             reason: string;
         };
@@ -1340,10 +1356,15 @@ export interface components {
             /** Format: uuid */
             ownerUserId?: string;
             businessName?: string;
+            businessCategory?: components["schemas"]["BusinessCategory"];
+            monthlyParcelVolume?: components["schemas"]["MonthlyParcelVolume"];
             businessRegNo?: string;
+            websiteUrl?: string;
             contactEmail?: string;
             contactPhone?: string;
             pickupAddress?: string;
+            pickupCity?: string;
+            pickupPostalCode?: string;
             operatingDistrict?: components["schemas"]["SriLankanDistrict"];
             status?: components["schemas"]["MerchantStatus"];
             /** Format: uuid */

@@ -21,9 +21,33 @@ class ApprovalRbacTest {
     @MockitoBean MerchantApprovalService approvals;
     String id = UUID.randomUUID().toString();
     String business = """
-            {"businessName":"Shop","businessRegNo":"BR-1","contactEmail":"shop@example.com",
-             "contactPhone":"+94771234567","pickupAddress":"Colombo","operatingDistrict":"COLOMBO"}
+            {"businessName":"Shop","businessCategory":"GIFTS_AND_CRAFTS","monthlyParcelVolume":"UP_TO_50",
+             "businessRegNo":"BR-1","contactEmail":"shop@example.com","contactPhone":"+94771234567",
+             "pickupAddress":"No. 12, Temple Road","pickupCity":"Nugegoda","pickupPostalCode":"10250",
+             "operatingDistrict":"COLOMBO"}
             """;
+
+    @Test void anApplicationWithInvalidDetailsIsRejectedBeforeTheService() throws Exception {
+        String[][] invalid = {
+                {"\"contactPhone\":\"+94771234567\"", "\"contactPhone\":\"12345\""},
+                {"\"pickupPostalCode\":\"10250\"", "\"pickupPostalCode\":\"1025\""},
+                {"\"businessRegNo\":\"BR-1\"", "\"businessRegNo\":\"BR-1\",\"websiteUrl\":\"not a link\""},
+                {"\"businessName\":\"Shop\"", "\"businessName\":\"<b>Shop</b>\""},
+                {"\"businessCategory\":\"GIFTS_AND_CRAFTS\",", ""}
+        };
+        for (String[] change : invalid) {
+            mvc.perform(post("/api/v1/merchants/register")
+                    .header("X-User-Id", id).header("X-User-Role", "MERCHANT")
+                    .contentType(MediaType.APPLICATION_JSON).content(business.replace(change[0], change[1])))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(approvals);
+
+        mvc.perform(post("/api/v1/merchants/register")
+                .header("X-User-Id", id).header("X-User-Role", "MERCHANT")
+                .contentType(MediaType.APPLICATION_JSON).content(business))
+                .andExpect(status().isCreated());
+    }
 
     @Test void unauthenticatedCallerIsRejected() throws Exception {
         mvc.perform(get("/api/v1/admin/merchants")).andExpect(status().isUnauthorized());

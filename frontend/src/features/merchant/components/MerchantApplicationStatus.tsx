@@ -18,7 +18,11 @@ function districtName(value?: string | null) {
  * What a merchant sees before their business is approved: apply, wait for review, fix a rejected
  * application, or (if suspended) contact SwiftDrop.
  */
-export function MerchantApplicationStatus({ application }: { application: MerchantApprovalResponse | null }) {
+export function MerchantApplicationStatus({
+  application
+}: {
+  application: MerchantApprovalResponse | null;
+}) {
   const district = districtName(application?.operatingDistrict);
 
   const content = !application
@@ -34,7 +38,9 @@ export function MerchantApplicationStatus({ application }: { application: Mercha
           icon: <XCircle className="size-6" />,
           tone: 'bg-status-warning-bg text-status-warning-fg',
           title: 'Your application needs changes',
-          body: application.rejectionReason ?? 'Your district team could not approve the application as it stands.',
+          body:
+            application.rejectionReason ??
+            'Your district team could not approve the application as it stands.',
           action: { to: '/merchant/register', label: 'Edit and resubmit' }
         }
       : application.status === 'SUSPENDED'
@@ -57,7 +63,9 @@ export function MerchantApplicationStatus({ application }: { application: Mercha
     <main className="mx-auto max-w-2xl space-y-4 p-4 md:p-6" data-density="compact">
       <SurfaceCard className="p-6">
         <div className="flex items-start gap-4">
-          <span className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${content.tone}`}>
+          <span
+            className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${content.tone}`}
+          >
             {content.icon}
           </span>
           <div className="space-y-2">
@@ -76,13 +84,25 @@ export function MerchantApplicationStatus({ application }: { application: Mercha
               <dt className="text-xs text-secondary">Business</dt>
               <dd className="font-semibold text-primary">{application.businessName}</dd>
             </div>
-            <div>
-              <dt className="text-xs text-secondary">Registration number</dt>
-              <dd className="font-mono text-primary">{application.businessRegNo}</dd>
-            </div>
+            {application.businessRegNo && (
+              <div>
+                <dt className="text-xs text-secondary">Registration number</dt>
+                <dd className="font-mono text-primary">{application.businessRegNo}</dd>
+              </div>
+            )}
+            {application.websiteUrl && (
+              <div>
+                <dt className="text-xs text-secondary">Website or social page</dt>
+                <dd className="break-all text-primary">{application.websiteUrl}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-xs text-secondary">Pickup address</dt>
-              <dd className="text-primary">{application.pickupAddress}</dd>
+              <dd className="text-primary">
+                {[application.pickupAddress, application.pickupCity, application.pickupPostalCode]
+                  .filter(Boolean)
+                  .join(', ')}
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-secondary">District</dt>

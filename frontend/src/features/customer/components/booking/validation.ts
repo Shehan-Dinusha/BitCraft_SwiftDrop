@@ -32,6 +32,7 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'pickupArea',
     'pickupLandmark',
     'pickupCity',
+    'pickupProvince',
     'pickupDistrict',
     'pickupPostalCode'
   ],
@@ -45,17 +46,12 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'deliveryArea',
     'deliveryLandmark',
     'deliveryCity',
+    'deliveryProvince',
     'deliveryDistrict',
     'deliveryPostalCode',
     'customerNotes'
   ],
-  parcel: [
-    'lengthCm',
-    'widthCm',
-    'heightCm',
-    'actualWeightKg',
-    'speed'
-  ],
+  parcel: ['lengthCm', 'widthCm', 'heightCm', 'actualWeightKg', 'speed'],
   review: ['prohibitedItemsDeclared']
 };
 
@@ -167,6 +163,11 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
     case 'pickupCity':
     case 'deliveryCity':
       return city(form[field]);
+    case 'pickupProvince':
+      // A district chosen before (for example from the profile) already settles the province.
+      return form.pickupProvince || form.pickupDistrict ? undefined : 'Choose a province';
+    case 'deliveryProvince':
+      return form.deliveryProvince || form.deliveryDistrict ? undefined : 'Choose a province';
     case 'pickupDistrict':
     case 'deliveryDistrict':
       return form[field] ? undefined : 'Choose a district';

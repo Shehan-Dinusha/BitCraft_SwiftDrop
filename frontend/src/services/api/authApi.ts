@@ -34,7 +34,8 @@ export type RegisterUserInput = {
   password: string;
   firstName: string;
   lastName: string;
-  district: components['schemas']['SriLankanDistrict'];
+  /** Required for a customer; a business gives its pickup district on the application. */
+  district?: components['schemas']['SriLankanDistrict'];
 };
 
 export const SRI_LANKAN_DISTRICTS: components['schemas']['SriLankanDistrict'][] = [

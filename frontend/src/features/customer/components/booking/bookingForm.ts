@@ -142,6 +142,17 @@ export function provinceOf(district: SriLankanDistrict | '' | undefined): Provin
   return PROVINCES.find((province) => district && province.districts.includes(district))?.id ?? '';
 }
 
+/** The province picker's options, in the list order. */
+export const provinceOptions = PROVINCES.map(({ id, label }) => ({ value: id, label }));
+
+/** The districts of one province, for the district picker that follows the province. */
+export function districtsOf(
+  province: ProvinceId | '' | undefined
+): { value: SriLankanDistrict; label: string }[] {
+  const districts = PROVINCES.find((p) => p.id === province)?.districts ?? [];
+  return DISTRICTS.filter((d) => districts.includes(d.value));
+}
+
 /** "Western" for COLOMBO; empty while no district is chosen. */
 export function provinceLabelOf(district: SriLankanDistrict | '' | undefined): string {
   const id = provinceOf(district);
