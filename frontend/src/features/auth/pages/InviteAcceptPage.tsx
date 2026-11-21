@@ -64,7 +64,9 @@ export function InviteAcceptPage() {
       window.history.replaceState(null, '', window.location.pathname);
     }
     if (!token) {
-      setLinkError('This page needs the link from your invite email. Open the email and tap the button again.');
+      setLinkError(
+        'This page needs the link from your invite email. Open the email and tap the button again.'
+      );
       setChecking(false);
       return;
     }
@@ -102,9 +104,12 @@ export function InviteAcceptPage() {
     try {
       const tokens = await acceptInvite(token, password);
       setAuth(tokens);
-      navigate(tokens.role === 'COURIER' ? '/courier/vehicle' : roleHome[personaForRole(tokens.role)], {
-        replace: true
-      });
+      navigate(
+        tokens.role === 'COURIER' ? '/courier/vehicle' : roleHome[personaForRole(tokens.role)],
+        {
+          replace: true
+        }
+      );
     } catch (requestError) {
       setError(parseApiError(requestError).message ?? 'Could not set your password. Try again.');
     } finally {
@@ -120,9 +125,7 @@ export function InviteAcceptPage() {
       icon={<UserPlus />}
       title={invite?.firstName ? `Welcome, ${invite.firstName}` : 'Set up your account'}
       description={
-        invite
-          ? `You are joining SwiftDrop as a ${roleName}${district ? ` in ${district}` : ''}. Choose a password to finish.`
-          : 'Choose a password to start using SwiftDrop.'
+        invite ? `Joining as a ${roleName}${district ? ` in ${district}` : ''}.` : undefined
       }
       below={
         <>
@@ -151,7 +154,14 @@ export function InviteAcceptPage() {
           </div>
           <form className="flex flex-col gap-3" onSubmit={onSubmit}>
             {/* Lets password managers save the new password against the right username. */}
-            <input type="text" name="username" autoComplete="username" value={invite?.username ?? ''} readOnly hidden />
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              value={invite?.username ?? ''}
+              readOnly
+              hidden
+            />
             <div className="flex flex-col gap-2">
               <SrLabel htmlFor="invite-password">New password</SrLabel>
               <Input
