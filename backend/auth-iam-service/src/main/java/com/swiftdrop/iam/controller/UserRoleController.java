@@ -110,12 +110,15 @@ public class UserRoleController {
     @DeleteMapping("/me")
     @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Erase the authenticated customer's own account",
-            description = "Needs the current password. Removes the username, email, phone, names and "
-                    + "district, revokes every session and blocks sign-in. Orders already placed keep "
-                    + "an owner id but no personal data.")
+            description = "Needs the current password. Removes the username, email, phone, names, "
+                    + "district and profile picture, revokes every session and blocks sign-in. Orders "
+                    + "already placed keep an owner id but no personal data.")
     public ApiResponse<Void> deleteOwnAccount(@Valid @RequestBody DeleteAccountRequest request,
                                               Authentication authentication) {
-        userAccountService.deleteOwnAccount(SecurityPrincipal.userId(authentication), request);
+        UUID userId = SecurityPrincipal.userId(authentication);
+        userAccountService.deleteOwnAccount(userId, request);
+        // Only after the password check above succeeded: the picture is personal data too.
+        avatarService.eraseFor(userId);
         return ApiResponse.success("Your account has been deleted.");
     }
 

@@ -1,10 +1,10 @@
 package com.swiftdrop.iam.service;
 
 import com.swiftdrop.iam.domain.entity.UserAccount;
-import com.swiftdrop.iam.domain.entity.UserAvatar;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.domain.repository.UserAvatarRepository;
 import com.swiftdrop.iam.dto.UserProfileResponse;
+import com.swiftdrop.iam.service.avatar.AvatarStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,7 +14,11 @@ import java.util.UUID;
 
 /**
  * Profile pictures. Only PNG, JPEG and WebP up to {@link #MAX_BYTES} are accepted, recognised by
- * their content (magic bytes), never by the file name or the type the browser claims.
+ * their content (magic bytes), never by the file name or the type the browser claims. The bytes live
+ * in the {@link AvatarStore} (Azure Blob in production); the user row only records when it changed.
+ *
+ * <p>Pictures saved before Blob storage are still in user_avatars. They are served from there and
+ * moved to Blob the first time they are read, and removed from the table on any change.</p>
  */
 @Service
 public class AvatarService {
@@ -26,13 +30,15 @@ public class AvatarService {
 
     private final UserAccountService userAccountService;
     private final UserAccountRepository userAccountRepository;
-    private final UserAvatarRepository avatarRepository;
+    private final UserAvatarRepository legacyAvatars;
+    private final AvatarStore store;
 
     public AvatarService(UserAccountService userAccountService, UserAccountRepository userAccountRepository,
-                         UserAvatarRepository avatarRepository) {
+                         UserAvatarRepository legacyAvatars, AvatarStore store) {
         this.userAccountService = userAccountService;
         this.userAccountRepository = userAccountRepository;
-        this.avatarRepository = avatarRepository;
+        this.legacyAvatars = legacyAvatars;
+        this.store = store;
     }
 
     @Transactional
@@ -47,31 +53,59 @@ public class AvatarService {
                 .orElseThrow(() -> new IllegalArgumentException("Use a PNG, JPEG or WebP image"));
 
         UserAccount user = userAccountService.requireUser(publicId);
-        Instant now = Instant.now();
-        Optional<UserAvatar> existing = avatarRepository.findById(user.getId());
-        if (existing.isPresent()) {
-            existing.get().replace(contentType, image, now);
-            avatarRepository.save(existing.get());
-        } else {
-            avatarRepository.save(new UserAvatar(user.getId(), contentType, image, now));
-        }
-        user.setAvatarUpdatedAt(now);
+        store.put(user, contentType, image);
+        dropLegacyCopy(user);
+        user.setAvatarUpdatedAt(Instant.now());
         return AuthMapper.toProfile(userAccountRepository.save(user));
     }
 
     @Transactional
     public UserProfileResponse remove(UUID publicId) {
         UserAccount user = userAccountService.requireUser(publicId);
-        avatarRepository.findById(user.getId()).ifPresent(avatarRepository::delete);
+        erase(user);
         user.setAvatarUpdatedAt(null);
         return AuthMapper.toProfile(userAccountRepository.save(user));
     }
 
-    @Transactional(readOnly = true)
+    /** Deletes the picture wherever it is. Used when a customer deletes their account. */
+    @Transactional
+    public void eraseFor(UUID publicId) {
+        UserAccount user = userAccountService.requireUser(publicId);
+        erase(user);
+        if (user.getAvatarUpdatedAt() != null) {
+            user.setAvatarUpdatedAt(null);
+            userAccountRepository.save(user);
+        }
+    }
+
+    @Transactional
     public Optional<StoredAvatar> find(UUID publicId) {
         UserAccount user = userAccountService.requireUser(publicId);
-        return avatarRepository.findById(user.getId())
-                .map(a -> new StoredAvatar(a.getContentType(), a.getImage(), a.getUpdatedAt()));
+        Optional<AvatarStore.Image> image = store.get(user);
+        if (image.isEmpty() && store.external()) {
+            image = migrateLegacy(user);
+        }
+        return image.map(i -> new StoredAvatar(i.contentType(), i.bytes(), user.getAvatarUpdatedAt()));
+    }
+
+    private void erase(UserAccount user) {
+        store.delete(user);
+        dropLegacyCopy(user);
+    }
+
+    /** A picture still in user_avatars: copy it to the store and remove the row. */
+    private Optional<AvatarStore.Image> migrateLegacy(UserAccount user) {
+        return legacyAvatars.findById(user.getId()).map(row -> {
+            store.put(user, row.getContentType(), row.getImage());
+            legacyAvatars.delete(row);
+            return new AvatarStore.Image(row.getContentType(), row.getImage());
+        });
+    }
+
+    private void dropLegacyCopy(UserAccount user) {
+        if (store.external()) {
+            legacyAvatars.findById(user.getId()).ifPresent(legacyAvatars::delete);
+        }
     }
 
     /** The image type from the file's first bytes. */

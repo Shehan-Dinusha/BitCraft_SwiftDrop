@@ -6,6 +6,8 @@ import com.swiftdrop.iam.domain.entity.UserAccount;
 import com.swiftdrop.iam.domain.entity.UserAvatar;
 import com.swiftdrop.iam.domain.repository.UserAccountRepository;
 import com.swiftdrop.iam.domain.repository.UserAvatarRepository;
+import com.swiftdrop.iam.service.avatar.AvatarStore;
+import com.swiftdrop.iam.service.avatar.DatabaseAvatarStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,7 +47,8 @@ class AvatarServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AvatarService(userAccountService, userAccountRepository, avatarRepository);
+        service = new AvatarService(userAccountService, userAccountRepository, avatarRepository,
+                new DatabaseAvatarStore(avatarRepository));
         user = new UserAccount();
         user.setId(7L);
         user.setPublicId(UUID.randomUUID());
@@ -102,5 +107,63 @@ class AvatarServiceTest {
 
         verify(avatarRepository).delete(avatar);
         assertThat(profile.avatarUpdatedAt()).isNull();
+    }
+
+    /** Stands in for Azure Blob: pictures live outside the database. */
+    private static final class FakeBlobStore implements AvatarStore {
+        final Map<UUID, Image> blobs = new HashMap<>();
+
+        @Override public void put(UserAccount u, String type, byte[] image) { blobs.put(u.getPublicId(), new Image(type, image)); }
+        @Override public Optional<Image> get(UserAccount u) { return Optional.ofNullable(blobs.get(u.getPublicId())); }
+        @Override public void delete(UserAccount u) { blobs.remove(u.getPublicId()); }
+        @Override public boolean external() { return true; }
+    }
+
+    @Test
+    void withBlobStorageAPictureGoesToTheStoreAndAnOldDatabaseCopyIsDropped() {
+        FakeBlobStore blob = new FakeBlobStore();
+        AvatarService blobService = new AvatarService(userAccountService, userAccountRepository, avatarRepository, blob);
+        UserAvatar legacy = new UserAvatar(7L, "image/png", PNG, Instant.now());
+        when(userAccountService.requireUser(user.getPublicId())).thenReturn(user);
+        when(avatarRepository.findById(7L)).thenReturn(Optional.of(legacy));
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(i -> i.getArgument(0));
+
+        blobService.replace(user.getPublicId(), JPEG);
+
+        assertThat(blob.blobs.get(user.getPublicId()).contentType()).isEqualTo("image/jpeg");
+        verify(avatarRepository).delete(legacy);
+        verify(avatarRepository, never()).save(any());
+    }
+
+    @Test
+    void aPictureSavedBeforeBlobStorageMovesThereWhenFirstRead() {
+        FakeBlobStore blob = new FakeBlobStore();
+        AvatarService blobService = new AvatarService(userAccountService, userAccountRepository, avatarRepository, blob);
+        UserAvatar legacy = new UserAvatar(7L, "image/png", PNG, Instant.now());
+        when(userAccountService.requireUser(user.getPublicId())).thenReturn(user);
+        when(avatarRepository.findById(7L)).thenReturn(Optional.of(legacy));
+
+        var found = blobService.find(user.getPublicId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().contentType()).isEqualTo("image/png");
+        assertThat(blob.blobs).containsKey(user.getPublicId());
+        verify(avatarRepository).delete(legacy);
+    }
+
+    @Test
+    void deletingAnAccountErasesThePictureEverywhere() {
+        FakeBlobStore blob = new FakeBlobStore();
+        AvatarService blobService = new AvatarService(userAccountService, userAccountRepository, avatarRepository, blob);
+        blob.put(user, "image/png", PNG);
+        user.setAvatarUpdatedAt(Instant.now());
+        when(userAccountService.requireUser(user.getPublicId())).thenReturn(user);
+        when(avatarRepository.findById(7L)).thenReturn(Optional.empty());
+
+        blobService.eraseFor(user.getPublicId());
+
+        assertThat(blob.blobs).isEmpty();
+        assertThat(user.getAvatarUpdatedAt()).isNull();
+        verify(userAccountRepository).save(user);
     }
 }
