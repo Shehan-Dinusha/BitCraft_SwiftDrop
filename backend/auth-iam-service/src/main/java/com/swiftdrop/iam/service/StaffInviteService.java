@@ -98,7 +98,7 @@ public class StaffInviteService {
         publisher.publish(new AuthStaffInviteEvent(null, null, user.getPublicId(), user.getRole(),
                 inviteUrl, ttlHours, null));
         if (otpProperties.isLogCode()) {
-            log.warn("[DEV ONLY] Invite link for user {}: {}", user.getPublicId(), inviteUrl);
+            log.warn("[DEV ONLY] Invite generated for user {} (ttlHours={})", user.getPublicId(), ttlHours);
         }
     }
 

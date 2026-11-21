@@ -37,7 +37,10 @@ class OrderTrackingClientTest {
         mockWebServer.start();
 
         routes = mock(GatewayRouteProperties.class);
-        when(routes.order()).thenReturn(mockWebServer.url("/").toString());
+        when(routes.order()).thenReturn(mockWebServer.url("/").newBuilder()
+                .host("127.0.0.1")
+                .build()
+                .toString());
 
         WebClient webClient = WebClient.builder()
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(512 * 1024))
@@ -97,7 +100,7 @@ class OrderTrackingClientTest {
     @Test
     void returnsEmptyOptionalOn5xxError() {
         mockWebServer.enqueue(new MockResponse()
-                .setResponseCode(500)
+                .setResponseCode(503)
                 .setHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .setBody("{\"success\":false,\"message\":\"Internal error\"}"));
 
