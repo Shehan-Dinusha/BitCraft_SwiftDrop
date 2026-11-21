@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import com.swiftdrop.iam.IamContainers;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockMultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +14,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
@@ -53,10 +53,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>CUSTOMER can access their own profile (/me) but not others</li>
  * </ul>
  *
- * <p>These tests run against the existing local IAM Postgres and Redis.
- * Enable with: {@code -Dswiftdrop.integration-tests=true}
+ * <p>Runs against throwaway PostgreSQL, Redis and RabbitMQ containers ({@link IamContainers}).
  */
-@EnabledIfSystemProperty(named = "swiftdrop.integration-tests", matches = "true")
 @SpringBootTest(properties = {
         "spring.rabbitmq.dynamic=false",
         "spring.rabbitmq.listener.simple.auto-startup=false",
@@ -66,7 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "swiftdrop.bootstrap.admin.password="
 })
 @AutoConfigureMockMvc(print = MockMvcPrint.NONE)
-class RbacIntegrationTest {
+class RbacIT extends IamContainers {
 
     private static final String USERS_API    = "/api/v1/users";
     private static final String COURIERS_API = "/api/v1/users/couriers";

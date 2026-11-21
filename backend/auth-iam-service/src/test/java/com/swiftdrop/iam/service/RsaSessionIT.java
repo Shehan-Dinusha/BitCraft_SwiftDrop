@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import com.swiftdrop.iam.IamContainers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
@@ -12,7 +13,6 @@ import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -39,8 +39,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Real HTTP RSA tests on a temporary host port using only the existing IAM PostgreSQL/Redis. */
-@EnabledIfSystemProperty(named = "swiftdrop.integration-tests", matches = "true")
+/** Real HTTP RSA tests on a temporary host port, against the {@link IamContainers} databases. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.rabbitmq.dynamic=false",
         "spring.rabbitmq.listener.simple.auto-startup=false",
@@ -54,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 })
 @ActiveProfiles("dev")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class RsaSessionIntegrationTest {
+class RsaSessionIT extends IamContainers {
     @LocalServerPort private int port;
     @Autowired private UserAccountService users;
     @Autowired private TokenIssuanceService tokens;
