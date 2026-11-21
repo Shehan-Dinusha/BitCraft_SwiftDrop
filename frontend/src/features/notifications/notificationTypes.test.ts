@@ -10,8 +10,13 @@ describe('notification types per role', () => {
   it('gives every workspace its own notification types', () => {
     expect(NOTIFICATION_TYPES_BY_ROLE.CUSTOMER).toContain('PARCEL_DELIVERED');
     expect(NOTIFICATION_TYPES_BY_ROLE.COURIER).toEqual(['COURIER_ASSIGNED']);
-    expect(NOTIFICATION_TYPES_BY_ROLE.MERCHANT).toEqual(['MERCHANT_COURIER_ASSIGNED', 'MERCHANT_DELIVERY_FAILED']);
-    expect(NOTIFICATION_TYPES_BY_ROLE.ADMIN_OPS).toEqual(['OPS_DELIVERY_FAILED', 'DISPATCH_FAILED']);
+    expect(NOTIFICATION_TYPES_BY_ROLE.MERCHANT).toEqual([
+      'MERCHANT_APPROVED',
+      'MERCHANT_REJECTED',
+      'MERCHANT_COURIER_ASSIGNED',
+      'MERCHANT_DELIVERY_FAILED'
+    ]);
+    expect(NOTIFICATION_TYPES_BY_ROLE.ADMIN_OPS).toEqual(['OPS_DELIVERY_FAILED', 'DISPATCH_FAILED', 'MERCHANT_APPLICATION']);
   });
 
   it('uses a distinct icon for every type', () => {

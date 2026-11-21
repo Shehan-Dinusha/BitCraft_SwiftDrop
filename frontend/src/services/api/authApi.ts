@@ -45,11 +45,15 @@ export const SRI_LANKAN_DISTRICTS: components['schemas']['SriLankanDistrict'][] 
 ];
 
 /**
- * Self-service registration always creates a CUSTOMER account. The account starts unverified: the
+ * Self-service registration creates a CUSTOMER (default) or MERCHANT account. The account starts unverified: the
  * API emails a 6-digit code that {@link verifyEmail} confirms. Registration never signs the user in.
  */
-export async function registerUser(input: RegisterUserInput): Promise<void> {
-  await apiClient.post('/v1/auth/register', { ...input, role: 'CUSTOMER' });
+export async function registerUser(
+  input: RegisterUserInput,
+  role: 'CUSTOMER' | 'MERCHANT' = 'CUSTOMER'
+): Promise<void> {
+  // A MERCHANT account then applies with its business details; the district dispatcher approves it.
+  await apiClient.post('/v1/auth/register', { ...input, role });
 }
 
 export type UsernameAvailability = components['schemas']['UsernameAvailabilityResponse'];

@@ -543,6 +543,48 @@ goes only to the registered address, ignores the email-off preference and is red
 
 ---
 
+### 2.14 `notification.merchant.application` — `MerchantApplicationEvent`
+
+* **Producer:** `merchant-b2b-service` (:8086): when a business application is submitted or resubmitted after a rejection (`POST /api/v1/merchants/register`), approved or rejected
+* **Routing Key:** `notification.merchant.application` (under `notification.` so the existing `notification.#` binding delivers it). Approval still also publishes `merchant.approved` for IAM.
+* **Destination Queues:** `notification.events.queue`
+* **Consumers:** `notification-service` (`MerchantApplicationTrigger`)
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier (deduplication) | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `merchantId` | `UUID` | No | The merchant application | Safe |
+| `recipientId` | `UUID` | No | IAM user id of the owner; notification-service resolves the email from IAM | Safe |
+| `businessName` | `String` | No | Shown in the alert and the email | Low |
+| `operatingDistrict` | `SriLankanDistrict` | No | Pickup district; decides which dispatcher is alerted | Safe |
+| `outcome` | `Outcome` | No | `SUBMITTED`, `APPROVED` or `REJECTED` | Safe |
+| `reason` | `String` | Yes | Rejection reason, shown to the owner | Low |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+`SUBMITTED` writes an in-app alert to the team audience `DISTRICT_OPS:<district>`, which only that
+district's dispatcher sees. `APPROVED` and `REJECTED` email the owner (`MERCHANT_APPROVED`,
+`MERCHANT_REJECTED`) and add an in-app row.
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "8f9a0b1c-2d3e-4f4a-9b5c-6d7e8f9a0b1c",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "merchantId": "5d6e7f80-9a0b-4c1d-8e2f-3a4b5c6d7e8f",
+  "recipientId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "businessName": "Kandy Valley Spice Co.",
+  "operatingDistrict": "KANDY",
+  "outcome": "REJECTED",
+  "reason": "The registration number does not match the business name.",
+  "timestamp": "2026-11-21T10:00:00Z"
+}
+```
+
+---
+
 ## 3. Who receives which notification
 
 Rule: a notification goes only to the person or team the event is about, and only when it tells
@@ -562,6 +604,8 @@ dispatch makes by itself, an order the merchant created themselves) send nothing
 | `notification.auth.login` SUCCESS (new device or network only) | Email only | Email only | Email only (to the signing-in user) | Email only |
 | `notification.auth.login` FAILED (max 1 per 15 min) | Email only | Email only | Email only (to the account owner) | Email only |
 | `notification.auth.invite` | | Email only (the invited courier) | | Email only (an invited dispatcher) |
+| `notification.merchant.application` SUBMITTED | | | | In-app "New merchant application" (that district's dispatcher only) |
+| `notification.merchant.application` APPROVED / REJECTED | | | Email + in-app (the business owner) | |
 
 Merchant orders: customer-order-service stores the merchant id in `customerId`, so parcel events for
 a merchant order name the company, not a person. notification-service records merchant ids from

@@ -18,8 +18,11 @@ Every seeded account below uses the password **`Password@123`**. The data is syn
 | Courier | `courier.colombo.1` | Today's deliveries, pickup → in transit → out for delivery, photo proof of delivery, failure reasons |
 | Customer | `fazil.hameed` | Book a parcel (live pricing), track it, in-app notifications, AI assistant |
 | Merchant (approved) | `merchant.kandy-valley-spice` | Business dashboard, API keys, B2B orders, CSV upload |
-| Merchant (pending) | `merchant.pettah-gadget-hub` | Application still waiting for admin approval |
-| Merchant (rejected) | `merchant.lagoon-catch-exports` | Application rejected, with the admin's reason |
+
+Every seeded merchant is approved and every seeded courier is ready to work: their e-mail addresses
+are not real, so invite and decision e-mails could not be read. To show those flows, use real
+addresses: sign up a business at `/register/business` and approve it as that district's dispatcher
+(**Merchant applications**), and register a courier as a dispatcher (**Couriers**) to send an invite.
 
 ## Dispatchers (25, one per district)
 
@@ -130,9 +133,9 @@ Every seeded account below uses the password **`Password@123`**. The data is syn
 
 | Username | Owner | District | Business status |
 |---|---|---|---|
-| `merchant.pettah-gadget-hub` | Tharushi Wickramasinghe | Colombo | Application pending |
+| `merchant.pettah-gadget-hub` | Tharushi Wickramasinghe | Colombo | Approved |
 | `merchant.southern-lantern-crafts` | Fathima Ismail | Galle | Approved |
-| `merchant.lagoon-catch-exports` | Nuwan Karunaratne | Gampaha | Application rejected |
+| `merchant.lagoon-catch-exports` | Nuwan Karunaratne | Gampaha | Approved |
 | `merchant.nallur-palmyrah-works` | Thanuja Arumugam | Jaffna | Approved |
 | `merchant.kandy-valley-spice` | Aysha Hameed | Kandy | Approved |
 | `merchant.wayamba-handloom` | Sanjeewa Ekanayake | Kurunegala | Approved |

@@ -8,13 +8,15 @@ import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBann
 import { BulkCsvDropzone } from '../components/BulkCsvDropzone';
 import { ApiKeyManagerCard } from '../components/ApiKeyManagerCard';
 import { MerchantOrdersTable } from '../components/MerchantOrdersTable';
+import { MerchantApplicationStatus } from '../components/MerchantApplicationStatus';
 import {
   merchantApi,
+  type MerchantApprovalResponse,
   type MerchantAccountResponse,
   type BulkIngestBatchResponse,
   type BulkBatchItemResponse
 } from '@/services/api/merchantApi';
-import { fetchCurrentUser } from '@/services/api/authApi';
+import { fetchCurrentUser, refreshTokens } from '@/services/api/authApi';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import {
   Store,
@@ -28,8 +30,23 @@ import {
   Webhook
 } from 'lucide-react';
 
+/** True when the access token already carries the merchant company (it is added once approved). */
+function tokenHasMerchant(token: string | null): boolean {
+  try {
+    const payload = token?.split('.')[1];
+    if (!payload) return false;
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as { merchantId?: string };
+    return Boolean(json.merchantId);
+  } catch {
+    return false;
+  }
+}
+
 export function MerchantPortalDashboard() {
   const user = useAuthStore((s) => s.user);
+  const setAuth = useAuthStore((s) => s.setAuth);
+  // undefined while loading; null before the merchant has applied.
+  const [application, setApplication] = useState<MerchantApprovalResponse | null | undefined>(undefined);
   // The merchant identity is a separate value from the user id. It comes from the server-side profile
   // (resolved from the verified token); there is no fallback. undefined = still loading, null = not linked.
   const [merchantId, setMerchantId] = useState<string | null | undefined>(undefined);
@@ -46,19 +63,28 @@ export function MerchantPortalDashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchCurrentUser()
-      .then((me) => {
-        if (!cancelled) setMerchantId(me.merchantId ?? null);
+    Promise.all([fetchCurrentUser(), merchantApi.myApplication()])
+      .then(async ([me, app]) => {
+        if (cancelled) return;
+        // Approval links the account to the merchant company, but a token issued before that does
+        // not carry it yet, and every merchant API checks it. Rotate the session once to pick it up.
+        if (app?.status === 'APPROVED' && me.merchantId && !tokenHasMerchant(useAuthStore.getState().token)) {
+          setAuth(await refreshTokens());
+        }
+        if (cancelled) return;
+        setApplication(app);
+        setMerchantId(me.merchantId ?? null);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
+        setApplication(null);
         setMerchantId(null);
         setErrorMsg(apiErrorMessage(err, 'Failed to load your merchant profile'));
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setAuth]);
 
   const fetchMerchantData = useCallback(async () => {
     if (!merchantId) {
@@ -109,6 +135,19 @@ export function MerchantPortalDashboard() {
     totalOrdersSubmitted > 0
       ? Math.round((totalOrdersDispatched / totalOrdersSubmitted) * 100)
       : 100;
+
+  if (application === undefined) {
+    return (
+      <main className="p-4 md:p-6" data-density="compact">
+        <p role="status" className="py-12 text-center text-sm text-secondary">
+          Loading your merchant portal…
+        </p>
+      </main>
+    );
+  }
+  if (!application || application.status !== 'APPROVED') {
+    return <MerchantApplicationStatus application={application} />;
+  }
 
   return (
     <main className="space-y-4 p-4 md:p-6" data-density="compact">

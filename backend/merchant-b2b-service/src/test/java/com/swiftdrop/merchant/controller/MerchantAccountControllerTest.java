@@ -71,7 +71,7 @@ class MerchantAccountControllerTest {
 
         when(merchantAccountService.createMerchant(any(CreateMerchantRequest.class))).thenReturn(res);
 
-        mockMvc.perform(post("/api/v1/merchants")
+        mockMvc.perform(post("/api/v1/merchants").with(TestCallers.admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -93,9 +93,9 @@ class MerchantAccountControllerTest {
                 Instant.now()
         );
 
-        when(merchantAccountService.getOrCreateMerchant(eq(merchantId), any())).thenReturn(res);
+        when(merchantAccountService.getMerchantById(merchantId)).thenReturn(res);
 
-        mockMvc.perform(get("/api/v1/merchants/" + merchantId))
+        mockMvc.perform(get("/api/v1/merchants/" + merchantId).with(TestCallers.merchant(merchantId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.merchantId").value(merchantId.toString()));
@@ -117,7 +117,7 @@ class MerchantAccountControllerTest {
 
         when(merchantAccountService.getAllMerchants()).thenReturn(List.of(res));
 
-        mockMvc.perform(get("/api/v1/merchants"))
+        mockMvc.perform(get("/api/v1/merchants").with(TestCallers.admin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].businessName").value("Store A"));

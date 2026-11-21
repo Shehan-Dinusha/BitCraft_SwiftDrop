@@ -84,7 +84,7 @@ class MerchantOrderIngestControllerTest {
 
         when(ingestionService.processBulkIngest(eq(merchantId), any(BulkIngestRequest.class), any())).thenReturn(res);
 
-        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/ingest/bulk")
+        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/ingest/bulk").with(TestCallers.merchant(merchantId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isAccepted())
@@ -131,7 +131,7 @@ class MerchantOrderIngestControllerTest {
         when(ingestionService.processBulkIngest(eq(merchantId), any(BulkIngestRequest.class), any())).thenReturn(res);
 
         mockMvc.perform(multipart("/api/v1/merchants/" + merchantId + "/ingest/csv")
-                        .file(file))
+                        .file(file).with(TestCallers.merchant(merchantId)))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.batchId").value(batchId.toString()));

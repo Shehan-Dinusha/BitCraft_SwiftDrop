@@ -103,6 +103,15 @@ public class EmailHtmlRenderer {
                             + "Couriers then add their vehicle details.",
                     "If you were not expecting this email, you can ignore it. Nobody can use the account until the link is opened.",
                     "#1d4ed8", "#eff6ff", "#bfdbfe", 0, false)),
+            Map.entry("MERCHANT_APPROVED", new Style("Business approved", "Your business account is approved",
+                    "Your business is approved to ship with SwiftDrop. Sign in to your merchant portal to create an API key "
+                            + "and connect your system.",
+                    "Your orders are collected from the pickup address in your application.",
+                    "#065f46", "#d1fae5", "#a7f3d0", 0, false)),
+            Map.entry("MERCHANT_REJECTED", new Style("Application needs changes", "We could not approve your business yet",
+                    "Your district team reviewed your application and could not approve it as it stands.",
+                    "Sign in to your merchant portal, correct the details and submit the application again.",
+                    "#92400e", "#fef3c7", "#fde68a", 0, false)),
             Map.entry("COURIER_ASSIGNED", new Style("New delivery", "You have a new delivery",
                     "A parcel has been assigned to you. Please collect it from the pickup address.",
                     "You can see the full pickup and delivery details in the SwiftDrop courier app.",
@@ -122,6 +131,8 @@ public class EmailHtmlRenderer {
             + "SwiftDrop account. Never share this code with anyone, including SwiftDrop staff.";
     private static final String INVITE_REASON = "This security email was sent because SwiftDrop operations created an "
             + "account for you. The link signs you in, so never share it with anyone, including SwiftDrop staff.";
+    private static final String MERCHANT_REASON = "You are receiving this email because you applied for a SwiftDrop "
+            + "business account.";
     private static final String SIGN_IN_REASON = "Sign-in alerts help keep your SwiftDrop account safe. They are always "
             + "sent and cannot be turned off.";
     private static final String COURIER_REASON = "You are receiving this email because you are a SwiftDrop courier. "
@@ -213,7 +224,8 @@ public class EmailHtmlRenderer {
                 </table>
                 </body>
                 </html>
-                """.formatted(safeSubject, preheader, BRAND, esc(security ? "Account security" : "COURIER_ASSIGNED".equals(code) ? "Delivery job" : "Parcel update"),
+                """.formatted(safeSubject, preheader, BRAND, esc(security ? "Account security" : "COURIER_ASSIGNED".equals(code) ? "Delivery job"
+                        : code.startsWith("MERCHANT_") ? "Business account" : "Parcel update"),
                 style.accent(), content, esc(reason(code, security, oneTimeCode)), Year.now().getValue());
     }
 
@@ -226,6 +238,9 @@ public class EmailHtmlRenderer {
         }
         if (security) {
             return SIGN_IN_REASON;
+        }
+        if (code.startsWith("MERCHANT_")) {
+            return MERCHANT_REASON;
         }
         return "COURIER_ASSIGNED".equals(code) ? COURIER_REASON : PARCEL_REASON;
     }
@@ -326,6 +341,20 @@ public class EmailHtmlRenderer {
                 String ip = clean(p.get("ipAddress"));
                 if (ip != null) {
                     rows.add(new String[]{"IP address", ip, null});
+                }
+            }
+            case "MERCHANT_APPROVED", "MERCHANT_REJECTED" -> {
+                String business = clean(p.get("businessName"));
+                if (business != null) {
+                    rows.add(new String[]{"Business", business, null});
+                }
+                String district = clean(p.get("district"));
+                if (district != null) {
+                    rows.add(new String[]{"District", district, null});
+                }
+                String reason = clean(p.get("reason"));
+                if ("MERCHANT_REJECTED".equals(code) && reason != null) {
+                    rows.add(new String[]{"Reason", reason, null});
                 }
             }
             case "PARCEL_FAILED" -> {
