@@ -79,6 +79,9 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # Profile pictures: Azure Blob when the connection string is set, PostgreSQL otherwise.
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AVATAR_STORAGE_CONTAINER_NAME: ${AVATAR_STORAGE_CONTAINER_NAME:-profile-photos}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
