@@ -11,6 +11,7 @@ import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 import { RegistrationSuccessPage } from '@/features/auth/pages/RegistrationSuccessPage';
 import { InviteAcceptPage } from '@/features/auth/pages/InviteAcceptPage';
 import { CourierVehicleSetupPage } from '@/features/courier/pages/CourierVehicleSetupPage';
+import { CourierTodayDeliveriesPage } from '@/features/courier/pages/CourierTodayDeliveriesPage';
 import { CourierManagementPage } from '@/features/admin-ops/pages/CourierManagementPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
@@ -186,10 +187,18 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/courier/today-deliveries',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <CourierTodayDeliveriesPage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/courier/deliveries',
         element: (
           <RoleGuard roles={['COURIER']}>
-            <ActiveDeliveryExecutionPage />
+            <CourierTodayDeliveriesPage />
           </RoleGuard>
         )
       },

@@ -66,7 +66,8 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
       items: [
         { id: 'shift', label: 'Shift', icon: 'home', to: '/courier' },
         { id: 'delivery', label: 'Active delivery', icon: 'truck', to: '/courier/delivery' },
-        { id: 'vehicle', label: 'My vehicle', icon: 'truck', to: '/courier/vehicle' }
+        { id: 'vehicle', label: 'My vehicle', icon: 'truck', to: '/courier/vehicle' },
+        { id: 'today-deliveries', label: "Today's deliveries", icon: 'package', to: '/courier/today-deliveries' }
       ]
     }
   ],
