@@ -300,4 +300,56 @@ class DynamicPricingEngineTest {
         assertThat(response.weightFee()).isEqualByComparingTo("240.00");
         assertThat(response.estimatedFee()).isEqualByComparingTo("790.00");
     }
+
+    @Test
+    @DisplayName("Different districts in the same zone use the zone fees, not the default tariff")
+    void testSameZoneDifferentDistrictsUseZoneFees() {
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("COLOMBO").zoneCode("ZONE_WESTERN").build()));
+        when(districtZoneMappingRepository.findByDistrict("KALUTARA"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("KALUTARA").zoneCode("ZONE_WESTERN").build()));
+        when(pricingZoneRepository.findByZoneCode("ZONE_WESTERN"))
+                .thenReturn(Optional.of(westernZone));
+
+        // Same zone: base 350.00. Weight 2.5 kg -> extra 2 steps * 80.00 = 160.00. Total = 510.00
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.KALUTARA)
+                .actualWeightKg(new BigDecimal("2.50"))
+                .speed(OrderSpeed.STANDARD)
+                .build();
+
+        PricingQuoteResponse response = pricingEngine.calculateQuote(request);
+
+        assertThat(response.intraDistrict()).isFalse();
+        assertThat(response.pickupZone()).isEqualTo("ZONE_WESTERN");
+        assertThat(response.deliveryZone()).isEqualTo("ZONE_WESTERN");
+        assertThat(response.baseFee()).isEqualByComparingTo("350.00");
+        assertThat(response.weightFee()).isEqualByComparingTo("160.00");
+        assertThat(response.estimatedFee()).isEqualByComparingTo("510.00");
+    }
+
+    @Test
+    @DisplayName("Express delivery inside one zone applies the zone fees and the 1.5x multiplier")
+    void testSameZoneExpressMultiplier() {
+        when(districtZoneMappingRepository.findByDistrict("COLOMBO"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("COLOMBO").zoneCode("ZONE_WESTERN").build()));
+        when(districtZoneMappingRepository.findByDistrict("KALUTARA"))
+                .thenReturn(Optional.of(DistrictZoneMapping.builder().district("KALUTARA").zoneCode("ZONE_WESTERN").build()));
+        when(pricingZoneRepository.findByZoneCode("ZONE_WESTERN"))
+                .thenReturn(Optional.of(westernZone));
+
+        // Subtotal 510.00 * 1.5 = 765.00, surcharge 255.00
+        PricingQuoteRequest request = PricingQuoteRequest.builder()
+                .pickupDistrict(SriLankanDistrict.COLOMBO)
+                .deliveryDistrict(SriLankanDistrict.KALUTARA)
+                .actualWeightKg(new BigDecimal("2.50"))
+                .speed(OrderSpeed.EXPRESS)
+                .build();
+
+        PricingQuoteResponse response = pricingEngine.calculateQuote(request);
+
+        assertThat(response.estimatedFee()).isEqualByComparingTo("765.00");
+        assertThat(response.speedSurcharge()).isEqualByComparingTo("255.00");
+    }
 }
