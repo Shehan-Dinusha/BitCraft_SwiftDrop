@@ -46,8 +46,8 @@ const audiences = [
     icon: <Store className="size-5" />,
     title: 'For businesses',
     points: [
-      'Book orders one at a time or upload a CSV for a whole batch',
-      'Connect your store with API keys and get webhook status updates',
+      'Create orders straight from your store with an API key, or upload a CSV for a batch',
+      'Get a webhook every time a parcel changes status',
       'Pickups from your business location, every order on one dashboard'
     ],
     cta: { label: 'Register your business', to: '/register/business' }

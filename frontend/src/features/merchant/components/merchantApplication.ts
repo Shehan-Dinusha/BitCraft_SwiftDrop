@@ -3,7 +3,11 @@ import type {
   RegisterMerchantRequest,
   SriLankanDistrict
 } from '@/services/api/merchantApi';
-import { normalisePhoneDigits } from '@/features/customer/components/booking/bookingForm';
+import {
+  normalisePhoneDigits,
+  provinceOf,
+  type ProvinceId
+} from '@/features/customer/components/booking/bookingForm';
 
 export type BusinessCategory = RegisterMerchantRequest['businessCategory'];
 export type MonthlyParcelVolume = RegisterMerchantRequest['monthlyParcelVolume'];
@@ -43,6 +47,8 @@ export interface ApplicationForm {
   pickupAddress: string;
   pickupCity: string;
   pickupPostalCode: string;
+  /** Only narrows the district list; the request carries the district. */
+  province: ProvinceId | '';
   operatingDistrict: SriLankanDistrict | '';
 }
 
@@ -60,6 +66,7 @@ export const FIELD_ORDER: ApplicationField[] = [
   'pickupAddress',
   'pickupCity',
   'pickupPostalCode',
+  'province',
   'operatingDistrict'
 ];
 
@@ -93,6 +100,7 @@ export function emptyApplication(
     pickupAddress: '',
     pickupCity: '',
     pickupPostalCode: '',
+    province: provinceOf(district || undefined),
     operatingDistrict: district
   };
 }
@@ -110,6 +118,7 @@ export function fromApplication(application: MerchantApprovalResponse): Applicat
     pickupAddress: application.pickupAddress ?? '',
     pickupCity: application.pickupCity ?? '',
     pickupPostalCode: application.pickupPostalCode ?? '',
+    province: provinceOf(application.operatingDistrict ?? undefined),
     operatingDistrict: application.operatingDistrict ?? ''
   };
 }
@@ -155,6 +164,8 @@ export function validateField(field: ApplicationField, form: ApplicationForm): s
     case 'pickupPostalCode':
       if (!value) return 'Enter the 5-digit postal code';
       return PATTERNS.postalCode.test(value) ? undefined : 'Postal codes have 5 digits, e.g. 10250';
+    case 'province':
+      return value || form.operatingDistrict ? undefined : 'Choose the pickup province';
     case 'operatingDistrict':
       return value ? undefined : 'Choose the pickup district';
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISTRICTS, PROVINCES, provinceLabelOf, provinceOf } from './bookingForm';
+import { DISTRICTS, districtsOf, PROVINCES, provinceLabelOf, provinceOf } from './bookingForm';
 
 describe('province follows the district', () => {
   it('gives the province of a district', () => {
@@ -25,5 +25,16 @@ describe('province follows the district', () => {
 
   it('never pairs Anuradhapura with Colombo', () => {
     expect(provinceOf('ANURADHAPURA')).not.toBe(provinceOf('COLOMBO'));
+  });
+});
+
+describe('the district list follows the province', () => {
+  it('lists only the districts of the chosen province', () => {
+    expect(districtsOf('UVA').map((d) => d.value)).toEqual(['BADULLA', 'MONARAGALA']);
+    expect(districtsOf('NORTHERN')).toHaveLength(5);
+  });
+
+  it('is empty until a province is chosen', () => {
+    expect(districtsOf('')).toEqual([]);
   });
 });

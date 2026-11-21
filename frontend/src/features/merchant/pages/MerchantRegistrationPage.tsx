@@ -1,22 +1,24 @@
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
 import { Field } from '@/design-system/primitives/Field';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
-import { useDensityMode } from '@/design-system/providers/DensityProvider';
-import { densityRecipes } from '@/design-system/tokens/density';
+import { SelectDropdown } from '@/design-system/components/SelectDropdown/SelectDropdown';
 import {
   merchantApi,
   type MerchantApprovalResponse,
   type SriLankanDistrict
 } from '@/services/api/merchantApi';
-import { SRI_LANKAN_DISTRICTS } from '@/services/api/authApi';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { useAuthStore } from '@/store/useAuthStore';
-import { normalisePhoneDigits } from '@/features/customer/components/booking/bookingForm';
-import { cn } from '@/utils/cn';
+import {
+  districtsOf,
+  normalisePhoneDigits,
+  provinceOf,
+  provinceOptions,
+  type ProvinceId
+} from '@/features/customer/components/booking/bookingForm';
 import {
   BUSINESS_CATEGORIES,
   emptyApplication,
@@ -31,85 +33,7 @@ import {
   type ApplicationForm
 } from '../components/merchantApplication';
 
-function districtName(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
 const fieldId = (field: ApplicationField) => `merchant-${field}`;
-
-/** A native select styled like the design-system `Field`, with the same label, hint and error slots. */
-function SelectField({
-  id,
-  label,
-  value,
-  onChange,
-  onBlur,
-  error,
-  hint,
-  placeholder,
-  options
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onBlur: () => void;
-  error?: string;
-  hint?: string;
-  placeholder: string;
-  options: { value: string; label: string }[];
-}) {
-  const recipe = densityRecipes[useDensityMode()];
-  const messageId = `${id}-message`;
-  return (
-    <div className="flex w-full flex-col gap-2">
-      <label htmlFor={id} className={cn('font-semibold text-primary', recipe.caption)}>
-        {label} <span className="text-status-danger">*</span>
-      </label>
-      <div className="relative">
-        <select
-          id={id}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onBlur={onBlur}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error || hint ? messageId : undefined}
-          className={cn(
-            'block h-10 w-full appearance-none rounded-lg border bg-card pl-3 pr-9 text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus',
-            error ? 'border-status-danger' : 'border-border-subtle',
-            value ? 'text-primary' : 'text-muted'
-          )}
-        >
-          <option value="" disabled>
-            {placeholder}
-          </option>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          aria-hidden="true"
-          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-        />
-      </div>
-      {error ? (
-        <span id={messageId} className={cn('text-status-danger', recipe.caption)}>
-          {error}
-        </span>
-      ) : hint ? (
-        <span id={messageId} className={cn('text-secondary', recipe.caption)}>
-          {hint}
-        </span>
-      ) : null}
-    </div>
-  );
-}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const headingId = useId();
@@ -194,6 +118,32 @@ export function MerchantRegistrationPage() {
     revalidate(form, field, nextTouched);
   };
 
+  /** A dropdown choice is final, so it is checked straight away. */
+  const pick = (field: ApplicationField, value: string) => {
+    const next = { ...form, [field]: value } as ApplicationForm;
+    const nextTouched = { ...touched, [field]: true };
+    setForm(next);
+    setTouched(nextTouched);
+    revalidate(next, field, nextTouched);
+  };
+
+  /** A district from another province no longer fits, so it is cleared to be chosen again. */
+  const pickProvince = (province: ProvinceId) => {
+    const keep = form.operatingDistrict && provinceOf(form.operatingDistrict) === province;
+    const next = {
+      ...form,
+      province,
+      operatingDistrict: keep ? form.operatingDistrict : ''
+    } as ApplicationForm;
+    setForm(next);
+    setTouched({ ...touched, province: true });
+    setErrors((current) => ({
+      ...current,
+      province: undefined,
+      operatingDistrict: keep ? current.operatingDistrict : undefined
+    }));
+  };
+
   const text = (field: ApplicationField) => ({
     id: fieldId(field),
     value: form[field],
@@ -271,25 +221,25 @@ export function MerchantRegistrationPage() {
                 className="sm:col-span-2"
                 {...text('businessName')}
               />
-              <SelectField
+              <SelectDropdown
                 id={fieldId('businessCategory')}
                 label="What do you sell?"
+                required
                 placeholder="Choose a category"
                 options={BUSINESS_CATEGORIES}
-                value={form.businessCategory}
+                value={form.businessCategory || undefined}
                 error={errors.businessCategory}
-                onChange={(value) => change('businessCategory', value)}
-                onBlur={() => blur('businessCategory')}
+                onChange={(value) => pick('businessCategory', value)}
               />
-              <SelectField
+              <SelectDropdown
                 id={fieldId('monthlyParcelVolume')}
                 label="Parcels a month"
+                required
                 placeholder="Choose a rough number"
                 options={MONTHLY_VOLUMES}
-                value={form.monthlyParcelVolume}
+                value={form.monthlyParcelVolume || undefined}
                 error={errors.monthlyParcelVolume}
-                onChange={(value) => change('monthlyParcelVolume', value)}
-                onBlur={() => blur('monthlyParcelVolume')}
+                onChange={(value) => pick('monthlyParcelVolume', value)}
               />
               <Field
                 label="Business registration number"
@@ -360,16 +310,28 @@ export function MerchantRegistrationPage() {
                   change('pickupPostalCode', event.target.value.replace(/\D/g, '').slice(0, 5))
                 }
               />
-              <SelectField
+              <SelectDropdown
+                id={fieldId('province')}
+                label="Pickup province"
+                required
+                placeholder="Choose a province"
+                options={provinceOptions}
+                value={form.province || undefined}
+                error={errors.province}
+                onChange={(value) => pickProvince(value as ProvinceId)}
+              />
+              <SelectDropdown
                 id={fieldId('operatingDistrict')}
                 label="Pickup district"
-                placeholder="Choose a district"
+                required
+                searchable
+                disabled={!form.province}
+                placeholder={form.province ? 'Choose a district' : 'Choose a province first'}
                 hint="This district's dispatcher reviews your application"
-                options={SRI_LANKAN_DISTRICTS.map((d) => ({ value: d, label: districtName(d) }))}
-                value={form.operatingDistrict}
+                options={districtsOf(form.province)}
+                value={form.operatingDistrict || undefined}
                 error={errors.operatingDistrict}
-                onChange={(value) => change('operatingDistrict', value)}
-                onBlur={() => blur('operatingDistrict')}
+                onChange={(value) => pick('operatingDistrict', value)}
               />
             </Section>
           </fieldset>

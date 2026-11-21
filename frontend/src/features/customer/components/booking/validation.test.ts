@@ -33,6 +33,20 @@ const validForm: BookingForm = {
 };
 
 describe('booking validation', () => {
+  it('asks for the province first, unless a district already settles it', () => {
+    expect(validateField('pickupProvince', { ...validForm, pickupDistrict: '' })).toBe(
+      'Choose a province'
+    );
+    expect(validateField('pickupProvince', validForm)).toBeUndefined();
+    expect(
+      validateField('deliveryProvince', {
+        ...validForm,
+        deliveryDistrict: '',
+        deliveryProvince: 'CENTRAL'
+      })
+    ).toBeUndefined();
+  });
+
   it('accepts a complete form', () => {
     expect(firstInvalidStep(validForm)).toBeNull();
   });
@@ -63,9 +77,9 @@ describe('booking validation', () => {
   });
 
   it('blocks markup characters in free text', () => {
-    expect(
-      validateField('customerNotes', { ...validForm, customerNotes: '<script>' })
-    ).toContain('< and >');
+    expect(validateField('customerNotes', { ...validForm, customerNotes: '<script>' })).toContain(
+      '< and >'
+    );
   });
 
   it('enforces the parcel weight range', () => {

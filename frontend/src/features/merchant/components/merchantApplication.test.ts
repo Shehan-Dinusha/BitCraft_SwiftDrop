@@ -56,6 +56,7 @@ describe('merchant application validation', () => {
         'pickupAddress',
         'pickupCity',
         'pickupPostalCode',
+        'province',
         'websiteUrl'
       ].sort()
     );
