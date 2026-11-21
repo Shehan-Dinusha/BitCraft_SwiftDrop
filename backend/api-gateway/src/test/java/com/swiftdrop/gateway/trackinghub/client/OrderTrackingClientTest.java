@@ -10,6 +10,7 @@ import com.swiftdrop.gateway.config.GatewayRouteProperties;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -17,6 +18,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.test.StepVerifier;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -30,6 +32,22 @@ class OrderTrackingClientTest {
     private OrderTrackingClient client;
     private GatewayRouteProperties routes;
     private ObjectMapper objectMapper;
+
+    /**
+     * The client gives up after 2 seconds. The first request in a JVM also pays Reactor Netty's
+     * one-time start-up (event loops, resolver, class loading), which on a slow CI runner can take
+     * longer than that, so the request timed out before it reached the mock server. Pay that cost
+     * once here, without the client's timeout, so each test measures only its own request.
+     */
+    @BeforeAll
+    static void warmUpReactorNetty() throws IOException {
+        try (MockWebServer warmUp = new MockWebServer()) {
+            warmUp.enqueue(new MockResponse().setResponseCode(204));
+            warmUp.start();
+            WebClient.create().get().uri(warmUp.url("/").toString()).retrieve().toBodilessEntity()
+                    .block(Duration.ofSeconds(30));
+        }
+    }
 
     @BeforeEach
     void setUp() throws IOException {
