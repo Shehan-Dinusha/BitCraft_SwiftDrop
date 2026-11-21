@@ -132,13 +132,7 @@ export function UserManagementPage() {
     <div className="mx-auto max-w-[1440px] space-y-6 p-4 md:p-7 lg:p-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-brand-primary">
-            Account administration
-          </p>
           <h1 className="text-3xl font-bold tracking-tight">User management</h1>
-          <p className="mt-2 text-sm text-secondary">
-            Manage account access while keeping assigned roles consistent.
-          </p>
         </div>
         <Button
           variant="outline"

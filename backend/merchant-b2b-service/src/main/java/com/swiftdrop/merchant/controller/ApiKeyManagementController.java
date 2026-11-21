@@ -1,5 +1,7 @@
 package com.swiftdrop.merchant.controller;
 
+import com.swiftdrop.merchant.security.MerchantAccess;
+import jakarta.servlet.http.HttpServletRequest;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.dto.MerchantApiKeyValidationRequest;
 import com.swiftdrop.contracts.dto.MerchantApiKeyValidationResult;
@@ -37,14 +39,17 @@ public class ApiKeyManagementController {
     @Operation(summary = "Generate a new merchant API key", description = "Returns the raw API key secret ONLY ONCE.")
     public ApiResponse<ApiKeyResponse> generateApiKey(
             @PathVariable UUID merchantId,
-            @Valid @RequestBody CreateApiKeyRequest request) {
+            @Valid @RequestBody CreateApiKeyRequest request,
+            HttpServletRequest httpRequest) {
+        MerchantAccess.requireOwnMerchant(httpRequest, merchantId);
         ApiKeyResponse response = apiKeyService.generateApiKey(merchantId, request);
         return ApiResponse.success(response, "API key successfully generated. Store secret securely.");
     }
 
     @GetMapping("/api/v1/merchants/{merchantId}/api-keys")
     @Operation(summary = "List all API keys for a merchant", description = "Raw secret key is not returned.")
-    public ApiResponse<List<ApiKeyResponse>> listApiKeys(@PathVariable UUID merchantId) {
+    public ApiResponse<List<ApiKeyResponse>> listApiKeys(@PathVariable UUID merchantId, HttpServletRequest httpRequest) {
+        MerchantAccess.requireOwnMerchant(httpRequest, merchantId);
         List<ApiKeyResponse> keys = apiKeyService.listApiKeys(merchantId);
         return ApiResponse.success(keys, "API keys retrieved successfully");
     }
@@ -53,7 +58,9 @@ public class ApiKeyManagementController {
     @Operation(summary = "Revoke a merchant API key")
     public ApiResponse<ApiKeyResponse> revokeApiKey(
             @PathVariable UUID merchantId,
-            @PathVariable UUID keyId) {
+            @PathVariable UUID keyId,
+            HttpServletRequest httpRequest) {
+        MerchantAccess.requireOwnMerchant(httpRequest, merchantId);
         ApiKeyResponse revoked = apiKeyService.revokeApiKey(merchantId, keyId);
         return ApiResponse.success(revoked, "API key successfully revoked");
     }
@@ -63,7 +70,9 @@ public class ApiKeyManagementController {
     @Operation(summary = "Regenerate a merchant API key",
             description = "Atomically creates a fresh key and revokes the old key. Preserves the label and expiry. "
                     + "Returns the new raw secret once. Unknown or foreign keys return 404; revoked/expired keys return 409.")
-    public ApiResponse<ApiKeyResponse> regenerateApiKey(@PathVariable UUID merchantId, @PathVariable UUID keyId) {
+    public ApiResponse<ApiKeyResponse> regenerateApiKey(@PathVariable UUID merchantId, @PathVariable UUID keyId,
+                                                        HttpServletRequest httpRequest) {
+        MerchantAccess.requireOwnMerchant(httpRequest, merchantId);
         return ApiResponse.success(apiKeyService.regenerateApiKey(merchantId, keyId),
                 "API key regenerated. Store the new secret securely; the old key is revoked.");
     }

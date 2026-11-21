@@ -12,7 +12,10 @@ paths:
   /api/v1/merchants/register:
     post:
       tags: [MerchantApproval]
-      summary: Register a business as the authenticated merchant
+      summary: Submit the caller's business application (MERCHANT)
+      description: >-
+        One application per merchant user. After a rejection, call again with the corrected details
+        to resubmit. 409 while it is under review or once the business is registered.
       requestBody:
         required: true
         content:
@@ -34,15 +37,40 @@ paths:
           description: Caller is not authorized
         "409":
           description: Resource state conflicts with the request
+  /api/v1/merchants/me/application:
+    get:
+      tags: [MerchantApproval]
+      summary: Get the caller's business application (MERCHANT)
+      description: Its status, and the reason when it was rejected. 404 before the first application.
+      responses:
+        "200":
+          description: Application retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantApprovalResponse"
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not a MERCHANT
+        "404":
+          description: No application yet
   /api/v1/admin/merchants:
     get:
       tags: [MerchantApproval]
-      summary: List applications (SYSTEM_ADMIN only)
+      summary: List applications (DISPATCHER, SYSTEM_ADMIN)
+      description: >-
+        A DISPATCHER sees the applications of their own district (the district parameter is ignored);
+        a SYSTEM_ADMIN sees every district or the one given.
       parameters:
         - name: status
           in: query
           schema:
             $ref: "#/components/schemas/MerchantStatus"
+        - name: district
+          in: query
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Successful request
@@ -61,7 +89,8 @@ paths:
   /api/v1/admin/merchants/{merchantId}/approve:
     post:
       tags: [MerchantApproval]
-      summary: approve a pending merchant (SYSTEM_ADMIN only)
+      summary: Approve a pending merchant (DISPATCHER of its district, SYSTEM_ADMIN)
+      description: The owner is emailed; IAM links the owner's account to the merchant (merchant.approved).
       parameters:
         - name: merchantId
           in: path
@@ -85,7 +114,8 @@ paths:
   /api/v1/admin/merchants/{merchantId}/reject:
     post:
       tags: [MerchantApproval]
-      summary: reject a pending merchant (SYSTEM_ADMIN only)
+      summary: Reject a pending merchant with a reason (DISPATCHER of its district, SYSTEM_ADMIN)
+      description: The owner is emailed the reason and can correct the application and resubmit it.
       parameters:
         - name: merchantId
           in: path
@@ -100,6 +130,55 @@ paths:
       responses:
         "200":
           description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantApprovalResponse"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not authorized
+        "409":
+          description: Resource state conflicts with the request
+  /api/v1/admin/merchants/{merchantId}/suspend:
+    post:
+      tags: [MerchantApproval]
+      summary: Suspend an approved merchant (SYSTEM_ADMIN)
+      description: Its API keys stop working and it cannot upload orders until reactivated.
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Merchant suspended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantApprovalResponse"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Caller is not authorized
+        "409":
+          description: Resource state conflicts with the request
+  /api/v1/admin/merchants/{merchantId}/reactivate:
+    post:
+      tags: [MerchantApproval]
+      summary: Reactivate a suspended merchant (SYSTEM_ADMIN)
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Merchant reactivated
           content:
             application/json:
               schema:
@@ -260,7 +339,8 @@ paths:
   /api/v1/merchants:
     post:
       tags: [MerchantAccount]
-      summary: Register a new merchant account
+      summary: Provision a merchant account directly (SYSTEM_ADMIN)
+      description: Businesses normally apply through POST /api/v1/merchants/register.
       requestBody:
         required: true
         content:
@@ -276,7 +356,7 @@ paths:
                 $ref: "#/components/schemas/ApiResponseMerchantAccountResponse"
     get:
       tags: [MerchantAccount]
-      summary: List all merchant accounts
+      summary: List all merchant accounts (SYSTEM_ADMIN)
       responses:
         "200":
           description: Merchant accounts retrieved
@@ -289,6 +369,9 @@ paths:
     get:
       tags: [MerchantAccount]
       summary: Get merchant profile by UUID
+      description: >-
+        The merchant's own users, the dispatcher of its district, or a SYSTEM_ADMIN. 404 for an unknown
+        merchant (no longer created on first read).
       parameters:
         - name: merchantId
           in: path

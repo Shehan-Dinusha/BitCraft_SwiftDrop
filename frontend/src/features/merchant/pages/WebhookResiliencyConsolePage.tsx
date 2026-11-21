@@ -20,7 +20,6 @@ import {
   Trash2,
   Power,
   Activity,
-  ShieldCheck,
   History,
   AlertTriangle,
   RefreshCw
@@ -200,16 +199,13 @@ export function WebhookResiliencyConsolePage() {
         <div>
           <div className="flex items-center gap-2">
             <Webhook className="h-6 w-6 text-brand-primary" />
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Webhook Resiliency Console
+            <h1 className="text-xl font-bold tracking-tight text-primary">
+              Webhooks
             </h1>
-            <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-800">
+            <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
               HMAC-SHA256 Signed
             </span>
           </div>
-          <p className="text-xs text-slate-500">
-            Real-time event streaming, 3-attempt exponential backoff retries, and manual Dead-Letter Queue (DLQ) replay.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -252,7 +248,7 @@ export function WebhookResiliencyConsolePage() {
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Active Listeners</span>
-          <p className="mt-1 text-xl font-bold text-emerald-600">{activeCount}</p>
+          <p className="mt-1 text-xl font-bold text-status-success-fg">{activeCount}</p>
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Backoff Retry Policy</span>
@@ -260,7 +256,7 @@ export function WebhookResiliencyConsolePage() {
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Payload Security</span>
-          <p className="mt-1 text-xs font-semibold text-indigo-600">X-SwiftDrop-Signature</p>
+          <p className="mt-1 text-xs font-semibold text-brand-primary">X-SwiftDrop-Signature</p>
         </SurfaceCard>
       </div>
 
@@ -269,7 +265,7 @@ export function WebhookResiliencyConsolePage() {
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-bold text-primary">
             <Activity className="h-4 w-4 text-brand-primary" />
-            Registered Webhook Endpoints
+            Endpoints
           </h2>
           <span className="text-xs text-secondary">{endpoints.length} configured</span>
         </div>
@@ -277,9 +273,9 @@ export function WebhookResiliencyConsolePage() {
         {endpoints.length === 0 ? (
           <SurfaceCard className="p-8 text-center">
             <Webhook className="mx-auto h-8 w-8 text-secondary opacity-40" />
-            <p className="mt-2 text-sm font-semibold text-primary">No webhook endpoints registered</p>
+            <p className="mt-2 text-sm font-semibold text-primary">No endpoints yet</p>
             <p className="mt-1 text-xs text-secondary">
-              Configure an HTTPS endpoint to receive live parcel status transitions and order events.
+              Add an HTTPS URL to receive parcel and order events.
             </p>
             <Button
               variant="outline"
@@ -302,11 +298,11 @@ export function WebhookResiliencyConsolePage() {
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-bold text-primary">{ep.targetUrl}</span>
                         {ep.active ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                          <span className="rounded-full bg-status-success-bg px-2 py-0.5 text-[11px] font-semibold text-status-success-fg">
                             ACTIVE
                           </span>
                         ) : (
-                          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                          <span className="rounded-full bg-border-subtle px-2 py-0.5 text-[11px] font-semibold text-secondary">
                             PAUSED
                           </span>
                         )}
@@ -328,13 +324,6 @@ export function WebhookResiliencyConsolePage() {
                         ))}
                       </div>
 
-                      {/* Signing secret: never returned after creation, so only a note is shown here. */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="flex items-center gap-1 text-[11px] text-secondary">
-                          <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                          HMAC signing secret: shown once at registration and not retrievable afterwards.
-                        </span>
-                      </div>
                     </div>
 
                     {/* Endpoint Control Actions */}
@@ -343,8 +332,8 @@ export function WebhookResiliencyConsolePage() {
                         <span
                           className={`rounded px-2 py-0.5 text-[11px] font-bold ${
                             pingResult.success
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-rose-100 text-rose-800'
+                              ? 'bg-status-success-bg text-status-success-fg'
+                              : 'bg-status-danger-bg text-status-danger-fg'
                           }`}
                         >
                           {pingResult.label}
@@ -372,7 +361,7 @@ export function WebhookResiliencyConsolePage() {
 
                       <Button
                         variant="ghost"
-                        className={`h-7 px-2 text-xs ${ep.active ? 'text-amber-600' : 'text-emerald-600'}`}
+                        className={`h-7 px-2 text-xs ${ep.active ? 'text-status-warning-fg' : 'text-status-success-fg'}`}
                         onClick={() => handleToggleActive(ep)}
                         title={ep.active ? 'Pause Webhook' : 'Activate Webhook'}
                       >
@@ -382,7 +371,7 @@ export function WebhookResiliencyConsolePage() {
 
                       <Button
                         variant="ghost"
-                        className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700"
+                        className="h-7 px-2 text-xs text-status-danger-fg hover:text-danger-hover"
                         onClick={() => ep.endpointId && handleDeleteEndpoint(ep.endpointId)}
                         title="Delete Webhook"
                       >
@@ -402,12 +391,10 @@ export function WebhookResiliencyConsolePage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="flex items-center gap-2 text-sm font-bold text-primary">
-              <AlertTriangle className="h-4 w-4 text-rose-500" />
-              Dead-Letter Queue (DLQ) & Manual Replay Hub
+              <AlertTriangle className="h-4 w-4 text-status-danger-fg" />
+              Failed events
             </h2>
-            <p className="text-xs text-secondary">
-              Dispatches that exhausted all 3 exponential retries are captured here for failure diagnostics and one-click replay.
-            </p>
+            <p className="text-xs text-secondary">Events that failed after 3 retries. Replay them here.</p>
           </div>
         </div>
 
@@ -419,14 +406,12 @@ export function WebhookResiliencyConsolePage() {
         open={oneTimeSecret !== null}
         onClose={() => setOneTimeSecret(null)}
         title="Copy your signing secret"
-        description="This secret is shown only once. SwiftDrop will not display it again."
         size="md"
       >
         {oneTimeSecret && (
           <div className="space-y-4 p-4 text-xs">
             <StatusBanner tone="warning" title="Shown only once">
-              Copy this secret now and store it securely (for example in your server&apos;s secret store). After you
-              close this dialog it cannot be viewed again, including after a page refresh.
+              Copy it now and store it securely. You can&apos;t view it again.
             </StatusBanner>
             <div className="flex items-center gap-2">
               <code className="flex-1 break-all rounded bg-surface-subtle px-2 py-1.5 font-mono text-[11px] text-primary">
@@ -438,7 +423,7 @@ export function WebhookResiliencyConsolePage() {
                 onClick={() => copyToClipboard(oneTimeSecret.secret, oneTimeSecret.endpointId)}
               >
                 {copiedId === oneTimeSecret.endpointId ? (
-                  <Check className="mr-1 h-3 w-3 text-emerald-500" />
+                  <Check className="mr-1 h-3 w-3 text-status-success-fg" />
                 ) : (
                   <Copy className="mr-1 h-3 w-3" />
                 )}
@@ -460,7 +445,7 @@ export function WebhookResiliencyConsolePage() {
       <Modal
         open={isCreateModalOpen}
         onClose={closeCreateModal}
-        title="Register New Webhook Endpoint"
+        title="Add endpoint"
         size="md"
       >
         <form onSubmit={handleCreateEndpoint} className="space-y-4 p-4 text-xs">
@@ -481,8 +466,7 @@ export function WebhookResiliencyConsolePage() {
               className="mt-1 w-full rounded-lg border border-border-subtle bg-canvas px-3 py-2 text-xs text-primary focus:border-brand-primary focus:outline-none"
             />
             <p className="mt-1 text-[11px] text-secondary">
-              Must be a public HTTPS URL. Private, loopback and internal addresses, and URLs containing a
-              username or password, are rejected.
+              Public HTTPS URL only.
             </p>
           </div>
 
@@ -531,7 +515,7 @@ export function WebhookResiliencyConsolePage() {
       <Modal
         open={isAttemptsModalOpen}
         onClose={() => setIsAttemptsModalOpen(false)}
-        title={`Delivery Attempts History - ${selectedEndpoint?.description || selectedEndpoint?.targetUrl}`}
+        title={`Delivery attempts: ${selectedEndpoint?.description || selectedEndpoint?.targetUrl}`}
         size="lg"
       >
         <div className="space-y-3 p-4 text-xs">
@@ -554,8 +538,8 @@ export function WebhookResiliencyConsolePage() {
                       <span
                         className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${
                           att.success
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-rose-100 text-rose-800'
+                            ? 'bg-status-success-bg text-status-success-fg'
+                            : 'bg-status-danger-bg text-status-danger-fg'
                         }`}
                       >
                         {attemptOutcomeLabel(att)}
@@ -566,7 +550,7 @@ export function WebhookResiliencyConsolePage() {
                       )}
                     </div>
                     {att.errorMessage && (
-                      <p className="font-mono text-[10px] text-rose-600">{att.errorMessage}</p>
+                      <p className="font-mono text-[10px] text-status-danger-fg">{att.errorMessage}</p>
                     )}
                   </div>
                   <span className="text-[10px] text-secondary">

@@ -1,5 +1,7 @@
 package com.swiftdrop.merchant.controller;
 
+import com.swiftdrop.merchant.security.MerchantAccess;
+import jakarta.servlet.http.HttpServletRequest;
 import com.swiftdrop.contracts.logging.LogSanitizer;
 import java.io.IOException;
 import com.swiftdrop.contracts.dto.ApiResponse;
@@ -48,7 +50,9 @@ public class MerchantOrderIngestController {
     public ApiResponse<BulkIngestBatchResponse> ingestBulkOrders(
             @PathVariable UUID merchantId,
             @RequestHeader(value = com.swiftdrop.contracts.security.JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
-            @Valid @RequestBody BulkIngestRequest request) {
+            @Valid @RequestBody BulkIngestRequest request,
+            HttpServletRequest httpRequest) {
+        MerchantAccess.requireOwnMerchant(httpRequest, merchantId);
         log.info("Received bulk order ingestion request for merchant: {}", merchantId);
         BulkIngestBatchResponse batch = ingestionService.processBulkIngest(merchantId, request, correlationId);
         return ApiResponse.success(batch, "Bulk order ingestion batch processed");
@@ -60,7 +64,9 @@ public class MerchantOrderIngestController {
     public ApiResponse<BulkIngestBatchResponse> ingestCsvOrders(
             @PathVariable UUID merchantId,
             @RequestHeader(value = com.swiftdrop.contracts.security.JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest httpRequest) {
+        MerchantAccess.requireOwnMerchant(httpRequest, merchantId);
         approvalGuard.requireApproved(merchantId);
         log.info("Received CSV order ingestion upload for merchant: {}, file: {}", LogSanitizer.clean(merchantId), LogSanitizer.clean(file.getOriginalFilename()));
         if (file.isEmpty()) {
@@ -82,21 +88,27 @@ public class MerchantOrderIngestController {
 
     @GetMapping("/api/v1/merchants/{merchantId}/batches")
     @Operation(summary = "List ingestion batches for a merchant")
-    public ApiResponse<List<BulkIngestBatchResponse>> listBatches(@PathVariable UUID merchantId) {
+    public ApiResponse<List<BulkIngestBatchResponse>> listBatches(@PathVariable UUID merchantId,
+                                                                  HttpServletRequest httpRequest) {
+        MerchantAccess.requireOwnMerchant(httpRequest, merchantId);
         List<BulkIngestBatchResponse> batches = ingestionService.listBatches(merchantId);
         return ApiResponse.success(batches, "Ingestion batches retrieved");
     }
 
     @GetMapping("/api/v1/merchants/batches/{batchId}")
     @Operation(summary = "Get ingestion batch summary by UUID")
-    public ApiResponse<BulkIngestBatchResponse> getBatch(@PathVariable UUID batchId) {
+    public ApiResponse<BulkIngestBatchResponse> getBatch(@PathVariable UUID batchId, HttpServletRequest httpRequest) {
         BulkIngestBatchResponse batch = ingestionService.getBatchById(batchId);
+        MerchantAccess.requireOwnMerchant(httpRequest, batch.merchantId());
         return ApiResponse.success(batch, "Batch retrieved");
     }
 
     @GetMapping("/api/v1/merchants/batches/{batchId}/items")
     @Operation(summary = "Get row-level parcel tracking details for a batch")
-    public ApiResponse<List<BulkBatchItemResponse>> getBatchItems(@PathVariable UUID batchId) {
+    public ApiResponse<List<BulkBatchItemResponse>> getBatchItems(@PathVariable UUID batchId,
+                                                                  HttpServletRequest httpRequest) {
+        // Rows hold recipient names and addresses: check the batch belongs to the caller first.
+        MerchantAccess.requireOwnMerchant(httpRequest, ingestionService.getBatchById(batchId).merchantId());
         List<BulkBatchItemResponse> items = ingestionService.getBatchItems(batchId);
         return ApiResponse.success(items, "Batch items retrieved");
     }

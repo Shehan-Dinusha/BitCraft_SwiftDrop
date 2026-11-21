@@ -39,12 +39,7 @@ export function ReviewStep({
 }: ReviewStepProps) {
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-h3 text-primary">Check and confirm</h2>
-        <p className="text-body text-secondary">
-          Nothing is booked until you confirm. You can still change any detail.
-        </p>
-      </div>
+      <h2 className="text-h3 text-primary">Check and confirm</h2>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-3">
@@ -191,14 +186,14 @@ export function FeePanel({
         { label: 'Base fee', note: 'First 1 kg included', amount: base },
         {
           label: 'Weight fee',
-          note: `Charged as ${estimate.chargeableWeightKg ?? '–'} kg, by weight or size, whichever is more`,
+          note: `Charged as ${estimate.chargeableWeightKg ?? '–'} kg`,
           amount: weight
         }
       ]}
       subtotal={base + weight}
       surcharge={surcharge > 0 ? { label: speedLabel, amount: surcharge } : undefined}
       total={estimate.estimatedFee ?? base + weight + surcharge}
-      footnote={`${PAYMENT_NOTE} The courier checks weight and size at pickup. If they differ, we ask you before the fee changes.`}
+      footnote={`${PAYMENT_NOTE} If the courier's measurements differ at pickup, we ask before changing the fee.`}
     />
   );
 }

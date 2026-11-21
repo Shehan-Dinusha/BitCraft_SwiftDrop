@@ -88,7 +88,7 @@ export function CourierVehicleSetupPage() {
         <header>
           <h1 className="text-2xl font-bold tracking-tight text-primary">My vehicle</h1>
           <p className="mt-1 text-body text-secondary">
-            This is the vehicle on record for your deliveries. To change it, ask your dispatcher.
+            Ask your dispatcher to change it.
           </p>
         </header>
         <SurfaceCard className="p-5">

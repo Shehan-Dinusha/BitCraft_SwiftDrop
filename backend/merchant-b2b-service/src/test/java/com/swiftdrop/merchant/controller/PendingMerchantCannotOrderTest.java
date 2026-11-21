@@ -37,17 +37,18 @@ class PendingMerchantCannotOrderTest {
     void unapprovedMerchantsCannotGenerateKeysOrIngestOrders(MerchantStatus state) throws Exception {
         when(accounts.findByMerchantId(id)).thenReturn(Optional.of(
                 MerchantAccount.builder().merchantId(id).status(state).build()));
-        mvc.perform(post("/api/v1/merchants/" + id + "/api-keys")
+        mvc.perform(post("/api/v1/merchants/" + id + "/api-keys").with(TestCallers.merchant(id))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"keyName\":\"ERP\"}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/v1/merchants/" + id + "/ingest/bulk")
+        mvc.perform(post("/api/v1/merchants/" + id + "/ingest/bulk").with(TestCallers.merchant(id))
                 .contentType(MediaType.APPLICATION_JSON).content("""
                     {"orders":[{"recipientName":"Test","recipientPhone":"+94771234567",
                     "deliveryDistrict":"COLOMBO","deliveryAddress":"Colombo"}]}
                     """))
                 .andExpect(status().isForbidden());
         mvc.perform(multipart("/api/v1/merchants/" + id + "/ingest/csv")
-                .file(new MockMultipartFile("file", "orders.csv", "text/csv", "header\nrow".getBytes())))
+                .file(new MockMultipartFile("file", "orders.csv", "text/csv", "header\nrow".getBytes()))
+                .with(TestCallers.merchant(id)))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(keys, batches, items, csv, events, submissions);
     }
@@ -56,7 +57,7 @@ class PendingMerchantCannotOrderTest {
         when(accounts.findByMerchantId(id)).thenReturn(Optional.of(
                 MerchantAccount.builder().merchantId(id).status(MerchantStatus.APPROVED).build()));
         when(keys.save(any())).thenAnswer(i -> i.getArgument(0));
-        mvc.perform(post("/api/v1/merchants/" + id + "/api-keys")
+        mvc.perform(post("/api/v1/merchants/" + id + "/api-keys").with(TestCallers.merchant(id))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"keyName\":\"ERP\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.rawApiKey").isNotEmpty());
     }

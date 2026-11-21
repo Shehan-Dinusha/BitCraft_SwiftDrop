@@ -66,12 +66,7 @@ export function SignOutDialog({
           </Button>
         </div>
       }
-    >
-      <p className="text-body text-secondary">
-        You will need to sign in again to book, track or manage your parcels. Any unsaved changes on
-        this page will be lost.
-      </p>
-    </Modal>
+    />
   );
 }
 

@@ -364,7 +364,7 @@ export function OrderDetailPage() {
         <SurfaceCard>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-body text-secondary">
-              Plans changed? You can cancel until the courier picks up the parcel.
+              You can cancel until pickup.
             </p>
             <Button type="button" variant="outline" onClick={() => openDialog(setCancelOpen)}>
               Cancel parcel

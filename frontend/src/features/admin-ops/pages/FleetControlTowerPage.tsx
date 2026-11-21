@@ -73,7 +73,7 @@ export function FleetControlTowerPage() {
         setKpiSummary(kpiData);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch dispatch fleet data';
+      const msg = err instanceof Error ? err.message : 'The fleet could not be loaded.';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -122,12 +122,9 @@ export function FleetControlTowerPage() {
     <main className="space-y-5 p-4 md:p-6" data-density="compact">
       <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Fleet Control Tower
+          <h1 className="text-2xl font-bold tracking-tight text-primary">
+            Fleet
           </h1>
-          <p className="text-xs text-slate-500">
-            Real-time courier telemetry, dynamic capacity load-balancing, and dispatch manual override.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -136,7 +133,7 @@ export function FleetControlTowerPage() {
             onClick={() => setIsLogsOpen(true)}
             className="h-8 text-xs gap-1.5"
           >
-            <Bell className="h-3.5 w-3.5 text-indigo-600" />
+            <Bell className="h-3.5 w-3.5 text-brand-primary" />
             Notification Logs
           </Button>
 
@@ -185,69 +182,69 @@ export function FleetControlTowerPage() {
       {/* Fleet KPI Metric Tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center justify-between text-xs text-secondary">
             <span>Total Fleet</span>
-            <Bike className="h-4 w-4 text-indigo-500" />
+            <Bike className="h-4 w-4 text-brand-primary" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">
+          <div className="mt-1 text-2xl font-bold text-primary">
             {couriers.length}
           </div>
-          <p className="text-[11px] text-slate-500">Across 25 Districts</p>
+          <p className="text-[11px] text-secondary">Across 25 Districts</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-emerald-600">
+          <div className="flex items-center justify-between text-xs text-status-success-fg">
             <span>Available Couriers</span>
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <CheckCircle className="h-4 w-4 text-status-success-fg" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-emerald-600">
+          <div className="mt-1 text-2xl font-bold text-status-success-fg">
             {availableCount}
           </div>
-          <p className="text-[11px] text-slate-500">Ready for dispatch</p>
+          <p className="text-[11px] text-secondary">Ready for dispatch</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-amber-600">
+          <div className="flex items-center justify-between text-xs text-status-warning-fg">
             <span>At Max Capacity</span>
-            <Zap className="h-4 w-4 text-amber-500" />
+            <Zap className="h-4 w-4 text-status-warning-fg" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-amber-600">
+          <div className="mt-1 text-2xl font-bold text-status-warning-fg">
             {busyCount}
           </div>
-          <p className="text-[11px] text-slate-500">Load balanced</p>
+          <p className="text-[11px] text-secondary">Load balanced</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-rose-600">
+          <div className="flex items-center justify-between text-xs text-status-danger-fg">
             <span>Unassigned Queue</span>
-            <Package className="h-4 w-4 text-rose-500" />
+            <Package className="h-4 w-4 text-status-danger-fg" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-rose-600">
+          <div className="mt-1 text-2xl font-bold text-status-danger-fg">
             {unassigned.length}
           </div>
-          <p className="text-[11px] text-slate-500">Needs manual dispatch</p>
+          <p className="text-[11px] text-secondary">Needs manual dispatch</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-indigo-600">
+          <div className="flex items-center justify-between text-xs text-brand-primary">
             <span>SLA On-Time Rate</span>
-            <TrendingUp className="h-4 w-4 text-indigo-500" />
+            <TrendingUp className="h-4 w-4 text-brand-primary" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-indigo-600">
+          <div className="mt-1 text-2xl font-bold text-brand-primary">
             {kpiSummary?.systemOnTimeRate != null ? `${Number(kpiSummary.systemOnTimeRate).toFixed(1)}%` : '96.8%'}
           </div>
-          <p className="text-[11px] text-slate-500">Island-wide SLA</p>
+          <p className="text-[11px] text-secondary">Island-wide SLA</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-xs text-cyan-600">
+          <div className="flex items-center justify-between text-xs text-status-info-fg">
             <span>Avg Transit Time</span>
-            <Clock className="h-4 w-4 text-cyan-500" />
+            <Clock className="h-4 w-4 text-status-info-fg" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-cyan-600">
+          <div className="mt-1 text-2xl font-bold text-status-info-fg">
             {kpiSummary?.avgTransitMinutes != null ? `${Number(kpiSummary.avgTransitMinutes).toFixed(0)}m` : '42m'}
           </div>
-          <p className="text-[11px] text-slate-500">Across active hubs</p>
+          <p className="text-[11px] text-secondary">Across active hubs</p>
         </SurfaceCard>
       </div>
 
@@ -260,18 +257,18 @@ export function FleetControlTowerPage() {
         <section className="space-y-3 lg:col-span-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-rose-500" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+              <Package className="h-4 w-4 text-status-danger-fg" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
                 Unassigned Queue ({unassigned.length})
               </h2>
             </div>
-            <span className="text-[11px] text-slate-500">Awaiting Courier</span>
+            <span className="text-[11px] text-secondary">Awaiting Courier</span>
           </div>
 
           {unassigned.length === 0 ? (
-            <SurfaceCard className="p-6 text-center text-xs text-slate-500">
-              <CheckCircle className="mx-auto h-8 w-8 text-emerald-500/80" />
-              <p className="mt-2 font-medium text-slate-800">
+            <SurfaceCard className="p-6 text-center text-xs text-secondary">
+              <CheckCircle className="mx-auto h-8 w-8 text-status-success-fg" />
+              <p className="mt-2 font-medium text-primary">
                 Queue Clear
               </p>
               <p className="text-[11px]">All orders successfully assigned by Auto-Engine.</p>
@@ -284,25 +281,25 @@ export function FleetControlTowerPage() {
                   className="space-y-2 border-l-4 border-l-rose-500 p-3 text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-indigo-600">
+                    <span className="font-mono font-bold text-brand-primary">
                       {order.trackingNumber || 'UNTRACKED'}
                     </span>
-                    <span className="rounded bg-rose-100 px-1.5 py-0.5 font-semibold text-rose-800">
+                    <span className="rounded bg-status-danger-bg px-1.5 py-0.5 font-semibold text-status-danger-fg">
                       Retry #{order.retryCount}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-slate-600">
+                  <div className="flex items-center justify-between text-secondary">
                     <span>
                       {order.pickupDistrict} ? {order.deliveryDistrict}
                     </span>
-                    <span className="font-medium text-slate-800">
+                    <span className="font-medium text-primary">
                       {order.orderSpeed}
                     </span>
                   </div>
 
                   {order.failureReason && (
-                    <p className="text-[11px] italic text-rose-600">
+                    <p className="text-[11px] italic text-status-danger-fg">
                       {order.failureReason}
                     </p>
                   )}
@@ -337,19 +334,19 @@ export function FleetControlTowerPage() {
         <section className="space-y-3 lg:col-span-7">
           <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2">
-              <Bike className="h-4 w-4 text-indigo-500" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+              <Bike className="h-4 w-4 text-brand-primary" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
                 Live Courier Fleet ({filteredCouriers.length})
               </h2>
             </div>
 
             {/* District Filter Dropdown */}
             <div className="flex items-center gap-2">
-              <Filter className="h-3.5 w-3.5 text-slate-400" />
+              <Filter className="h-3.5 w-3.5 text-muted" />
               <select
                 value={districtFilter}
                 onChange={(e) => setDistrictFilter(e.target.value)}
-                className="h-7 rounded border border-slate-300 bg-white px-2 text-xs"
+                className="h-7 rounded border border-border-subtle bg-card px-2 text-xs"
               >
                 <option value="ALL">All Districts ({couriers.length})</option>
                 {SRI_LANKAN_DISTRICTS.map((d) => (
@@ -373,25 +370,25 @@ export function FleetControlTowerPage() {
                   className="space-y-2 p-3 text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">
+                    <span className="font-bold text-primary">
                       {courier.courierName}
                     </span>
                     <span
                       className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                         courier.shiftStatus === 'AVAILABLE'
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-status-success-bg text-status-success-fg'
                           : courier.shiftStatus === 'BUSY'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-600'
+                            ? 'bg-status-warning-bg text-status-warning-fg'
+                            : 'bg-canvas text-secondary'
                       }`}
                     >
                       {courier.shiftStatus}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-slate-500">
+                  <div className="flex items-center justify-between text-secondary">
                     <span className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-indigo-500" />
+                      <MapPin className="h-3 w-3 text-brand-primary" />
                       {courier.currentDistrict}
                     </span>
                     <span>{courier.vehicleType}</span>
@@ -400,15 +397,15 @@ export function FleetControlTowerPage() {
                   {/* Workload Capacity Bar */}
                   <div className="space-y-1">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-500">Load</span>
-                      <span className="font-semibold text-slate-700">
+                      <span className="text-secondary">Load</span>
+                      <span className="font-semibold text-primary">
                         {cap} / {max} parcels
                       </span>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
                       <div
                         className={`h-full rounded-full transition-all ${
-                          pct >= 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                          pct >= 80 ? 'bg-status-warning' : 'bg-status-success'
                         }`}
                         style={{ width: `${pct}%` }}
                       />
@@ -429,27 +426,27 @@ export function FleetControlTowerPage() {
       >
         {selectedOrder && (
           <div className="space-y-4 text-xs">
-            <div className="rounded-lg bg-slate-50 p-3">
-              <div className="flex justify-between font-mono font-bold text-slate-900">
+            <div className="rounded-lg bg-canvas p-3">
+              <div className="flex justify-between font-mono font-bold text-primary">
                 <span>{selectedOrder.trackingNumber}</span>
-                <span className="text-indigo-600">
+                <span className="text-brand-primary">
                   {selectedOrder.orderSpeed}
                 </span>
               </div>
-              <p className="mt-1 text-slate-600">
+              <p className="mt-1 text-secondary">
                 Route: <strong>{selectedOrder.pickupDistrict}</strong> ?{' '}
                 <strong>{selectedOrder.deliveryDistrict}</strong>
               </p>
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="fleet-assign-courier" className="font-semibold text-slate-700">
+              <label htmlFor="fleet-assign-courier" className="font-semibold text-primary">
                 Select Courier to Assign
               </label>
               <select id="fleet-assign-courier"
                 value={selectedCourierId}
                 onChange={(e) => setSelectedCourierId(e.target.value)}
-                className="w-full rounded border border-slate-300 bg-white p-2 text-xs"
+                className="w-full rounded border border-border-subtle bg-card p-2 text-xs"
               >
                 <option value="">-- Choose Courier --</option>
                 {couriers
@@ -464,7 +461,7 @@ export function FleetControlTowerPage() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="fleet-reassign-reason" className="font-semibold text-slate-700">
+              <label htmlFor="fleet-reassign-reason" className="font-semibold text-primary">
                 Override Reason
               </label>
               <input id="fleet-reassign-reason"
@@ -472,7 +469,7 @@ export function FleetControlTowerPage() {
                 placeholder="e.g. VIP express customer, area re-route"
                 value={overrideReason}
                 onChange={(e) => setOverrideReason(e.target.value)}
-                className="w-full rounded border border-slate-300 bg-white p-2 text-xs"
+                className="w-full rounded border border-border-subtle bg-card p-2 text-xs"
               />
             </div>
 

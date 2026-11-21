@@ -62,28 +62,28 @@ export function NotificationConsolePage() {
     switch (status) {
       case 'SENT':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-caption font-medium text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-success-bg px-2 py-0.5 text-caption font-medium text-status-success-fg border border-status-success-border">
             <CheckCircle2 className="size-3" />
             SENT
           </span>
         );
       case 'FAILED':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-caption font-medium text-rose-700 border border-rose-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-danger-bg px-2 py-0.5 text-caption font-medium text-status-danger-fg border border-status-danger-border">
             <XCircle className="size-3" />
             FAILED
           </span>
         );
       case 'SUPPRESSED':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-caption font-medium text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-warning-bg px-2 py-0.5 text-caption font-medium text-status-warning-fg border border-status-warning-border">
             <AlertTriangle className="size-3" />
             SUPPRESSED
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-caption font-medium text-slate-700 border border-slate-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-canvas px-2 py-0.5 text-caption font-medium text-primary border border-border-subtle">
             {status ?? 'UNKNOWN'}
           </span>
         );
@@ -93,9 +93,9 @@ export function NotificationConsolePage() {
   const getChannelIcon = (channel?: string) => {
     switch (channel?.toUpperCase()) {
       case 'EMAIL':
-        return <Mail className="size-3.5 text-purple-600" />;
+        return <Mail className="size-3.5 text-brand-primary" />;
       default:
-        return <Smartphone className="size-3.5 text-emerald-600" />;
+        return <Smartphone className="size-3.5 text-status-success-fg" />;
     }
   };
 
@@ -107,12 +107,9 @@ export function NotificationConsolePage() {
           <div className="flex items-center gap-2">
             <Bell className="size-5 text-brand-primary" />
             <h1 className="text-2xl font-bold tracking-tight text-primary">
-              Notification Audit Console
+              Notification log
             </h1>
           </div>
-          <p className="mt-1 text-caption text-secondary">
-            Inspect real-time multi-channel dispatch logs, PII masking compliance, and template deliveries.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -133,43 +130,43 @@ export function NotificationConsolePage() {
         <SurfaceCard className="p-3">
           <div className="flex items-center justify-between text-caption text-secondary">
             <span>Total Events</span>
-            <Send className="size-4 text-indigo-500" />
+            <Send className="size-4 text-brand-primary" />
           </div>
           <div className="mt-1 text-2xl font-bold text-primary">{totalLogs}</div>
           <p className="text-[11px] text-muted">Audited dispatches</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-caption text-emerald-600">
+          <div className="flex items-center justify-between text-caption text-status-success-fg">
             <span>Sent Successfully</span>
-            <CheckCircle2 className="size-4 text-emerald-500" />
+            <CheckCircle2 className="size-4 text-status-success-fg" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-emerald-600">{sentCount}</div>
+          <div className="mt-1 text-2xl font-bold text-status-success-fg">{sentCount}</div>
           <p className="text-[11px] text-muted">Delivered via mock gateway</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-caption text-amber-600">
+          <div className="flex items-center justify-between text-caption text-status-warning-fg">
             <span>Suppressed</span>
-            <AlertTriangle className="size-4 text-amber-500" />
+            <AlertTriangle className="size-4 text-status-warning-fg" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-amber-600">{suppressedCount}</div>
+          <div className="mt-1 text-2xl font-bold text-status-warning-fg">{suppressedCount}</div>
           <p className="text-[11px] text-muted">User opt-out / preferences</p>
         </SurfaceCard>
 
         <SurfaceCard className="p-3">
-          <div className="flex items-center justify-between text-caption text-rose-600">
+          <div className="flex items-center justify-between text-caption text-status-danger-fg">
             <span>Failed</span>
-            <XCircle className="size-4 text-rose-500" />
+            <XCircle className="size-4 text-status-danger-fg" />
           </div>
-          <div className="mt-1 text-2xl font-bold text-rose-600">{failedCount}</div>
+          <div className="mt-1 text-2xl font-bold text-status-danger-fg">{failedCount}</div>
           <p className="text-[11px] text-muted">Network / format error</p>
         </SurfaceCard>
       </div>
 
       {/* Privacy Notice Banner */}
       <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-card px-4 py-2.5 text-caption text-secondary">
-        <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+        <ShieldCheck className="size-4 text-status-success-fg shrink-0" />
         <span>
           <strong>PII Protection Active:</strong> Recipient phone numbers (e.g. <code>07X***5678</code>) and emails (e.g. <code>a***@domain.com</code>) are masked at the dispatcher boundary in compliance with Stage 12.
         </span>
@@ -233,10 +230,7 @@ export function NotificationConsolePage() {
             ) : filteredLogs.length === 0 ? (
               <div className="flex h-72 flex-col items-center justify-center gap-2 p-8 text-center">
                 <Bell className="size-8 text-muted opacity-40" />
-                <p className="text-body-strong text-primary">No notification records found</p>
-                <p className="text-caption text-muted">
-                  Logs appear automatically when parcel status transitions occur.
-                </p>
+                <p className="text-body-strong text-primary">No notifications yet</p>
               </div>
             ) : (
               <div className="max-h-[540px] overflow-y-auto">
@@ -344,7 +338,7 @@ export function NotificationConsolePage() {
                 </div>
 
                 {selectedLog.failureReason && (
-                  <div className="rounded-lg bg-rose-50 p-3 text-caption text-rose-800 border border-rose-200">
+                  <div className="rounded-lg bg-status-danger-bg p-3 text-caption text-status-danger-fg border border-status-danger-border">
                     <span className="font-semibold">Dispatch Failure Reason:</span>
                     <p className="mt-1">{selectedLog.failureReason}</p>
                   </div>
@@ -355,7 +349,7 @@ export function NotificationConsolePage() {
                 <Bell className="size-8 opacity-40" />
                 <p className="text-body font-medium text-secondary">No record selected</p>
                 <p className="text-caption text-muted">
-                  Click any row in the audit log to inspect rendered template body, masked phone/email, and status.
+                  Select a row to see its details.
                 </p>
               </div>
             )}

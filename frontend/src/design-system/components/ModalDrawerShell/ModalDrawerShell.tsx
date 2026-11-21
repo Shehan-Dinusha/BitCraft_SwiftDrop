@@ -13,7 +13,8 @@ export interface ModalDrawerShellProps {
   open: boolean;
   title: string;
   onClose: () => void;
-  children: ReactNode;
+  /** Body. Leave out for a simple confirm (title, description and footer only). */
+  children?: ReactNode;
   /** Extra header content under the title, e.g. a status badge. */
   header?: ReactNode;
   /** Footer slot. Sits below the scroll area, always visible. */
@@ -127,7 +128,8 @@ export function ModalDrawerShell({
     >
       <header
         className={cn(
-          'flex items-start justify-between gap-3 border-b border-border-subtle',
+          'flex items-start justify-between gap-3 border-border-subtle',
+          children ? 'border-b' : null,
           recipe.surfaceSection
         )}
       >
@@ -152,9 +154,11 @@ export function ModalDrawerShell({
           <X size={18} />
         </Button>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className={recipe.surfacePadding}>{children}</div>
-      </div>
+      {children ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className={recipe.surfacePadding}>{children}</div>
+        </div>
+      ) : null}
       {footer ? (
         <footer className={cn('border-t border-border-subtle', recipe.surfaceSection)}>
           {footer}

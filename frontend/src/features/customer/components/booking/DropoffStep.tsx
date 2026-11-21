@@ -45,7 +45,7 @@ export function DropoffStep(props: BookingStepProps) {
           inputMode="numeric"
           value={form.recipientAlternatePhone}
           error={errors.recipientAlternatePhone}
-          hint="Optional. Another number the courier can try"
+          hint="Optional"
           onChange={(event) =>
             onChange('recipientAlternatePhone', normalisePhoneDigits(event.target.value))
           }

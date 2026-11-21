@@ -13,7 +13,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Register a business as the authenticated merchant */
+        /**
+         * Submit the caller's business application (MERCHANT)
+         * @description One application per merchant user. After a rejection, call again with the corrected details to resubmit. 409 while it is under review or once the business is registered.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -72,6 +75,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/merchants/me/application": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the caller's business application (MERCHANT)
+         * @description Its status, and the reason when it was rejected. 404 before the first application.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Application retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseMerchantApprovalResponse"];
+                    };
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not a MERCHANT */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description No application yet */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/merchants": {
         parameters: {
             query?: never;
@@ -79,11 +142,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List applications (SYSTEM_ADMIN only) */
+        /**
+         * List applications (DISPATCHER, SYSTEM_ADMIN)
+         * @description A DISPATCHER sees the applications of their own district (the district parameter is ignored); a SYSTEM_ADMIN sees every district or the one given.
+         */
         get: {
             parameters: {
                 query?: {
                     status?: components["schemas"]["MerchantStatus"];
+                    district?: components["schemas"]["SriLankanDistrict"];
                 };
                 header?: never;
                 path?: never;
@@ -147,7 +214,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** approve a pending merchant (SYSTEM_ADMIN only) */
+        /**
+         * Approve a pending merchant (DISPATCHER of its district, SYSTEM_ADMIN)
+         * @description The owner is emailed; IAM links the owner's account to the merchant (merchant.approved).
+         */
         post: {
             parameters: {
                 query?: never;
@@ -213,7 +283,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** reject a pending merchant (SYSTEM_ADMIN only) */
+        /**
+         * Reject a pending merchant with a reason (DISPATCHER of its district, SYSTEM_ADMIN)
+         * @description The owner is emailed the reason and can correct the application and resubmit it.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -230,6 +303,141 @@ export interface paths {
             };
             responses: {
                 /** @description Successful request */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseMerchantApprovalResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not authorized */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Resource state conflicts with the request */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/merchants/{merchantId}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspend an approved merchant (SYSTEM_ADMIN)
+         * @description Its API keys stop working and it cannot upload orders until reactivated.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Merchant suspended */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseMerchantApprovalResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not authorized */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Resource state conflicts with the request */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/merchants/{merchantId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reactivate a suspended merchant (SYSTEM_ADMIN) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    merchantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Merchant reactivated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -625,7 +833,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all merchant accounts */
+        /** List all merchant accounts (SYSTEM_ADMIN) */
         get: {
             parameters: {
                 query?: never;
@@ -647,7 +855,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Register a new merchant account */
+        /**
+         * Provision a merchant account directly (SYSTEM_ADMIN)
+         * @description Businesses normally apply through POST /api/v1/merchants/register.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -685,7 +896,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get merchant profile by UUID */
+        /**
+         * Get merchant profile by UUID
+         * @description The merchant's own users, the dispatcher of its district, or a SYSTEM_ADMIN. 404 for an unknown merchant (no longer created on first read).
+         */
         get: {
             parameters: {
                 query?: never;

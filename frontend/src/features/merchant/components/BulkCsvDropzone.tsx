@@ -111,17 +111,17 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
     <SurfaceCard className="space-y-4 p-4" data-density="compact">
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
-          <h3 className="text-sm font-bold text-slate-900">Bulk CSV Order Ingestion</h3>
+          <FileSpreadsheet className="h-4 w-4 text-status-success-fg" />
+          <h3 className="text-sm font-bold text-primary">Upload orders (CSV)</h3>
         </div>
         <Button variant="outline" className="h-8 px-2 text-xs" onClick={handleDownloadTemplate}>
-          <Download className="mr-1 h-3.5 w-3.5 text-slate-500" />
-          CSV Template
+          <Download className="mr-1 h-3.5 w-3.5 text-secondary" />
+          Template
         </Button>
       </div>
 
       {errorMsg && (
-        <StatusBanner tone="danger" title="Ingestion Error" onDismiss={() => setErrorMsg(null)}>
+        <StatusBanner tone="danger" title="Upload failed" onDismiss={() => setErrorMsg(null)}>
           {errorMsg}
         </StatusBanner>
       )}
@@ -132,7 +132,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
       )}
 
       {/* Drag and Drop Zone */}
-      <label className="relative grid min-h-32 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border-subtle bg-slate-50/50 p-4 transition-colors hover:border-indigo-400 hover:bg-indigo-50/20">
+      <label className="relative grid min-h-32 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border-subtle bg-canvas p-4 transition-colors hover:border-brand-primary hover:bg-brand-subtle">
         <input
           ref={fileInputRef}
           type="file"
@@ -143,12 +143,12 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
           onChange={handleFileChange}
         />
         <div className="text-center">
-          <UploadCloud className="mx-auto h-8 w-8 text-indigo-500" />
-          <p className="mt-2 text-xs font-semibold text-slate-700">
-            {selectedFile ? selectedFile.name : 'Select a CSV batch file'}
+          <UploadCloud className="mx-auto h-8 w-8 text-brand-primary" />
+          <p className="mt-2 text-xs font-semibold text-primary">
+            {selectedFile ? selectedFile.name : 'Choose a CSV file'}
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-400">
-            Supports standardized UTF-8 CSV with recipient address and Sri Lankan district
+          <p className="mt-0.5 text-[11px] text-muted">
+            Use the template format
           </p>
         </div>
       </label>
@@ -157,10 +157,10 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
       {selectedFile && previewRows.length > 0 && (
         <div className="space-y-3 rounded-lg border border-border-subtle bg-card p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-700">
+            <span className="text-xs font-semibold text-primary">
               Preview ({previewRows.length - 1} sample rows shown)
             </span>
-            <span className="font-mono text-xs text-slate-500">
+            <span className="font-mono text-xs text-secondary">
               {(selectedFile.size / 1024).toFixed(1)} KB
             </span>
           </div>
@@ -168,7 +168,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
           <div className="max-h-32 overflow-x-auto text-[11px]">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-border-subtle font-semibold text-slate-500">
+                <tr className="border-b border-border-subtle font-semibold text-secondary">
                   {previewRows[0]?.map((h, i) => (
                     <th key={i} className="pb-1 pr-2">
                       {h}
@@ -176,7 +176,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-subtle text-slate-700">
+              <tbody className="divide-y divide-border-subtle text-primary">
                 {previewRows.slice(1).map((row, i) => (
                   <tr key={i}>
                     {row.map((cell, j) => (
