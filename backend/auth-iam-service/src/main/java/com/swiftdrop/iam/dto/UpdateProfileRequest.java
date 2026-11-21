@@ -3,7 +3,6 @@ package com.swiftdrop.iam.dto;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -28,8 +27,8 @@ public record UpdateProfileRequest(
         @Schema(description = "Phone number; empty removes it.", example = "+94771234567")
         String phone,
 
-        @NotNull
-        @Schema(description = "Primary operating district.", example = "COLOMBO")
+        @Schema(description = "District. Couriers and dispatchers must send their assigned district unchanged; "
+                + "customers and merchants may leave it out.", example = "COLOMBO")
         SriLankanDistrict district
 ) {
 }

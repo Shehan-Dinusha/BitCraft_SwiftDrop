@@ -1,8 +1,13 @@
+import type { ReactNode } from 'react';
 import { Field, Textarea } from '@/design-system';
 import { normalisePhoneDigits } from './bookingForm';
 import { AddressFields, type BookingStepProps } from './AddressFields';
 
-export function DropoffStep(props: BookingStepProps) {
+export function DropoffStep({
+  addressPicker,
+  saveOption,
+  ...props
+}: BookingStepProps & { addressPicker?: ReactNode; saveOption?: ReactNode }) {
   const { form, errors, onChange, onBlur } = props;
 
   return (
@@ -12,10 +17,11 @@ export function DropoffStep(props: BookingStepProps) {
       </legend>
       <p className="text-body text-secondary">Tell us who receives the parcel.</p>
 
+      {addressPicker}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Field
           label="Recipient name"
-          placeholder="Kasun Fernando"
           required
           autoComplete="section-delivery name"
           maxLength={100}
@@ -26,7 +32,6 @@ export function DropoffStep(props: BookingStepProps) {
         />
         <Field
           label="Recipient phone"
-          placeholder="71 234 5678"
           required
           variant="phone"
           autoComplete="section-delivery tel-national"
@@ -39,7 +44,6 @@ export function DropoffStep(props: BookingStepProps) {
         />
         <Field
           label="Second phone"
-          placeholder="11 234 5678"
           variant="phone"
           autoComplete="section-delivery tel-national"
           inputMode="numeric"
@@ -53,7 +57,6 @@ export function DropoffStep(props: BookingStepProps) {
         />
         <Field
           label="Recipient email"
-          placeholder="kasun@example.com"
           required
           inputMode="email"
           autoComplete="section-delivery email"
@@ -68,9 +71,10 @@ export function DropoffStep(props: BookingStepProps) {
 
       <AddressFields side="delivery" {...props} />
 
+      {saveOption}
+
       <Textarea
         label="Delivery instructions"
-        placeholder="Gate code 4821, call on arrival"
         rows={3}
         maxLength={500}
         value={form.customerNotes}

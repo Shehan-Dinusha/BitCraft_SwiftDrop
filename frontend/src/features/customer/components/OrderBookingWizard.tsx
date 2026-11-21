@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Alert, Button } from '@/design-system';
 import { fetchCurrentUser } from '@/services/api/authApi';
-import { orderApi, readOrderApiError, type CustomerOrderResponse } from '@/services/api/orderApi';
+import {
+  addressBookApi,
+  orderApi,
+  readOrderApiError,
+  type CustomerOrderResponse,
+  type SavedAddress
+} from '@/services/api/orderApi';
+import { useAuthStore } from '@/store/useAuthStore';
 import {
   initialBookingForm,
   normalisePhoneDigits,
-  provinceOf,
   toCreateOrderRequest,
   toFeeEstimateRequest,
   type BookingField,
@@ -31,6 +37,30 @@ import { ParcelStep } from './booking/ParcelStep';
 import { FeePanel, ReviewStep } from './booking/ReviewStep';
 import { SPEED_LABEL } from './orders/orderDisplay';
 import { BookingSuccess } from './booking/BookingSuccess';
+import {
+  SaveAddressOption,
+  SavedAddressPicker,
+  type SaveChoice
+} from './booking/SavedAddressPicker';
+import {
+  applySavedAddress,
+  sideFields,
+  toSavedAddressRequest,
+  validateAddressLabel,
+  type AddressSide
+} from './booking/savedAddresses';
+import { clearDraft, loadDraft, newClientRequestId, saveDraft } from './booking/bookingDraft';
+
+const MAX_SAVED_ADDRESSES = 20;
+const NO_SAVE: Record<AddressSide, SaveChoice> = {
+  pickup: { save: false, label: '' },
+  delivery: { save: false, label: '' }
+};
+const NO_SELECTION: Record<AddressSide, string | null> = { pickup: null, delivery: null };
+const SIDE_OF_STEP: Partial<Record<BookingStepId, AddressSide>> = {
+  pickup: 'pickup',
+  dropoff: 'delivery'
+};
 
 const STEPS: BookingStepDef[] = [
   { id: 'pickup', label: 'Pickup' },
@@ -77,9 +107,20 @@ const SUBMIT_COPY: Record<SubmitProblem, { title: string; message: string }> = {
  */
 export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps) {
   const navigate = useNavigate();
-  const [form, setForm] = useState<BookingForm>(initialBookingForm);
-  const [step, setStep] = useState<BookingStepId>('pickup');
-  const [completed, setCompleted] = useState<Set<BookingStepId>>(new Set());
+  const queryClient = useQueryClient();
+  // Drafts belong to a real account; a developer persona has no stable id and keeps nothing.
+  const userId = useAuthStore((state) => (state.isDevSession ? null : (state.user?.id ?? null)));
+  const [draft] = useState(() => (userId ? loadDraft(userId) : null));
+  const [restored, setRestored] = useState(draft !== null);
+  const [form, setForm] = useState<BookingForm>(draft?.form ?? initialBookingForm);
+  const [step, setStep] = useState<BookingStepId>(draft?.step ?? 'pickup');
+  const [completed, setCompleted] = useState<Set<BookingStepId>>(new Set(draft?.completed ?? []));
+  const [clientRequestId, setClientRequestId] = useState(
+    () => draft?.clientRequestId ?? newClientRequestId()
+  );
+  const [saveChoice, setSaveChoice] = useState(draft?.saveChoice ?? NO_SAVE);
+  const [labelErrors, setLabelErrors] = useState<Partial<Record<AddressSide, string>>>({});
+  const [selectedSaved, setSelectedSaved] = useState(draft?.selectedSaved ?? NO_SELECTION);
   const [errors, setErrors] = useState<BookingErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitProblem, setSubmitProblem] = useState<SubmitProblem | null>(null);
@@ -89,32 +130,59 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
   const containerRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
 
-  // Fill in the sender from the customer's profile, once, and never over something already typed.
-  // If the profile can't be loaded the form simply starts empty.
+  // Fill in the sender's name and phone from the profile, once, and never over something already typed.
+  // The pickup district is not filled: the customer may send from anywhere, and the pickup district
+  // decides which dispatcher handles the order. If the profile can't be loaded the form starts empty.
   const profile = useQuery({
     queryKey: ['current-user'],
     queryFn: fetchCurrentUser,
     retry: false,
     staleTime: 5 * 60 * 1000
   });
-  const prefilled = useRef(false);
+  const prefilled = useRef(draft !== null);
   useEffect(() => {
     if (!profile.data || prefilled.current) return;
     prefilled.current = true;
-    const { firstName, lastName, phone, district } = profile.data;
+    const { firstName, lastName, phone } = profile.data;
     const name = [firstName, lastName].filter(Boolean).join(' ').trim();
     setForm((previous) => ({
       ...previous,
       pickupContactName: previous.pickupContactName || name,
-      pickupContactPhone: previous.pickupContactPhone || normalisePhoneDigits(phone ?? ''),
-      pickupDistrict: previous.pickupDistrict || district || '',
-      pickupProvince: previous.pickupProvince || provinceOf(district)
+      pickupContactPhone: previous.pickupContactPhone || normalisePhoneDigits(phone ?? '')
     }));
   }, [profile.data]);
 
+  const savedAddresses = useQuery({
+    queryKey: ['saved-addresses'],
+    queryFn: addressBookApi.list,
+    enabled: userId !== null,
+    retry: false,
+    staleTime: 60 * 1000
+  });
+  const addressList: SavedAddress[] = savedAddresses.data ?? [];
+
+  // Keep the unfinished booking in this browser as it is typed (see bookingDraft.ts).
+  useEffect(() => {
+    if (!userId || createdOrder) return;
+    const timer = window.setTimeout(
+      () =>
+        saveDraft(userId, {
+          form,
+          step,
+          completed: [...completed],
+          clientRequestId,
+          selectedSaved,
+          saveChoice
+        }),
+      400
+    );
+    return () => window.clearTimeout(timer);
+  }, [userId, form, step, completed, clientRequestId, selectedSaved, saveChoice, createdOrder]);
+
   // Price the parcel on the parcel and review steps, once the inputs the fee depends on are valid.
   const estimateRequest = useMemo(() => {
-    if ((step !== 'parcel' && step !== 'review') || !form.pickupDistrict || !form.deliveryDistrict) return null;
+    if ((step !== 'parcel' && step !== 'review') || !form.pickupDistrict || !form.deliveryDistrict)
+      return null;
     const parcelErrors = validateStep('parcel', form);
     return Object.keys(parcelErrors).length === 0 ? toFeeEstimateRequest(form) : null;
   }, [step, form]);
@@ -144,6 +212,12 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
     setSubmitProblem(null);
     // Functional update: the size field changes length, width and height in one event.
     setForm((previous) => ({ ...previous, [field]: value }));
+    // Changing a field that came from a saved address makes it a new address (which can be saved).
+    (['pickup', 'delivery'] as AddressSide[]).forEach((side) => {
+      if (selectedSaved[side] && sideFields(side).includes(field)) {
+        setSelectedSaved((current) => ({ ...current, [side]: null }));
+      }
+    });
     // Clear a shown error as soon as the value is fixed; new errors wait for blur or Next.
     // Each rule reads only its own field, so checking against `form` plus the new value is enough.
     // Postal codes have no blur event (SpecialField), so check them once all 5 digits are in.
@@ -172,7 +246,13 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
   const handleNext = (event: FormEvent) => {
     event.preventDefault();
     const stepErrors = validateStep(step, form);
-    if (Object.keys(stepErrors).length > 0) {
+    const side = SIDE_OF_STEP[step];
+    const labelError =
+      side && saveChoice[side].save && !selectedSaved[side]
+        ? validateAddressLabel(saveChoice[side].label)
+        : undefined;
+    if (side) setLabelErrors((current) => ({ ...current, [side]: labelError }));
+    if (Object.keys(stepErrors).length > 0 || labelError) {
       setErrors((current) => ({ ...current, ...stepErrors }));
       setFocusRequest('invalid');
       return;
@@ -206,7 +286,9 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
     setSubmitting(true);
     setSubmitProblem(null);
     try {
-      const order = await orderApi.createOrder(toCreateOrderRequest(form));
+      const order = await orderApi.createOrder(toCreateOrderRequest(form, clientRequestId));
+      if (userId) clearDraft(userId);
+      void saveChosenAddresses();
       // The server prices the order again; remember what the customer saw so a change can be shown.
       setQuotedFee(estimate?.estimatedFee);
       setCreatedOrder(order);
@@ -236,7 +318,69 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
     }
   };
 
+  /** Saves the sides the customer ticked. The order is already placed, so a failure here is not shown. */
+  const saveChosenAddresses = async () => {
+    const sides = (['pickup', 'delivery'] as AddressSide[]).filter(
+      (side) => saveChoice[side].save && !selectedSaved[side]
+    );
+    if (sides.length === 0) return;
+    await Promise.allSettled(
+      sides.map((side) =>
+        addressBookApi.create(toSavedAddressRequest(form, side, saveChoice[side].label))
+      )
+    );
+    void queryClient.invalidateQueries({ queryKey: ['saved-addresses'] });
+  };
+
+  const fillFromSavedAddress = (side: AddressSide, address: SavedAddress) => {
+    setSubmitProblem(null);
+    setForm((previous) => applySavedAddress(previous, side, address));
+    setSelectedSaved((current) => ({ ...current, [side]: address.addressId ?? null }));
+    setSaveChoice((current) => ({ ...current, [side]: { save: false, label: '' } }));
+    setLabelErrors((current) => ({ ...current, [side]: undefined }));
+    // Clear any errors on the fields the saved address just filled.
+    setErrors((current) => {
+      const next = { ...current };
+      sideFields(side).forEach((field) => delete next[field]);
+      return next;
+    });
+  };
+
+  const addressPicker = (side: AddressSide) =>
+    userId ? (
+      <SavedAddressPicker
+        addresses={addressList}
+        selectedId={selectedSaved[side]}
+        onSelect={(address) => fillFromSavedAddress(side, address)}
+      />
+    ) : null;
+
+  // Hidden while the side is filled from a saved address, so the same address is not saved twice.
+  const saveOption = (side: AddressSide) =>
+    userId && !selectedSaved[side] ? (
+      <SaveAddressOption
+        saveChoice={saveChoice[side]}
+        onSaveChoice={(choice) => {
+          setSaveChoice((current) => ({ ...current, [side]: choice }));
+          if (labelErrors[side]) {
+            setLabelErrors((current) => ({
+              ...current,
+              [side]: choice.save ? validateAddressLabel(choice.label) : undefined
+            }));
+          }
+        }}
+        labelError={labelErrors[side]}
+        bookFull={addressList.length >= MAX_SAVED_ADDRESSES}
+      />
+    ) : null;
+
   const reset = () => {
+    if (userId) clearDraft(userId);
+    setClientRequestId(newClientRequestId());
+    setSaveChoice(NO_SAVE);
+    setSelectedSaved(NO_SELECTION);
+    setLabelErrors({});
+    setRestored(false);
     setForm(initialBookingForm);
     setErrors({});
     setCompleted(new Set());
@@ -266,11 +410,37 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
 
   return (
     <div ref={containerRef} className="flex flex-col gap-6">
+      {restored ? (
+        <Alert
+          tone="info"
+          title="We kept your unfinished booking"
+          onDismiss={() => setRestored(false)}
+          action={
+            <Button type="button" variant="ghost" onClick={reset}>
+              Start over
+            </Button>
+          }
+        >
+          Pick up where you left off.
+        </Alert>
+      ) : null}
       <StepIndicator steps={STEPS} current={step} completed={completed} onSelect={goTo} />
 
       <form noValidate onSubmit={handleNext} className="flex flex-col gap-6">
-        {step === 'pickup' ? <PickupStep {...stepProps} /> : null}
-        {step === 'dropoff' ? <DropoffStep {...stepProps} /> : null}
+        {step === 'pickup' ? (
+          <PickupStep
+            {...stepProps}
+            addressPicker={addressPicker('pickup')}
+            saveOption={saveOption('pickup')}
+          />
+        ) : null}
+        {step === 'dropoff' ? (
+          <DropoffStep
+            {...stepProps}
+            addressPicker={addressPicker('delivery')}
+            saveOption={saveOption('delivery')}
+          />
+        ) : null}
         {step === 'parcel' ? (
           <>
             <ParcelStep {...stepProps} />

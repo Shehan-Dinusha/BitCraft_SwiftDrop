@@ -10,7 +10,10 @@ const PATTERNS = {
   name: /^[\p{L}\p{M} .'’-]*$/u,
   city: /^[\p{L}\p{M}\p{N} .'’-]*$/u,
   postalCode: /^\d{5}$/,
-  phoneDigits: /^\d{9}$/,
+  /** The 9 digits after +94: never starting with 0 (that 0 is the local trunk prefix). */
+  phoneDigits: /^[1-9]\d{8}$/,
+  /** At least one letter or digit, so a box cannot hold only punctuation such as "--". */
+  meaningful: /[\p{L}\p{N}]/u,
   freeText: /^[^<>]*$/,
   email: /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/,
   decimal: /^\d+(\.\d+)?$/
@@ -95,7 +98,8 @@ const city = (value: string) =>
 /** An optional second phone: empty is fine, otherwise 9 digits that differ from the main number. */
 function alternatePhone(digits: string, main: string) {
   if (!digits) return undefined;
-  if (!PATTERNS.phoneDigits.test(digits)) return 'Enter the 9 digits after +94';
+  const problem = phoneProblem(digits);
+  if (problem) return problem;
   return digits === main ? 'Use a different number from the main phone' : undefined;
 }
 
@@ -104,6 +108,7 @@ function part(
   value: string,
   { label, required, min, max }: { label: string; required: boolean; min?: number; max: number }
 ) {
+  if (value.trim() && !PATTERNS.meaningful.test(value)) return `Enter ${label} with letters or numbers`;
   return text(value, {
     empty: required ? `Enter ${label}` : undefined,
     min,
@@ -118,9 +123,16 @@ function postalCode(value: string) {
   return PATTERNS.postalCode.test(value) ? undefined : 'Postal codes have 5 digits, e.g. 00300';
 }
 
+/** A real-looking Sri Lankan number: 9 digits after +94, not starting with 0, not one digit repeated. */
+function phoneProblem(digits: string): string | undefined {
+  if (!PATTERNS.phoneDigits.test(digits)) return 'Enter the 9 digits after +94';
+  if (/^(\d)\1+$/.test(digits)) return 'Enter a real phone number';
+  return undefined;
+}
+
 function phone(digits: string) {
   if (!digits) return 'Enter a mobile or landline number';
-  return PATTERNS.phoneDigits.test(digits) ? undefined : 'Enter the 9 digits after +94';
+  return phoneProblem(digits);
 }
 
 function measure(

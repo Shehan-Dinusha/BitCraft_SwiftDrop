@@ -76,7 +76,7 @@ const PATTERNS = {
   regNo: /^[A-Za-z0-9 ./-]*$/,
   url: /^(https?:\/\/)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?(\/[^\s<>"]*)?$/i,
   email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  phoneDigits: /^\d{9}$/,
+  phoneDigits: /^[1-9]\d{8}$/,
   address: /^[\p{L}\p{M}\p{N} .,/#()&'’:-]*$/u,
   city: /^[\p{L}\p{M}\p{N} .'’-]*$/u,
   postalCode: /^\d{5}$/

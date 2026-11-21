@@ -1133,8 +1133,8 @@ components:
           allOf:
             - $ref: '#/components/schemas/SriLankanDistrict'
           description: >-
-            Home district. Required for CUSTOMER (400 otherwise); a MERCHANT gives its pickup district
-            on the business application instead.
+            Optional. Not asked at sign-up: a customer's orders are routed by each order's pickup district,
+            and a merchant gives its pickup district on the business application.
         merchantId:
           type: string
           format: uuid
@@ -1317,8 +1317,10 @@ components:
           format: password
     UpdateProfileRequest:
       type: object
-      description: Self-service profile update.
-      required: [firstName, lastName, district]
+      description: >-
+        Self-service profile update. Couriers and dispatchers must send their assigned district unchanged;
+        customers and merchants may leave it out.
+      required: [firstName, lastName]
       properties:
         firstName:
           type: string

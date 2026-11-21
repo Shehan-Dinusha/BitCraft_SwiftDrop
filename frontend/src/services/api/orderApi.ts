@@ -22,6 +22,29 @@ export interface PagedOrderResult {
   hasPrevious: boolean;
 }
 
+export type SavedAddressRequest = components['schemas']['SavedAddressRequest'];
+export type SavedAddress = components['schemas']['SavedAddressResponse'];
+
+/** The signed-in customer's address book (pickup and drop-off). */
+export const addressBookApi = {
+  list: async () => {
+    const { data } = await apiClient.get<{ success: boolean; data: SavedAddress[] }>(
+      '/v1/orders/addresses'
+    );
+    return data.data ?? [];
+  },
+  create: async (request: SavedAddressRequest) => {
+    const { data } = await apiClient.post<{ success: boolean; data: SavedAddress }>(
+      '/v1/orders/addresses',
+      request
+    );
+    return data.data;
+  },
+  remove: async (addressId: string) => {
+    await apiClient.delete(`/v1/orders/addresses/${encodeURIComponent(addressId)}`);
+  }
+};
+
 export const orderApi = {
   estimateFee: async (request: FeeEstimateRequest) => {
     const { data } = await apiClient.post<{ success: boolean; data: FeeEstimateResponse }>(
