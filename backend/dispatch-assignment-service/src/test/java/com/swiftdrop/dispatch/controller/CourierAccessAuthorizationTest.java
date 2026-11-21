@@ -79,7 +79,7 @@ class CourierAccessAuthorizationTest {
                         get("/api/v1/dispatch/couriers/{courierId}/assignments", id)),
                 Arguments.of("POST /couriers/shifts/start", (CourierRequest) id ->
                         jsonBody(post("/api/v1/dispatch/couriers/shifts/start"), new StartShiftRequest(
-                                id, "Kamal Silva", null, VehicleType.MOTORCYCLE, SriLankanDistrict.COLOMBO, 5))),
+                                id, "Kamal Silva", null, SriLankanDistrict.COLOMBO))),
                 Arguments.of("POST /couriers/shifts/{courierId}/end", (CourierRequest) id ->
                         post("/api/v1/dispatch/couriers/shifts/{courierId}/end", id)),
                 Arguments.of("PUT /couriers/shifts/status", (CourierRequest) id ->

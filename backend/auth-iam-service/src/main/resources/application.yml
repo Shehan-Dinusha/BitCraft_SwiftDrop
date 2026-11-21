@@ -56,6 +56,10 @@ swiftdrop:
       log-code: ${AUTH_OTP_LOG_CODE:false}
       # Never-verified self-service sign-ups are deleted after this many hours.
       unverified-retention-hours: 72
+    invite:
+      # Staff (courier/dispatcher) invite links: <link-base-url>/invite#token=...
+      link-base-url: ${FRONTEND_URL:http://localhost:5173}
+      ttl-hours: 72
   jwt:
     algorithm: ${JWT_ALGORITHM:HS256}
     private-key: ${JWT_PRIVATE_KEY:}

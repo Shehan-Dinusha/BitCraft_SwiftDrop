@@ -34,4 +34,10 @@ public final class EventRoutingKeys {
      * Under {@code notification.} for the same reason as {@link #AUTH_OTP_REQUESTED}.
      */
     public static final String AUTH_LOGIN = "notification.auth.login";
+
+    /**
+     * A staff account (courier or dispatcher) was invited; notification-service emails the invite link.
+     * Under {@code notification.} for the same reason as {@link #AUTH_OTP_REQUESTED}.
+     */
+    public static final String AUTH_STAFF_INVITE = "notification.auth.invite";
 }

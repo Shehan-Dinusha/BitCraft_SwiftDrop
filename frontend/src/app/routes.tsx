@@ -9,6 +9,9 @@ import { VerifyEmailPage } from '@/features/auth/pages/VerifyEmailPage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 import { RegistrationSuccessPage } from '@/features/auth/pages/RegistrationSuccessPage';
+import { InviteAcceptPage } from '@/features/auth/pages/InviteAcceptPage';
+import { CourierVehicleSetupPage } from '@/features/courier/pages/CourierVehicleSetupPage';
+import { CourierManagementPage } from '@/features/admin-ops/pages/CourierManagementPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
 import { OrderHistoryPage } from '@/features/customer/pages/OrderHistoryPage';
@@ -39,6 +42,8 @@ export const routes: RouteObject[] = [
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/registered', element: <RegistrationSuccessPage /> },
+  // Staff invite link from the email; the token travels in the URL fragment.
+  { path: '/invite', element: <InviteAcceptPage /> },
   {
     element: <AppShell />,
     children: [
@@ -164,6 +169,14 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/courier/vehicle',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <CourierVehicleSetupPage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/courier/delivery',
         element: (
           <RoleGuard roles={['COURIER']}>
@@ -264,6 +277,14 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
             <AnalyticsDashboardPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/couriers',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <CourierManagementPage />
           </RoleGuard>
         )
       },

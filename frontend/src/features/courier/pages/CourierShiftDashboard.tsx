@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   dispatchApi,
+  type CourierProfileResponse,
   type CourierShiftResponse,
   type DispatchAssignmentResponse,
   type ShiftStatus,
@@ -10,6 +11,8 @@ import {
 } from '@/services/api/dispatchApi';
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { SRI_LANKAN_DISTRICTS, fetchCurrentUser } from '@/services/api/authApi';
+import { parseApiError } from '@/services/api/apiError';
+import { vehicleLabel } from '@/utils/vehicles';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
@@ -27,17 +30,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-type VehicleType = NonNullable<CourierShiftResponse['vehicleType']>;
-
-const VEHICLES: { value: VehicleType; label: string }[] = [
-  { value: 'MOTORCYCLE', label: 'Motorcycle' },
-  { value: 'THREE_WHEELER', label: 'Three-wheeler' },
-  { value: 'VAN', label: 'Van' },
-  { value: 'BICYCLE', label: 'Bicycle' }
-];
-
 export function CourierShiftDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const courierId = user?.id;
 
@@ -47,13 +42,16 @@ export function CourierShiftDashboard() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(
+    (location.state as { notice?: string } | null)?.notice ?? null
+  );
+  // undefined while loading; null when the courier has not registered a vehicle yet.
+  const [vehicle, setVehicle] = useState<CourierProfileResponse | null | undefined>(undefined);
 
   // Start shift form state
   const [selectedDistrict, setSelectedDistrict] = useState<SriLankanDistrict>(
     (user?.district as SriLankanDistrict) || 'COLOMBO'
   );
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('MOTORCYCLE');
 
   const fetchShiftData = useCallback(async () => {
     if (!courierId) return;
@@ -61,11 +59,17 @@ export function CourierShiftDashboard() {
       setLoading(true);
       setErrorMsg(null);
 
+      // The courier's own registered vehicle; without one a shift cannot start.
+      try {
+        setVehicle(await dispatchApi.getMyProfile());
+      } catch {
+        setVehicle(undefined);
+      }
+
       // Fetch courier shift data
       try {
         const shiftData = await dispatchApi.getCourier(courierId);
         setShift(shiftData);
-        if (shiftData?.vehicleType) setSelectedVehicle(shiftData.vehicleType);
         if (shiftData?.currentDistrict) setSelectedDistrict(shiftData.currentDistrict as SriLankanDistrict);
       } catch {
         setShift(null);
@@ -117,16 +121,13 @@ export function CourierShiftDashboard() {
         courierId,
         courierName: fullName || shift?.courierName || user?.username || 'Courier',
         phone: profile?.phone || shift?.phone || undefined,
-        vehicleType: selectedVehicle,
-        initialDistrict: selectedDistrict,
-        maxCapacity: shift?.maxCapacity ?? 5
+        initialDistrict: selectedDistrict
       });
       setShift(res);
       setSuccessMsg('Shift started! You are now AVAILABLE for delivery dispatches.');
       await fetchShiftData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to start shift';
-      setErrorMsg(msg);
+      setErrorMsg(parseApiError(err).message ?? 'Failed to start shift');
     } finally {
       setUpdating(false);
     }
@@ -263,7 +264,16 @@ export function CourierShiftDashboard() {
 
           {/* Touch-Friendly Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
-            {!isOnline ? (
+            {!isOnline && vehicle === null ? (
+              <Button
+                variant="primary"
+                onClick={() => navigate('/courier/vehicle')}
+                className="min-h-target w-full px-6 font-semibold shadow-md sm:w-auto"
+              >
+                <Bike className="mr-2 h-5 w-5" />
+                Add your vehicle to start
+              </Button>
+            ) : !isOnline ? (
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <select
                   value={selectedDistrict}
@@ -273,18 +283,6 @@ export function CourierShiftDashboard() {
                   {SRI_LANKAN_DISTRICTS.map((d) => (
                     <option key={d} value={d}>
                       {d}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedVehicle}
-                  onChange={(e) => setSelectedVehicle(e.target.value as VehicleType)}
-                  aria-label="Vehicle"
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  {VEHICLES.map((v) => (
-                    <option key={v.value} value={v.value}>
-                      {v.label}
                     </option>
                   ))}
                 </select>
@@ -364,9 +362,11 @@ export function CourierShiftDashboard() {
               <Bike className="h-4 w-4 text-emerald-500" />
             </div>
             <div className="mt-2 text-xl font-bold text-slate-900">
-              {shift?.vehicleType || 'MOTORCYCLE'}
+              {vehicleLabel(vehicle?.vehicleType ?? shift?.vehicleType)}
             </div>
-            <p className="mt-1 text-xs text-slate-500">Optimized for urban rapid delivery</p>
+            <p className="mt-1 font-mono text-xs tabular-nums text-slate-500">
+              {vehicle?.plateNumber ?? 'Registered vehicle'}
+            </p>
           </SurfaceCard>
 
           <SurfaceCard className="p-4">

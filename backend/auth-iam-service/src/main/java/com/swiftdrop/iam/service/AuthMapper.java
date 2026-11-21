@@ -24,7 +24,9 @@ final class AuthMapper {
                 user.isEmailVerified(),
                 user.getLastLoginAt(),
                 user.getCreatedAt(),
-                user.getAvatarUpdatedAt()
+                user.getAvatarUpdatedAt(),
+                user.isInvitePending(),
+                user.getInviteExpiresAt()
         );
     }
 

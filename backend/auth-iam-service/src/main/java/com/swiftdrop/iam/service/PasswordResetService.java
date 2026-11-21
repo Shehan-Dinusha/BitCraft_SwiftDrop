@@ -89,6 +89,9 @@ public class PasswordResetService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setEmailVerified(true);
+        // The reset code proves the same mailbox control as an invite link, so an outstanding
+        // invite is no longer needed.
+        user.clearInvite();
         userAccountRepository.save(user);
 
         refreshTokenService.revokeAll(user);
