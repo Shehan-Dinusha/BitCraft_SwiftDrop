@@ -102,6 +102,8 @@ Do not claim runtime success from compilation alone. For API/gateway changes, st
 
 ### Product decisions that constrain the code
 
+- **Staff accounts are invited, never given a password.** Dispatchers register the couriers of their own district (`/api/v1/users/couriers`; the district comes from the dispatcher's account, never the request). Admins create dispatchers with `POST /api/v1/users` and no password. Both get an email link (`/invite#token=…`, 72 hours) where they choose a password. Couriers and dispatchers cannot change their own district.
+- **Couriers use their own vehicle.** After the invite a courier registers it once (`PUT /api/v1/dispatch/couriers/me/profile`): motorcycle, three-wheeler, van or lorry (no bicycles), number plate, model, colour, licence. Only their dispatcher can change it afterwards. A shift cannot start without it and copies the vehicle type and capacity from it (defaults 5/10/25/50, dispatcher can override).
 - **No device location.** SwiftDrop matches couriers by district. Do not add GPS fields, endpoints, events, columns or `navigator.geolocation`; nginx sends `Permissions-Policy: geolocation=()`.
 - **Branding.** The product name is "SwiftDrop" (the old "Velocity" name is retired everywhere). The logo is the `BrandMark` design-system component; never use a generic icon tile as the logo. The source image is `docs/brand/swiftdrop-logo.png`.
 - **PWA.** The frontend is an installable PWA for couriers and customers. The service worker must never cache API responses, and updates wait for the user ("Reload"); see [frontend/AGENTS.md](frontend/AGENTS.md).

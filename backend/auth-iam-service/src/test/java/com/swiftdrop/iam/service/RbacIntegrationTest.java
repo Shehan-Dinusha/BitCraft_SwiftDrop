@@ -415,6 +415,69 @@ class RbacIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    // ── Courier accounts (dispatcher-managed) ────────────────────────────────
+
+    @Test
+    @DisplayName("A dispatcher registers a courier in their own district, whatever district the body names")
+    void dispatcher_registersCourierInOwnDistrict() throws Exception {
+        var dispatcher = fixture("dispatch", UserRole.DISPATCHER, SriLankanDistrict.COLOMBO);
+        String u = prefix + "newcourier";
+        mvc.perform(post(COURIERS_API)
+                .header("Authorization", bearer(dispatcher)).contentType("application/json")
+                .content(json.writeValueAsString(Map.of(
+                        "username", u, "email", u + "@example.invalid", "phone", "+94770000001",
+                        "firstName", "New", "lastName", "Courier", "district", "GALLE"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("data.role").value("COURIER"))
+                .andExpect(jsonPath("data.district").value("COLOMBO"))
+                .andExpect(jsonPath("data.invitePending").value(true));
+    }
+
+    @Test
+    @DisplayName("A dispatcher sees only their district's couriers")
+    void dispatcher_listsOnlyOwnDistrictCouriers() throws Exception {
+        var dispatcher = fixture("dispatch", UserRole.DISPATCHER, SriLankanDistrict.COLOMBO);
+        var colombo = fixture("colombo", UserRole.COURIER, SriLankanDistrict.COLOMBO);
+        var galle = fixture("galle", UserRole.COURIER, SriLankanDistrict.GALLE);
+        String body = mvc.perform(get(COURIERS_API).param("search", prefix).param("district", "GALLE")
+                .header("Authorization", bearer(dispatcher)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).contains(colombo.id().toString()).doesNotContain(galle.id().toString());
+    }
+
+    @Test
+    @DisplayName("A dispatcher cannot suspend a courier of another district")
+    void dispatcher_cannotSuspendOtherDistrictCourier() throws Exception {
+        var dispatcher = fixture("dispatch", UserRole.DISPATCHER, SriLankanDistrict.COLOMBO);
+        var galle = fixture("galle", UserRole.COURIER, SriLankanDistrict.GALLE);
+        mvc.perform(patch(COURIERS_API + "/" + galle.id() + "/status")
+                .header("Authorization", bearer(dispatcher)).contentType("application/json")
+                .content("{\"status\":\"SUSPENDED\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Customers and couriers cannot use the courier management API")
+    void nonDispatchers_cannotManageCouriers() throws Exception {
+        var customer = fixture("customer", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);
+        var courier = fixture("courier", UserRole.COURIER, SriLankanDistrict.COLOMBO);
+        mvc.perform(get(COURIERS_API).header("Authorization", bearer(customer))).andExpect(status().isForbidden());
+        mvc.perform(get(COURIERS_API).header("Authorization", bearer(courier))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Invite endpoints are public but reject an unknown token")
+    void invite_unknownTokenIsRejected() throws Exception {
+        String unknown = "A".repeat(43);
+        mvc.perform(post("/api/v1/auth/invite/preview").contentType("application/json")
+                .content("{\"token\":\"" + unknown + "\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/auth/invite/accept").contentType("application/json")
+                .content("{\"token\":\"" + unknown + "\",\"password\":\"Welcome123\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     @Test

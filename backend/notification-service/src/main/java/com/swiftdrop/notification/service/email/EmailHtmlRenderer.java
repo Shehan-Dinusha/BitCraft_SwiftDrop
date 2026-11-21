@@ -37,6 +37,9 @@ public class EmailHtmlRenderer {
     private static final Pattern SAFE_TRACKING_NUMBER = Pattern.compile("[A-Za-z0-9-]{4,40}");
     private static final Pattern SAFE_CODE = Pattern.compile("[0-9]{4,10}");
     private static final Pattern SAFE_MINUTES = Pattern.compile("[0-9]{1,3}");
+    /** Invite links IAM builds: {@code <frontend>/invite#token=<43 url-safe chars>}. Anything else is dropped. */
+    private static final Pattern SAFE_INVITE_URL =
+            Pattern.compile("https?://[A-Za-z0-9.:-]+(/[A-Za-z0-9._~-]+)*/invite#token=[A-Za-z0-9_-]{43}");
     private static final ZoneId SRI_LANKA = ZoneId.of("Asia/Colombo");
     private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a", Locale.ENGLISH);
 
@@ -95,6 +98,11 @@ public class EmailHtmlRenderer {
                     "Use this code to finish signing in to SwiftDrop.",
                     "If you were not trying to sign in, change your password straight away.",
                     "#3730a3", "#eef2ff", "#c7d2fe", 0, false)),
+            Map.entry(SensitiveTemplates.STAFF_INVITE, new Style("Account invite", "Welcome to the SwiftDrop team",
+                    "A SwiftDrop account has been created for you. Choose your password to sign in for the first time. "
+                            + "Couriers then add their vehicle details.",
+                    "If you were not expecting this email, you can ignore it. Nobody can use the account until the link is opened.",
+                    "#1d4ed8", "#eff6ff", "#bfdbfe", 0, false)),
             Map.entry("COURIER_ASSIGNED", new Style("New delivery", "You have a new delivery",
                     "A parcel has been assigned to you. Please collect it from the pickup address.",
                     "You can see the full pickup and delivery details in the SwiftDrop courier app.",
@@ -112,6 +120,8 @@ public class EmailHtmlRenderer {
             + "You can turn off parcel emails in your SwiftDrop notification settings.";
     private static final String ACCOUNT_REASON = "This security email was sent because of a request made with your "
             + "SwiftDrop account. Never share this code with anyone, including SwiftDrop staff.";
+    private static final String INVITE_REASON = "This security email was sent because SwiftDrop operations created an "
+            + "account for you. The link signs you in, so never share it with anyone, including SwiftDrop staff.";
     private static final String SIGN_IN_REASON = "Sign-in alerts help keep your SwiftDrop account safe. They are always "
             + "sent and cannot be turned off.";
     private static final String COURIER_REASON = "You are receiving this email because you are a SwiftDrop courier. "
@@ -147,7 +157,9 @@ public class EmailHtmlRenderer {
                 esc(style.headline())));
         content.append(row("padding:10px 40px 0 40px;font-size:15px;line-height:24px;color:#334155;",
                 esc(lead).replace("\n", "<br>")));
-        if (oneTimeCode) {
+        if (SensitiveTemplates.STAFF_INVITE.equals(code)) {
+            content.append(inviteButton(p.get("inviteUrl"), p.get("expiresInHours")));
+        } else if (oneTimeCode) {
             content.append(codeBox(p.get("code"), p.get("expiresInMinutes")));
         } else {
             if (style.step() > 0) {
@@ -206,6 +218,9 @@ public class EmailHtmlRenderer {
     }
 
     private static String reason(String code, boolean security, boolean oneTimeCode) {
+        if (SensitiveTemplates.STAFF_INVITE.equals(code)) {
+            return INVITE_REASON;
+        }
         if (oneTimeCode) {
             return ACCOUNT_REASON;
         }
@@ -358,6 +373,24 @@ public class EmailHtmlRenderer {
                 + "<div style=\"font-size:12px;line-height:16px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;\">Your code</div>"
                 + "<div style=\"font-family:Consolas,'Courier New',monospace;font-size:34px;line-height:44px;color:#0f172a;font-weight:800;letter-spacing:0.35em;padding-top:6px;\">"
                 + esc(code) + "</div>" + expiry + "</td></tr></table></td></tr>\n";
+    }
+
+    /** The invite button, the same link as text for clients that block buttons, and the expiry. */
+    private static String inviteButton(String url, String hours) {
+        if (url == null || !SAFE_INVITE_URL.matcher(url).matches()) {
+            return "";
+        }
+        String expiry = hours != null && SAFE_MINUTES.matcher(hours).matches()
+                ? "The link works once and expires in " + esc(hours) + " hours."
+                : "The link works once.";
+        return "<tr><td align=\"center\" style=\"padding:26px 40px 0 40px;\">"
+                + "<a href=\"" + esc(url) + "\" style=\"display:inline-block;padding:14px 28px;border-radius:10px;background:"
+                + BRAND + ";color:#ffffff;font-size:15px;line-height:20px;font-weight:700;text-decoration:none;\">"
+                + "Set up my account</a>"
+                + "<div style=\"font-size:13px;line-height:18px;color:#64748b;padding-top:12px;\">" + expiry + "</div>"
+                + "</td></tr>\n"
+                + row("padding:16px 40px 0 40px;font-size:12px;line-height:18px;color:#64748b;word-break:break-all;",
+                "Button not working? Copy this link into your browser:<br>" + esc(url));
     }
 
     /** {@code NUWARA_ELIYA} -> {@code Nuwara Eliya}. */

@@ -280,6 +280,70 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/invite/preview:
+    post:
+      tags: [Staff invites]
+      summary: Check an invite link
+      description: Returns who a staff invite is for. Counts against the per-IP limit of the one-time-code endpoints.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteTokenRequest'
+      responses:
+        '200':
+          description: Invite is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseInvitePreview'
+        '400':
+          description: The link is invalid, already used, or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/auth/invite/accept:
+    post:
+      tags: [Staff invites]
+      summary: Accept an invite and sign in
+      description: >-
+        Sets the password chosen on the invite page, spends the invite and signs the person in. The
+        refresh token is set as the HttpOnly swiftdrop_refresh cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteRequest'
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Invalid, used or expired link, or the password does not meet the policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/auth/refresh:
     post:
       tags: [Auth]
@@ -626,7 +690,9 @@ paths:
     post:
       tags: [Users]
       summary: Provision a platform account with any role
-      description: Requires SYSTEM_ADMIN.
+      description: >-
+        Requires SYSTEM_ADMIN. Without a password the person is emailed an invite link (valid 72 hours)
+        where they choose their own password. Use this for dispatchers.
       requestBody:
         required: true
         content:
@@ -654,6 +720,174 @@ paths:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '409':
           description: Username, email, or phone already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/couriers:
+    get:
+      tags: [Courier accounts]
+      summary: List couriers
+      description: >-
+        Requires DISPATCHER or SYSTEM_ADMIN. A dispatcher sees the couriers of their own district (the
+        district parameter is ignored); a SYSTEM_ADMIN sees every district or the one given.
+      parameters:
+        - name: district
+          in: query
+          schema:
+            $ref: '#/components/schemas/SriLankanDistrict'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Couriers retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagedUsers'
+        '403':
+          description: DISPATCHER or SYSTEM_ADMIN required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    post:
+      tags: [Courier accounts]
+      summary: Register a courier and email them an invite
+      description: >-
+        Requires DISPATCHER or SYSTEM_ADMIN. Creates the COURIER account in the dispatcher's own district
+        without a password. The courier receives an email link (valid 72 hours) where they choose a
+        password and add their vehicle.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourierRequest'
+      responses:
+        '201':
+          description: Courier registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '400':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: DISPATCHER or SYSTEM_ADMIN required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Username, email, or phone already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/couriers/{courierId}:
+    get:
+      tags: [Courier accounts]
+      summary: Get a courier
+      description: Requires DISPATCHER or SYSTEM_ADMIN. 403 for a courier of another district.
+      parameters:
+        - $ref: '#/components/parameters/CourierId'
+      responses:
+        '200':
+          description: Courier retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '403':
+          description: Not permitted, or the courier belongs to another district
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Courier not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/couriers/{courierId}/invite:
+    post:
+      tags: [Courier accounts]
+      summary: Resend a courier's invite
+      description: Sends a new invite link and invalidates the previous one.
+      parameters:
+        - $ref: '#/components/parameters/CourierId'
+      responses:
+        '200':
+          description: Invite sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '403':
+          description: Not permitted, or the courier belongs to another district
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: The courier has already set up the account, or it is not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/couriers/{courierId}/status:
+    patch:
+      tags: [Courier accounts]
+      summary: Suspend, deactivate, or reactivate a courier
+      description: Suspending or deactivating revokes the courier's sessions immediately.
+      parameters:
+        - $ref: '#/components/parameters/CourierId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '200':
+          description: Courier status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '403':
+          description: Not permitted, or the courier belongs to another district
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Courier not found
           content:
             application/json:
               schema:
@@ -728,6 +962,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/users/{userId}/invite:
+    post:
+      tags: [Users]
+      summary: Resend an account's invite
+      description: Requires SYSTEM_ADMIN. Sends a new invite link and invalidates the previous one.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Invite sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserProfile'
+        '403':
+          description: SYSTEM_ADMIN required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: The account has already been set up, or it is not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/users/{userId}/status:
     patch:
       tags: [Users]
@@ -781,6 +1041,13 @@ components:
   parameters:
     UserId:
       name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CourierId:
+      name: courierId
       in: path
       required: true
       schema:
@@ -870,7 +1137,7 @@ components:
           nullable: true
     CreateUserRequest:
       type: object
-      required: [username, email, firstName, lastName, password, role, district]
+      required: [username, email, firstName, lastName, role, district]
       properties:
         username:
           type: string
@@ -893,6 +1160,9 @@ components:
           minLength: 8
           maxLength: 72
           format: password
+          description: >-
+            Optional. Leave it out to email the person an invite link where they choose their own
+            password (recommended for staff accounts).
         role:
           $ref: '#/components/schemas/UserRole'
         district:
@@ -901,6 +1171,78 @@ components:
           type: string
           format: uuid
           nullable: true
+    CreateCourierRequest:
+      type: object
+      description: Registers a courier. No password is set; the courier receives an email invite.
+      required: [username, email, phone, firstName, lastName]
+      properties:
+        username:
+          type: string
+          pattern: '^[A-Za-z0-9._-]{3,50}$'
+          example: kasun.colombo
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        phone:
+          type: string
+          pattern: '^\+?[0-9]{7,15}$'
+          example: '+94771234567'
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        district:
+          $ref: '#/components/schemas/SriLankanDistrict'
+    InviteTokenRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          maxLength: 64
+          description: Invite token from the emailed link (the part after
+            #token=).
+    AcceptInviteRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+          maxLength: 64
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          format: password
+    InvitePreviewResponse:
+      type: object
+      properties:
+        firstName:
+          type: string
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        district:
+          $ref: '#/components/schemas/SriLankanDistrict'
+        expiresAt:
+          type: string
+          format: date-time
+    ApiResponseInvitePreview:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/InvitePreviewResponse'
+        timestamp:
+          type: string
+          format: date-time
     RefreshTokenRequest:
       type: object
       properties:
@@ -1113,6 +1455,14 @@ components:
           format: date-time
           nullable: true
           description: When the profile picture last changed; null when there is none. The picture is served by GET /api/v1/users/me/avatar.
+        invitePending:
+          type: boolean
+          description: True while a staff account has not yet accepted its email invite.
+        inviteExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the pending invite link expires; null when no invite is pending.
     ApiResponseUserProfile:
       type: object
       properties:

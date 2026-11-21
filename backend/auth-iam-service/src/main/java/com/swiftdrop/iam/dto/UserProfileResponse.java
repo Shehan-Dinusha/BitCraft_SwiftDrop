@@ -24,6 +24,10 @@ public record UserProfileResponse(
         Instant lastLoginAt,
         Instant createdAt,
         @Schema(description = "When the profile picture last changed; null when there is none. The picture is served by GET /api/v1/users/me/avatar.")
-        Instant avatarUpdatedAt
+        Instant avatarUpdatedAt,
+        @Schema(description = "True while a staff account has not yet accepted its email invite.")
+        boolean invitePending,
+        @Schema(description = "When the pending invite link expires; null when no invite is pending.")
+        Instant inviteExpiresAt
 ) {
 }

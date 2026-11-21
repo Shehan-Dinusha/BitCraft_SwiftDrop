@@ -1,13 +1,16 @@
 package com.swiftdrop.dispatch.service;
 
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
+import com.swiftdrop.dispatch.domain.repository.CourierProfileRepository;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
+import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import com.swiftdrop.dispatch.exception.ShiftEndNotAllowedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +35,9 @@ class CourierShiftServiceTest {
     @Mock
     private CourierShiftRepository courierShiftRepository;
 
+    @Mock
+    private CourierProfileRepository courierProfileRepository;
+
     @InjectMocks
     private CourierShiftService courierShiftService;
 
@@ -43,17 +49,20 @@ class CourierShiftServiceTest {
     }
 
     @Test
-    @DisplayName("Start shift: sets AVAILABLE status and registers starting district")
+    @DisplayName("Start shift: sets AVAILABLE status and takes vehicle and capacity from the courier profile")
     void testStartShift() {
         StartShiftRequest request = new StartShiftRequest(
                 courierId,
                 "Nuwan Perera",
                 "+94771112233",
-                VehicleType.MOTORCYCLE,
-                SriLankanDistrict.COLOMBO,
-                6
+                SriLankanDistrict.COLOMBO
         );
+        CourierProfile profile = new CourierProfile();
+        profile.setCourierId(courierId);
+        profile.setVehicleType(VehicleType.THREE_WHEELER);
+        profile.setMaxCapacity(6);
 
+        when(courierProfileRepository.findByCourierId(courierId)).thenReturn(Optional.of(profile));
         when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.empty());
         when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -64,7 +73,20 @@ class CourierShiftServiceTest {
         assertThat(response.shiftStatus()).isEqualTo(ShiftStatus.AVAILABLE);
         assertThat(response.currentDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
         assertThat(response.maxCapacity()).isEqualTo(6);
+        assertThat(response.vehicleType()).isEqualTo(VehicleType.THREE_WHEELER);
         assertThat(response.shiftStartedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Start shift: refused until the courier has registered a vehicle")
+    void testStartShift_RequiresVehicleProfile() {
+        StartShiftRequest request = new StartShiftRequest(courierId, "Nuwan Perera", null, SriLankanDistrict.COLOMBO);
+        when(courierProfileRepository.findByCourierId(courierId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> courierShiftService.startShift(request))
+                .isInstanceOf(CourierNotAvailableException.class)
+                .hasMessageContaining("vehicle");
+        verify(courierShiftRepository, never()).save(any());
     }
 
     @Test

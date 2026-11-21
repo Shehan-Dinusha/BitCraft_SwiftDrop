@@ -113,6 +113,15 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(404, "Not Found", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(CourierProfileException.class)
+    public ResponseEntity<ApiErrorResponse> handleCourierProfile(CourierProfileException ex, HttpServletRequest request) {
+        log.warn("Courier profile request rejected on {}: {}", LogSanitizer.clean(request.getRequestURI()),
+                LogSanitizer.clean(ex.getMessage()));
+        return ResponseEntity.status(ex.getStatus())
+                .body(ApiErrorResponse.of(ex.getStatus().value(), ex.getStatus().getReasonPhrase(), ex.getMessage(),
+                        request.getRequestURI()));
+    }
+
     @ExceptionHandler(CourierNotAvailableException.class)
     public ResponseEntity<ApiErrorResponse> handleCourierNotAvailable(CourierNotAvailableException ex, HttpServletRequest request) {
         log.warn("Courier not available: {}", ex.getMessage());

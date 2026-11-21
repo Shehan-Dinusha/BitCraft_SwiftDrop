@@ -24,6 +24,9 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long>,
 
     Optional<UserAccount> findByUsernameIgnoreCaseOrEmailIgnoreCase(String username, String email);
 
+    /** The account whose pending staff invite token hashes to {@code inviteTokenHash}. */
+    Optional<UserAccount> findByInviteTokenHash(String inviteTokenHash);
+
     boolean existsByUsernameIgnoreCase(String username);
 
     boolean existsByEmailIgnoreCase(String email);

@@ -115,7 +115,8 @@ export const FAILURES = {
   PICKED_UP: ['DAMAGED_IN_TRANSIT'],
 };
 
-export const VEHICLES = [['MOTORCYCLE', 60], ['THREE_WHEELER', 20], ['VAN', 15], ['BICYCLE', 5]];
+// Couriers use their own vehicle (no bicycles): motorcycle, three-wheeler, van or lorry.
+export const VEHICLES = [['MOTORCYCLE', 60], ['THREE_WHEELER', 20], ['VAN', 15], ['LORRY', 5]];
 
 // Fictional businesses (names invented for the demo). outcome decides what the admin does
 // with the application: APPROVED merchants get an API key and send B2B orders; one stays

@@ -46,6 +46,8 @@ class UserAccountServiceTest {
     private TokenIssuanceService tokenIssuanceService;
     @Mock
     private RefreshTokenService refreshTokenService;
+    @Mock
+    private StaffInviteService staffInviteService;
 
     @InjectMocks
     private UserAccountService userAccountService;
@@ -165,6 +167,36 @@ class UserAccountServiceTest {
                 "Secret123", UserRole.COURIER, SriLankanDistrict.COLOMBO, null));
 
         assertThat(profile.emailVerified()).isTrue();
+        verifyNoInteractions(staffInviteService);
+    }
+
+    @Test
+    void anAdminCreatedAccountWithoutPasswordIsInvitedInsteadOfGivenAPassword() {
+        when(passwordEncoder.encode(any())).thenReturn("encoded-random");
+        when(userAccountRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        userAccountService.create(new CreateUserRequest(
+                "dispatch.kandy", "dispatch.kandy@example.com", null, "Dispatch", "Kandy",
+                null, UserRole.DISPATCHER, SriLankanDistrict.KANDY, null));
+
+        verify(passwordPolicy, never()).validate(any(), any(), any());
+        verify(staffInviteService).sendInvite(any(UserAccount.class));
+    }
+
+    @Test
+    void staffCannotChangeTheirOwnDistrict() {
+        UserAccount courier = new UserAccount();
+        courier.setPublicId(UUID.randomUUID());
+        courier.setRole(UserRole.COURIER);
+        courier.setDistrict(SriLankanDistrict.COLOMBO);
+        when(userAccountRepository.findByPublicId(courier.getPublicId())).thenReturn(Optional.of(courier));
+
+        assertThatThrownBy(() -> userAccountService.updateOwnProfile(courier.getPublicId(),
+                new UpdateProfileRequest("Kasun", "Perera", null, SriLankanDistrict.GALLE)))
+                .isInstanceOf(AuthException.class)
+                .satisfies(exception -> assertThat(((AuthException) exception).getStatus())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+        verify(userAccountRepository, never()).save(any());
     }
 
     @Test

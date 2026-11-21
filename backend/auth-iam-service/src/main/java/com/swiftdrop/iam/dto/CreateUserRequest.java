@@ -35,8 +35,9 @@ public record CreateUserRequest(
         @Size(max = 100)
         String lastName,
 
-        @NotBlank
         @Size(min = 8, max = 72)
+        @Schema(description = "Optional. Leave it out to email the person an invite link where they choose "
+                + "their own password (recommended for staff accounts).")
         String password,
 
         @NotNull
