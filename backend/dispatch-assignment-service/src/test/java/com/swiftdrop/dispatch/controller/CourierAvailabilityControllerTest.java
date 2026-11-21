@@ -136,7 +136,7 @@ class CourierAvailabilityControllerTest {
                 SriLankanDistrict.COLOMBO,
                 ShiftStatus.AVAILABLE
         );
-        when(courierShiftService.getWorkloads()).thenReturn(List.of(workload));
+        when(courierShiftService.getWorkloads(any())).thenReturn(List.of(workload));
 
         mockMvc.perform(get("/api/v1/dispatch/couriers/workload").with(dispatcher()))
                 .andExpect(status().isOk())

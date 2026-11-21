@@ -1,5 +1,6 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.order.OrderCancelledEvent;
@@ -52,13 +53,32 @@ public class DispatchAssignmentService {
 
     @Transactional(readOnly = true)
     public Page<DispatchAssignmentResponse> getAssignments(AssignmentStatus status, Pageable pageable) {
+        return getAssignments(status, null, pageable);
+    }
+
+    /** Assignments picked up in {@code pickupDistrict}, or in every district when it is {@code null}. */
+    @Transactional(readOnly = true)
+    public Page<DispatchAssignmentResponse> getAssignments(AssignmentStatus status, SriLankanDistrict pickupDistrict,
+                                                           Pageable pageable) {
         Page<DispatchAssignment> page;
-        if (status != null) {
+        if (pickupDistrict != null) {
+            page = status != null
+                    ? assignmentRepository.findByPickupDistrictAndStatus(pickupDistrict, status, pageable)
+                    : assignmentRepository.findByPickupDistrict(pickupDistrict, pageable);
+        } else if (status != null) {
             page = assignmentRepository.findByStatus(status, pageable);
         } else {
             page = assignmentRepository.findAll(pageable);
         }
         return page.map(DispatchAssignmentResponse::fromEntity);
+    }
+
+    /** Open orders delivered into {@code district} from elsewhere: shown to its dispatcher read-only. */
+    @Transactional(readOnly = true)
+    public List<DispatchAssignmentResponse> getIncoming(SriLankanDistrict district) {
+        return assignmentRepository.findIncoming(district).stream()
+                .map(DispatchAssignmentResponse::fromEntity)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -77,7 +97,16 @@ public class DispatchAssignmentService {
 
     @Transactional(readOnly = true)
     public List<DispatchAssignmentResponse> getUnassignedParcels() {
-        return assignmentRepository.findByStatus(AssignmentStatus.UNASSIGNED).stream()
+        return getUnassignedParcels(null);
+    }
+
+    /** The unassigned queue of one pickup district, or of every district when it is {@code null}. */
+    @Transactional(readOnly = true)
+    public List<DispatchAssignmentResponse> getUnassignedParcels(SriLankanDistrict pickupDistrict) {
+        List<DispatchAssignment> queue = pickupDistrict == null
+                ? assignmentRepository.findByStatus(AssignmentStatus.UNASSIGNED)
+                : assignmentRepository.findByStatusAndPickupDistrict(AssignmentStatus.UNASSIGNED, pickupDistrict);
+        return queue.stream()
                 .map(DispatchAssignmentResponse::fromEntity)
                 .toList();
     }
@@ -111,7 +140,11 @@ public class DispatchAssignmentService {
                 ? null
                 : assignment.getCourierId();
 
-        var candidates = courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE);
+        // Only couriers working in the pickup district can collect the parcel. Orders from before the
+        // pickup district was recorded have none, so every available courier is offered for them.
+        var candidates = assignment.getPickupDistrict() != null
+                ? courierShiftRepository.findAvailableCandidates(assignment.getPickupDistrict(), ShiftStatus.AVAILABLE)
+                : courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE);
         Comparator<CourierShift> ranking =
                 Comparator.comparing((CourierShift courier) ->
                                 courier.getCurrentDistrict() != assignment.getPickupDistrict())

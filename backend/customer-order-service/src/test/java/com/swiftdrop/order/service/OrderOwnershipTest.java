@@ -1,5 +1,9 @@
 package com.swiftdrop.order.service;
 
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.junit.jupiter.api.AfterEach;
 import com.swiftdrop.contracts.dto.PagedResult;
 import com.swiftdrop.contracts.enums.FeeRevisionStatus;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
@@ -72,8 +76,21 @@ class OrderOwnershipTest {
     private UUID orderId;
     private CustomerOrder orderOfA;
 
+    /** The dispatcher in these tests works in Colombo, the pickup district of orderOfA (as X-District-Id). */
+    private static void callerDistrict(String district) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        if (district != null) request.addHeader("X-District-Id", district);
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    }
+
+    @AfterEach
+    void clearRequest() {
+        RequestContextHolder.resetRequestAttributes();
+    }
+
     @BeforeEach
     void setUp() {
+        callerDistrict("COLOMBO");
         customerA = UUID.randomUUID();
         customerB = UUID.randomUUID();
         orderId = UUID.randomUUID();
@@ -165,7 +182,7 @@ class OrderOwnershipTest {
     }
 
     @Test
-    @DisplayName("Dispatcher and system admin can read any order")
+    @DisplayName("Admin can read any order; a dispatcher an order of their district")
     void privilegedRolesCanReadAnyOrder() {
         orderExists();
 
@@ -173,6 +190,22 @@ class OrderOwnershipTest {
         assertThat(customerOrderService.getOrderById(orderId, customerB, "SYSTEM_ADMIN").getOrderId()).isEqualTo(orderId);
         assertThat(customerOrderService.getOrderById(orderId, null, "dispatcher").getOrderId()).isEqualTo(orderId);
         assertThat(customerOrderService.getOrderById(orderId, customerB, "ADMIN").getOrderId()).isEqualTo(orderId);
+    }
+
+    @Test
+    @DisplayName("A dispatcher reads orders picked up in or bound for their district; others get 404")
+    void dispatcherIsLimitedToTheirDistrict() {
+        orderExists(); // Colombo -> Kandy
+        callerDistrict("KANDY");
+        assertThat(customerOrderService.getOrderById(orderId, customerB, "DISPATCHER").getOrderId()).isEqualTo(orderId);
+
+        callerDistrict("GALLE");
+        assertThatThrownBy(() -> customerOrderService.getOrderById(orderId, customerB, "DISPATCHER"))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        callerDistrict(null);
+        assertThatThrownBy(() -> customerOrderService.getOrderById(orderId, customerB, "DISPATCHER"))
+                .isInstanceOf(OrderNotFoundException.class);
     }
 
     @Test

@@ -149,9 +149,17 @@ paths:
       tags:
         - Dispatch
       summary: List dispatch assignments with pagination and optional status filter
-      description: Requires the DISPATCHER or SYSTEM_ADMIN role.
+      description: >-
+        A DISPATCHER gets the orders picked up in their own district; a SYSTEM_ADMIN gets every
+        district or the one given.
       operationId: getAssignments
       parameters:
+        - name: district
+          in: query
+          required: false
+          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
         - name: status
           in: query
           required: false
@@ -268,8 +276,17 @@ paths:
       tags:
         - Dispatch
       summary: List unassigned orders pending dispatch
-      description: Requires the DISPATCHER or SYSTEM_ADMIN role.
+      description: >-
+        A DISPATCHER gets their own district's queue; a SYSTEM_ADMIN gets every district or the one
+        given.
       operationId: getUnassignedParcels
+      parameters:
+        - name: district
+          in: query
+          required: false
+          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Unassigned orders retrieved
@@ -290,13 +307,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
 
+  /api/v1/dispatch/incoming:
+    get:
+      tags:
+        - Dispatch
+      summary: List open orders coming into a district from another one
+      description: >-
+        Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own
+        district; a SYSTEM_ADMIN must give the district (400 otherwise).
+      operationId: getIncoming
+      parameters:
+        - name: district
+          in: query
+          required: false
+          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Incoming orders retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
+        "400":
+          description: A SYSTEM_ADMIN did not give a district
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
   /api/v1/dispatch/orders/{orderId}/suggestions:
     get:
       tags:
         - Dispatch
       summary: Suggest available couriers for an order
       description: >-
-        Returns up to three AVAILABLE couriers below capacity, preferring the pickup district, then
+        Returns up to three AVAILABLE couriers below capacity working in the order's pickup district
+        (a DISPATCHER only for orders of their district), then
         lower active workload, then the most recent heartbeat (couriers without one last), then courier
         ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or
         REASSIGNED order they are reassignment suggestions and leave out the courier currently holding

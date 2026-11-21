@@ -70,7 +70,7 @@ export interface paths {
         };
         /**
          * List dispatch assignments with pagination and optional status filter
-         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description A DISPATCHER gets the orders picked up in their own district; a SYSTEM_ADMIN gets every district or the one given.
          */
         get: operations["getAssignments"];
         put?: never;
@@ -130,9 +130,29 @@ export interface paths {
         };
         /**
          * List unassigned orders pending dispatch
-         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description A DISPATCHER gets their own district's queue; a SYSTEM_ADMIN gets every district or the one given.
          */
         get: operations["getUnassignedParcels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/incoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List open orders coming into a district from another one
+         * @description Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+         */
+        get: operations["getIncoming"];
         put?: never;
         post?: never;
         delete?: never;
@@ -150,7 +170,7 @@ export interface paths {
         };
         /**
          * Suggest available couriers for an order
-         * @description Returns up to three AVAILABLE couriers below capacity, preferring the pickup district, then lower active workload, then the most recent heartbeat (couriers without one last), then courier ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or REASSIGNED order they are reassignment suggestions and leave out the courier currently holding the order. An empty list means no courier is eligible. Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description Returns up to three AVAILABLE couriers below capacity working in the order's pickup district (a DISPATCHER only for orders of their district), then lower active workload, then the most recent heartbeat (couriers without one last), then courier ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or REASSIGNED order they are reassignment suggestions and leave out the courier currently holding the order. An empty list means no courier is eligible. Requires the DISPATCHER or SYSTEM_ADMIN role.
          */
         get: operations["getCourierSuggestions"];
         put?: never;
@@ -838,6 +858,8 @@ export interface operations {
     getAssignments: {
         parameters: {
             query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
                 status?: components["schemas"]["AssignmentStatus"];
                 page?: number;
                 size?: number;
@@ -973,7 +995,10 @@ export interface operations {
     };
     getUnassignedParcels: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -991,6 +1016,47 @@ export interface operations {
             };
             /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getIncoming: {
+        parameters: {
+            query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Incoming orders retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description A SYSTEM_ADMIN did not give a district */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

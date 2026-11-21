@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuthStore } from '@/store/useAuthStore';
 import {
   dispatchApi,
   type CourierShiftResponse,
@@ -48,6 +49,7 @@ export function FleetControlTowerPage() {
   const [kpiSummary, setKpiSummary] = useState<OperationalKpiSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [districtFilter, setDistrictFilter] = useState<string>('ALL');
+  const isDispatcher = useAuthStore((state) => state.user?.role === 'DISPATCHER');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -340,7 +342,8 @@ export function FleetControlTowerPage() {
               </h2>
             </div>
 
-            {/* District Filter Dropdown */}
+            {/* District filter: admins only. A dispatcher's couriers are all in their own district. */}
+            {!isDispatcher && (
             <div className="flex items-center gap-2">
               <Filter className="h-3.5 w-3.5 text-muted" />
               <select
@@ -356,6 +359,7 @@ export function FleetControlTowerPage() {
                 ))}
               </select>
             </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">

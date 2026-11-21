@@ -15,8 +15,20 @@ public final class TestCallers {
     private TestCallers() {
     }
 
+    /** The district every test dispatcher works in unless a test says otherwise. */
+    public static final String DISPATCHER_DISTRICT = "COLOMBO";
+
+    /** A dispatcher of {@link #DISPATCHER_DISTRICT}, as the gateway sends it (X-District-Id). */
     public static RequestPostProcessor dispatcher() {
-        return as(UserRole.DISPATCHER);
+        return dispatcherOf(DISPATCHER_DISTRICT);
+    }
+
+    public static RequestPostProcessor dispatcherOf(String district) {
+        return request -> {
+            withIdentity(UUID.randomUUID().toString(), UserRole.DISPATCHER.name()).postProcessRequest(request);
+            request.addHeader(JwtHeaderConstants.X_DISTRICT_ID, district);
+            return request;
+        };
     }
 
     /** The courier signed in as {@code courierId}: their IAM user ID is their courier ID. */
@@ -29,6 +41,14 @@ public final class TestCallers {
     }
 
     public static RequestPostProcessor as(UUID userId, UserRole role) {
+        if (role == UserRole.DISPATCHER) {
+            // A dispatcher account always has a district.
+            return request -> {
+                withIdentity(userId.toString(), role.name()).postProcessRequest(request);
+                request.addHeader(JwtHeaderConstants.X_DISTRICT_ID, DISPATCHER_DISTRICT);
+                return request;
+            };
+        }
         return withIdentity(userId.toString(), role.name());
     }
 

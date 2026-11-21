@@ -5,6 +5,7 @@ import com.swiftdrop.contracts.enums.FeeRevisionStatus;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import com.swiftdrop.order.domain.entity.OrderSource;
@@ -184,8 +185,9 @@ public class CustomerOrderService {
     }
 
     /**
-     * Ownership rule shared by every order endpoint: dispatchers and system admins may access any order,
-     * everyone else only their own. A non-owner gets the same 404 as a missing order so existence is not leaked.
+     * Ownership rule shared by every order endpoint: a system admin may access any order, a dispatcher the
+     * orders picked up in or bound for their district, everyone else only their own. Anyone else gets the
+     * same 404 as a missing order so existence is not leaked.
      */
     private CustomerOrder findAccessibleOrder(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
@@ -203,8 +205,16 @@ public class CustomerOrderService {
     }
 
     private void assertCallerCanAccess(CustomerOrder order, UUID callerId, String callerRole) {
-        if (isPrivilegedRole(callerRole)) {
+        UserRole role = UserRole.fromClaim(callerRole);
+        if (role == UserRole.SYSTEM_ADMIN) {
             return;
+        }
+        if (role == UserRole.DISPATCHER) {
+            SriLankanDistrict district = CallerDistrict.current();
+            if (district != null && (district == order.getPickupDistrict() || district == order.getDeliveryDistrict())) {
+                return;
+            }
+            throw new OrderNotFoundException("Order not found");
         }
         if (callerId == null || !callerId.equals(order.getCustomerId())) {
             throw new OrderNotFoundException("Order not found");

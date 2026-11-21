@@ -1,5 +1,7 @@
 package com.swiftdrop.dispatch.controller;
 
+import com.swiftdrop.dispatch.security.DistrictScope;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
@@ -44,15 +46,16 @@ public class CourierAvailabilityController {
 
     @GetMapping
     @Operation(summary = "List couriers with optional district and shift status filters",
-            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
+            description = "A DISPATCHER gets the couriers of their own district (the district parameter is "
+                    + "ignored); a SYSTEM_ADMIN gets every district or the one given.")
     public ApiResponse<List<CourierShiftResponse>> getCouriers(
             @RequestParam(required = false) SriLankanDistrict district,
             @RequestParam(required = false) ShiftStatus status,
             HttpServletRequest httpRequest
     ) {
-        DispatchAccess.requireOperations(httpRequest);
+        CallerContext caller = DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
-                courierShiftService.getCouriers(district, status),
+                courierShiftService.getCouriers(DistrictScope.listDistrict(caller, district), status),
                 "Couriers retrieved"
         );
     }
@@ -63,7 +66,7 @@ public class CourierAvailabilityController {
     public ApiResponse<CourierShiftResponse> getCourier(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
-        DispatchAccess.requireCourierSelfOrOperations(httpRequest, courierId);
+        requireCourierAccess(httpRequest, courierId);
         return ApiResponse.success(
                 courierShiftService.getCourier(courierId),
                 "Courier retrieved"
@@ -72,11 +75,11 @@ public class CourierAvailabilityController {
 
     @GetMapping("/workload")
     @Operation(summary = "List current courier workloads",
-            description = "Requires the DISPATCHER or SYSTEM_ADMIN role.")
+            description = "A DISPATCHER sees their own district's couriers; a SYSTEM_ADMIN sees all.")
     public ApiResponse<List<CourierWorkloadResponse>> getWorkloads(HttpServletRequest httpRequest) {
-        DispatchAccess.requireOperations(httpRequest);
+        CallerContext caller = DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
-                courierShiftService.getWorkloads(),
+                courierShiftService.getWorkloads(DistrictScope.listDistrict(caller, null)),
                 "Courier workloads retrieved"
         );
     }
@@ -100,7 +103,7 @@ public class CourierAvailabilityController {
     public ApiResponse<CourierShiftResponse> endShift(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
-        DispatchAccess.requireCourierSelfOrOperations(httpRequest, courierId);
+        requireCourierAccess(httpRequest, courierId);
         return ApiResponse.success(
                 courierShiftService.endShift(courierId),
                 "Courier shift ended successfully"
@@ -113,10 +116,19 @@ public class CourierAvailabilityController {
     public ApiResponse<CourierShiftResponse> updateShiftStatus(
             @Valid @RequestBody UpdateShiftStatusRequest request,
             HttpServletRequest httpRequest) {
-        DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
+        requireCourierAccess(httpRequest, request.courierId());
         return ApiResponse.success(
                 courierShiftService.updateStatus(request.courierId(), request.status()),
                 "Shift status updated successfully"
         );
+    }
+
+    /** The courier themselves, a SYSTEM_ADMIN, or the dispatcher of the district the courier works in. */
+    private CallerContext requireCourierAccess(HttpServletRequest httpRequest, UUID courierId) {
+        CallerContext caller = DispatchAccess.requireCourierSelfOrOperations(httpRequest, courierId);
+        if (caller.role() == com.swiftdrop.contracts.enums.UserRole.DISPATCHER) {
+            DistrictScope.requireCourier(caller, courierShiftService.getCourier(courierId).currentDistrict());
+        }
+        return caller;
     }
 }
