@@ -1,5 +1,8 @@
 package com.swiftdrop.notification.service;
 
+import com.swiftdrop.notification.service.push.DevicePushService;
+import com.swiftdrop.notification.service.push.PushMessages;
+
 import com.swiftdrop.notification.client.ContactClient;
 import com.swiftdrop.notification.domain.entity.NotificationDispatchLog;
 import com.swiftdrop.notification.domain.entity.RecipientPreference;
@@ -35,6 +38,7 @@ public class MultiChannelNotificationDispatcher {
     private final ContactClient contactClient;
     private final EmailSender emailSender;
     private final EmailHtmlRenderer emailHtmlRenderer;
+    private final DevicePushService devicePushService;
 
     /**
      * Executes omnichannel notification dispatch, verifying recipient preferences and logging the outcome.
@@ -52,7 +56,9 @@ public class MultiChannelNotificationDispatcher {
         // email-off preference. Only one-time codes are secret, so only they are redacted below.
         boolean security = SensitiveTemplates.isSecurity(request.templateCode());
         boolean sensitive = SensitiveTemplates.isSensitive(request.templateCode());
-        boolean isChannelEnabled = security || isChannelEnabled(pref, channel);
+        boolean push = "PUSH".equals(channel);
+        // Security mail ignores the email-off switch; it is never sent to a device at all (below).
+        boolean isChannelEnabled = (security && !push) || isChannelEnabled(pref, channel);
 
         // Security mail goes only to the account's registered (IAM) address: never to a request-supplied
         // or preference address, which could otherwise redirect a password-reset code to someone else.
@@ -70,7 +76,11 @@ public class MultiChannelNotificationDispatcher {
         String failureReason = null;
         Instant sentAt = null;
 
-        if (!isChannelEnabled) {
+        if (push && security) {
+            // One-time codes and sign-in alerts stay email-only: a lock screen is visible to anyone nearby.
+            status = "SUPPRESSED";
+            failureReason = "Security messages are never sent to devices";
+        } else if (!isChannelEnabled) {
             log.info("Notification suppressed by user preferences for channel: {}", channel);
             status = "SUPPRESSED";
             failureReason = "Channel " + channel + " disabled in user preferences";
@@ -233,7 +243,19 @@ public class MultiChannelNotificationDispatcher {
                                 request.templateParams()));
             }
             case "PUSH" -> {
-                // In-app push is delivered through the inbox; nothing to transmit here.
+                // The in-app inbox row is written by the event consumer; this sends the device (Web Push) copy.
+                if (devicePushService == null || !devicePushService.enabled()) {
+                    return;
+                }
+                PushMessages.PushMessage message = PushMessages.forTemplate(request.templateCode(), request.templateParams())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "No device message for template " + request.templateCode()));
+                DevicePushService.PushResult result = devicePushService.push(request.recipientId(), message);
+                log.info("Device push for {}: {} device(s), {} delivered, {} removed, {} failed", request.recipientId(),
+                        result.devices(), result.delivered(), result.removed(), result.failed());
+                if (result.delivered() == 0 && result.failed() > 0) {
+                    throw new IllegalStateException("No device accepted the message");
+                }
             }
             default -> throw new IllegalArgumentException("Unsupported channel " + channel + "; use EMAIL or PUSH");
         }

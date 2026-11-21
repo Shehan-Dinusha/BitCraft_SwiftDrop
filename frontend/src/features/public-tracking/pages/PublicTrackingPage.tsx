@@ -52,7 +52,6 @@ export function PublicTrackingPage() {
         <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6">
           <PageHeader
             title="Track your parcel"
-            subtitle="Follow a parcel across Sri Lanka with live, privacy-safe updates."
             className="rounded-xl border border-border-subtle px-5 py-5 sm:px-8"
           />
 

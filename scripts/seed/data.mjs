@@ -115,11 +115,13 @@ export const FAILURES = {
   PICKED_UP: ['DAMAGED_IN_TRANSIT'],
 };
 
-export const VEHICLES = [['MOTORCYCLE', 60], ['THREE_WHEELER', 20], ['VAN', 15], ['BICYCLE', 5]];
+// Couriers use their own vehicle (no bicycles): motorcycle, three-wheeler, van or lorry.
+export const VEHICLES = [['MOTORCYCLE', 60], ['THREE_WHEELER', 20], ['VAN', 15], ['LORRY', 5]];
 
-// Fictional businesses (names invented for the demo). outcome decides what the admin does
-// with the application: APPROVED merchants get an API key and send B2B orders; one stays
-// PENDING so the approval screen has work; one is REJECTED with a reason.
+// Fictional businesses (names invented for the demo). All are approved: their e-mail addresses are
+// not real, so the approval/rejection e-mails could not be read anyway. To demo the review flow,
+// sign up a business with a real address at /register/business and approve it as the district
+// dispatcher. Approved merchants get an API key and send B2B orders.
 export const MERCHANTS = [
   { slug: 'kandy-valley-spice', business: 'Kandy Valley Spice Co.', district: 'KANDY', outcome: 'APPROVED', orders: 12,
     items: ['Ceylon cinnamon quills', 'Black pepper pack', 'Cardamom pods', 'Spice gift box', 'Curry powder set'] },
@@ -129,7 +131,9 @@ export const MERCHANTS = [
     items: ['Wooden mask', 'Lacquerware bowl', 'Batik wall hanging', 'Brass oil lamp'] },
   { slug: 'nallur-palmyrah-works', business: 'Nallur Palmyrah Works', district: 'JAFFNA', outcome: 'APPROVED', orders: 8,
     items: ['Palmyrah basket', 'Palmyrah jaggery', 'Woven mat', 'Palmyrah fan'] },
-  { slug: 'pettah-gadget-hub', business: 'Pettah Gadget Hub', district: 'COLOMBO', outcome: 'PENDING', orders: 0, items: [] },
-  { slug: 'lagoon-catch-exports', business: 'Lagoon Catch Exports', district: 'GAMPAHA', outcome: 'REJECTED', orders: 0, items: [],
-    reason: 'Fresh and frozen seafood is perishable and is not accepted under the SwiftDrop parcel policy.' },
+  { slug: 'pettah-gadget-hub', business: 'Pettah Gadget Hub', district: 'COLOMBO', outcome: 'APPROVED', orders: 10,
+    items: ['Phone case', 'USB-C charger', 'Bluetooth earbuds', 'Power bank', 'Screen protector'] },
+  // Dried and packed goods only: fresh seafood is perishable and not accepted as a parcel.
+  { slug: 'lagoon-catch-exports', business: 'Lagoon Catch Exports', district: 'GAMPAHA', outcome: 'APPROVED', orders: 8,
+    items: ['Dried fish pack', 'Maldive fish flakes', 'Dried prawns', 'Seafood spice mix'] },
 ];

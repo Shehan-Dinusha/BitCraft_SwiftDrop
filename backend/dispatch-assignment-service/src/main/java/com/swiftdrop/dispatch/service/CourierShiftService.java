@@ -1,8 +1,10 @@
 package com.swiftdrop.dispatch.service;
 
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
+import com.swiftdrop.dispatch.domain.repository.CourierProfileRepository;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
@@ -24,15 +26,23 @@ public class CourierShiftService {
     private static final Logger log = LoggerFactory.getLogger(CourierShiftService.class);
 
     private final CourierShiftRepository courierShiftRepository;
+    private final CourierProfileRepository courierProfileRepository;
 
-    public CourierShiftService(CourierShiftRepository courierShiftRepository) {
+    public CourierShiftService(CourierShiftRepository courierShiftRepository,
+                               CourierProfileRepository courierProfileRepository) {
         this.courierShiftRepository = courierShiftRepository;
+        this.courierProfileRepository = courierProfileRepository;
     }
 
     @Transactional
     public CourierShiftResponse startShift(StartShiftRequest request) {
         log.info("Starting shift for courier: {} ({}) in district: {}",
                 request.courierName(), request.courierId(), request.initialDistrict());
+
+        // Couriers use their own registered vehicle; without one there is nothing to dispatch with.
+        CourierProfile profile = courierProfileRepository.findByCourierId(request.courierId())
+                .orElseThrow(() -> new CourierNotAvailableException(
+                        "Add your vehicle details before starting a shift"));
 
         CourierShift shift = courierShiftRepository.findByCourierId(request.courierId())
                 .orElseGet(() -> {
@@ -44,8 +54,8 @@ public class CourierShiftService {
 
         shift.setCourierName(request.courierName());
         if (request.phone() != null) shift.setPhone(request.phone());
-        if (request.vehicleType() != null) shift.setVehicleType(request.vehicleType());
-        if (request.maxCapacity() != null) shift.setMaxCapacity(request.maxCapacity());
+        shift.setVehicleType(profile.getVehicleType());
+        shift.setMaxCapacity(profile.getMaxCapacity());
         shift.setCurrentDistrict(request.initialDistrict());
         shift.setShiftStatus(ShiftStatus.AVAILABLE);
         shift.setShiftStartedAt(Instant.now());

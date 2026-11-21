@@ -389,6 +389,9 @@ services:
       ACS_EMAIL_ENDPOINT: ${ACS_EMAIL_ENDPOINT:-}
       ACS_EMAIL_ACCESS_KEY: ${ACS_EMAIL_ACCESS_KEY:-}
       ACS_EMAIL_SENDER_ADDRESS: ${ACS_EMAIL_SENDER_ADDRESS:-}
+      WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+      WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+      WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-}
     depends_on:
       notify-postgres:
         condition: service_healthy

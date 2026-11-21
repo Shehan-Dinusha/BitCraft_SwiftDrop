@@ -28,6 +28,7 @@ import { usePageTitle } from '../components/usePageTitle';
 import { useReceiptDownload } from '../components/orders/useReceiptDownload';
 import { OrderStatusSection } from '../components/orders/OrderStatusSection';
 import { OrderFeeSection } from '../components/orders/OrderFeeSection';
+import { OrderCourierCard } from '../components/orders/OrderCourierCard';
 import { OrderDetailsSection } from '../components/orders/OrderDetailsSection';
 import { CancelDialog, DeclineFeeDialog } from '../components/orders/OrderActionDialogs';
 
@@ -355,13 +356,15 @@ export function OrderDetailPage() {
 
       <OrderStatusSection ref={statusRef} order={order} history={historyQuery.data} />
 
+      {orderId ? <OrderCourierCard orderId={orderId} status={status} /> : null}
+
       {status !== 'CANCELLED' ? <OrderFeeSection order={order} /> : null}
 
       {canCancel(order) ? (
         <SurfaceCard>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-body text-secondary">
-              Plans changed? You can cancel until the courier picks up the parcel.
+              You can cancel until pickup.
             </p>
             <Button type="button" variant="outline" onClick={() => openDialog(setCancelOpen)}>
               Cancel parcel

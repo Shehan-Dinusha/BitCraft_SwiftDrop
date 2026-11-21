@@ -8,7 +8,7 @@ export interface ModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
-  children: ReactNode;
+  children?: ReactNode;
   footer?: ReactNode;
   description?: string;
   size?: ModalDrawerSize;

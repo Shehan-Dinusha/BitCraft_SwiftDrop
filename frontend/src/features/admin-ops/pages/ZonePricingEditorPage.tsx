@@ -349,7 +349,7 @@ export function ZonePricingEditorPage() {
         open={editing !== null}
         onClose={() => setEditing(null)}
         title={editing === 'new' ? 'New zone' : 'Edit zone'}
-        description="Fees are in LKR. Multipliers apply to the subtotal for Express and Same-day delivery."
+        description="Fees in LKR."
         footer={
           <span className="flex gap-2">
             <Button variant="ghost" onClick={() => setEditing(null)}>

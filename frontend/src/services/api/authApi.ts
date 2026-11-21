@@ -45,11 +45,15 @@ export const SRI_LANKAN_DISTRICTS: components['schemas']['SriLankanDistrict'][] 
 ];
 
 /**
- * Self-service registration always creates a CUSTOMER account. The account starts unverified: the
+ * Self-service registration creates a CUSTOMER (default) or MERCHANT account. The account starts unverified: the
  * API emails a 6-digit code that {@link verifyEmail} confirms. Registration never signs the user in.
  */
-export async function registerUser(input: RegisterUserInput): Promise<void> {
-  await apiClient.post('/v1/auth/register', { ...input, role: 'CUSTOMER' });
+export async function registerUser(
+  input: RegisterUserInput,
+  role: 'CUSTOMER' | 'MERCHANT' = 'CUSTOMER'
+): Promise<void> {
+  // A MERCHANT account then applies with its business details; the district dispatcher approves it.
+  await apiClient.post('/v1/auth/register', { ...input, role });
 }
 
 export type UsernameAvailability = components['schemas']['UsernameAvailabilityResponse'];
@@ -220,6 +224,59 @@ export async function updateUserStatus(userId: string, status: UserStatus): Prom
     `/v1/users/${userId}/status`,
     { status }
   );
+  return data.data ?? {};
+}
+
+// ── Staff invites (public: the token from the emailed link is the credential) ──
+
+export type InvitePreview = components['schemas']['InvitePreviewResponse'];
+
+/** Who an invite link is for. Fails with 400 when the link is invalid, used or expired. */
+export async function previewInvite(token: string): Promise<InvitePreview> {
+  const { data } = await apiClient.post<{ data?: InvitePreview }>('/v1/auth/invite/preview', { token });
+  return data.data ?? {};
+}
+
+/** Sets the password chosen on the invite page and signs the person in. */
+export async function acceptInvite(token: string, password: string): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/invite/accept', { token, password });
+  return data;
+}
+
+// ── Courier accounts (DISPATCHER: own district; SYSTEM_ADMIN: any) ─────────
+
+export type CreateCourierInput = components['schemas']['CreateCourierRequest'];
+
+/** Couriers the caller manages. A dispatcher always gets their own district. */
+export async function listCouriers(params?: {
+  status?: UserStatus;
+  search?: string;
+  district?: components['schemas']['SriLankanDistrict'];
+}): Promise<UserProfileItem[]> {
+  const { data } = await apiClient.get<{ data?: components['schemas']['PagedUserProfileResponse'] }>(
+    '/v1/users/couriers',
+    { params: { ...params, size: 100 } }
+  );
+  return data.data?.content ?? [];
+}
+
+/** Registers a courier; they are emailed an invite to choose their password and add their vehicle. */
+export async function registerCourier(input: CreateCourierInput): Promise<UserProfileItem> {
+  const { data } = await apiClient.post<{ data?: UserProfileItem }>('/v1/users/couriers', input);
+  return data.data ?? {};
+}
+
+/** Sends a fresh invite link; the previous one stops working. */
+export async function resendCourierInvite(courierId: string): Promise<UserProfileItem> {
+  const { data } = await apiClient.post<{ data?: UserProfileItem }>(`/v1/users/couriers/${courierId}/invite`);
+  return data.data ?? {};
+}
+
+/** Suspends, deactivates or reactivates a courier. */
+export async function updateCourierStatus(courierId: string, status: UserStatus): Promise<UserProfileItem> {
+  const { data } = await apiClient.patch<{ data?: UserProfileItem }>(`/v1/users/couriers/${courierId}/status`, {
+    status
+  });
   return data.data ?? {};
 }
 

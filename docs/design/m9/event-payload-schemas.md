@@ -504,6 +504,87 @@ registered address, and never copies them to the in-app inbox.
 
 ---
 
+### 2.13 `notification.auth.invite` — `AuthStaffInviteEvent`
+
+* **Producer:** `auth-iam-service` (:8081): when a dispatcher registers a courier (`POST /api/v1/users/couriers`), an admin creates an account without a password (`POST /api/v1/users`), or an invite is re-sent
+* **Routing Key:** `notification.auth.invite` (under `notification.` so the existing `notification.#` binding delivers it)
+* **Destination Queues:** `notification.events.queue`
+* **Consumers:** `notification-service` (`StaffInviteTrigger`, template `STAFF_INVITE`)
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier (deduplication) | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `recipientId` | `UUID` | No | IAM user the invite is for; notification-service resolves the registered email from IAM | Safe |
+| `role` | `UserRole` | No | Role of the invited account (`COURIER` or `DISPATCHER`) | Safe |
+| `inviteUrl` | `String` | No | `<FRONTEND_URL>/invite#token=<43 chars>`; the token is in the fragment so it never reaches a server log | **Secret**: signs the person in; never logged, stored in dispatch logs or copied to the in-app inbox |
+| `expiresInHours` | `int` | No | Link lifetime shown in the email (72) | Safe |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+IAM stores only the SHA-256 of the token. Accepting the invite (`POST /api/v1/auth/invite/accept`)
+sets the password, clears the token and signs the person in; a new invite replaces the old one. The
+email renders the link only when it matches the invite-link format, and like the one-time codes it
+goes only to the registered address, ignores the email-off preference and is redacted in the audit log.
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "recipientId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "role": "COURIER",
+  "inviteUrl": "https://app.example.com/invite#token=q3Z8s1Lk0Vd9rT2yWm5nB7xC4pF6hJ1aE0uGiKoYtRs",
+  "expiresInHours": 72,
+  "timestamp": "2026-11-21T09:00:00Z"
+}
+```
+
+---
+
+### 2.14 `notification.merchant.application` — `MerchantApplicationEvent`
+
+* **Producer:** `merchant-b2b-service` (:8086): when a business application is submitted or resubmitted after a rejection (`POST /api/v1/merchants/register`), approved or rejected
+* **Routing Key:** `notification.merchant.application` (under `notification.` so the existing `notification.#` binding delivers it). Approval still also publishes `merchant.approved` for IAM.
+* **Destination Queues:** `notification.events.queue`
+* **Consumers:** `notification-service` (`MerchantApplicationTrigger`)
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier (deduplication) | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `merchantId` | `UUID` | No | The merchant application | Safe |
+| `recipientId` | `UUID` | No | IAM user id of the owner; notification-service resolves the email from IAM | Safe |
+| `businessName` | `String` | No | Shown in the alert and the email | Low |
+| `operatingDistrict` | `SriLankanDistrict` | No | Pickup district; decides which dispatcher is alerted | Safe |
+| `outcome` | `Outcome` | No | `SUBMITTED`, `APPROVED` or `REJECTED` | Safe |
+| `reason` | `String` | Yes | Rejection reason, shown to the owner | Low |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+`SUBMITTED` writes an in-app alert to the team audience `DISTRICT_OPS:<district>`, which only that
+district's dispatcher sees. `APPROVED` and `REJECTED` email the owner (`MERCHANT_APPROVED`,
+`MERCHANT_REJECTED`) and add an in-app row.
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "8f9a0b1c-2d3e-4f4a-9b5c-6d7e8f9a0b1c",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "merchantId": "5d6e7f80-9a0b-4c1d-8e2f-3a4b5c6d7e8f",
+  "recipientId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "businessName": "Kandy Valley Spice Co.",
+  "operatingDistrict": "KANDY",
+  "outcome": "REJECTED",
+  "reason": "The registration number does not match the business name.",
+  "timestamp": "2026-11-21T10:00:00Z"
+}
+```
+
+---
+
 ## 3. Who receives which notification
 
 Rule: a notification goes only to the person or team the event is about, and only when it tells
@@ -513,15 +594,18 @@ dispatch makes by itself, an order the merchant created themselves) send nothing
 | Event | Customer (own orders) | Courier | Merchant company (team inbox) | Operations team (dispatchers and admins) |
 |---|---|---|---|---|
 | `order.created` | Email + in-app "Order confirmed" | | (nothing: they created it) | |
-| `dispatch.courier.assigned` | | Email + in-app "New delivery" (the assigned courier only) | In-app "Courier assigned" (have the parcel ready) | |
-| `parcel.status.changed` PICKED_UP | Email + in-app "Picked up" | | | |
-| `parcel.status.changed` OUT_FOR_DELIVERY | Email + in-app "Out for delivery" | | | |
-| `parcel.status.changed` DELIVERED | Email + in-app "Delivered" | | | |
-| `parcel.status.changed` FAILED | Email + in-app "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" (arrange a new attempt or a return) |
+| `dispatch.courier.assigned` | | Email + in-app + lock screen "New delivery assigned" (the assigned courier only) | In-app "Courier assigned" (have the parcel ready) | |
+| `parcel.status.changed` PICKED_UP | Email + in-app + lock screen "Picked up" | | | |
+| `parcel.status.changed` OUT_FOR_DELIVERY | Email + in-app + lock screen "Out for delivery" | | | |
+| `parcel.status.changed` DELIVERED | Email + in-app + lock screen "Delivered" | | | |
+| `parcel.status.changed` FAILED | Email + in-app + lock screen "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" (arrange a new attempt or a return) |
 | `dispatch.failed` (retryable = false only) | | | | In-app "Dispatch needs attention" |
 | `notification.auth.otp` | Email only | Email only | Email only (to the signing-in user) | Email only |
 | `notification.auth.login` SUCCESS (new device or network only) | Email only | Email only | Email only (to the signing-in user) | Email only |
 | `notification.auth.login` FAILED (max 1 per 15 min) | Email only | Email only | Email only (to the account owner) | Email only |
+| `notification.auth.invite` | | Email only (the invited courier) | | Email only (an invited dispatcher) |
+| `notification.merchant.application` SUBMITTED | | | | In-app "New merchant application" (that district's dispatcher only) |
+| `notification.merchant.application` APPROVED / REJECTED | | | Email + in-app (the business owner) | |
 
 Merchant orders: customer-order-service stores the merchant id in `customerId`, so parcel events for
 a merchant order name the company, not a person. notification-service records merchant ids from
@@ -532,6 +616,16 @@ merchant company.
 
 A successful sign-in is emailed only when the device and network (`"Chrome on Windows · 203.94.x.x"`,
 kept in the dispatch log `reference_id`) were not used by that account in the last 30 days.
+
+**Lock screen (Web Push).** Sent only to devices where the customer or courier turned on
+"Lock-screen notifications" (table `push_subscriptions`, V11), and only while the account's push
+preference (`push_enabled`) is on. Types: picked up, out for delivery, delivered, delivery failed
+(customers, normal urgency, 24 h TTL, opens `/customer/tracking/{trackingNumber}`) and new delivery
+assigned (couriers, high urgency, 15 min TTL, opens `/courier/deliveries`). The payload is only
+`{title, body, url, tag}` with the tracking number as tag: no names, addresses, phone numbers or
+amounts. Order created, team alerts and every security message are never pushed. The in-app inbox is
+always written, whatever the push preference. Without `WEB_PUSH_*` keys device push is off and
+everything else works.
 
 Team inboxes (`in_app_notifications.audience`): `OPERATIONS` is shown to every DISPATCHER and
 SYSTEM_ADMIN; `MERCHANT:<merchantId>` to every user of that merchant company. A team

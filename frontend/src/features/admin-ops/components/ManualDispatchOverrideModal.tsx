@@ -124,7 +124,6 @@ export function ManualDispatchOverrideModal({
       open={open}
       onClose={onClose}
       title={order?.courierId ? 'Reassign courier' : 'Assign courier'}
-      description="Choose an available courier for this order. Suggestions are ranked by district and workload."
       size="md"
       footer={
         <div className="flex justify-end gap-2">
@@ -190,7 +189,7 @@ export function ManualDispatchOverrideModal({
             </select>
           </Field>
 
-          <Field label="Assignment reason" hint="Optional audit note for the dispatcher action.">
+          <Field label="Reason" hint="Optional">
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}

@@ -24,6 +24,7 @@ import { useUnreadNotificationCount } from '@/features/notifications/useNotifica
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
 import { logoutUser } from '@/services/api/authApi';
+import { forgetDeviceOnSignOut } from '@/features/pwa/webPush';
 import { roleHome } from '@/app/roleHome';
 import type { PersonaRole } from '@/types/contracts';
 
@@ -64,7 +65,8 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
       label: 'Today',
       items: [
         { id: 'shift', label: 'Shift', icon: 'home', to: '/courier' },
-        { id: 'delivery', label: 'Active delivery', icon: 'truck', to: '/courier/delivery' }
+        { id: 'delivery', label: 'Active delivery', icon: 'truck', to: '/courier/delivery' },
+        { id: 'vehicle', label: 'My vehicle', icon: 'truck', to: '/courier/vehicle' }
       ]
     }
   ],
@@ -83,6 +85,8 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
       label: 'Operations',
       items: [
         { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
+        { id: 'couriers', label: 'Couriers', icon: 'users', to: '/ops/couriers' },
+        { id: 'merchants', label: 'Merchant applications', icon: 'grid', to: '/ops/merchants' },
         { id: 'analytics', label: 'Analytics', icon: 'grid', to: '/ops/analytics' },
         { id: 'zones', label: 'Zone pricing', icon: 'map', to: '/ops/zones' }
       ]
@@ -99,6 +103,8 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
         { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
         { id: 'analytics', label: 'Analytics', icon: 'grid', to: '/ops/analytics' },
         { id: 'zones', label: 'Zone pricing', icon: 'map', to: '/ops/zones' },
+        { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
+        { id: 'merchants', label: 'Merchants', icon: 'grid', to: '/ops/merchants' },
         { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
         { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
       ]
@@ -179,6 +185,9 @@ export function AppShell() {
   const confirmSignOut = () => {
     setSigningOut(true);
     void (async () => {
+      // While the token is still valid: stop lock-screen notifications on this device, so the next
+      // person on a shared phone never gets this user's alerts. Never throws, waits at most 3 s.
+      await forgetDeviceOnSignOut();
       try {
         // Revokes the refresh token and blacklists the access token on the server.
         await logoutUser();

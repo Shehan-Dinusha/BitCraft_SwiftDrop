@@ -19,6 +19,10 @@ The live density mapping is defined in [density.ts](src/design-system/tokens/den
 
 Use the primitives and components under [src/design-system](src/design-system), especially `Button`, `Card`, `FsmStatusBadge`, `HighDensityDataGrid`, and `ErgonomicActionBar`. The Tailwind theme exposes `min-h-target` and `min-w-target` as 56px target utilities.
 
+Use only the design-token colours from [tailwind.config.ts](tailwind.config.ts) (`text-primary`, `bg-card`, `bg-canvas`, `border-border-subtle`, `brand-*`, `status-{success,warning,danger,info}-*`). Never use raw palette classes such as `text-slate-500`, `bg-rose-50` or `bg-white` in feature code: they ignore dark mode and drift from the Figma theme. The token colours are CSS variables, so opacity modifiers like `bg-status-danger/10` do not work; use the `-bg` token instead. The design-system catalog is the only exception.
+
+Keep copy short. Use a title and the controls; add text only when it changes what the user does next (an irreversible consequence, a real limit, an error with a next step). No page subtitles that restate the title, no hints that repeat the label, no explanations of system internals.
+
 Use `tabular-nums` for tracking IDs, ETAs, prices, and currency. Use the semantic delivery-state mapping in [colors.ts](src/design-system/tokens/colors.ts) for every `DeliveryState`; do not invent per-view colors.
 
 ## API and real-time integration

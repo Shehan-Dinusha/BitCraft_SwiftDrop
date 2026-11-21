@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   dispatchApi,
+  type CourierProfileResponse,
   type CourierShiftResponse,
   type DispatchAssignmentResponse,
   type ShiftStatus,
@@ -10,6 +11,8 @@ import {
 } from '@/services/api/dispatchApi';
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { SRI_LANKAN_DISTRICTS, fetchCurrentUser } from '@/services/api/authApi';
+import { parseApiError } from '@/services/api/apiError';
+import { vehicleLabel } from '@/utils/vehicles';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
@@ -27,17 +30,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-type VehicleType = NonNullable<CourierShiftResponse['vehicleType']>;
-
-const VEHICLES: { value: VehicleType; label: string }[] = [
-  { value: 'MOTORCYCLE', label: 'Motorcycle' },
-  { value: 'THREE_WHEELER', label: 'Three-wheeler' },
-  { value: 'VAN', label: 'Van' },
-  { value: 'BICYCLE', label: 'Bicycle' }
-];
-
 export function CourierShiftDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const courierId = user?.id;
 
@@ -47,13 +42,16 @@ export function CourierShiftDashboard() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(
+    (location.state as { notice?: string } | null)?.notice ?? null
+  );
+  // undefined while loading; null when the courier has not registered a vehicle yet.
+  const [vehicle, setVehicle] = useState<CourierProfileResponse | null | undefined>(undefined);
 
   // Start shift form state
   const [selectedDistrict, setSelectedDistrict] = useState<SriLankanDistrict>(
     (user?.district as SriLankanDistrict) || 'COLOMBO'
   );
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('MOTORCYCLE');
 
   const fetchShiftData = useCallback(async () => {
     if (!courierId) return;
@@ -61,11 +59,17 @@ export function CourierShiftDashboard() {
       setLoading(true);
       setErrorMsg(null);
 
+      // The courier's own registered vehicle; without one a shift cannot start.
+      try {
+        setVehicle(await dispatchApi.getMyProfile());
+      } catch {
+        setVehicle(undefined);
+      }
+
       // Fetch courier shift data
       try {
         const shiftData = await dispatchApi.getCourier(courierId);
         setShift(shiftData);
-        if (shiftData?.vehicleType) setSelectedVehicle(shiftData.vehicleType);
         if (shiftData?.currentDistrict) setSelectedDistrict(shiftData.currentDistrict as SriLankanDistrict);
       } catch {
         setShift(null);
@@ -117,16 +121,13 @@ export function CourierShiftDashboard() {
         courierId,
         courierName: fullName || shift?.courierName || user?.username || 'Courier',
         phone: profile?.phone || shift?.phone || undefined,
-        vehicleType: selectedVehicle,
-        initialDistrict: selectedDistrict,
-        maxCapacity: shift?.maxCapacity ?? 5
+        initialDistrict: selectedDistrict
       });
       setShift(res);
       setSuccessMsg('Shift started! You are now AVAILABLE for delivery dispatches.');
       await fetchShiftData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to start shift';
-      setErrorMsg(msg);
+      setErrorMsg(parseApiError(err).message ?? 'Failed to start shift');
     } finally {
       setUpdating(false);
     }
@@ -176,12 +177,9 @@ export function CourierShiftDashboard() {
     <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-6" data-density="touch">
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Courier Shift Dashboard
+          <h1 className="text-2xl font-bold tracking-tight text-primary">
+            My shift
           </h1>
-          <p className="text-sm text-slate-500">
-            Real-time shift controls, vehicle capacity, and live dispatch assignments.
-          </p>
         </div>
         <Button
           variant="outline"
@@ -219,43 +217,43 @@ export function CourierShiftDashboard() {
         className={`border-l-4 p-5 ${
           isOnline
             ? shift?.shiftStatus === 'AVAILABLE'
-              ? 'border-l-emerald-500 bg-emerald-500/5'
-              : 'border-l-amber-500 bg-amber-500/5'
-            : 'border-l-slate-400 bg-slate-500/5'
+              ? 'border-l-emerald-500 bg-status-success-bg'
+              : 'border-l-amber-500 bg-status-warning-bg'
+            : 'border-l-slate-400 bg-canvas'
         }`}
       >
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
             <div
-              className={`flex h-12 w-12 items-center justify-center rounded-xl text-white ${
+              className={`flex h-12 w-12 items-center justify-center rounded-xl text-brand-on ${
                 isOnline
                   ? shift?.shiftStatus === 'AVAILABLE'
-                    ? 'bg-emerald-600'
-                    : 'bg-amber-500'
-                  : 'bg-slate-500'
+                    ? 'bg-status-success'
+                    : 'bg-status-warning'
+                  : 'bg-muted'
               }`}
             >
               <Bike className="h-6 w-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-slate-900">
+                <span className="text-lg font-bold text-primary">
                   {user?.username || shift?.courierName || 'Courier'}
                 </span>
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                     isOnline
                       ? shift?.shiftStatus === 'AVAILABLE'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                      : 'bg-slate-200 text-slate-700'
+                        ? 'bg-status-success-bg text-status-success-fg'
+                        : 'bg-status-warning-bg text-status-warning-fg'
+                      : 'bg-border-subtle text-primary'
                   }`}
                 >
                   {shift?.shiftStatus || 'OFFLINE'}
                 </span>
               </div>
-              <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                <MapPin className="h-3.5 w-3.5 text-indigo-500" />
+              <p className="flex items-center gap-1.5 text-xs text-secondary">
+                <MapPin className="h-3.5 w-3.5 text-brand-primary" />
                 Operating District: <strong>{shift?.currentDistrict || selectedDistrict}</strong>
               </p>
             </div>
@@ -263,28 +261,25 @@ export function CourierShiftDashboard() {
 
           {/* Touch-Friendly Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
-            {!isOnline ? (
+            {!isOnline && vehicle === null ? (
+              <Button
+                variant="primary"
+                onClick={() => navigate('/courier/vehicle')}
+                className="min-h-target w-full px-6 font-semibold shadow-md sm:w-auto"
+              >
+                <Bike className="mr-2 h-5 w-5" />
+                Add your vehicle to start
+              </Button>
+            ) : !isOnline ? (
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <select
                   value={selectedDistrict}
                   onChange={(e) => setSelectedDistrict(e.target.value as SriLankanDistrict)}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  className="rounded-lg border border-border-subtle bg-card px-3 py-2 text-sm"
                 >
                   {SRI_LANKAN_DISTRICTS.map((d) => (
                     <option key={d} value={d}>
                       {d}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedVehicle}
-                  onChange={(e) => setSelectedVehicle(e.target.value as VehicleType)}
-                  aria-label="Vehicle"
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  {VEHICLES.map((v) => (
-                    <option key={v.value} value={v.value}>
-                      {v.label}
                     </option>
                   ))}
                 </select>
@@ -295,7 +290,7 @@ export function CourierShiftDashboard() {
                   className="min-h-[48px] px-6 font-semibold shadow-md"
                 >
                   <Power className="mr-2 h-5 w-5" />
-                  Start Shift
+                  Start shift
                 </Button>
               </div>
             ) : (
@@ -326,7 +321,7 @@ export function CourierShiftDashboard() {
                   title={capacityUsed > 0 ? 'Deliver active parcels before ending shift' : 'End Shift'}
                 >
                   <Power className="mr-1.5 h-4 w-4" />
-                  End Shift
+                  End shift
                 </Button>
               </>
             )}
@@ -339,19 +334,19 @@ export function CourierShiftDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <SurfaceCard className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500">Parcels on Board</span>
-              <Package className="h-4 w-4 text-indigo-500" />
+              <span className="text-xs font-medium text-secondary">Parcels on Board</span>
+              <Package className="h-4 w-4 text-brand-primary" />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900">
+              <span className="text-2xl font-bold text-primary">
                 {capacityUsed}
               </span>
-              <span className="text-xs text-slate-500">/ {maxCap} max</span>
+              <span className="text-xs text-secondary">/ {maxCap} max</span>
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-canvas">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  capacityPct >= 80 ? 'bg-amber-500' : 'bg-indigo-600'
+                  capacityPct >= 80 ? 'bg-status-warning' : 'bg-brand-primary'
                 }`}
                 style={{ width: `${capacityPct}%` }}
               />
@@ -360,21 +355,23 @@ export function CourierShiftDashboard() {
 
           <SurfaceCard className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500">Vehicle Type</span>
-              <Bike className="h-4 w-4 text-emerald-500" />
+              <span className="text-xs font-medium text-secondary">Vehicle Type</span>
+              <Bike className="h-4 w-4 text-status-success-fg" />
             </div>
-            <div className="mt-2 text-xl font-bold text-slate-900">
-              {shift?.vehicleType || 'MOTORCYCLE'}
+            <div className="mt-2 text-xl font-bold text-primary">
+              {vehicleLabel(vehicle?.vehicleType ?? shift?.vehicleType)}
             </div>
-            <p className="mt-1 text-xs text-slate-500">Optimized for urban rapid delivery</p>
+            <p className="mt-1 font-mono text-xs tabular-nums text-secondary">
+              {vehicle?.plateNumber ?? 'Registered vehicle'}
+            </p>
           </SurfaceCard>
 
           <SurfaceCard className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500">Shift Started</span>
-              <Clock className="h-4 w-4 text-cyan-500" />
+              <span className="text-xs font-medium text-secondary">Shift Started</span>
+              <Clock className="h-4 w-4 text-status-info-fg" />
             </div>
-            <div className="mt-2 text-sm font-semibold text-slate-900">
+            <div className="mt-2 text-sm font-semibold text-primary">
               {shift?.shiftStartedAt
                 ? new Date(shift.shiftStartedAt).toLocaleTimeString([], {
                     hour: '2-digit',
@@ -382,7 +379,7 @@ export function CourierShiftDashboard() {
                   })
                 : 'Not started'}
             </div>
-            <p className="mt-1 text-xs text-slate-500">Last Ping: Just now</p>
+            <p className="mt-1 text-xs text-secondary">Last Ping: Just now</p>
           </SurfaceCard>
         </div>
       )}
@@ -391,24 +388,21 @@ export function CourierShiftDashboard() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-primary">
               Today's Deliveries
             </h2>
-            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+            <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
               {todayDeliveries.length}
             </span>
           </div>
-          <span className="text-xs text-slate-500">Live from /deliveries/me &bull; Touch density</span>
+          <span className="text-xs text-secondary">Live from /deliveries/me &bull; Touch density</span>
         </div>
 
         {todayDeliveries.length === 0 ? (
           <SurfaceCard className="p-6 text-center">
-            <Package className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-2 text-sm font-medium text-slate-700">
-              No deliveries assigned for today
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Assigned parcels from the dispatch engine will appear here.
+            <Package className="mx-auto h-8 w-8 text-muted" />
+            <p className="mt-2 text-sm font-medium text-primary">
+              No deliveries today
             </p>
           </SurfaceCard>
         ) : (
@@ -425,32 +419,32 @@ export function CourierShiftDashboard() {
                     navigate(`/courier/delivery/${delivery.deliveryId}`);
                   }
                 }}
-                className="group flex min-h-[56px] h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm transition-all hover:border-indigo-300 hover:bg-slate-50/80 active:scale-[0.99] touch-manipulation cursor-pointer"
+                className="group flex min-h-[56px] h-14 items-center justify-between rounded-xl border border-border-subtle bg-card px-4 py-2 shadow-sm transition-all hover:border-brand-primary hover:bg-canvas active:scale-[0.99] touch-manipulation cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand-primary group-hover:bg-brand-subtle">
                     <Package className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-slate-900 truncate">
+                      <span className="font-mono text-sm font-bold text-primary truncate">
                         {delivery.trackingNumber}
                       </span>
                       <FsmStatusBadge state={delivery.currentState || 'ASSIGNED'} density="touch" size="sm" />
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 truncate">
+                    <div className="flex items-center gap-1.5 text-xs text-secondary truncate">
                       <span>{delivery.pickupDistrict}</span>
                       <span>&rarr;</span>
-                      <span className="font-medium text-slate-700">{delivery.deliveryDistrict}</span>
+                      <span className="font-medium text-primary">{delivery.deliveryDistrict}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="hidden sm:inline text-xs font-medium text-indigo-600 group-hover:underline">
+                  <span className="hidden sm:inline text-xs font-medium text-brand-primary group-hover:underline">
                     View
                   </span>
-                  <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                  <ChevronRight className="h-5 w-5 text-muted group-hover:text-brand-primary transition-colors" />
                 </div>
               </div>
             ))}
@@ -461,22 +455,22 @@ export function CourierShiftDashboard() {
       {/* Active Dispatched Assignments Queue */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-primary">
             Active Assigned Orders ({assignments.length})
           </h2>
-          <span className="text-xs text-slate-500">Auto-assigned by Dispatch Engine</span>
+          <span className="text-xs text-secondary">Auto-assigned by Dispatch Engine</span>
         </div>
 
         {assignments.length === 0 ? (
           <SurfaceCard className="p-8 text-center">
-            <ShieldCheck className="mx-auto h-10 w-10 text-emerald-500/80" />
-            <h3 className="mt-3 font-semibold text-slate-900">
-              No Pending Pickups
+            <ShieldCheck className="mx-auto h-10 w-10 text-status-success-fg" />
+            <h3 className="mt-3 font-semibold text-primary">
+              No pickups yet
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-secondary">
               {isOnline
-                ? 'You are active and ready. Orders will appear here as soon as customers book in your district.'
-                : 'Start your shift above to receive automated dispatch assignments.'}
+                ? 'New pickups in your district appear here.'
+                : 'Start your shift to get pickups.'}
             </p>
           </SurfaceCard>
         ) : (
@@ -488,17 +482,17 @@ export function CourierShiftDashboard() {
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-indigo-600">
+                    <span className="font-mono text-sm font-bold text-brand-primary">
                       {item.trackingNumber || 'UNTRACKED'}
                     </span>
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                    <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-primary">
                       {item.orderSpeed}
                     </span>
-                    <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                    <span className="rounded bg-status-success-bg px-2 py-0.5 text-xs font-semibold text-status-success-fg">
                       {item.status}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
                     <span>
                       Pickup: <strong>{item.pickupDistrict}</strong>
                     </span>
@@ -508,7 +502,7 @@ export function CourierShiftDashboard() {
                     </span>
                     <span>
                       ? Est. pickup:{' '}
-                      <strong className="text-slate-700">
+                      <strong className="text-primary">
                         {item.estimatedPickupMinutes ?? 25} mins
                       </strong>
                     </span>
@@ -523,7 +517,7 @@ export function CourierShiftDashboard() {
                       window.location.href = `/courier/deliveries?orderId=${item.orderId}`;
                     }}
                   >
-                    Execute Pickup
+                    Start pickup
                   </Button>
                 </div>
               </SurfaceCard>

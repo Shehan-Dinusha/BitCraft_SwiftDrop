@@ -395,7 +395,19 @@ async function stageMerchants() {
       });
       count('businesses applied');
     }
-    // 2. The admin decides.
+    // A database seeded before every demo merchant was approved may hold a rejected application:
+    // the owner corrects and resubmits it (allowed after a rejection), so it can be approved below.
+    if (app.status === 'REJECTED' && plan.outcome === 'APPROVED') {
+      app = await api('POST', '/api/v1/merchants/register', {
+        token: owner.token,
+        body: {
+          businessName: plan.business, businessRegNo: m.regNo, contactEmail: m.email, contactPhone: m.phone,
+          pickupAddress: `${m.street}, ${m.town[0]} ${m.town[1]}`, operatingDistrict: plan.district,
+        },
+      });
+      count('resubmitted');
+    }
+    // 2. The admin decides (in production the district dispatcher does; the admin can for any district).
     if (app.status === 'PENDING_APPROVAL' && plan.outcome === 'APPROVED') {
       app = await api('POST', `/api/v1/admin/merchants/${app.merchantId}/approve`, { token: admin.token });
       count('approved');
@@ -438,15 +450,35 @@ async function stageMerchants() {
 }
 
 // ── Stage: shifts ───────────────────────────────────────────────────────────
+// A shift takes its vehicle and capacity from the courier's registered vehicle, so each courier
+// first registers theirs (409 on a re-run: already registered). The district dispatcher then raises
+// the capacity to 20 so the demo queues have room.
+function vehicleOf(c, index) {
+  return {
+    vehicleType: c.vehicle,
+    // Unique and valid for the plate format (e.g. SDA-1000).
+    plateNumber: `SD${String.fromCharCode(65 + (index % 26))}-${1000 + index}`,
+    vehicleModel: { MOTORCYCLE: 'Honda Dio', THREE_WHEELER: 'Bajaj RE', VAN: 'Toyota HiAce', LORRY: 'Isuzu Elf' }[c.vehicle],
+    vehicleColour: 'White',
+    licenceNumber: `B${String(1000000 + index)}`,
+  };
+}
+
 async function stageShifts() {
   const couriers = PEOPLE.staff.filter((p) => p.role === 'COURIER');
   await mapLimit(couriers, CONCURRENCY, async (c) => {
     const s = await login(c.username);
+    const vehicle = vehicleOf(c, couriers.indexOf(c));
+    await api('PUT', '/api/v1/dispatch/couriers/me/profile', { token: s.token, body: vehicle, expect: [200, 409] });
+    const d = await login(dispatcherOf(c.district.code).username);
+    await api('PUT', `/api/v1/dispatch/couriers/${s.userId}/profile`, {
+      token: d.token, body: { ...vehicle, maxCapacity: 20 },
+    });
     await api('POST', '/api/v1/dispatch/couriers/shifts/start', {
       token: s.token,
       body: {
         courierId: s.userId, courierName: `${c.first} ${c.last}`, phone: c.phone,
-        vehicleType: c.vehicle, initialDistrict: c.district.code, maxCapacity: 20,
+        initialDistrict: c.district.code,
       },
     });
     count('shifts started');

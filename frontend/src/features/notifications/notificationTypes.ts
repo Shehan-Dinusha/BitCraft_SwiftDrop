@@ -1,6 +1,9 @@
 import {
+  BadgeCheck,
   Bell,
   ClipboardCheck,
+  FileWarning,
+  Store,
   OctagonAlert,
   PackageCheck,
   PackageOpen,
@@ -26,7 +29,10 @@ export type NotificationType =
   | 'MERCHANT_COURIER_ASSIGNED'
   | 'MERCHANT_DELIVERY_FAILED'
   | 'OPS_DELIVERY_FAILED'
-  | 'DISPATCH_FAILED';
+  | 'DISPATCH_FAILED'
+  | 'MERCHANT_APPLICATION'
+  | 'MERCHANT_APPROVED'
+  | 'MERCHANT_REJECTED';
 
 export interface NotificationTypeMeta {
   /** Short name used as the notification heading and in settings. */
@@ -110,6 +116,27 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
     Icon: Siren,
     status: 'FAILED',
     emailed: false
+  },
+  MERCHANT_APPLICATION: {
+    label: 'New merchant application',
+    description: 'When a business in your district applies to ship with SwiftDrop',
+    Icon: Store,
+    status: 'PICKUP_ASSIGNED',
+    emailed: false
+  },
+  MERCHANT_APPROVED: {
+    label: 'Business approved',
+    description: 'When your business application is approved',
+    Icon: BadgeCheck,
+    status: 'DELIVERED',
+    emailed: true
+  },
+  MERCHANT_REJECTED: {
+    label: 'Application needs changes',
+    description: 'When your business application could not be approved',
+    Icon: FileWarning,
+    status: 'FAILED',
+    emailed: true
   }
 };
 
@@ -117,8 +144,8 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
 export const NOTIFICATION_TYPES_BY_ROLE: Record<PersonaRole, NotificationType[]> = {
   CUSTOMER: ['PARCEL_CREATED', 'PARCEL_PICKED_UP', 'PARCEL_OUT_FOR_DELIVERY', 'PARCEL_DELIVERED', 'PARCEL_FAILED'],
   COURIER: ['COURIER_ASSIGNED'],
-  MERCHANT: ['MERCHANT_COURIER_ASSIGNED', 'MERCHANT_DELIVERY_FAILED'],
-  ADMIN_OPS: ['OPS_DELIVERY_FAILED', 'DISPATCH_FAILED']
+  MERCHANT: ['MERCHANT_APPROVED', 'MERCHANT_REJECTED', 'MERCHANT_COURIER_ASSIGNED', 'MERCHANT_DELIVERY_FAILED'],
+  ADMIN_OPS: ['OPS_DELIVERY_FAILED', 'DISPATCH_FAILED', 'MERCHANT_APPLICATION']
 };
 
 const FALLBACK: NotificationTypeMeta = {
@@ -171,6 +198,7 @@ export function notificationTarget(
     case 'MERCHANT':
       return '/merchant';
     case 'ADMIN_OPS':
+      if (type === 'MERCHANT_APPLICATION') return '/ops/merchants';
       return type === 'DISPATCH_FAILED' || type === 'OPS_DELIVERY_FAILED'
         ? '/ops/dispatch'
         : trackingNumber

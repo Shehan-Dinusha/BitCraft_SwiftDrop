@@ -128,7 +128,6 @@ export function NotificationsPage() {
     <div className="flex w-full flex-col gap-5 p-4 sm:p-6 lg:px-8">
       <PageHeader
         title="Notifications"
-        subtitle="Updates about your SwiftDrop activity, and how you receive them."
         className="border-0 bg-transparent p-0"
       />
 

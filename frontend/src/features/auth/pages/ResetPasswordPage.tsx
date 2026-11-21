@@ -97,7 +97,7 @@ export function ResetPasswordPage() {
       description={
         masked
           ? `If ${masked} has an account, we sent it a 6-digit code. It expires in 10 minutes.`
-          : 'Enter the 6-digit code we emailed you and choose a new password.'
+          : 'Enter the 6-digit code we emailed you.'
       }
       below={
         <>

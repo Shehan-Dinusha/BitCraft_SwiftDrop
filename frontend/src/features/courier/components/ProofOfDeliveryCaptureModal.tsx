@@ -128,7 +128,7 @@ export function ProofOfDeliveryCaptureModal({
         setRecipientSignature('');
       }, 1000);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to upload proof of delivery';
+      const msg = err instanceof Error ? err.message : 'The photo could not be uploaded. Try again.';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -139,29 +139,29 @@ export function ProofOfDeliveryCaptureModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Capture Proof of Delivery (PoD)"
-      description="Take a photo of the delivered package and record who received it before handover."
+      title="Proof of delivery"
+      description="Photo of the parcel and who received it."
       size="md"
     >
       <div className="space-y-4 pt-2" data-density="touch">
         {errorMsg && (
-          <StatusBanner tone="danger" title="PoD Error" onDismiss={() => setErrorMsg(null)}>
+          <StatusBanner tone="danger" title="Not saved" onDismiss={() => setErrorMsg(null)}>
             {errorMsg}
           </StatusBanner>
         )}
         {successMsg && (
           <StatusBanner tone="success" title="Success" onDismiss={() => setSuccessMsg(null)}>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              <CheckCircle2 className="h-5 w-5 text-status-success-fg" />
               <span>{successMsg}</span>
             </div>
           </StatusBanner>
         )}
 
         <form onSubmit={handleSubmitPhotoAndComplete} className="space-y-4 py-1">
-          <Field label="Recipient Name" required>
+          <Field label="Received by" required>
             <Input
-              placeholder="Full name of recipient (e.g. Nimal Fernando)"
+              placeholder="Nimal Fernando"
               value={recipientName}
               onChange={(e) => setRecipientName(e.target.value)}
               className="min-h-[48px]"
@@ -170,7 +170,7 @@ export function ProofOfDeliveryCaptureModal({
             />
           </Field>
 
-          <Field label="Package Proof Photo" required>
+          <Field label="Photo" required>
             <div className="space-y-2">
               <input
                 ref={fileInputRef}
@@ -185,26 +185,26 @@ export function ProofOfDeliveryCaptureModal({
               {!photoFile ? (
                 <label
                   htmlFor="pod-photo-file-input"
-                  className="flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/40 p-4 text-center transition-colors hover:bg-indigo-50 active:bg-indigo-100"
+                  className="flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border-selected bg-brand-subtle p-4 text-center transition-colors hover:bg-brand-subtle active:bg-brand-subtle"
                 >
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-100 text-indigo-600">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-brand-subtle text-brand-primary">
                     <Camera className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-sm font-bold text-indigo-900">Take Photo with Camera</span>
-                    <p className="text-xs text-slate-500">or browse image from device (max 5 MB, JPEG/PNG)</p>
+                    <span className="text-sm font-bold text-brand-primary">Take photo</span>
+                    <p className="text-xs text-secondary">or choose one (JPEG/PNG, up to 5 MB)</p>
                   </div>
                 </label>
               ) : (
-                <div className="relative overflow-hidden rounded-xl border border-indigo-200 bg-slate-50 p-2">
+                <div className="relative overflow-hidden rounded-xl border border-border-selected bg-canvas p-2">
                   <canvas
                     ref={previewCanvasRef}
                     role="img"
                     aria-label="Proof of Delivery preview"
-                    className="max-h-48 w-full rounded-lg object-contain bg-black/5"
+                    className="max-h-48 w-full rounded-lg object-contain bg-canvas"
                   />
                   <div className="mt-2 flex items-center justify-between px-1">
-                    <span className="truncate text-xs font-medium text-slate-600">
+                    <span className="truncate text-xs font-medium text-secondary">
                       {photoFile?.name} ({(photoFile ? photoFile.size / 1024 : 0).toFixed(0)} KB)
                     </span>
                     <Button
@@ -215,7 +215,7 @@ export function ProofOfDeliveryCaptureModal({
                       onClick={handleClearPhoto}
                     >
                       <X className="mr-1 h-3.5 w-3.5" />
-                      Retake Photo
+                      Retake
                     </Button>
                   </div>
                 </div>
@@ -223,15 +223,14 @@ export function ProofOfDeliveryCaptureModal({
             </div>
           </Field>
 
-          <Field label="Recipient Signature or Note (Optional)">
+          <Field label="Note (optional)">
             <div className="relative">
               <Input
-                placeholder="Optional signature confirmation or notes"
                 value={recipientSignature}
                 onChange={(e) => setRecipientSignature(e.target.value)}
                 className="min-h-[44px] pl-9"
               />
-              <PenTool className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+              <PenTool className="absolute left-3 top-3.5 h-4 w-4 text-muted" />
             </div>
           </Field>
 
@@ -243,7 +242,7 @@ export function ProofOfDeliveryCaptureModal({
             disabled={loading || !recipientName.trim() || !photoFile}
           >
             <CheckCircle2 className="mr-2 h-5 w-5" />
-            Submit Proof & Complete Delivery
+            Complete delivery
           </Button>
         </form>
       </div>

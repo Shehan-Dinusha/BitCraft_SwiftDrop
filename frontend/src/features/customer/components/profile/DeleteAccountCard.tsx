@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react';
 import { Alert, Button, Field, SurfaceCard } from '@/design-system';
 import { Modal } from '@/design-system/primitives/Modal';
 import { leaveToLogin } from '@/features/auth/leaveToLogin';
+import { forgetDeviceOnSignOut } from '@/features/pwa/webPush';
 import { parseApiError } from '@/services/api/apiError';
 import { deleteOwnAccount } from '@/services/api/authApi';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -35,6 +36,8 @@ export function DeleteAccountCard() {
     setDeleting(true);
     try {
       await deleteOwnAccount(password);
+      // The account is gone, so stop lock-screen notifications on this device too.
+      await forgetDeviceOnSignOut(3000, { tellServer: false });
       leaveToLogin(signOut, navigate, 'Your account has been deleted.');
     } catch (requestError) {
       setError(
@@ -49,13 +52,8 @@ export function DeleteAccountCard() {
       <SurfaceCard title="Delete account">
         <div className="flex flex-col gap-4">
           <p className="max-w-prose text-body text-secondary">
-            This erases your account and the personal details on it: your name, username, email,
-            phone number and home district. You will be signed out everywhere and can no longer sign
-            in. It cannot be undone.
-          </p>
-          <p className="max-w-prose text-body text-secondary">
-            Parcels you already booked stay on record for delivery and billing, but they will no
-            longer be linked to your name.
+            Permanently erases your personal details. Booked parcels stay on record without your
+            name.
           </p>
           <Button
             type="button"
@@ -101,16 +99,13 @@ export function DeleteAccountCard() {
         }
       >
         <form id="delete-account-form" className="flex flex-col gap-4" onSubmit={onSubmit}>
-          <p className="text-body text-secondary">
-            Enter your password to confirm. Your personal details will be erased straight away.
-          </p>
           {error ? (
             <Alert tone="danger" title="Account not deleted">
               {error}
             </Alert>
           ) : null}
           <Field
-            label="Your password"
+            label="Confirm with your password"
             variant="password"
             autoComplete="current-password"
             maxLength={72}

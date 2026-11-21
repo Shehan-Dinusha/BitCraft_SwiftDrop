@@ -17,7 +17,6 @@ import {
   Clock,
   KeyRound,
   Mail,
-  ShieldCheck,
   UserRound
 } from 'lucide-react';
 import {
@@ -57,13 +56,6 @@ import {
 import { UserAvatar, sourceProblem, toAvatarImage, useMyAvatarUrl } from './avatar';
 import { DeleteAccountCard } from '@/features/customer/components/profile/DeleteAccountCard';
 
-/** Why we ask for a phone number, in each role's terms. */
-const PHONE_HINT: Record<string, string> = {
-  CUSTOMER: 'Optional. Couriers may use it to reach you about a delivery.',
-  COURIER: 'Optional. Dispatch may use it to reach you about a job.',
-  MERCHANT: 'Optional. SwiftDrop may use it to reach you about your orders.'
-};
-
 const DISTRICT_OPTIONS = SRI_LANKAN_DISTRICTS.map((value) => ({
   value,
   label: districtLabel(value)
@@ -81,44 +73,27 @@ function formFrom(user: AuthUserProfile | null | undefined): ProfileForm {
 function Section({
   icon,
   title,
-  description,
   children
 }: {
   icon: ReactNode;
   title: string;
-  description: string;
   children: ReactNode;
 }) {
   return (
     <SurfaceCard>
       <div className="flex flex-col gap-5">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
             className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand-primary [&_svg]:size-[18px]"
           >
             {icon}
           </span>
-          <div className="min-w-0">
-            <h2 className="text-h3 text-primary">{title}</h2>
-            <p className="text-caption text-secondary">{description}</p>
-          </div>
+          <h2 className="min-w-0 text-h3 text-primary">{title}</h2>
         </div>
         {children}
       </div>
     </SurfaceCard>
-  );
-}
-
-function ReadOnlyRow({ label, value, note }: { label: string; value: ReactNode; note?: string }) {
-  return (
-    <div className="flex flex-col gap-1 border-t border-border-subtle pt-3 first:border-t-0 first:pt-0 sm:flex-row sm:items-start sm:gap-4">
-      <dt className="w-40 shrink-0 text-caption font-semibold text-secondary">{label}</dt>
-      <dd className="min-w-0 flex-1">
-        <div className="break-words text-body text-primary">{value}</div>
-        {note ? <p className="mt-0.5 text-caption text-muted">{note}</p> : null}
-      </dd>
-    </div>
   );
 }
 
@@ -357,11 +332,7 @@ function PersonalDetails({
   };
 
   return (
-    <Section
-      icon={<UserRound />}
-      title="Personal details"
-      description="Your name, phone number and home district."
-    >
+    <Section icon={<UserRound />} title="Personal details">
       <form noValidate onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
           <Field
@@ -390,7 +361,7 @@ function PersonalDetails({
             maxLength={32}
             value={form.phone}
             error={errors.phone}
-            hint={PHONE_HINT[user.role ?? ''] ?? 'Optional.'}
+            hint="Optional"
             onChange={(e) => set('phone')(e.target.value)}
           />
           <SelectDropdown
@@ -402,6 +373,13 @@ function PersonalDetails({
             error={errors.district}
             placeholder="Choose a district"
             onChange={set('district')}
+            // A courier's or dispatcher's district is assigned by operations (the API refuses changes).
+            disabled={user.role === 'COURIER' || user.role === 'DISPATCHER'}
+            hint={
+              user.role === 'COURIER' || user.role === 'DISPATCHER'
+                ? 'Set by operations'
+                : undefined
+            }
           />
         </div>
 
@@ -436,7 +414,7 @@ function PersonalDetails({
   );
 }
 
-function SignInAndSecurity({ user }: { user: AuthUserProfile }) {
+function ChangePassword() {
   const signOut = useAuthStore((s) => s.signOut);
   const navigate = useNavigate();
   const [current, setCurrent] = useState('');
@@ -475,43 +453,8 @@ function SignInAndSecurity({ user }: { user: AuthUserProfile }) {
   };
 
   return (
-    <Section
-      icon={<ShieldCheck />}
-      title="Sign-in and security"
-      description="How you sign in to SwiftDrop."
-    >
-      <dl className="flex flex-col gap-3">
-        <ReadOnlyRow
-          label="Username"
-          value={user.username}
-          note="Used to sign in. It cannot be changed."
-        />
-        <ReadOnlyRow
-          label="Email address"
-          value={
-            <span className="inline-flex flex-wrap items-center gap-2">
-              {user.email}
-              {user.emailVerified ? (
-                <span className="rounded-full border border-status-success-border bg-status-success-bg px-2 py-0.5 text-[11px] font-semibold text-status-success-fg">
-                  Verified
-                </span>
-              ) : null}
-            </span>
-          }
-          note="Sign-in codes and security alerts are sent here. It cannot be changed from this page."
-        />
-        <ReadOnlyRow label="Account type" value={roleLabel(user.role)} />
-      </dl>
-
-      <form
-        noValidate
-        onSubmit={submit}
-        className="flex flex-col gap-4 rounded-xl border border-border-subtle bg-canvas p-4"
-      >
-        <div className="flex items-center gap-2">
-          <KeyRound aria-hidden="true" className="size-4 text-brand-primary" />
-          <h3 className="text-body-strong text-primary">Change password</h3>
-        </div>
+    <Section icon={<KeyRound />} title="Change password">
+      <form noValidate onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-3">
           <Field label="Current password" required>
             <Input
@@ -546,9 +489,7 @@ function SignInAndSecurity({ user }: { user: AuthUserProfile }) {
           </StatusBanner>
         ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-caption text-muted">
-            You will be signed out on all devices and asked to sign in again.
-          </p>
+          <p className="text-caption text-muted">Signs you out on all devices.</p>
           <Button
             type="submit"
             variant="outline"
@@ -593,11 +534,7 @@ export function ProfilePage() {
 
   return (
     <div className="flex w-full flex-col gap-5 p-4 sm:p-6 lg:px-8">
-      <PageHeader
-        title="Your profile"
-        subtitle="Manage your personal details and how you sign in."
-        className="border-0 bg-transparent p-0"
-      />
+      <PageHeader title="Your profile" className="border-0 bg-transparent p-0" />
 
       <div className="flex max-w-3xl flex-col gap-5">
         {isDevSession ? (
@@ -620,7 +557,7 @@ export function ProfilePage() {
           <>
             <IdentityCard user={user} onSaved={onSaved} />
             <PersonalDetails user={user} onSaved={onSaved} />
-            <SignInAndSecurity user={user} />
+            <ChangePassword />
             <Link
               to={`${NOTIFICATIONS_PATH[role]}?tab=settings`}
               className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3 text-body text-primary transition-colors hover:bg-elevated"

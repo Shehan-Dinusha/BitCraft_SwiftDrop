@@ -73,6 +73,13 @@ public class UserAccount {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = true;
 
+    /** SHA-256 of a pending staff invite token; null once accepted (or never invited). */
+    @Column(name = "invite_token_hash", length = 64)
+    private String inviteTokenHash;
+
+    @Column(name = "invite_expires_at")
+    private Instant inviteExpiresAt;
+
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
@@ -211,6 +218,33 @@ public class UserAccount {
 
     public void setEmailVerified(boolean emailVerified) {
         this.emailVerified = emailVerified;
+    }
+
+    public String getInviteTokenHash() {
+        return inviteTokenHash;
+    }
+
+    public void setInviteTokenHash(String inviteTokenHash) {
+        this.inviteTokenHash = inviteTokenHash;
+    }
+
+    public Instant getInviteExpiresAt() {
+        return inviteExpiresAt;
+    }
+
+    public void setInviteExpiresAt(Instant inviteExpiresAt) {
+        this.inviteExpiresAt = inviteExpiresAt;
+    }
+
+    /** True while the person has not yet accepted their staff invite (expired or not). */
+    public boolean isInvitePending() {
+        return inviteTokenHash != null;
+    }
+
+    /** Forgets the invite: called once a password is set by any route. */
+    public void clearInvite() {
+        this.inviteTokenHash = null;
+        this.inviteExpiresAt = null;
     }
 
     public Instant getAvatarUpdatedAt() {

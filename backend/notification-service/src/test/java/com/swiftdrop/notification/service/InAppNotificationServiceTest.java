@@ -46,16 +46,15 @@ class InAppNotificationServiceTest {
     }
 
     @Test
-    @DisplayName("Does not store an inbox row when the user turned in-app notifications off")
-    void respectsInAppOffPreference() {
+    @DisplayName("The inbox is written even when lock-screen (push) notifications are off")
+    void inboxIgnoresThePushPreference() {
         UUID userId = UUID.randomUUID();
-        when(preferenceRepository.findByRecipientId(userId)).thenReturn(Optional.of(
-                RecipientPreference.builder().recipientId(userId).pushEnabled(false).build()));
+        when(repository.save(any(InAppNotification.class))).thenAnswer(i -> i.getArgument(0));
 
         InAppNotification saved = service.saveNotification(userId, "PARCEL_DELIVERED", "Parcel Delivered", "Body", "SD-001");
 
-        assertThat(saved).isNull();
-        verify(repository, never()).save(any());
+        assertThat(saved).isNotNull();
+        verifyNoInteractions(preferenceRepository);
     }
 
     @Test

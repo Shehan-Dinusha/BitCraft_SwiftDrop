@@ -53,6 +53,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/username-availability",
+                                "/api/v1/auth/invite/preview",
+                                "/api/v1/auth/invite/accept",
                                 "/api/v1/auth/.well-known/jwks.json",
                                 "/actuator/health",
                                 "/actuator/health/**",
@@ -71,6 +73,9 @@ public class SecurityConfig {
                         // "/api/v1/users/**" admin rule below, which would otherwise refuse it.
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users/me").hasRole("CUSTOMER")
                         .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/change-password").authenticated()
+                        // Dispatchers manage their district's couriers; must precede the admin-only rule.
+                        .requestMatchers("/api/v1/users/couriers", "/api/v1/users/couriers/**")
+                        .hasAnyRole("DISPATCHER", "SYSTEM_ADMIN")
                         .requestMatchers("/api/v1/users/**").hasRole("SYSTEM_ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

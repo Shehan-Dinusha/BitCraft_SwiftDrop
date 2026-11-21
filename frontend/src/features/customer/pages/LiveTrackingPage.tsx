@@ -33,7 +33,6 @@ export function LiveTrackingPage() {
     <main className="flex w-full flex-col gap-5 p-4 sm:p-6 lg:px-8">
       <PageHeader
         title="Live tracking"
-        subtitle="Follow your parcel and see each public checkpoint as it happens."
         className="border-0 bg-transparent p-0"
       />
 

@@ -18,14 +18,16 @@ public final class SensitiveTemplates {
     public static final String EMAIL_VERIFICATION = "EMAIL_VERIFICATION";
     public static final String PASSWORD_RESET = "PASSWORD_RESET";
     public static final String LOGIN_MFA = "LOGIN_MFA";
+    /** Staff account invite; the link in it signs the person in, so it is treated like a code. */
+    public static final String STAFF_INVITE = "STAFF_INVITE";
 
     public static final String LOGIN_SUCCESS = "LOGIN_SUCCESS";
     public static final String LOGIN_FAILED = "LOGIN_FAILED";
 
     /** What is stored in {@code notification_dispatch_logs.content} instead of the real body. */
-    public static final String REDACTED_CONTENT = "[redacted: contains a one-time security code]";
+    public static final String REDACTED_CONTENT = "[redacted: contains a one-time security code or link]";
 
-    private static final Set<String> CODES = Set.of(EMAIL_VERIFICATION, PASSWORD_RESET, LOGIN_MFA);
+    private static final Set<String> CODES = Set.of(EMAIL_VERIFICATION, PASSWORD_RESET, LOGIN_MFA, STAFF_INVITE);
     private static final Set<String> ALERTS = Set.of(LOGIN_SUCCESS, LOGIN_FAILED);
 
     private SensitiveTemplates() {

@@ -13,7 +13,6 @@ export function CustomerBookingPage() {
     <div className="flex w-full flex-col gap-5 p-4 sm:p-6 lg:px-8">
       <PageHeader
         title="Book a parcel"
-        subtitle="Pickup and delivery anywhere in Sri Lanka."
         className="border-0 bg-transparent p-0"
       />
 

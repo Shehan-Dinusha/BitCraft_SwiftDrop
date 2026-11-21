@@ -2,7 +2,6 @@ package com.swiftdrop.notification.service;
 
 import com.swiftdrop.notification.domain.entity.InAppNotification;
 import com.swiftdrop.notification.domain.repository.InAppNotificationRepository;
-import com.swiftdrop.notification.domain.repository.RecipientPreferenceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,7 +19,6 @@ import java.util.UUID;
 public class InAppNotificationService {
 
     private final InAppNotificationRepository repository;
-    private final RecipientPreferenceRepository preferenceRepository;
 
     @Transactional
     public InAppNotification saveNotification(UUID userId, String title, String body, String trackingNumber) {
@@ -28,8 +26,9 @@ public class InAppNotificationService {
     }
 
     /**
-     * Writes an inbox row of the given type (template code), unless the user switched in-app
-     * notifications off in their preferences. Returns null when nothing was stored.
+     * Writes an inbox row of the given type (template code). The inbox is always written: the "push"
+     * preference (push_enabled) switches lock-screen notifications on devices, not the inbox.
+     * Returns null when nothing was stored.
      */
     @Transactional
     public InAppNotification saveNotification(UUID userId, String notificationType, String title, String body,
@@ -38,11 +37,6 @@ public class InAppNotificationService {
             log.warn("Cannot save in-app notification without userId");
             return null;
         }
-        if (inAppDisabled(userId)) {
-            log.debug("In-app notifications are off for user {}; not storing", userId);
-            return null;
-        }
-
         InAppNotification notification = InAppNotification.builder()
                 .userId(userId)
                 .notificationType(notificationType)
@@ -56,16 +50,6 @@ public class InAppNotificationService {
         InAppNotification saved = repository.save(notification);
         log.info("Saved in-app notification id={} for user={}", saved.getId(), userId);
         return saved;
-    }
-
-    /** The "In-app notifications" preference (stored as push_enabled); defaults to on. */
-    private boolean inAppDisabled(UUID userId) {
-        if (preferenceRepository == null) {
-            return false;
-        }
-        return preferenceRepository.findByRecipientId(userId)
-                .map(pref -> !pref.isPushEnabled())
-                .orElse(false);
     }
 
     /**

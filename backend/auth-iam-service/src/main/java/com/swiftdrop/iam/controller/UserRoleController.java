@@ -140,10 +140,20 @@ public class UserRoleController {
 
     @PostMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    @Operation(summary = "Provision a platform account with any role")
+    @Operation(summary = "Provision a platform account with any role",
+            description = "Without a password the person is emailed an invite link (valid 72 hours) where they "
+                    + "choose their own password. Use this for dispatchers.")
     public ResponseEntity<ApiResponse<UserProfileResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(userAccountService.create(request), "User created"));
+    }
+
+    @PostMapping("/{userId}/invite")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @Operation(summary = "Resend an account's invite",
+            description = "Sends a new invite link and invalidates the previous one. 409 once the account has been set up.")
+    public ApiResponse<UserProfileResponse> resendInvite(@PathVariable UUID userId) {
+        return ApiResponse.success(userAccountService.resendInvite(userId), "Invite sent");
     }
 
     @PatchMapping("/{userId}/role")

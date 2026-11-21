@@ -12,6 +12,10 @@ export type UpdateShiftStatusRequest = components['schemas']['UpdateShiftStatusR
 export type AssignmentStatus = components['schemas']['AssignmentStatus'];
 export type ShiftStatus = components['schemas']['ShiftStatus'];
 export type SriLankanDistrict = components['schemas']['SriLankanDistrict'];
+export type VehicleType = components['schemas']['VehicleType'];
+export type CourierProfileResponse = components['schemas']['CourierProfileResponse'];
+export type CourierVehicleRequest = components['schemas']['CourierVehicleRequest'];
+export type OrderCourierResponse = components['schemas']['OrderCourierResponse'];
 
 export interface PagedDispatchResult {
   content: DispatchAssignmentResponse[];
@@ -121,6 +125,53 @@ export const dispatchApi = {
       `/v1/dispatch/couriers/shifts/${courierId}/end`
     );
     return data.data;
+  },
+
+  /** The signed-in courier's registered vehicle, or null before they have registered one. */
+  getMyProfile: async (): Promise<CourierProfileResponse | null> => {
+    try {
+      const { data } = await apiClient.get<{ success: boolean; data: CourierProfileResponse }>(
+        '/v1/dispatch/couriers/me/profile'
+      );
+      return data.data;
+    } catch (error) {
+      if ((error as { response?: { status?: number } }).response?.status === 404) return null;
+      throw error;
+    }
+  },
+
+  /** The courier registers their own vehicle, once. */
+  registerMyProfile: async (request: CourierVehicleRequest) => {
+    const { data } = await apiClient.put<{ success: boolean; data: CourierProfileResponse }>(
+      '/v1/dispatch/couriers/me/profile',
+      request
+    );
+    return data.data;
+  },
+
+  /** Vehicles of the couriers a dispatcher manages (their own district). */
+  getCourierProfiles: async () => {
+    const { data } = await apiClient.get<{ success: boolean; data: CourierProfileResponse[] }>(
+      '/v1/dispatch/couriers/profiles'
+    );
+    return data.data ?? [];
+  },
+
+  /** A dispatcher corrects a courier's vehicle or capacity. */
+  updateCourierProfile: async (courierId: string, request: CourierVehicleRequest) => {
+    const { data } = await apiClient.put<{ success: boolean; data: CourierProfileResponse }>(
+      `/v1/dispatch/couriers/${courierId}/profile`,
+      request
+    );
+    return data.data;
+  },
+
+  /** The courier handling an order (first name and vehicle), or null while none is assigned. */
+  getOrderCourier: async (orderId: string) => {
+    const { data } = await apiClient.get<{ success: boolean; data: OrderCourierResponse | null }>(
+      `/v1/dispatch/orders/${orderId}/courier`
+    );
+    return data.data ?? null;
   },
 
   updateShiftStatus: async (request: UpdateShiftStatusRequest) => {

@@ -23,6 +23,13 @@ public final class EventRoutingKeys {
     public static final String MERCHANT_APPROVED = "merchant.approved";
 
     /**
+     * A merchant application was submitted, approved or rejected; notification-service alerts the
+     * district dispatcher or emails the owner. Under {@code notification.} so the existing
+     * {@code notification.#} binding delivers it (IAM keeps consuming {@link #MERCHANT_APPROVED}).
+     */
+    public static final String MERCHANT_APPLICATION = "notification.merchant.application";
+
+    /**
      * One-time code (email verification / password reset) to be emailed by notification-service.
      * Deliberately under the {@code notification.} namespace so the existing {@code notification.#}
      * binding delivers it; the {@code auth.#} queue has no consumer.
@@ -34,4 +41,10 @@ public final class EventRoutingKeys {
      * Under {@code notification.} for the same reason as {@link #AUTH_OTP_REQUESTED}.
      */
     public static final String AUTH_LOGIN = "notification.auth.login";
+
+    /**
+     * A staff account (courier or dispatcher) was invited; notification-service emails the invite link.
+     * Under {@code notification.} for the same reason as {@link #AUTH_OTP_REQUESTED}.
+     */
+    public static final String AUTH_STAFF_INVITE = "notification.auth.invite";
 }

@@ -93,7 +93,7 @@ export function ActiveDeliveryExecutionPage() {
         setSession(null);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load delivery execution session';
+      const msg = err instanceof Error ? err.message : 'The delivery could not be loaded.';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -174,12 +174,9 @@ export function ActiveDeliveryExecutionPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-              Active Delivery Execution
+            <h1 className="text-xl font-bold tracking-tight text-primary sm:text-2xl">
+              Active delivery
             </h1>
-            <p className="text-xs text-slate-500">
-              One-tap delivery status updates and proof-of-delivery handover.
-            </p>
           </div>
         </div>
 
@@ -189,10 +186,10 @@ export function ActiveDeliveryExecutionPage() {
               variant="outline"
               onClick={() => setIsFailureModalOpen(true)}
               disabled={loading || pendingState !== null}
-              className="text-xs text-rose-600 hover:border-rose-300 hover:bg-rose-50 min-h-[44px]"
+              className="text-xs text-status-danger-fg hover:border-status-danger-border hover:bg-status-danger-bg min-h-[44px]"
             >
-              <AlertTriangle className="mr-1.5 h-4 w-4 text-rose-500" />
-              Report Failure
+              <AlertTriangle className="mr-1.5 h-4 w-4 text-status-danger-fg" />
+              Can't deliver
             </Button>
           )}
 
@@ -222,23 +219,23 @@ export function ActiveDeliveryExecutionPage() {
 
       {loading ? (
         <div className="space-y-4">
-          <SurfaceCard className="h-32 animate-pulse bg-slate-100" />
-          <SurfaceCard className="h-48 animate-pulse bg-slate-100" />
+          <SurfaceCard className="h-32 animate-pulse bg-canvas" />
+          <SurfaceCard className="h-48 animate-pulse bg-canvas" />
         </div>
       ) : !session ? (
         <SurfaceCard className="p-8 text-center">
-          <Package className="mx-auto h-12 w-12 text-slate-400" />
-          <h2 className="mt-3 text-lg font-bold text-slate-900">
-            No Active Delivery Found
+          <Package className="mx-auto h-12 w-12 text-muted" />
+          <h2 className="mt-3 text-lg font-bold text-primary">
+            No active delivery
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-secondary">
             {orderIdParam
-              ? `No delivery session linked to order ID ${orderIdParam}.`
-              : 'You do not have any active deliveries assigned right now.'}
+              ? `Nothing found for order ${orderIdParam}.`
+              : 'New jobs appear on your shift.'}
           </p>
           <div className="mt-5">
             <Button variant="primary" onClick={() => navigate('/courier')}>
-              Return to Shift Dashboard
+              Back to my shift
             </Button>
           </div>
         </SurfaceCard>
@@ -248,14 +245,14 @@ export function ActiveDeliveryExecutionPage() {
           <SurfaceCard className="space-y-4 p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-indigo-600">
+                <span className="font-mono text-sm font-bold text-brand-primary">
                   {session.trackingNumber || 'UNTRACKED'}
                 </span>
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-primary">
                   {session.courierName ? `Courier: ${session.courierName}` : 'SwiftDrop Express'}
                 </span>
               </div>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-secondary">
                 Order #{session.orderId ? session.orderId.substring(0, 8) : 'N/A'}
               </span>
             </div>
@@ -280,30 +277,30 @@ export function ActiveDeliveryExecutionPage() {
 
           {/* Location & Districts Card */}
           <SurfaceCard className="space-y-4 p-5">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              Delivery Route & Contact
+            <h3 className="text-sm font-bold uppercase tracking-wider text-secondary">
+              Route and contact
             </h3>
 
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-amber-500/10 text-amber-600">
+                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-status-warning-bg text-status-warning-fg">
                   <MapPin className="h-4 w-4" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-slate-500">Pickup District</span>
-                  <p className="text-sm font-medium text-slate-900">
+                  <span className="text-xs font-semibold text-secondary">Pickup District</span>
+                  <p className="text-sm font-medium text-primary">
                     {session.pickupDistrict ? `${session.pickupDistrict} District Hub` : 'Merchant Hub, Colombo'}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-status-success-bg text-status-success-fg">
                   <Navigation className="h-4 w-4" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-slate-500">Delivery Destination</span>
-                  <p className="text-sm font-medium text-slate-900">
+                  <span className="text-xs font-semibold text-secondary">Delivery Destination</span>
+                  <p className="text-sm font-medium text-primary">
                     {session.deliveryDistrict ? `${session.deliveryDistrict} Recipient Address` : 'Customer Address, Colombo'}
                   </p>
                 </div>
@@ -311,15 +308,15 @@ export function ActiveDeliveryExecutionPage() {
 
               <div className="grid grid-cols-2 gap-3 border-t border-border-subtle pt-3 text-xs">
                 <div>
-                  <span className="text-slate-500">Attempt Count:</span>
-                  <p className="font-semibold text-slate-800">
+                  <span className="text-secondary">Attempt Count:</span>
+                  <p className="font-semibold text-primary">
                     {session.attemptCount ?? 1} of 3
                   </p>
                 </div>
                 <div>
-                  <span className="text-slate-500">Courier Dispatch Hotline:</span>
-                  <p className="flex items-center gap-1 font-semibold text-slate-800">
-                    <Phone className="h-3.5 w-3.5 text-indigo-500" />
+                  <span className="text-secondary">Courier Dispatch Hotline:</span>
+                  <p className="flex items-center gap-1 font-semibold text-primary">
+                    <Phone className="h-3.5 w-3.5 text-brand-primary" />
                     +94 11 234 5678
                   </p>
                 </div>

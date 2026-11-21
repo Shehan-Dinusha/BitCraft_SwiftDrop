@@ -146,13 +146,7 @@ export function AnalyticsDashboardPage() {
     <div className="mx-auto max-w-[1440px] space-y-6 p-4 text-primary md:p-7 lg:p-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-brand-primary">
-            Operations overview
-          </p>
           <h1 className="text-3xl font-bold tracking-tight">Delivery analytics</h1>
-          <p className="mt-2 text-sm text-secondary">
-            A clear view of delivery performance and your courier workload.
-          </p>
         </div>
         <div className="flex items-center gap-3">
           {reports.dataUpdatedAt > 0 && (
@@ -313,9 +307,6 @@ export function AnalyticsDashboardPage() {
             <div className="flex flex-wrap items-start justify-between gap-3 p-2 pb-5">
               <div>
                 <h2 className="text-base font-semibold">Deliveries per day</h2>
-                <p className="mt-1 text-xs text-secondary">
-                  Order creation and final delivery outcomes over time
-                </p>
               </div>
               <div className="flex gap-4 text-xs text-secondary">
                 {series.map((item) => (
@@ -430,17 +421,13 @@ export function AnalyticsDashboardPage() {
             <SurfaceCard density="compact" className="rounded-xl shadow-sm">
               <div className="p-2">
                 <h2 className="text-base font-semibold">Success vs failure</h2>
-                <p className="mt-1 text-xs text-secondary">
-                  Final outcomes in your selected period
-                </p>
               </div>
               {data.outcomes.completed === 0 ? (
                 <EmptyChart
                   icon={<CheckCheck size={24} />}
                   title="No completed outcomes in this period"
                 >
-                  Created orders are visible above. Delivery outcomes appear when an order is
-                  delivered or fails.
+                  Outcomes appear once orders are delivered or fail.
                 </EmptyChart>
               ) : (
                 <div className="flex min-h-64 flex-wrap items-center justify-center gap-6 p-2">

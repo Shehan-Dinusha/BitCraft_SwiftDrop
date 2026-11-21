@@ -16,7 +16,7 @@ public record ZoneRequest(
         @NotBlank @Size(max = 128) String zoneName,
         @Schema(description = "Zone tier", example = "METRO")
         @NotBlank @Size(max = 32) String tier,
-        @Schema(description = "Base fee in LKR for deliveries inside one district of this zone", example = "350.00")
+        @Schema(description = "Base fee in LKR for deliveries inside this zone (pickup and delivery in the same zone)", example = "350.00")
         @NotNull @DecimalMin("0.00") BigDecimal baseFee,
         @Schema(description = "Fee in LKR for each extra weight step", example = "80.00")
         @NotNull @DecimalMin("0.00") BigDecimal perKgFee,

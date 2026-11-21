@@ -66,9 +66,7 @@ class CourierAvailabilityControllerTest {
                 courierId,
                 "Kamal Silva",
                 "+94772345678",
-                VehicleType.MOTORCYCLE,
-                SriLankanDistrict.COLOMBO,
-                5
+                SriLankanDistrict.COLOMBO
         );
 
         CourierShiftResponse response = new CourierShiftResponse(
@@ -196,6 +194,6 @@ class CourierAvailabilityControllerTest {
     }
 
     private StartShiftRequest startShiftRequest() {
-        return new StartShiftRequest(UUID.randomUUID(), "Shift Courier", null, null, SriLankanDistrict.COLOMBO, 5);
+        return new StartShiftRequest(UUID.randomUUID(), "Shift Courier", null, SriLankanDistrict.COLOMBO);
     }
 }
