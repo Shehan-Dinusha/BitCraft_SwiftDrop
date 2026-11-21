@@ -101,6 +101,18 @@ node scripts/seed/timeshift.mjs --dry-run   # show the planned spread, change no
 node scripts/seed/timeshift.mjs             # apply (run-local.sh does this as its last stage)
 ```
 
+## Couriers seeded before vehicles existed
+
+A database seeded before couriers registered their own vehicle has couriers who cannot start a
+shift. The `vehicles` stage registers each seeded courier's vehicle (capacity 20) and nothing else:
+no shifts, no orders, no e-mail, so it needs no mock e-mail switch. Couriers who already have a
+vehicle are skipped.
+
+```bash
+SEED_API=https://api.swiftdrop.bitcraft.biz SEED_PASSWORD='<demo password>' \
+node scripts/seed/seed.mjs vehicles
+```
+
 ## A cluster that runs everything (AKS)
 
 Every service runs at once, so no switching is needed. Open a port-forward or use the public API URL.
