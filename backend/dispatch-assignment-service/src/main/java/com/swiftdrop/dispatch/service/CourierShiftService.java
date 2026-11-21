@@ -121,7 +121,14 @@ public class CourierShiftService {
 
     @Transactional(readOnly = true)
     public List<CourierWorkloadResponse> getWorkloads() {
-        return courierShiftRepository.findAll().stream()
+        return getWorkloads(null);
+    }
+
+    /** Workload of the couriers in {@code district}, or of all couriers when it is {@code null}. */
+    @Transactional(readOnly = true)
+    public List<CourierWorkloadResponse> getWorkloads(SriLankanDistrict district) {
+        return (district == null ? courierShiftRepository.findAll() : courierShiftRepository.findByCurrentDistrict(district))
+                .stream()
                 .map(CourierWorkloadResponse::fromEntity)
                 .toList();
     }

@@ -30,6 +30,14 @@ public class DeliveryAccessPolicy {
             throw new ForbiddenException("Delivery session is null or not found");
         }
         assertCanAccess(session.getCourierId(), caller);
+        // A dispatcher works only on deliveries picked up in or bound for their own district. Sessions
+        // from before districts were recorded have neither, and stay open to every dispatcher.
+        if (caller.role() == UserRole.DISPATCHER
+                && (session.getPickupDistrict() != null || session.getDeliveryDistrict() != null)
+                && caller.districtId() != session.getPickupDistrict()
+                && caller.districtId() != session.getDeliveryDistrict()) {
+            throw new ForbiddenException("This delivery is not in your district");
+        }
     }
 
     /**

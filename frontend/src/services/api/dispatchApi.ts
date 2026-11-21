@@ -28,7 +28,13 @@ export interface PagedDispatchResult {
 }
 
 export const dispatchApi = {
-  getAssignments: async (params?: { status?: AssignmentStatus; page?: number; size?: number }) => {
+  /** A dispatcher always gets their own district; `district` only applies to a system admin. */
+  getAssignments: async (params?: {
+    status?: AssignmentStatus;
+    page?: number;
+    size?: number;
+    district?: SriLankanDistrict;
+  }) => {
     const { data } = await apiClient.get<{ success: boolean; data: PagedDispatchResult }>(
       '/v1/dispatch/assignments',
       { params }
@@ -50,9 +56,19 @@ export const dispatchApi = {
     return data.data;
   },
 
-  getUnassignedParcels: async () => {
+  getUnassignedParcels: async (district?: SriLankanDistrict) => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
-      '/v1/dispatch/unassigned'
+      '/v1/dispatch/unassigned',
+      { params: { district } }
+    );
+    return data.data;
+  },
+
+  /** Open orders delivered into the district from elsewhere; read-only for its dispatcher. */
+  getIncoming: async (district?: SriLankanDistrict) => {
+    const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
+      '/v1/dispatch/incoming',
+      { params: { district } }
     );
     return data.data;
   },

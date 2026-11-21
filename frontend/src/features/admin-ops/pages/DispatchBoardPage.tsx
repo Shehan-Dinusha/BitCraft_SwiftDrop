@@ -1,13 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
-import { AlertTriangle, Bike, Package, RefreshCw, Search, UserCheck } from 'lucide-react';
-import { Button, EmptyState, StatusBanner, SurfaceCard } from '@/design-system';
+import {
+  AlertTriangle,
+  ArrowDownToLine,
+  Bike,
+  Package,
+  RefreshCw,
+  Search,
+  UserCheck
+} from 'lucide-react';
+import { Button, EmptyState, SelectDropdown, StatusBanner, SurfaceCard } from '@/design-system';
+import { useAuthStore } from '@/store/useAuthStore';
+import { SRI_LANKAN_DISTRICTS } from '@/services/api/authApi';
+import { districtLabel } from '@/features/profile/profileFormat';
 import { Input } from '@/design-system/primitives/Input';
 import {
   dispatchApi,
   type CourierShiftResponse,
   type CourierWorkloadResponse,
-  type DispatchAssignmentResponse
+  type DispatchAssignmentResponse,
+  type SriLankanDistrict
 } from '@/services/api/dispatchApi';
 import { ManualDispatchOverrideModal } from '../components/ManualDispatchOverrideModal';
 import { LiveFleetHeatmap } from '../components/LiveFleetHeatmap';
@@ -60,7 +72,26 @@ const WORKLOAD_REFRESH_INTERVAL_MS = 10_000;
 const formatTime = (date: Date) =>
   date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+const ALL_DISTRICTS = 'ALL';
+const ADMIN_DISTRICT_OPTIONS = [
+  { value: ALL_DISTRICTS, label: 'All districts' },
+  ...SRI_LANKAN_DISTRICTS.map((value) => ({ value, label: districtLabel(value) }))
+];
+
+/**
+ * A dispatcher sees only their own district: the server limits every list to it, and orders bound for
+ * the district from elsewhere appear read-only under "Incoming". A system admin picks the district.
+ */
 export function DispatchBoardPage() {
+  const role = useAuthStore((s) => s.user?.role);
+  const ownDistrict = useAuthStore((s) => s.user?.district);
+  const isAdmin = role === 'SYSTEM_ADMIN';
+  const [adminDistrict, setAdminDistrict] = useState<string>(ALL_DISTRICTS);
+  // The district an admin looks at; for a dispatcher the server decides, so nothing is sent.
+  const scope: SriLankanDistrict | undefined =
+    isAdmin && adminDistrict !== ALL_DISTRICTS ? (adminDistrict as SriLankanDistrict) : undefined;
+  const showIncoming = !isAdmin || scope !== undefined;
+  const [incoming, setIncoming] = useState<DispatchAssignmentResponse[]>([]);
   const [unassigned, setUnassigned] = useState<DispatchAssignmentResponse[]>([]);
   const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
   const [couriers, setCouriers] = useState<CourierShiftResponse[]>([]);
@@ -91,15 +122,23 @@ export function DispatchBoardPage() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const [unassignedOrders, courierList, workloadList, assignedPage, reassignedPage] =
-        await Promise.all([
-          dispatchApi.getUnassignedParcels(),
-          dispatchApi.getCouriers(),
-          dispatchApi.getCourierWorkloads(),
-          dispatchApi.getAssignments({ status: 'ASSIGNED', page: 0, size: 100 }),
-          dispatchApi.getAssignments({ status: 'REASSIGNED', page: 0, size: 100 })
-        ]);
+      const [
+        unassignedOrders,
+        courierList,
+        workloadList,
+        assignedPage,
+        reassignedPage,
+        incomingOrders
+      ] = await Promise.all([
+        dispatchApi.getUnassignedParcels(scope),
+        dispatchApi.getCouriers({ district: scope }),
+        dispatchApi.getCourierWorkloads(),
+        dispatchApi.getAssignments({ status: 'ASSIGNED', page: 0, size: 100, district: scope }),
+        dispatchApi.getAssignments({ status: 'REASSIGNED', page: 0, size: 100, district: scope }),
+        showIncoming ? dispatchApi.getIncoming(scope) : Promise.resolve([])
+      ]);
       setUnassigned(unassignedOrders);
+      setIncoming(incomingOrders);
       setCouriers(courierList);
       if (sequence === workloadSequence.current) {
         setWorkloads(workloadList);
@@ -113,7 +152,7 @@ export function DispatchBoardPage() {
       fullLoadInFlight.current = false;
       setLoading(false);
     }
-  }, []);
+  }, [scope, showIncoming]);
 
   useEffect(() => {
     void loadData();
@@ -169,7 +208,9 @@ export function DispatchBoardPage() {
     // dispatcher saw so the backend can reject the change if the assignment moved meanwhile.
     const currentCourierId = selectedOrder.courierId;
     if (currentCourierId && courierId === currentCourierId) {
-      setErrorMessage('Choose a different courier: this order is already assigned to that courier.');
+      setErrorMessage(
+        'Choose a different courier: this order is already assigned to that courier.'
+      );
       return;
     }
     setSubmitting(true);
@@ -213,19 +254,39 @@ export function DispatchBoardPage() {
     );
   }, [query, unassigned]);
 
+  // The workload endpoint is already limited for a dispatcher; an admin narrows it here.
+  const shownWorkloads = scope ? workloads.filter((w) => w.currentDistrict === scope) : workloads;
   const availableCount = couriers.filter((courier) => courier.shiftStatus === 'AVAILABLE').length;
-  const totalActive = workloads.reduce((sum, workload) => sum + (workload.activeParcels ?? 0), 0);
+  const totalActive = shownWorkloads.reduce(
+    (sum, workload) => sum + (workload.activeParcels ?? 0),
+    0
+  );
 
   return (
     <main className="mx-auto max-w-[1600px] space-y-5 p-4 md:p-6" data-density="compact">
       <header className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-primary">Dispatch console</h1>
+          {!isAdmin && ownDistrict ? (
+            <p className="text-caption text-secondary">{districtLabel(ownDistrict)} district</p>
+          ) : null}
         </div>
-        <Button variant="outline" onClick={() => void loadData()} disabled={loading}>
-          <RefreshCw className={`mr-1.5 size-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-end gap-2">
+          {isAdmin ? (
+            <SelectDropdown
+              label="District"
+              searchable
+              options={ADMIN_DISTRICT_OPTIONS}
+              value={adminDistrict}
+              onChange={setAdminDistrict}
+              className="w-56"
+            />
+          ) : null}
+          <Button variant="outline" onClick={() => void loadData()} disabled={loading}>
+            <RefreshCw className={`mr-1.5 size-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </header>
 
       {errorMessage ? (
@@ -356,12 +417,12 @@ export function DispatchBoardPage() {
             </span>
           </div>
           <div className="mt-4 space-y-2">
-            {workloads.length === 0 ? (
+            {shownWorkloads.length === 0 ? (
               <p className="py-8 text-center text-caption text-muted">
                 No workload data available.
               </p>
             ) : (
-              workloads.map((workload) => {
+              shownWorkloads.map((workload) => {
                 const active = workload.activeParcels ?? 0;
                 const capacity = workload.maxCapacity ?? 0;
                 const percentage = capacity
@@ -414,9 +475,7 @@ export function DispatchBoardPage() {
           </div>
         </div>
         {assignments.length === 0 ? (
-          <p className="py-8 text-center text-caption text-muted">
-            No assigned orders.
-          </p>
+          <p className="py-8 text-center text-caption text-muted">No assigned orders.</p>
         ) : (
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {assignments.map((assignment) => (
@@ -449,6 +508,45 @@ export function DispatchBoardPage() {
           </div>
         )}
       </SurfaceCard>
+
+      {showIncoming ? (
+        <SurfaceCard className="p-4">
+          <div className="flex items-center gap-2">
+            <ArrowDownToLine className="size-4 text-status-info-fg" />
+            <h2 className="text-label font-semibold text-primary">
+              Incoming to {districtLabel(scope ?? ownDistrict)} ({incoming.length})
+            </h2>
+          </div>
+          <p className="mt-1 text-caption text-secondary">
+            Picked up in another district. That district's dispatcher assigns the courier.
+          </p>
+          {incoming.length === 0 ? (
+            <p className="py-6 text-center text-caption text-muted">Nothing on the way.</p>
+          ) : (
+            <ul className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {incoming.map((order) => (
+                <li
+                  key={order.assignmentId ?? order.orderId}
+                  className="rounded-lg border border-border-subtle p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-caption font-semibold text-primary">
+                      {order.trackingNumber ?? order.orderId}
+                    </span>
+                    <span className="rounded-full bg-canvas px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary">
+                      {order.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-caption text-secondary">
+                    From {districtLabel(order.pickupDistrict)} ·{' '}
+                    {order.courierName ?? 'Courier not assigned yet'}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SurfaceCard>
+      ) : null}
 
       <ManualDispatchOverrideModal
         open={Boolean(selectedOrder)}

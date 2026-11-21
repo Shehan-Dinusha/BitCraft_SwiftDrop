@@ -88,6 +88,29 @@ class DeliveryAccessPolicyTest {
     }
 
     @Test
+    @DisplayName("A dispatcher reaches a delivery picked up in or bound for their district, not others")
+    void testDispatcherIsLimitedToTheirDistrict() {
+        DeliverySession colomboToKandy = new DeliverySession();
+        colomboToKandy.setDeliveryId(UUID.randomUUID());
+        colomboToKandy.setCourierId(UUID.randomUUID());
+        colomboToKandy.setPickupDistrict(SriLankanDistrict.COLOMBO);
+        colomboToKandy.setDeliveryDistrict(SriLankanDistrict.KANDY);
+
+        for (SriLankanDistrict allowed : new SriLankanDistrict[]{SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY}) {
+            CallerContext dispatcher = new CallerContext(UUID.randomUUID(), UserRole.DISPATCHER, null, allowed);
+            assertThatCode(() -> DeliveryAccessPolicy.assertCanAccess(colomboToKandy, dispatcher))
+                    .doesNotThrowAnyException();
+        }
+        CallerContext galle = new CallerContext(UUID.randomUUID(), UserRole.DISPATCHER, null, SriLankanDistrict.GALLE);
+        assertThatThrownBy(() -> DeliveryAccessPolicy.assertCanAccess(colomboToKandy, galle))
+                .isInstanceOf(ForbiddenException.class);
+
+        CallerContext admin = new CallerContext(UUID.randomUUID(), UserRole.SYSTEM_ADMIN, null, null);
+        assertThatCode(() -> DeliveryAccessPolicy.assertCanAccess(colomboToKandy, admin))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("System admin role bypasses courier ownership checks")
     void testSystemAdminBypassesOwnershipCheck() {
         UUID adminId = UUID.randomUUID();

@@ -1,5 +1,7 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.dispatch.security.DistrictScope;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
@@ -70,9 +72,21 @@ public class ManualOverrideService {
      */
     @Transactional
     public DispatchAssignment manualAssign(ManualAssignRequest request, UUID correlationId) {
+        return manualAssign(request, correlationId, null);
+    }
+
+    /**
+     * @param caller the dispatcher or admin acting; a dispatcher may only assign orders picked up in their
+     *               own district. {@code null} skips that check (internal callers and tests).
+     */
+    @Transactional
+    public DispatchAssignment manualAssign(ManualAssignRequest request, UUID correlationId, CallerContext caller) {
         log.info("Dispatcher assignment for order: {} to courier: {}", request.orderId(), request.courierId());
 
         DispatchAssignment assignment = findActiveAssignment(request.orderId());
+        if (caller != null) {
+            DistrictScope.requireManage(caller, assignment.getPickupDistrict());
+        }
         if (assignment.getStatus() != AssignmentStatus.UNASSIGNED || assignment.getCourierId() != null) {
             throw new AssignmentConflictException("Order " + request.orderId()
                     + " is already assigned to a courier. Refresh the queue, or use reassignment to change the courier.");
@@ -80,6 +94,7 @@ public class ManualOverrideService {
         PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
 
         CourierShift courier = findAcceptingCourier(request.courierId());
+        requireCourierInPickupDistrict(courier, assignment);
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.ASSIGNED);
         incrementWorkload(courier);
 
@@ -116,10 +131,19 @@ public class ManualOverrideService {
      */
     @Transactional
     public DispatchAssignment reassign(ReassignCourierRequest request, UUID correlationId) {
+        return reassign(request, correlationId, null);
+    }
+
+    /** @param caller as for {@link #manualAssign(ManualAssignRequest, UUID, CallerContext)} */
+    @Transactional
+    public DispatchAssignment reassign(ReassignCourierRequest request, UUID correlationId, CallerContext caller) {
         log.info("Dispatcher reassignment for order: {} from courier: {} to courier: {}",
                 request.orderId(), request.expectedCurrentCourierId(), request.newCourierId());
 
         DispatchAssignment assignment = findActiveAssignment(request.orderId());
+        if (caller != null) {
+            DistrictScope.requireManage(caller, assignment.getPickupDistrict());
+        }
         UUID currentCourierId = assignment.getCourierId();
         if (assignment.getStatus() == AssignmentStatus.UNASSIGNED || currentCourierId == null) {
             throw new AssignmentConflictException("Order " + request.orderId()
@@ -138,6 +162,7 @@ public class ManualOverrideService {
         }
 
         CourierShift newCourier = findAcceptingCourier(request.newCourierId());
+        requireCourierInPickupDistrict(newCourier, assignment);
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.REASSIGNED);
         courierShiftRepository.findByCourierId(currentCourierId).ifPresent(this::decrementWorkload);
         incrementWorkload(newCourier);
@@ -185,6 +210,15 @@ public class ManualOverrideService {
                     "Courier " + courier.getCourierName() + " is not available or has reached capacity");
         }
         return courier;
+    }
+
+    /** A courier collects parcels in the district they work in, never in another one. */
+    private void requireCourierInPickupDistrict(CourierShift courier, DispatchAssignment assignment) {
+        if (assignment.getPickupDistrict() != null && courier.getCurrentDistrict() != assignment.getPickupDistrict()) {
+            throw new CourierNotAvailableException("Courier " + courier.getCourierName() + " works in "
+                    + DistrictScope.label(courier.getCurrentDistrict()) + ", but this parcel is picked up in "
+                    + DistrictScope.label(assignment.getPickupDistrict()));
+        }
     }
 
     private void incrementWorkload(CourierShift courier) {

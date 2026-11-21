@@ -1,5 +1,8 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.contracts.security.ForbiddenException;
+import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
@@ -78,6 +81,7 @@ class ManualOverrideServiceTest {
         CourierShift newCourier = new CourierShift();
         newCourier.setCourierId(newCourierId);
         newCourier.setCourierName("New Courier");
+        newCourier.setCurrentDistrict(SriLankanDistrict.KANDY);
         newCourier.setActiveParcelsCount(0);
         newCourier.setMaxCapacity(5);
         newCourier.setShiftStatus(ShiftStatus.AVAILABLE);
@@ -519,6 +523,64 @@ class ManualOverrideServiceTest {
         verifyNoInteractions(eventPublisher);
     }
 
+    // ── District boundaries ─────────────────────────────────────────────────────
+
+    private static CallerContext dispatcherOf(SriLankanDistrict district) {
+        return new CallerContext(UUID.randomUUID(), UserRole.DISPATCHER, null, district);
+    }
+
+    @Test
+    @DisplayName("A courier from another district cannot be assigned, even by an admin")
+    void aCourierMustWorkInThePickupDistrict() {
+        CourierShift kandyCourier = courier(newCourierId, "Kandy Courier", 0);
+        kandyCourier.setCurrentDistrict(SriLankanDistrict.KANDY);
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
+        when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(kandyCourier));
+        CallerContext admin = new CallerContext(UUID.randomUUID(), UserRole.SYSTEM_ADMIN, null, null);
+
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(
+                new ManualAssignRequest(orderId, newCourierId, "ADMIN", null), null, admin))
+                .isInstanceOf(CourierNotAvailableException.class)
+                .hasMessageContaining("works in Kandy")
+                .hasMessageContaining("picked up in Colombo");
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    @DisplayName("Only the pickup district's dispatcher can assign or reassign an order")
+    void anotherDistrictsDispatcherCannotManageTheOrder() {
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
+        CallerContext galle = dispatcherOf(SriLankanDistrict.GALLE);
+
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(
+                new ManualAssignRequest(orderId, newCourierId, "DISPATCHER", null), null, galle))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("Colombo dispatcher");
+
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignedOrder(AssignmentStatus.ASSIGNED)));
+        assertThatThrownBy(() -> manualOverrideService.reassign(
+                new ReassignCourierRequest(orderId, oldCourierId, newCourierId, "DISPATCHER", null), null, galle))
+                .isInstanceOf(ForbiddenException.class);
+        verify(courierShiftRepository, never()).findByCourierId(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    @DisplayName("The pickup district's dispatcher assigns a courier of their district")
+    void thePickupDistrictsDispatcherAssigns() {
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
+        when(courierShiftRepository.findByCourierId(newCourierId))
+                .thenReturn(Optional.of(courier(newCourierId, "Colombo Courier", 0)));
+        when(assignmentRepository.save(any(DispatchAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DispatchAssignment result = manualOverrideService.manualAssign(
+                new ManualAssignRequest(orderId, newCourierId, "DISPATCHER", null), null,
+                dispatcherOf(SriLankanDistrict.COLOMBO));
+
+        assertThat(result.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
+    }
+
     private DispatchAssignment unassignedOrder() {
         DispatchAssignment assignment = new DispatchAssignment();
         assignment.setOrderId(orderId);
@@ -545,6 +607,7 @@ class ManualOverrideServiceTest {
         courier.setActiveParcelsCount(activeParcels);
         courier.setMaxCapacity(5);
         courier.setShiftStatus(ShiftStatus.AVAILABLE);
+        courier.setCurrentDistrict(SriLankanDistrict.COLOMBO); // the pickup district of unassignedOrder()
         return courier;
     }
 }
