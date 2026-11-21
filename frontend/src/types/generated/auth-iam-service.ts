@@ -501,6 +501,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/invite/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check an invite link
+         * @description Returns who a staff invite is for. Counts against the per-IP limit of the one-time-code endpoints.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InviteTokenRequest"];
+                };
+            };
+            responses: {
+                /** @description Invite is valid */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseInvitePreview"];
+                    };
+                };
+                /** @description The link is invalid, already used, or expired */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/invite/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept an invite and sign in
+         * @description Sets the password chosen on the invite page, spends the invite and signs the person in. The refresh token is set as the HttpOnly swiftdrop_refresh cookie.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AcceptInviteRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TokenResponse"];
+                    };
+                };
+                /** @description Invalid, used or expired link, or the password does not meet the policy */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Too many requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -1073,7 +1195,7 @@ export interface paths {
         put?: never;
         /**
          * Provision a platform account with any role
-         * @description Requires SYSTEM_ADMIN.
+         * @description Requires SYSTEM_ADMIN. Without a password the person is emailed an invite link (valid 72 hours) where they choose their own password. Use this for dispatchers.
          */
         post: {
             parameters: {
@@ -1130,6 +1252,295 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/couriers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List couriers
+         * @description Requires DISPATCHER or SYSTEM_ADMIN. A dispatcher sees the couriers of their own district (the district parameter is ignored); a SYSTEM_ADMIN sees every district or the one given.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    district?: components["schemas"]["SriLankanDistrict"];
+                    status?: components["schemas"]["UserStatus"];
+                    search?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Couriers retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponsePagedUsers"];
+                    };
+                };
+                /** @description DISPATCHER or SYSTEM_ADMIN required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Register a courier and email them an invite
+         * @description Requires DISPATCHER or SYSTEM_ADMIN. Creates the COURIER account in the dispatcher's own district without a password. The courier receives an email link (valid 72 hours) where they choose a password and add their vehicle.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCourierRequest"];
+                };
+            };
+            responses: {
+                /** @description Courier registered */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description Validation failure */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description DISPATCHER or SYSTEM_ADMIN required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Username, email, or phone already registered */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/couriers/{courierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a courier
+         * @description Requires DISPATCHER or SYSTEM_ADMIN. 403 for a courier of another district.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courierId: components["parameters"]["CourierId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Courier retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description Not permitted, or the courier belongs to another district */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Courier not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/couriers/{courierId}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend a courier's invite
+         * @description Sends a new invite link and invalidates the previous one.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courierId: components["parameters"]["CourierId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Invite sent */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description Not permitted, or the courier belongs to another district */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description The courier has already set up the account, or it is not active */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/couriers/{courierId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Suspend, deactivate, or reactivate a courier
+         * @description Suspending or deactivating revokes the courier's sessions immediately.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courierId: components["parameters"]["CourierId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateUserStatusRequest"];
+                };
+            };
+            responses: {
+                /** @description Courier status updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description Not permitted, or the courier belongs to another district */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Courier not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/users/{userId}": {
@@ -1270,6 +1681,65 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/users/{userId}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend an account's invite
+         * @description Requires SYSTEM_ADMIN. Sends a new invite link and invalidates the previous one.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: components["parameters"]["UserId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Invite sent */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUserProfile"];
+                    };
+                };
+                /** @description SYSTEM_ADMIN required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description The account has already been set up, or it is not active */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/users/{userId}/status": {
@@ -1420,12 +1890,51 @@ export interface components {
             phone?: string;
             firstName: string;
             lastName: string;
-            /** Format: password */
-            password: string;
+            /**
+             * Format: password
+             * @description Optional. Leave it out to email the person an invite link where they choose their own password (recommended for staff accounts).
+             */
+            password?: string;
             role: components["schemas"]["UserRole"];
             district: components["schemas"]["SriLankanDistrict"];
             /** Format: uuid */
             merchantId?: string | null;
+        };
+        /** @description Registers a courier. No password is set; the courier receives an email invite. */
+        CreateCourierRequest: {
+            /** @example kasun.colombo */
+            username: string;
+            /** Format: email */
+            email: string;
+            /** @example +94771234567 */
+            phone: string;
+            firstName: string;
+            lastName: string;
+            district?: components["schemas"]["SriLankanDistrict"];
+        };
+        InviteTokenRequest: {
+            /** @description Invite token from the emailed link (the part after */
+            token: string;
+        };
+        AcceptInviteRequest: {
+            token: string;
+            /** Format: password */
+            password: string;
+        };
+        InvitePreviewResponse: {
+            firstName?: string;
+            username?: string;
+            role?: components["schemas"]["UserRole"];
+            district?: components["schemas"]["SriLankanDistrict"];
+            /** Format: date-time */
+            expiresAt?: string;
+        };
+        ApiResponseInvitePreview: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["InvitePreviewResponse"];
+            /** Format: date-time */
+            timestamp?: string;
         };
         RefreshTokenRequest: {
             /** @description Optional when the swiftdrop_refresh cookie is sent. */
@@ -1582,6 +2091,13 @@ export interface components {
              * @description When the profile picture last changed; null when there is none. The picture is served by GET /api/v1/users/me/avatar.
              */
             avatarUpdatedAt?: string | null;
+            /** @description True while a staff account has not yet accepted its email invite. */
+            invitePending?: boolean;
+            /**
+             * Format: date-time
+             * @description When the pending invite link expires; null when no invite is pending.
+             */
+            inviteExpiresAt?: string | null;
         };
         ApiResponseUserProfile: {
             success?: boolean;
@@ -1654,6 +2170,7 @@ export interface components {
     responses: never;
     parameters: {
         UserId: string;
+        CourierId: string;
     };
     requestBodies: never;
     headers: never;

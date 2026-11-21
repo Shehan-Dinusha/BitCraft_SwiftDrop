@@ -160,6 +160,24 @@ class RsaSessionIntegrationTest {
 
     private TokenResponse readSession(HttpResponse<String> response) throws Exception {
         var session = json.readValue(response.body(), TokenResponse.class);
+        assertThat(session.refreshToken()).isNull();
+        var setCookie = response.headers().firstValue("Set-Cookie").orElseThrow();
+        var cookiePrefix = "swiftdrop_refresh=";
+        var cookieStart = setCookie.indexOf(cookiePrefix);
+        assertThat(cookieStart).isGreaterThanOrEqualTo(0);
+        var valueStart = cookieStart + cookiePrefix.length();
+        var valueEnd = setCookie.indexOf(';', valueStart);
+        var refreshToken = setCookie.substring(valueStart, valueEnd < 0 ? setCookie.length() : valueEnd);
+        session = new TokenResponse(
+                session.accessToken(),
+                refreshToken,
+                session.tokenType(),
+                session.expiresIn(),
+                session.userId(),
+                session.username(),
+                session.email(),
+                session.role(),
+                session.district());
         sessions.add(session);
         return session;
     }

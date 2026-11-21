@@ -132,6 +132,11 @@ class CourierShiftErrorHandlingIT {
     void concurrentFirstShiftStartReturnsSafeConflict() throws Exception {
         UUID courierId = UUID.randomUUID();
         ExecutorService courierApp = Executors.newSingleThreadExecutor();
+        // A shift needs the courier's registered vehicle; commit it first so only the shift insert races.
+        jdbcTemplate.update("INSERT INTO courier_profiles (courier_id, district, vehicle_type, plate_number, "
+                + "vehicle_model, vehicle_colour, licence_number, max_capacity) "
+                + "VALUES (?, 'COLOMBO', 'MOTORCYCLE', ?, 'Honda Dio', 'Black', 'B1234567', 5)",
+                courierId, "CAB-" + (1000 + Math.abs(courierId.hashCode() % 9000)));
         try {
             // An uncommitted row for the same courier makes the request's INSERT block
             // on the unique index, then fail with a real unique violation (23505).
@@ -142,7 +147,7 @@ class CourierShiftErrorHandlingIT {
                                 post("/api/v1/dispatch/couriers/shifts/start").with(TestCallers.courier(courierId))
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(new StartShiftRequest(courierId,
-                                                "Registered second", null, null, SriLankanDistrict.COLOMBO, 5))))
+                                                "Registered second", null, SriLankanDistrict.COLOMBO))))
                         .andReturn());
                 awaitBlocked("insert into courier_shifts%", 1);
                 return request;

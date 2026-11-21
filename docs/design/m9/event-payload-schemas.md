@@ -504,6 +504,45 @@ registered address, and never copies them to the in-app inbox.
 
 ---
 
+### 2.13 `notification.auth.invite` — `AuthStaffInviteEvent`
+
+* **Producer:** `auth-iam-service` (:8081): when a dispatcher registers a courier (`POST /api/v1/users/couriers`), an admin creates an account without a password (`POST /api/v1/users`), or an invite is re-sent
+* **Routing Key:** `notification.auth.invite` (under `notification.` so the existing `notification.#` binding delivers it)
+* **Destination Queues:** `notification.events.queue`
+* **Consumers:** `notification-service` (`StaffInviteTrigger`, template `STAFF_INVITE`)
+
+#### Field Specification
+
+| Field Name | Type | Nullable | Description | Privacy / PII |
+|---|---|---|---|---|
+| `eventId` | `UUID` | No | Unique event identifier (deduplication) | Safe |
+| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
+| `recipientId` | `UUID` | No | IAM user the invite is for; notification-service resolves the registered email from IAM | Safe |
+| `role` | `UserRole` | No | Role of the invited account (`COURIER` or `DISPATCHER`) | Safe |
+| `inviteUrl` | `String` | No | `<FRONTEND_URL>/invite#token=<43 chars>`; the token is in the fragment so it never reaches a server log | **Secret**: signs the person in; never logged, stored in dispatch logs or copied to the in-app inbox |
+| `expiresInHours` | `int` | No | Link lifetime shown in the email (72) | Safe |
+| `timestamp` | `Instant` | No | Event publication timestamp | Safe |
+
+IAM stores only the SHA-256 of the token. Accepting the invite (`POST /api/v1/auth/invite/accept`)
+sets the password, clears the token and signs the person in; a new invite replaces the old one. The
+email renders the link only when it matches the invite-link format, and like the one-time codes it
+goes only to the registered address, ignores the email-off preference and is redacted in the audit log.
+
+#### Example JSON Payload
+```json
+{
+  "eventId": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b",
+  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
+  "recipientId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "role": "COURIER",
+  "inviteUrl": "https://app.example.com/invite#token=q3Z8s1Lk0Vd9rT2yWm5nB7xC4pF6hJ1aE0uGiKoYtRs",
+  "expiresInHours": 72,
+  "timestamp": "2026-11-21T09:00:00Z"
+}
+```
+
+---
+
 ## 3. Who receives which notification
 
 Rule: a notification goes only to the person or team the event is about, and only when it tells
@@ -522,6 +561,7 @@ dispatch makes by itself, an order the merchant created themselves) send nothing
 | `notification.auth.otp` | Email only | Email only | Email only (to the signing-in user) | Email only |
 | `notification.auth.login` SUCCESS (new device or network only) | Email only | Email only | Email only (to the signing-in user) | Email only |
 | `notification.auth.login` FAILED (max 1 per 15 min) | Email only | Email only | Email only (to the account owner) | Email only |
+| `notification.auth.invite` | | Email only (the invited courier) | | Email only (an invited dispatcher) |
 
 Merchant orders: customer-order-service stores the merchant id in `customerId`, so parcel events for
 a merchant order name the company, not a person. notification-service records merchant ids from

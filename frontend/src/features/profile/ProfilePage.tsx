@@ -402,6 +402,13 @@ function PersonalDetails({
             error={errors.district}
             placeholder="Choose a district"
             onChange={set('district')}
+            // A courier's or dispatcher's district is assigned by operations (the API refuses changes).
+            disabled={user.role === 'COURIER' || user.role === 'DISPATCHER'}
+            hint={
+              user.role === 'COURIER' || user.role === 'DISPATCHER'
+                ? 'Assigned by SwiftDrop operations.'
+                : undefined
+            }
           />
         </div>
 

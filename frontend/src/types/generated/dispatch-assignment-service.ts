@@ -258,6 +258,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/couriers/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get my vehicle (COURIER)
+         * @description 404 until the courier has registered their vehicle; a shift cannot start before that.
+         */
+        get: operations["getMyCourierProfile"];
+        /**
+         * Register my vehicle (COURIER)
+         * @description Once only, after accepting the invite. 409 when already registered: from then on only the dispatcher can change it. maxCapacity is ignored; the vehicle type's default applies.
+         */
+        put: operations["registerMyCourierProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List courier vehicles
+         * @description A DISPATCHER sees their own district (the district parameter is ignored); a SYSTEM_ADMIN sees every district or the one given.
+         */
+        get: operations["listCourierProfiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/couriers/{courierId}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a courier's vehicle (DISPATCHER, SYSTEM_ADMIN)
+         * @description A DISPATCHER may change couriers of their own district only. Without maxCapacity, a changed vehicle type resets the capacity to the new type's default. The courier's shift picks up the new vehicle type and capacity straight away.
+         */
+        put: operations["updateCourierProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/orders/{orderId}/courier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The courier handling an order
+         * @description For the order's customer (or merchant), so they can recognise the courier at the door: first name and vehicle only. data is null while no courier is actively assigned.
+         */
+        get: operations["getOrderCourier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatch/couriers/shifts/start": {
         parameters: {
             query?: never;
@@ -269,7 +353,7 @@ export interface paths {
         put?: never;
         /**
          * Start or register courier shift
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available.
          */
         post: operations["startShift"];
         delete?: never;
@@ -326,8 +410,11 @@ export interface components {
         AssignmentStatus: "UNASSIGNED" | "ASSIGNED" | "REASSIGNED" | "FAILED" | "CANCELLED" | "COMPLETED";
         /** @enum {string} */
         ShiftStatus: "AVAILABLE" | "BUSY" | "ON_BREAK" | "OFFLINE";
-        /** @enum {string} */
-        VehicleType: "MOTORCYCLE" | "VAN" | "THREE_WHEELER" | "BICYCLE";
+        /**
+         * @description Courier's own vehicle. Default parcel capacity: MOTORCYCLE 5, THREE_WHEELER 10, VAN 25, LORRY 50.
+         * @enum {string}
+         */
+        VehicleType: "MOTORCYCLE" | "THREE_WHEELER" | "VAN" | "LORRY";
         /** @enum {string} */
         OrderSpeed: "STANDARD" | "EXPRESS" | "SAME_DAY";
         /** @enum {string} */
@@ -362,10 +449,50 @@ export interface components {
             courierName: string;
             /** @example +94771234567 */
             phone?: string;
-            vehicleType?: components["schemas"]["VehicleType"];
             initialDistrict: components["schemas"]["SriLankanDistrict"];
-            /** @example 5 */
+        };
+        /** @description A courier's own vehicle. */
+        CourierVehicleRequest: {
+            vehicleType: components["schemas"]["VehicleType"];
+            /**
+             * @description Number plate as shown on the vehicle; stored in upper case.
+             * @example WP BAB-1234
+             */
+            plateNumber: string;
+            /** @example Honda Dio */
+            vehicleModel: string;
+            /** @example Black */
+            vehicleColour: string;
+            /** @example B1234567 */
+            licenceNumber: string;
+            /** @description Only a dispatcher can set it; when left out the vehicle type's default applies. */
             maxCapacity?: number;
+        };
+        CourierProfileResponse: {
+            /** Format: uuid */
+            courierId?: string;
+            district?: components["schemas"]["SriLankanDistrict"];
+            vehicleType?: components["schemas"]["VehicleType"];
+            /** @example WP BAB-1234 */
+            plateNumber?: string;
+            vehicleModel?: string;
+            vehicleColour?: string;
+            licenceNumber?: string;
+            maxCapacity?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /** @description First name and vehicle only; no phone number, licence or courier id. */
+        OrderCourierResponse: {
+            /** @example Kasun */
+            firstName?: string;
+            vehicleType?: components["schemas"]["VehicleType"];
+            /** @example WP BAB-1234 */
+            plateNumber?: string;
+            vehicleModel?: string;
+            vehicleColour?: string;
         };
         UpdateShiftStatusRequest: {
             /** Format: uuid */
@@ -483,6 +610,27 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["CourierShiftResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCourierProfileResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierProfileResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListCourierProfileResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierProfileResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseOrderCourierResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["OrderCourierResponse"] | null;
             /** Format: date-time */
             timestamp?: string;
         };
@@ -1105,6 +1253,228 @@ export interface operations {
             };
         };
     };
+    getMyCourierProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier profile retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierProfileResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description No vehicle registered yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    registerMyCourierProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourierVehicleRequest"];
+            };
+        };
+        responses: {
+            /** @description Vehicle registered */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierProfileResponse"];
+                };
+            };
+            /** @description Validation failure, e.g. a number plate in the wrong format */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Vehicle already registered, or the number plate belongs to another courier */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    listCourierProfiles: {
+        parameters: {
+            query?: {
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier profiles retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListCourierProfileResponse"];
+                };
+            };
+            /** @description Caller is not a DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCourierProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourierVehicleRequest"];
+            };
+        };
+        responses: {
+            /** @description Courier vehicle updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierProfileResponse"];
+                };
+            };
+            /** @description Validation failure */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not permitted, or the courier belongs to another district */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description The courier has not registered a vehicle */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description The number plate belongs to another courier */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getOrderCourier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Courier retrieved, or data null when none is assigned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseOrderCourierResponse"];
+                };
+            };
+            /** @description The caller does not own this order */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description No dispatch record for this order */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     startShift: {
         parameters: {
             query?: never;
@@ -1145,7 +1515,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Data Conflict: the shift record was created by a concurrent request for the same courier (unique-key violation). Database details are not returned. */
+            /** @description Courier Not Available: the courier has not registered a vehicle yet. Or Data Conflict: the shift record was created by a concurrent request for the same courier (unique-key violation). Database details are not returned. */
             409: {
                 headers: {
                     [name: string]: unknown;

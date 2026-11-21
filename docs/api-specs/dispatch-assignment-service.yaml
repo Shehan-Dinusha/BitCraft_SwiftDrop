@@ -495,6 +495,192 @@ paths:
         "404":
           description: Courier not found
 
+  /api/v1/dispatch/couriers/me/profile:
+    get:
+      tags:
+        - Courier vehicles
+      summary: Get my vehicle (COURIER)
+      description: 404 until the courier has registered their vehicle; a shift cannot start before that.
+      operationId: getMyCourierProfile
+      responses:
+        "200":
+          description: Courier profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCourierProfileResponse"
+        "403":
+          description: Caller is not a COURIER
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "404":
+          description: No vehicle registered yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+    put:
+      tags:
+        - Courier vehicles
+      summary: Register my vehicle (COURIER)
+      description: >-
+        Once only, after accepting the invite. 409 when already registered: from then on only the
+        dispatcher can change it. maxCapacity is ignored; the vehicle type's default applies.
+      operationId: registerMyCourierProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourierVehicleRequest"
+      responses:
+        "200":
+          description: Vehicle registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCourierProfileResponse"
+        "400":
+          description: Validation failure, e.g. a number plate in the wrong format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a COURIER
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "409":
+          description: Vehicle already registered, or the number plate belongs to another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
+  /api/v1/dispatch/couriers/profiles:
+    get:
+      tags:
+        - Courier vehicles
+      summary: List courier vehicles
+      description: >-
+        A DISPATCHER sees their own district (the district parameter is ignored); a SYSTEM_ADMIN sees
+        every district or the one given.
+      operationId: listCourierProfiles
+      parameters:
+        - name: district
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Courier profiles retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListCourierProfileResponse"
+        "403":
+          description: Caller is not a DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
+  /api/v1/dispatch/couriers/{courierId}/profile:
+    put:
+      tags:
+        - Courier vehicles
+      summary: Update a courier's vehicle (DISPATCHER, SYSTEM_ADMIN)
+      description: >-
+        A DISPATCHER may change couriers of their own district only. Without maxCapacity, a changed
+        vehicle type resets the capacity to the new type's default. The courier's shift picks up the
+        new vehicle type and capacity straight away.
+      operationId: updateCourierProfile
+      parameters:
+        - name: courierId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourierVehicleRequest"
+      responses:
+        "200":
+          description: Courier vehicle updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCourierProfileResponse"
+        "400":
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Not permitted, or the courier belongs to another district
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "404":
+          description: The courier has not registered a vehicle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "409":
+          description: The number plate belongs to another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
+  /api/v1/dispatch/orders/{orderId}/courier:
+    get:
+      tags:
+        - Courier vehicles
+      summary: The courier handling an order
+      description: >-
+        For the order's customer (or merchant), so they can recognise the courier at the door: first
+        name and vehicle only. data is null while no courier is actively assigned.
+      operationId: getOrderCourier
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Courier retrieved, or data null when none is assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOrderCourierResponse"
+        "403":
+          description: The caller does not own this order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "404":
+          description: No dispatch record for this order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
   /api/v1/dispatch/couriers/shifts/start:
     post:
       tags:
@@ -502,6 +688,8 @@ paths:
       summary: Start or register courier shift
       description: >-
         A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+        The vehicle type and parcel capacity come from the courier's registered vehicle; without one the
+        answer is 409 Courier Not Available.
       operationId: startShift
       requestBody:
         required: true
@@ -530,8 +718,9 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "409":
           description: >-
-            Data Conflict: the shift record was created by a concurrent request for the same courier
-            (unique-key violation). Database details are not returned.
+            Courier Not Available: the courier has not registered a vehicle yet. Or Data Conflict: the
+            shift record was created by a concurrent request for the same courier (unique-key
+            violation). Database details are not returned.
           content:
             application/json:
               schema:
@@ -650,7 +839,9 @@ components:
 
     VehicleType:
       type: string
-      enum: [MOTORCYCLE, VAN, THREE_WHEELER, BICYCLE]
+      description: >-
+        Courier's own vehicle. Default parcel capacity: MOTORCYCLE 5, THREE_WHEELER 10, VAN 25, LORRY 50.
+      enum: [MOTORCYCLE, THREE_WHEELER, VAN, LORRY]
 
     OrderSpeed:
       type: string
@@ -742,13 +933,88 @@ components:
         phone:
           type: string
           example: "+94771234567"
-        vehicleType:
-          $ref: "#/components/schemas/VehicleType"
         initialDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
+
+    CourierVehicleRequest:
+      type: object
+      description: A courier's own vehicle.
+      required:
+        - vehicleType
+        - plateNumber
+        - vehicleModel
+        - vehicleColour
+        - licenceNumber
+      properties:
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        plateNumber:
+          type: string
+          maxLength: 20
+          description: Number plate as shown on the vehicle; stored in upper case.
+          example: WP BAB-1234
+        vehicleModel:
+          type: string
+          maxLength: 64
+          example: Honda Dio
+        vehicleColour:
+          type: string
+          maxLength: 32
+          example: Black
+        licenceNumber:
+          type: string
+          maxLength: 20
+          example: B1234567
         maxCapacity:
           type: integer
-          example: 5
+          minimum: 1
+          maximum: 200
+          description: Only a dispatcher can set it; when left out the vehicle type's default applies.
+
+    CourierProfileResponse:
+      type: object
+      properties:
+        courierId:
+          type: string
+          format: uuid
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        plateNumber:
+          type: string
+          example: WP BAB-1234
+        vehicleModel:
+          type: string
+        vehicleColour:
+          type: string
+        licenceNumber:
+          type: string
+        maxCapacity:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderCourierResponse:
+      type: object
+      description: First name and vehicle only; no phone number, licence or courier id.
+      properties:
+        firstName:
+          type: string
+          example: Kasun
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        plateNumber:
+          type: string
+          example: WP BAB-1234
+        vehicleModel:
+          type: string
+        vehicleColour:
+          type: string
 
     UpdateShiftStatusRequest:
       type: object
@@ -961,6 +1227,49 @@ components:
           type: string
         data:
           $ref: "#/components/schemas/CourierShiftResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseCourierProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CourierProfileResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListCourierProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourierProfileResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseOrderCourierResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/OrderCourierResponse"
+            - type: "null"
         timestamp:
           type: string
           format: date-time

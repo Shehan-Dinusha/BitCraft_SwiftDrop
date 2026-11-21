@@ -1,6 +1,7 @@
 package com.swiftdrop.iam.service;
 
 import com.swiftdrop.contracts.dto.PagedResult;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.enums.UserStatus;
 import com.swiftdrop.iam.domain.entity.UserAccount;
@@ -41,17 +42,20 @@ public class UserAccountService {
     private final PasswordPolicy passwordPolicy;
     private final TokenIssuanceService tokenIssuanceService;
     private final RefreshTokenService refreshTokenService;
+    private final StaffInviteService staffInviteService;
 
     public UserAccountService(UserAccountRepository userAccountRepository,
                               PasswordEncoder passwordEncoder,
                               PasswordPolicy passwordPolicy,
                               TokenIssuanceService tokenIssuanceService,
-                              RefreshTokenService refreshTokenService) {
+                              RefreshTokenService refreshTokenService,
+                              StaffInviteService staffInviteService) {
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicy = passwordPolicy;
         this.tokenIssuanceService = tokenIssuanceService;
         this.refreshTokenService = refreshTokenService;
+        this.staffInviteService = staffInviteService;
     }
 
     @Transactional
@@ -67,17 +71,42 @@ public class UserAccountService {
         if (pending.isPresent()) {
             return refreshPendingRegistration(pending.get(), request);
         }
-        return createUser(request.username(), request.email(), request.phone(), request.firstName(),
-                request.lastName(), request.password(), request.role(), request.district(), request.merchantId(),
-                false);
+        return AuthMapper.toProfile(newAccount(request.username(), request.email(), request.phone(),
+                request.firstName(), request.lastName(), request.password(), request.role(), request.district(),
+                request.merchantId(), false));
     }
 
+    /**
+     * An administrator provisions an account. Such accounts are trusted: no email verification step.
+     * Without a password the person is emailed an invite and chooses their own.
+     */
     @Transactional
     public UserProfileResponse create(CreateUserRequest request) {
-        // Accounts provisioned by an administrator are trusted: no email verification step.
-        return createUser(request.username(), request.email(), request.phone(), request.firstName(),
-                request.lastName(), request.password(), request.role(), request.district(), request.merchantId(),
-                true);
+        boolean invite = request.password() == null || request.password().isBlank();
+        UserAccount user = newAccount(request.username(), request.email(), request.phone(), request.firstName(),
+                request.lastName(), invite ? null : request.password(), request.role(), request.district(),
+                request.merchantId(), true);
+        if (invite) {
+            staffInviteService.sendInvite(user);
+        }
+        return AuthMapper.toProfile(user);
+    }
+
+    /** Creates a staff account without a usable password and emails it an invite. */
+    @Transactional
+    public UserAccount createInvited(String username, String email, String phone, String firstName,
+                                     String lastName, UserRole role, SriLankanDistrict district) {
+        UserAccount user = newAccount(username, email, phone, firstName, lastName, null, role, district, null, true);
+        staffInviteService.sendInvite(user);
+        return user;
+    }
+
+    /** Re-sends the invite of an account that has not been set up yet. */
+    @Transactional
+    public UserProfileResponse resendInvite(UUID publicId) {
+        UserAccount user = requireUser(publicId);
+        staffInviteService.resendInvite(user);
+        return AuthMapper.toProfile(user);
     }
 
     @Transactional(readOnly = true)
@@ -88,12 +117,19 @@ public class UserAccountService {
     @Transactional(readOnly = true)
     public PagedResult<UserProfileResponse> list(UserRole role, UserStatus status, String search,
                                                  int page, int size) {
+        return list(role, status, null, search, page, size);
+    }
+
+    /** As {@link #list(UserRole, UserStatus, String, int, int)}, optionally limited to one district. */
+    @Transactional(readOnly = true)
+    public PagedResult<UserProfileResponse> list(UserRole role, UserStatus status, SriLankanDistrict district,
+                                                 String search, int page, int size) {
         Pageable pageable = PageRequest.of(
                 Math.max(0, page),
                 Math.min(Math.max(1, size), MAX_PAGE_SIZE),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        Page<UserAccount> result = userAccountRepository.findAll(buildFilter(role, status, search), pageable);
+        Page<UserAccount> result = userAccountRepository.findAll(buildFilter(role, status, district, search), pageable);
         List<UserProfileResponse> content = result.getContent().stream()
                 .map(AuthMapper::toProfile)
                 .toList();
@@ -136,6 +172,13 @@ public class UserAccountService {
     @Transactional
     public UserProfileResponse updateOwnProfile(UUID publicId, UpdateProfileRequest request) {
         UserAccount user = requireUser(publicId);
+        // A courier's or dispatcher's district decides who manages them and which parcels they get,
+        // so it is assigned, not chosen.
+        boolean staff = user.getRole() == UserRole.COURIER || user.getRole() == UserRole.DISPATCHER;
+        if (staff && request.district() != user.getDistrict()) {
+            throw new AuthException(HttpStatus.FORBIDDEN,
+                    "Your district is assigned by SwiftDrop operations and cannot be changed here");
+        }
         String phone = normalizeNullable(request.phone());
         if (phone != null && !phone.equals(user.getPhone()) && userAccountRepository.existsByPhone(phone)) {
             throw new UserAlreadyExistsException("Phone number is already registered");
@@ -206,10 +249,14 @@ public class UserAccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    private UserProfileResponse createUser(String username, String email, String phone,
-                                           String firstName, String lastName, String rawPassword,
-                                           UserRole role, com.swiftdrop.contracts.enums.SriLankanDistrict district,
-                                           UUID merchantId, boolean emailVerified) {
+    /**
+     * Saves a new account. A {@code null} password means the person sets it through an invite: the
+     * stored hash is of a random value nobody knows, so the account cannot sign in until then.
+     */
+    private UserAccount newAccount(String username, String email, String phone,
+                                   String firstName, String lastName, String rawPassword,
+                                   UserRole role, SriLankanDistrict district,
+                                   UUID merchantId, boolean emailVerified) {
         String normalizedUsername = username.trim();
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         String normalizedPhone = normalizeNullable(phone);
@@ -224,7 +271,9 @@ public class UserAccountService {
             throw new UserAlreadyExistsException("Phone number is already registered");
         }
 
-        passwordPolicy.validate(rawPassword, normalizedUsername, normalizedEmail);
+        if (rawPassword != null) {
+            passwordPolicy.validate(rawPassword, normalizedUsername, normalizedEmail);
+        }
 
         UserAccount user = new UserAccount();
         user.setUsername(normalizedUsername);
@@ -232,14 +281,14 @@ public class UserAccountService {
         user.setPhone(normalizedPhone);
         user.setFirstName(firstName.trim());
         user.setLastName(lastName.trim());
-        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        user.setPasswordHash(passwordEncoder.encode(rawPassword != null ? rawPassword : UUID.randomUUID().toString()));
         user.setRole(role);
         user.setDistrict(district);
         user.setMerchantId(merchantId);
         user.setStatus(UserStatus.ACTIVE);
         user.setEmailVerified(emailVerified);
 
-        return AuthMapper.toProfile(userAccountRepository.save(user));
+        return userAccountRepository.save(user);
     }
 
     private UserProfileResponse refreshPendingRegistration(UserAccount existing, RegisterUserRequest request) {
@@ -267,7 +316,8 @@ public class UserAccountService {
         return AuthMapper.toProfile(userAccountRepository.save(existing));
     }
 
-    private Specification<UserAccount> buildFilter(UserRole role, UserStatus status, String search) {
+    private Specification<UserAccount> buildFilter(UserRole role, UserStatus status, SriLankanDistrict district,
+                                                   String search) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (role != null) {
@@ -275,6 +325,9 @@ public class UserAccountService {
             }
             if (status != null) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+            if (district != null) {
+                predicates.add(criteriaBuilder.equal(root.get("district"), district));
             }
             if (search != null && !search.isBlank()) {
                 String like = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
