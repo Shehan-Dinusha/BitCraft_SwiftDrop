@@ -1,6 +1,7 @@
 package com.swiftdrop.merchant.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.logging.LogSanitizer;
 import com.swiftdrop.contracts.security.CallerContextException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -81,7 +82,8 @@ public class GlobalExceptionHandler {
                     status, "Request rejected", error.getBody().getDetail(), request.getRequestURI()));
         }
         // Database and library messages can carry personal data: log them, never return them.
-        log.error("Unexpected error on {}", request.getRequestURI(), ex);
+        // The path is client-controlled: strip line breaks so it cannot forge log entries.
+        log.error("Unexpected error on {}", LogSanitizer.clean(request.getRequestURI()), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error",
                         "An unexpected error occurred", request.getRequestURI()));
