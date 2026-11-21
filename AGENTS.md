@@ -98,6 +98,7 @@ Do not claim runtime success from compilation alone. For API/gateway changes, st
 - Releases are a `dev` → `main` PR merged with **Create a merge commit**, never squash. The procedure is in the [operations runbook](docs/deployment/OPERATIONS-RUNBOOK.md).
 - Use Conventional Commit subjects (`feat(frontend): …`, `fix(api-docs): …`, `refactor!: …` for breaking changes) and explain the why in the body.
 - If `dev` moved while you worked, merge `origin/dev` into your branch once and resolve conflicts there, not in the PR. Keep the other side's new work and re-apply your change on top. Then re-run the checks: regenerate API types, run lint, build and tests.
+- If `main` has commits `dev` lacks (Dependabot security updates always target `main`), a `dev` → `main` release can conflict. Do not merge `main` into `dev`: `dev` squashes, which drops the link to `main` and the conflict returns. Branch `release/<date>` from `origin/dev`, merge `origin/main` there, resolve and run the checks, then PR it into `main` with a merge commit as the release. Add a small PR into `dev` that copies the resolved files, so both branches hold the same content. Check first with `git merge-tree --write-tree origin/main origin/dev`.
 - PR descriptions list what changed, anything breaking, anything needed before deploying (migrations, Helm values, secrets), and how it was tested.
 
 ### Product decisions that constrain the code
