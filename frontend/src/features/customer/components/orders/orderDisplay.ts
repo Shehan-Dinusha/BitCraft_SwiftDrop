@@ -19,9 +19,11 @@ export const SPEED_LABEL: Record<NonNullable<CustomerOrderResponse['orderSpeed']
 };
 
 /** The fee the customer pays: the final fee once set, otherwise the estimate. */
-/** Shown wherever the fee is. The system records no payment, so the copy makes no claim about how or when it is paid. */
-export const PAYMENT_NOTE =
-  "You don't pay in the app.";
+/**
+ * Shown wherever the fee is. The sender pays the courier in cash at pickup (after any re-measure),
+ * matching the landing page. The app takes no online payment.
+ */
+export const PAYMENT_NOTE = 'Pay the courier in cash at pickup.';
 
 export const payableFee = (order: CustomerOrderResponse) =>
   order.finalFee ?? order.estimatedFee ?? 0;

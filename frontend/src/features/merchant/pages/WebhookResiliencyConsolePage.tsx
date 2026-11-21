@@ -199,10 +199,10 @@ export function WebhookResiliencyConsolePage() {
         <div>
           <div className="flex items-center gap-2">
             <Webhook className="h-6 w-6 text-brand-primary" />
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-xl font-bold tracking-tight text-primary">
               Webhooks
             </h1>
-            <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-800">
+            <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
               HMAC-SHA256 Signed
             </span>
           </div>
@@ -248,7 +248,7 @@ export function WebhookResiliencyConsolePage() {
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Active Listeners</span>
-          <p className="mt-1 text-xl font-bold text-emerald-600">{activeCount}</p>
+          <p className="mt-1 text-xl font-bold text-status-success-fg">{activeCount}</p>
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Backoff Retry Policy</span>
@@ -256,7 +256,7 @@ export function WebhookResiliencyConsolePage() {
         </SurfaceCard>
         <SurfaceCard className="p-3">
           <span className="text-xs text-secondary">Payload Security</span>
-          <p className="mt-1 text-xs font-semibold text-indigo-600">X-SwiftDrop-Signature</p>
+          <p className="mt-1 text-xs font-semibold text-brand-primary">X-SwiftDrop-Signature</p>
         </SurfaceCard>
       </div>
 
@@ -298,11 +298,11 @@ export function WebhookResiliencyConsolePage() {
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-bold text-primary">{ep.targetUrl}</span>
                         {ep.active ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                          <span className="rounded-full bg-status-success-bg px-2 py-0.5 text-[11px] font-semibold text-status-success-fg">
                             ACTIVE
                           </span>
                         ) : (
-                          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                          <span className="rounded-full bg-border-subtle px-2 py-0.5 text-[11px] font-semibold text-secondary">
                             PAUSED
                           </span>
                         )}
@@ -332,8 +332,8 @@ export function WebhookResiliencyConsolePage() {
                         <span
                           className={`rounded px-2 py-0.5 text-[11px] font-bold ${
                             pingResult.success
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-rose-100 text-rose-800'
+                              ? 'bg-status-success-bg text-status-success-fg'
+                              : 'bg-status-danger-bg text-status-danger-fg'
                           }`}
                         >
                           {pingResult.label}
@@ -361,7 +361,7 @@ export function WebhookResiliencyConsolePage() {
 
                       <Button
                         variant="ghost"
-                        className={`h-7 px-2 text-xs ${ep.active ? 'text-amber-600' : 'text-emerald-600'}`}
+                        className={`h-7 px-2 text-xs ${ep.active ? 'text-status-warning-fg' : 'text-status-success-fg'}`}
                         onClick={() => handleToggleActive(ep)}
                         title={ep.active ? 'Pause Webhook' : 'Activate Webhook'}
                       >
@@ -371,7 +371,7 @@ export function WebhookResiliencyConsolePage() {
 
                       <Button
                         variant="ghost"
-                        className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700"
+                        className="h-7 px-2 text-xs text-status-danger-fg hover:text-danger-hover"
                         onClick={() => ep.endpointId && handleDeleteEndpoint(ep.endpointId)}
                         title="Delete Webhook"
                       >
@@ -391,7 +391,7 @@ export function WebhookResiliencyConsolePage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="flex items-center gap-2 text-sm font-bold text-primary">
-              <AlertTriangle className="h-4 w-4 text-rose-500" />
+              <AlertTriangle className="h-4 w-4 text-status-danger-fg" />
               Failed events
             </h2>
             <p className="text-xs text-secondary">Events that failed after 3 retries. Replay them here.</p>
@@ -423,7 +423,7 @@ export function WebhookResiliencyConsolePage() {
                 onClick={() => copyToClipboard(oneTimeSecret.secret, oneTimeSecret.endpointId)}
               >
                 {copiedId === oneTimeSecret.endpointId ? (
-                  <Check className="mr-1 h-3 w-3 text-emerald-500" />
+                  <Check className="mr-1 h-3 w-3 text-status-success-fg" />
                 ) : (
                   <Copy className="mr-1 h-3 w-3" />
                 )}
@@ -538,8 +538,8 @@ export function WebhookResiliencyConsolePage() {
                       <span
                         className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${
                           att.success
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-rose-100 text-rose-800'
+                            ? 'bg-status-success-bg text-status-success-fg'
+                            : 'bg-status-danger-bg text-status-danger-fg'
                         }`}
                       >
                         {attemptOutcomeLabel(att)}
@@ -550,7 +550,7 @@ export function WebhookResiliencyConsolePage() {
                       )}
                     </div>
                     {att.errorMessage && (
-                      <p className="font-mono text-[10px] text-rose-600">{att.errorMessage}</p>
+                      <p className="font-mono text-[10px] text-status-danger-fg">{att.errorMessage}</p>
                     )}
                   </div>
                   <span className="text-[10px] text-secondary">

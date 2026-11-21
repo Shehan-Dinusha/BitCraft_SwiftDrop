@@ -152,7 +152,7 @@ export function ProofOfDeliveryCaptureModal({
         {successMsg && (
           <StatusBanner tone="success" title="Success" onDismiss={() => setSuccessMsg(null)}>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              <CheckCircle2 className="h-5 w-5 text-status-success-fg" />
               <span>{successMsg}</span>
             </div>
           </StatusBanner>
@@ -185,26 +185,26 @@ export function ProofOfDeliveryCaptureModal({
               {!photoFile ? (
                 <label
                   htmlFor="pod-photo-file-input"
-                  className="flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/40 p-4 text-center transition-colors hover:bg-indigo-50 active:bg-indigo-100"
+                  className="flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border-selected bg-brand-subtle p-4 text-center transition-colors hover:bg-brand-subtle active:bg-brand-subtle"
                 >
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-100 text-indigo-600">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-brand-subtle text-brand-primary">
                     <Camera className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-sm font-bold text-indigo-900">Take photo</span>
-                    <p className="text-xs text-slate-500">or choose one (JPEG/PNG, up to 5 MB)</p>
+                    <span className="text-sm font-bold text-brand-primary">Take photo</span>
+                    <p className="text-xs text-secondary">or choose one (JPEG/PNG, up to 5 MB)</p>
                   </div>
                 </label>
               ) : (
-                <div className="relative overflow-hidden rounded-xl border border-indigo-200 bg-slate-50 p-2">
+                <div className="relative overflow-hidden rounded-xl border border-border-selected bg-canvas p-2">
                   <canvas
                     ref={previewCanvasRef}
                     role="img"
                     aria-label="Proof of Delivery preview"
-                    className="max-h-48 w-full rounded-lg object-contain bg-black/5"
+                    className="max-h-48 w-full rounded-lg object-contain bg-canvas"
                   />
                   <div className="mt-2 flex items-center justify-between px-1">
-                    <span className="truncate text-xs font-medium text-slate-600">
+                    <span className="truncate text-xs font-medium text-secondary">
                       {photoFile?.name} ({(photoFile ? photoFile.size / 1024 : 0).toFixed(0)} KB)
                     </span>
                     <Button
@@ -230,7 +230,7 @@ export function ProofOfDeliveryCaptureModal({
                 onChange={(e) => setRecipientSignature(e.target.value)}
                 className="min-h-[44px] pl-9"
               />
-              <PenTool className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+              <PenTool className="absolute left-3 top-3.5 h-4 w-4 text-muted" />
             </div>
           </Field>
 

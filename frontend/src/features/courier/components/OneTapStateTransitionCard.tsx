@@ -46,7 +46,7 @@ export function OneTapStateTransitionCard({
   return (
     <SurfaceCard variant="elevated" className="space-y-4 p-5" data-density="touch">
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <h3 className="text-base font-bold text-slate-900">Next step</h3>
+        <h3 className="text-base font-bold text-primary">Next step</h3>
         <FsmStatusBadge state={currentState} size="lg" />
       </div>
 
@@ -54,7 +54,7 @@ export function OneTapStateTransitionCard({
       <div className="space-y-4">
         {currentState === 'ASSIGNED' && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-secondary">
               Go to the pickup point and collect the parcel.
             </p>
             <SlideToTransitionBar
@@ -72,7 +72,7 @@ export function OneTapStateTransitionCard({
               loading={pendingState === 'PICKED_UP'}
               disabled={isPending}
             >
-              <PackageCheck className="mr-2 h-4 w-4 text-emerald-500" />
+              <PackageCheck className="mr-2 h-4 w-4 text-status-success-fg" />
               Confirm pickup
             </Button>
           </div>
@@ -80,7 +80,7 @@ export function OneTapStateTransitionCard({
 
         {currentState === 'PICKED_UP' && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-secondary">
               Head to the delivery address.
             </p>
             <SlideToTransitionBar
@@ -106,7 +106,7 @@ export function OneTapStateTransitionCard({
 
         {currentState === 'IN_TRANSIT' && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-secondary">
               Confirm when you reach the recipient.
             </p>
             <SlideToTransitionBar
@@ -134,17 +134,17 @@ export function OneTapStateTransitionCard({
           <div className="space-y-3">
             <div className={`rounded-xl border p-4 ${
               isPoDVerified
-                ? 'border-emerald-500/40 bg-emerald-500/10'
-                : 'border-amber-500/40 bg-amber-500/10'
+                ? 'border-status-success-border bg-status-success-bg'
+                : 'border-status-warning-border bg-status-warning-bg'
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {isPoDVerified ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    <CheckCircle2 className="h-5 w-5 text-status-success-fg" />
                   ) : (
-                    <FileCheck className="h-5 w-5 text-amber-600" />
+                    <FileCheck className="h-5 w-5 text-status-warning-fg" />
                   )}
-                  <span className="text-sm font-bold text-slate-900">
+                  <span className="text-sm font-bold text-primary">
                     {isPoDVerified ? 'Proof captured' : 'Proof of delivery needed'}
                   </span>
                 </div>
@@ -180,22 +180,22 @@ export function OneTapStateTransitionCard({
         )}
 
         {currentState === 'DELIVERED' && (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
-            <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" />
-            <h4 className="mt-2 font-bold text-slate-900">Delivered</h4>
-            <p className="mt-1 text-xs text-slate-500">
+          <div className="rounded-xl border border-status-success-border bg-status-success-bg p-4 text-center">
+            <CheckCircle2 className="mx-auto h-8 w-8 text-status-success-fg" />
+            <h4 className="mt-2 font-bold text-primary">Delivered</h4>
+            <p className="mt-1 text-xs text-secondary">
               {session.deliveredAt ? new Date(session.deliveredAt).toLocaleTimeString() : 'Recently'}
             </p>
           </div>
         )}
 
         {(currentState === 'FAILED' || currentState === 'CANCELLED') && (
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-center">
-            <AlertTriangle className="mx-auto h-8 w-8 text-rose-600" />
-            <h4 className="mt-2 font-bold text-slate-900">
+          <div className="rounded-xl border border-status-danger-border bg-status-danger-bg p-4 text-center">
+            <AlertTriangle className="mx-auto h-8 w-8 text-status-danger-fg" />
+            <h4 className="mt-2 font-bold text-primary">
               {currentState === 'FAILED' ? 'Delivery failed' : 'Cancelled'}
             </h4>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-secondary">
               {FAILURE_REASONS.find((r) => r.value === session.failedReason)?.label ??
                 (session.failedReason || 'No reason given')}
             </p>
@@ -207,7 +207,7 @@ export function OneTapStateTransitionCard({
           <div className="pt-2">
             <button
               type="button"
-              className="flex w-full items-center justify-between text-xs font-semibold text-rose-600 hover:text-rose-700"
+              className="flex w-full items-center justify-between text-xs font-semibold text-status-danger-fg hover:text-danger-hover"
               onClick={() => setShowFailurePanel(!showFailurePanel)}
             >
               <span>Can't deliver?</span>
@@ -220,22 +220,22 @@ export function OneTapStateTransitionCard({
                   e.preventDefault();
                   handleReportFailure();
                 }}
-                className="mt-3 space-y-3 rounded-xl border border-rose-200 bg-rose-50/60 p-4"
+                className="mt-3 space-y-3 rounded-xl border border-status-danger-border bg-status-danger-bg p-4"
               >
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-rose-600" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900">
+                  <AlertTriangle className="h-4 w-4 text-status-danger-fg" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-status-danger-fg">
                     Report failed delivery
                   </h4>
                 </div>
 
-                <label htmlFor="failure-reason" className="block text-xs font-semibold text-slate-700">
+                <label htmlFor="failure-reason" className="block text-xs font-semibold text-primary">
                   Reason
                 </label>
                 <select id="failure-reason"
                   value={failureReason}
                   onChange={(e) => setFailureReason(e.target.value as DeliveryFailureReason)}
-                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
+                  className="w-full rounded-lg border border-border-subtle bg-card p-2.5 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-status-danger min-h-[44px]"
                 >
                   {FAILURE_REASONS.map((r) => (
                     <option key={r.value} value={r.value}>
@@ -244,7 +244,7 @@ export function OneTapStateTransitionCard({
                   ))}
                 </select>
 
-                <label htmlFor="failure-notes" className="block text-xs font-semibold text-slate-700">
+                <label htmlFor="failure-notes" className="block text-xs font-semibold text-primary">
                   Note
                 </label>
                 <input id="failure-notes"
@@ -252,7 +252,7 @@ export function OneTapStateTransitionCard({
                   placeholder="e.g. Called 3 times, gate locked"
                   value={failureNotes}
                   onChange={(e) => setFailureNotes(e.target.value)}
-                  className="w-full rounded-lg border border-border-subtle bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[44px]"
+                  className="w-full rounded-lg border border-border-subtle bg-card p-2.5 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-status-danger min-h-[44px]"
                   required
                 />
 

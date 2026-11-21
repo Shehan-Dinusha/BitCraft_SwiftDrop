@@ -58,15 +58,15 @@ export function DeliveryFailureReportModal({
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4 pt-2" data-density="touch">
-        <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+        <div className="flex items-start gap-3 rounded-xl border border-status-danger-border bg-status-danger-bg p-3 text-xs text-status-danger-fg">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-danger-fg" />
           <p>
             This counts as a failed attempt and alerts dispatch.
           </p>
         </div>
 
         {validationError && (
-          <div className="rounded-lg bg-rose-100 p-2.5 text-xs font-semibold text-rose-800">
+          <div className="rounded-lg bg-status-danger-bg p-2.5 text-xs font-semibold text-status-danger-fg">
             {validationError}
           </div>
         )}
@@ -75,7 +75,7 @@ export function DeliveryFailureReportModal({
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value as DeliveryFailureReason)}
-            className="w-full rounded-xl border border-border-subtle bg-white p-3 text-sm text-slate-800 shadow-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 min-h-[48px]"
+            className="w-full rounded-xl border border-border-subtle bg-card p-3 text-sm text-primary shadow-sm focus:border-status-danger focus:outline-none focus:ring-1 focus:ring-status-danger min-h-[48px]"
           >
             {FAILURE_REASONS.map((r) => (
               <option key={r.value} value={r.value}>
@@ -98,7 +98,7 @@ export function DeliveryFailureReportModal({
               required
               autoFocus
             />
-            <FileText className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+            <FileText className="absolute left-3 top-3.5 h-4 w-4 text-muted" />
           </div>
         </Field>
 
