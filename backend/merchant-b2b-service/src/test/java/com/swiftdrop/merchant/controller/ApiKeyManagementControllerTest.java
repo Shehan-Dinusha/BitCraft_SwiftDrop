@@ -66,7 +66,7 @@ class ApiKeyManagementControllerTest {
 
         when(apiKeyService.generateApiKey(eq(merchantId), any(CreateApiKeyRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys")
+        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys").with(TestCallers.merchant(merchantId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -93,7 +93,7 @@ class ApiKeyManagementControllerTest {
 
         when(apiKeyService.listApiKeys(merchantId)).thenReturn(List.of(key));
 
-        mockMvc.perform(get("/api/v1/merchants/" + merchantId + "/api-keys"))
+        mockMvc.perform(get("/api/v1/merchants/" + merchantId + "/api-keys").with(TestCallers.merchant(merchantId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].keyName").value("Test Key"));
@@ -122,7 +122,7 @@ class ApiKeyManagementControllerTest {
         when(apiKeyService.regenerateApiKey(merchantId, oldId)).thenReturn(new ApiKeyResponse(
                 newId, merchantId, "ERP", "sk_live_new...", true, Instant.now(),
                 null, null, null, "sk_live_replacement"));
-        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + oldId + "/regenerate"))
+        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + oldId + "/regenerate").with(TestCallers.merchant(merchantId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.keyId").value(newId.toString()))
                 .andExpect(jsonPath("$.data.rawApiKey").value("sk_live_replacement"));
@@ -133,7 +133,7 @@ class ApiKeyManagementControllerTest {
         UUID keyId = UUID.randomUUID();
         when(apiKeyService.regenerateApiKey(merchantId, keyId))
                 .thenThrow(new com.swiftdrop.merchant.exception.ApiKeyNotFoundException("API key not found"));
-        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + keyId + "/regenerate"))
+        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + keyId + "/regenerate").with(TestCallers.merchant(merchantId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -143,7 +143,7 @@ class ApiKeyManagementControllerTest {
         when(apiKeyService.regenerateApiKey(merchantId, keyId)).thenThrow(
                 new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.CONFLICT, "Key already revoked"));
-        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + keyId + "/regenerate"))
+        mockMvc.perform(post("/api/v1/merchants/" + merchantId + "/api-keys/" + keyId + "/regenerate").with(TestCallers.merchant(merchantId)))
                 .andExpect(status().isConflict());
     }
 }

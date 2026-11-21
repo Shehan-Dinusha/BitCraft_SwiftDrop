@@ -37,7 +37,12 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type FieldName = 'firstName' | 'lastName' | 'email' | 'username' | 'password' | 'confirm';
 
-export function SignUpPage() {
+/**
+ * Self-service sign-up. With {@code business}, it is step 1 of 2 for a merchant: the account is created
+ * with the MERCHANT role, and after email verification the business details are submitted for the
+ * district dispatcher to approve.
+ */
+export function SignUpPage({ business = false }: { business?: boolean }) {
   const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState('');
@@ -123,7 +128,7 @@ export function SignUpPage() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         district
-      });
+      }, business ? 'MERCHANT' : 'CUSTOMER');
       // The account is unverified until the emailed code is confirmed; after that the user signs in.
       navigate(`/verify-email?identifier=${encodeURIComponent(normalizedEmail)}`, {
         replace: true
@@ -145,11 +150,21 @@ export function SignUpPage() {
     <AuthShell
       icon={<UserPlus />}
       width="lg"
-      title="Create your account"
-      description="Start sending parcels in minutes. We'll email you a code to confirm your address."
+      title={business ? 'Create your business account' : 'Create your account'}
+      description={
+        business
+          ? "Step 1 of 2: your login. After you confirm your email, you add your business details for your district team to approve."
+          : "Start sending parcels in minutes. We'll email you a code to confirm your address."
+      }
       below={
         <>
           Already have an account? <AuthLink to="/login">Sign in</AuthLink>
+          <span className="mx-2 text-muted">·</span>
+          {business ? (
+            <AuthLink to="/register">Sign up to send parcels</AuthLink>
+          ) : (
+            <AuthLink to="/register/business">Sign up as a business</AuthLink>
+          )}
         </>
       }
     >
@@ -261,7 +276,7 @@ export function SignUpPage() {
               htmlFor="signup-district"
               className="text-xs font-semibold leading-4 text-primary"
             >
-              District <span className="text-status-danger">*</span>
+              {business ? 'Business district' : 'District'} <span className="text-status-danger">*</span>
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">

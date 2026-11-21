@@ -1,8 +1,11 @@
 package com.swiftdrop.merchant.exception;
 
 import com.swiftdrop.contracts.dto.ApiErrorResponse;
+import com.swiftdrop.contracts.security.CallerContextException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -60,9 +64,26 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.getMessage(), request.getRequestURI()));
     }
 
+    /** Missing gateway identity headers -> 401; a caller acting outside their merchant or district -> 403. */
+    @ExceptionHandler(CallerContextException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallerContext(CallerContextException ex, HttpServletRequest request) {
+        int status = ex.statusCode();
+        return ResponseEntity.status(status).body(ApiErrorResponse.of(
+                status, status == 403 ? "Forbidden" : "Unauthorized", ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(RuntimeException ex, HttpServletRequest request) {
+        // Spring's own client errors (unknown path, wrong method, ...) keep their real status.
+        if (ex instanceof ErrorResponse error && error.getStatusCode().is4xxClientError()) {
+            int status = error.getStatusCode().value();
+            return ResponseEntity.status(status).body(ApiErrorResponse.of(
+                    status, "Request rejected", error.getBody().getDetail(), request.getRequestURI()));
+        }
+        // Database and library messages can carry personal data: log them, never return them.
+        log.error("Unexpected error on {}", request.getRequestURI(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error", ex.getMessage(), request.getRequestURI()));
+                .body(ApiErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error",
+                        "An unexpected error occurred", request.getRequestURI()));
     }
 }

@@ -37,6 +37,7 @@ export const routes: RouteObject[] = [
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <SignUpPage /> },
+  { path: '/register/business', element: <SignUpPage business /> },
   { path: '/auth/callback', element: <OAuthCallbackPage /> },
   { path: '/verify-email', element: <VerifyEmailPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },

@@ -86,6 +86,7 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
       items: [
         { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
         { id: 'couriers', label: 'Couriers', icon: 'users', to: '/ops/couriers' },
+        { id: 'merchants', label: 'Merchant applications', icon: 'grid', to: '/ops/merchants' },
         { id: 'analytics', label: 'Analytics', icon: 'grid', to: '/ops/analytics' },
         { id: 'zones', label: 'Zone pricing', icon: 'map', to: '/ops/zones' }
       ]
@@ -103,6 +104,7 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
         { id: 'analytics', label: 'Analytics', icon: 'grid', to: '/ops/analytics' },
         { id: 'zones', label: 'Zone pricing', icon: 'map', to: '/ops/zones' },
         { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
+        { id: 'merchants', label: 'Merchants', icon: 'grid', to: '/ops/merchants' },
         { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
         { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
       ]

@@ -23,10 +23,36 @@ export const merchantApi = {
     );
     return data.data;
   },
-  listApplications: async (status?: MerchantStatus) => {
+  /** The signed-in merchant's own application, or null before they have applied. */
+  myApplication: async (): Promise<MerchantApprovalResponse | null> => {
+    try {
+      const { data } = await apiClient.get<{ data: MerchantApprovalResponse }>(
+        '/v1/merchants/me/application'
+      );
+      return data.data;
+    } catch (error) {
+      if ((error as { response?: { status?: number } }).response?.status === 404) return null;
+      throw error;
+    }
+  },
+  /** A dispatcher always gets their own district; an admin every district or the one given. */
+  listApplications: async (status?: MerchantStatus, district?: SriLankanDistrict) => {
     const { data } = await apiClient.get<{ data: MerchantApprovalResponse[] }>(
       '/v1/admin/merchants',
-      { params: { status } }
+      { params: { status, district } }
+    );
+    return data.data;
+  },
+  /** Admin oversight: an approved merchant's API keys stop working until reactivated. */
+  suspend: async (merchantId: string) => {
+    const { data } = await apiClient.post<{ data: MerchantApprovalResponse }>(
+      `/v1/admin/merchants/${merchantId}/suspend`
+    );
+    return data.data;
+  },
+  reactivate: async (merchantId: string) => {
+    const { data } = await apiClient.post<{ data: MerchantApprovalResponse }>(
+      `/v1/admin/merchants/${merchantId}/reactivate`
     );
     return data.data;
   },

@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.domain.repository;
 
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.merchant.domain.entity.MerchantAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -16,6 +17,13 @@ public interface MerchantAccountRepository extends JpaRepository<MerchantAccount
     Optional<MerchantAccount> findByMerchantId(UUID merchantId);
     Optional<MerchantAccount> findByContactEmail(String contactEmail);
     List<MerchantAccount> findByStatus(MerchantStatus status);
+
+    /** The owner's application (newest first, in case legacy data holds more than one). */
+    Optional<MerchantAccount> findFirstByOwnerUserIdOrderByCreatedAtDesc(UUID ownerUserId);
+
+    List<MerchantAccount> findByOperatingDistrict(SriLankanDistrict operatingDistrict);
+
+    List<MerchantAccount> findByOperatingDistrictAndStatus(SriLankanDistrict operatingDistrict, MerchantStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from MerchantAccount m where m.merchantId = :merchantId")

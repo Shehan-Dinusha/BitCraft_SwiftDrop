@@ -176,12 +176,17 @@ export function LandingPage() {
                 <div>
                   <h2 className="text-h2 text-primary">Ready to send your first parcel?</h2>
                   <p className="pt-1 text-body text-secondary">
-                    Create a free customer or merchant account in a minute.
+                    Create a free account in a minute. Businesses apply for a merchant account.
                   </p>
                 </div>
-                <Button density="comfortable" onClick={() => navigate('/register')}>
-                  Create an account
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button density="comfortable" onClick={() => navigate('/register')}>
+                    Create an account
+                  </Button>
+                  <Button density="comfortable" variant="outline" onClick={() => navigate('/register/business')}>
+                    Sign up as a business
+                  </Button>
+                </div>
               </Card>
             </section>
           )}
