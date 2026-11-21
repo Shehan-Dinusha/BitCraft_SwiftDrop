@@ -12,11 +12,13 @@ import { TrackingSearchForm } from '../components/TrackingSearchForm';
 import { TrackingDetails } from '../components/TrackingDetails';
 import { useTrackingStream } from '@/hooks/useTrackingStream';
 import { isTerminalPublicStatus, TrackingApiError } from '@/services/api/trackingHubApi';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export function PublicTrackingPage() {
   const { trackingNumber } = useParams<{ trackingNumber: string }>();
   const navigate = useNavigate();
   const { view, connection, error, retry } = useTrackingStream(trackingNumber);
+  const signedIn = useAuthStore((state) => Boolean(state.token));
 
   const openTracking = (value: string) => {
     const next = value.trim();
@@ -43,7 +45,7 @@ export function PublicTrackingPage() {
       <div className="min-h-screen bg-canvas text-primary">
         <PublicHeader
           onTrack={openTracking}
-          onSignIn={() => navigate('/login')}
+          onSignIn={signedIn ? undefined : () => navigate('/login')}
           trackingNumber={trackingNumber}
           onClearInput={clearTracking}
           showEmptySearch={false}

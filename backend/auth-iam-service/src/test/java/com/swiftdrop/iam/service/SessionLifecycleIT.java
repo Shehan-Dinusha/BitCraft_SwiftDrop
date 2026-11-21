@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import com.swiftdrop.iam.IamContainers;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.iam.config.JwtConfig;
@@ -10,7 +11,6 @@ import com.swiftdrop.iam.exception.InvalidRefreshTokenException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
@@ -28,8 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Uses the existing IAM PostgreSQL and Redis; never starts additional containers. */
-@EnabledIfSystemProperty(named = "swiftdrop.integration-tests", matches = "true")
+/** Session lifecycle against the {@link IamContainers} PostgreSQL, Redis and RabbitMQ. */
 @SpringBootTest(properties = {
         "spring.rabbitmq.dynamic=false",
         "spring.rabbitmq.listener.simple.auto-startup=false",
@@ -39,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "swiftdrop.bootstrap.admin.password="
 })
 @AutoConfigureMockMvc(print = MockMvcPrint.NONE)
-class SessionLifecycleIntegrationTest {
+class SessionLifecycleIT extends IamContainers {
 
     @Autowired private AuthenticationService authentication;
     @Autowired private UserAccountService users;

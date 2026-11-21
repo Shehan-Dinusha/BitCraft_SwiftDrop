@@ -78,6 +78,23 @@ class UserAccountServiceTest {
     }
 
     @Test
+    void registerRequiresADistrictForACustomerOnly() {
+        RegisterUserRequest customer = new RegisterUserRequest(
+                "alice", "alice@example.com", null, "Alice", "Perera",
+                "Secret123", UserRole.CUSTOMER, null, null);
+        assertThatThrownBy(() -> userAccountService.register(customer))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("District is required");
+
+        when(userAccountRepository.save(any(UserAccount.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        RegisterUserRequest business = new RegisterUserRequest(
+                "shop", "shop@example.com", null, "Nimal", "Perera",
+                "Secret123", UserRole.MERCHANT, null, null);
+        assertThat(userAccountService.register(business).role()).isEqualTo(UserRole.MERCHANT);
+    }
+
+    @Test
     void registerRejectsDuplicateUsername() {
         when(userAccountRepository.existsByUsernameIgnoreCase("alice")).thenReturn(true);
         RegisterUserRequest request = new RegisterUserRequest(

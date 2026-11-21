@@ -1096,7 +1096,7 @@ components:
           example: '123456'
     RegisterUserRequest:
       type: object
-      required: [username, email, firstName, lastName, password, role, district]
+      required: [username, email, firstName, lastName, password, role]
       properties:
         username:
           type: string
@@ -1130,7 +1130,11 @@ components:
             - $ref: '#/components/schemas/UserRole'
           description: Self-service registration supports CUSTOMER and MERCHANT only.
         district:
-          $ref: '#/components/schemas/SriLankanDistrict'
+          allOf:
+            - $ref: '#/components/schemas/SriLankanDistrict'
+          description: >-
+            Home district. Required for CUSTOMER (400 otherwise); a MERCHANT gives its pickup district
+            on the business application instead.
         merchantId:
           type: string
           format: uuid

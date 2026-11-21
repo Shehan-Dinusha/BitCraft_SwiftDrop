@@ -175,8 +175,42 @@ class MerchantApprovalServiceTest {
     }
 
     private static RegisterMerchantRequest request(String name) {
-        return new RegisterMerchantRequest(name, "BR-1", "shop@example.com", "+94771234567", "Colombo",
+        return request(name, "BR-1", null, "+94771234567");
+    }
+
+    private static RegisterMerchantRequest request(String name, String regNo, String website, String phone) {
+        return new RegisterMerchantRequest(name, BusinessCategory.GIFTS_AND_CRAFTS, MonthlyParcelVolume.UP_TO_50,
+                regNo, website, "shop@example.com", phone, "No. 12, Temple Road", "Nugegoda", "10250",
                 SriLankanDistrict.COLOMBO);
+    }
+
+    @Test void aSmallSellerWithoutRegistrationCanApplyWithASocialPage() {
+        when(accounts.findFirstByOwnerUserIdOrderByCreatedAtDesc(owner)).thenReturn(Optional.empty());
+        when(accounts.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        var result = service.register(owner, request("Shop", "  ", "facebook.com/lankacrafts", "0771234567"));
+
+        assertThat(result.businessRegNo()).isNull();
+        assertThat(result.websiteUrl()).isEqualTo("https://facebook.com/lankacrafts");
+        assertThat(result.contactPhone()).isEqualTo("+94771234567");
+        assertThat(result.pickupCity()).isEqualTo("Nugegoda");
+        assertThat(result.pickupPostalCode()).isEqualTo("10250");
+        assertThat(result.businessCategory()).isEqualTo(BusinessCategory.GIFTS_AND_CRAFTS);
+    }
+
+    @Test void anApplicationNeedsARegistrationNumberOrAWebsite() {
+        when(accounts.findFirstByOwnerUserIdOrderByCreatedAtDesc(owner)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.register(owner, request("Shop", null, " ", "+94771234567")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("registration number or a link");
+        verify(accounts, never()).save(any());
+    }
+
+    @Test void aWebsiteKeepsItsOwnScheme() {
+        assertThat(MerchantApprovalService.website("http://shop.lk")).isEqualTo("http://shop.lk");
+        assertThat(MerchantApprovalService.website("HTTPS://Shop.lk/x")).isEqualTo("HTTPS://Shop.lk/x");
+        assertThat(MerchantApprovalService.website(null)).isNull();
     }
 
     private MerchantAccount pending() {

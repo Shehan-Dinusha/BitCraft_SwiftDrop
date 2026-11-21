@@ -79,8 +79,11 @@ public class BulkOrderIngestionService {
                     speed = OrderSpeed.EXPRESS;
                 }
                 B2bOrderResult accepted = submissions.submit(merchantId, new B2bOrderRequest(item.externalRef(),
-                        new B2bAddress(merchant.getPickupAddress(), item.pickupCity(), merchant.getOperatingDistrict().name(),
-                                item.pickupPostalCode(), merchant.getBusinessName(), merchant.getContactPhone()),
+                        new B2bAddress(merchant.getPickupAddress(),
+                                orDefault(item.pickupCity(), merchant.getPickupCity()),
+                                merchant.getOperatingDistrict().name(),
+                                orDefault(item.pickupPostalCode(), merchant.getPickupPostalCode()),
+                                merchant.getBusinessName(), merchant.getContactPhone()),
                         new B2bAddress(item.deliveryAddress(), item.deliveryCity(),
                                 item.deliveryDistrict() == null ? null : item.deliveryDistrict().name(), item.deliveryPostalCode(),
                                 item.recipientName(), item.recipientPhone()),
@@ -189,5 +192,10 @@ public class BulkOrderIngestionService {
                 item.getErrorMessage(),
                 item.getCreatedAt()
         );
+    }
+
+    /** A CSV cell left empty falls back to the value saved on the merchant's application. */
+    private static String orDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 }

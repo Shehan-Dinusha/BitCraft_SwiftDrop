@@ -128,7 +128,8 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
           password,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
-          district
+          // A business picks its pickup district once, on the application in step 2.
+          district: business ? undefined : district
         },
         business ? 'MERCHANT' : 'CUSTOMER'
       );
@@ -158,12 +159,6 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
       below={
         <>
           Already have an account? <AuthLink to="/login">Sign in</AuthLink>
-          <span className="mx-2 text-muted">·</span>
-          {business ? (
-            <AuthLink to="/register">Sign up to send parcels</AuthLink>
-          ) : (
-            <AuthLink to="/register/business">Sign up as a business</AuthLink>
-          )}
         </>
       }
     >
@@ -236,7 +231,7 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
           />
         </Field>
 
-        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+        <div className={cn('grid grid-cols-1 items-start gap-4', !business && 'sm:grid-cols-2')}>
           <Field
             label="Username"
             required
@@ -266,41 +261,42 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
             />
           </Field>
 
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="signup-district"
-              className="text-xs font-semibold leading-4 text-primary"
-            >
-              {business ? 'Business district' : 'District'}{' '}
-              <span className="text-status-danger">*</span>
-            </label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
-                <FieldIcon>
-                  <MapPin />
-                </FieldIcon>
-              </span>
-              <select
-                id="signup-district"
-                value={district}
-                onChange={(event) =>
-                  setDistrict(event.target.value as RegisterUserInput['district'])
-                }
-                required
-                className={authNativeFieldClass}
+          {!business && (
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="signup-district"
+                className="text-xs font-semibold leading-4 text-primary"
               >
-                {SRI_LANKAN_DISTRICTS.map((value) => (
-                  <option key={value} value={value}>
-                    {districtLabel(value)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                aria-hidden="true"
-                className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted"
-              />
+                District <span className="text-status-danger">*</span>
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
+                  <FieldIcon>
+                    <MapPin />
+                  </FieldIcon>
+                </span>
+                <select
+                  id="signup-district"
+                  value={district}
+                  onChange={(event) =>
+                    setDistrict(event.target.value as RegisterUserInput['district'])
+                  }
+                  required
+                  className={authNativeFieldClass}
+                >
+                  {SRI_LANKAN_DISTRICTS.map((value) => (
+                    <option key={value} value={value}>
+                      {districtLabel(value)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted"
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -364,8 +360,13 @@ export function SignUpPage({ business = false }: { business?: boolean }) {
         </Button>
       </form>
 
-      <AuthDivider label="Or sign up with" />
-      <GoogleTile label="Sign up with Google" />
+      {/* Google sign-up always creates a customer account, so businesses sign up with the form only. */}
+      {!business && (
+        <>
+          <AuthDivider label="Or sign up with" />
+          <GoogleTile label="Sign up with Google" />
+        </>
+      )}
     </AuthShell>
   );
 }
