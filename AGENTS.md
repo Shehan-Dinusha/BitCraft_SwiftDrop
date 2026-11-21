@@ -88,7 +88,7 @@ helm template swiftdrop infra/helm/swiftdrop -f infra/helm/swiftdrop/values-stud
 
 Do not claim runtime success from compilation alone. For API/gateway changes, start the relevant services and verify health, OpenAPI, RabbitMQ consumption, and the affected HTTP/SSE/WebSocket path.
 
-`mvn test` runs unit tests only. Integration tests (`*IT`, Testcontainers with real PostgreSQL and RabbitMQ) run in `mvn verify`, which is what CI runs. Run `mvn -f backend/pom.xml -pl <module> -am verify` before a PR that touches persistence, Flyway or messaging; Docker must be running. The IAM integration suites (`*IntegrationTest`) also need `-Dswiftdrop.integration-tests=true`, which CI passes.
+`mvn test` runs unit tests only. Integration tests (`*IT`, Testcontainers with real PostgreSQL and RabbitMQ) run in `mvn verify`, which is what CI runs. Run `mvn -f backend/pom.xml -pl <module> -am verify` before a PR that touches persistence, Flyway or messaging; Docker must be running. The IAM suites `RbacIntegrationTest`, `RsaSessionIntegrationTest` and `SessionLifecycleIntegrationTest` are not Testcontainers tests: they use the local Compose IAM Postgres (port 5431) and Redis, and run only with `-Dswiftdrop.integration-tests=true`. CI has neither, so it skips them; run them locally (`docker compose up -d`) before changing IAM persistence or sessions.
 
 ## Working Rules
 

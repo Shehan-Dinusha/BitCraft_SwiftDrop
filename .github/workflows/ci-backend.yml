@@ -66,9 +66,7 @@ jobs:
         run: mvn -B -T 1C -f backend/pom.xml test --no-transfer-progress -Dspring.profiles.active=test
 
       - name: Run integration tests (Testcontainers)
-        # swiftdrop.integration-tests turns on the IAM integration suites (RBAC, RSA sessions, session
-        # lifecycle), which are skipped without it.
-        run: mvn -B -f backend/pom.xml verify --no-transfer-progress -Dspring.profiles.active=integration-test -Dswiftdrop.integration-tests=true
+        run: mvn -B -f backend/pom.xml verify --no-transfer-progress -Dspring.profiles.active=integration-test
         env:
           TESTCONTAINERS_REUSE_ENABLE: "true"
           SPRING_RABBITMQ_HOST: localhost
