@@ -289,6 +289,68 @@ class CashLedgerIT {
         assertThat(state(moving)).isEqualTo(DeliveryState.PICKED_UP);
     }
 
+    @Test
+    @DisplayName("The report: revenue under the pickup district less refunds, Colombo days, shortages, cash not banked")
+    void report() throws Exception {
+        DeliverySession damaged = pickUp("350.00");
+        pickUp("420.00");
+        DeliverySession old = pickUp("500.00");
+        // 22 November 00:30 in Colombo is still the 21st in UTC.
+        jdbc.update("UPDATE cash_entries SET recorded_at = '2026-11-21T19:00:00Z' WHERE delivery_id = ?", old.getDeliveryId());
+        DeliverySession cross = job(kandyCourier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00", "2500.00");
+        cross.setCurrentState(DeliveryState.OUT_FOR_DELIVERY);
+        sessions.saveAndFlush(cross);
+        ok(step(cross, kandyCourier, "DELIVERED", "2500.00"), 200);
+        String id = ok(post("/api/v1/cash/handovers"), courier, 201).at("/data/handoverId").asText();
+        ok(count(id, dispatcher, "1200.00", "70 missing"), 200);
+        fail(damaged, "DAMAGED");
+        ok(refund(dispatcher, damaged), 201);
+        pickUp("350.00");
+
+        JsonNode old22 = ok(get("/api/v1/cash/report?from=2026-11-21&to=2026-11-22"), admin, 200).get("data");
+        assertThat(old22.at("/days")).hasSize(2);
+        assertThat(old22.at("/days/0/revenue").decimalValue()).isEqualByComparingTo("0");
+        assertThat(old22.at("/days/1/revenue").decimalValue()).isGreaterThanOrEqualTo(new BigDecimal("500"));
+
+        java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Colombo"));
+        jdbc.update("DELETE FROM cash_entries WHERE delivery_id = ?", old.getDeliveryId());
+        JsonNode all = ok(get("/api/v1/cash/report?from=" + today.minusDays(1) + "&to=" + today.plusDays(1)), admin, 200).get("data");
+        assertMoney(all, "revenue", "770");
+        assertMoney(all, "refunds", "350");
+        assertMoney(all, "cod", "2500");
+        assertMoney(all, "shortage", "70");
+        assertMoney(all, "excess", "0");
+        assertMoney(all, "withCouriers", "2850");
+        assertMoney(all, "atHub", "850");
+        assertThat(all.get("parcels").asInt()).isEqualTo(3);
+        assertThat(all.get("days")).hasSize(3);
+        assertThat(all.at("/districts/0/district").asText()).isEqualTo("COLOMBO");
+        assertThat(all.at("/districts/0/revenue").decimalValue()).isEqualByComparingTo("770");
+        assertThat(all.at("/districts/1/district").asText()).isEqualTo("KANDY");
+        assertThat(all.at("/districts/1/lastMileDelivered").asInt()).isEqualTo(1);
+        assertThat(all.at("/districts/1/revenue").decimalValue()).isEqualByComparingTo("0");
+
+        JsonNode kandy = ok(get("/api/v1/cash/report?from=" + today + "&to=" + today + "&district=COLOMBO"),
+                kandyDispatcher, 200).get("data");
+        assertMoney(kandy, "revenue", "0");
+        assertMoney(kandy, "withCouriers", "2500");
+        assertThat(kandy.get("districts")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("The report is for operations only and needs a valid period")
+    void reportRules() throws Exception {
+        status(send(get("/api/v1/cash/report?from=2026-11-01&to=2026-11-02"), courier), 403);
+        status(send(get("/api/v1/cash/report?from=2026-11-02&to=2026-11-01"), admin), 400);
+        status(send(get("/api/v1/cash/report?from=2026-01-01&to=2026-11-01"), admin), 400);
+        status(send(get("/api/v1/cash/report?from=yesterday&to=2026-11-01"), admin), 400);
+        status(send(get("/api/v1/cash/report"), admin), 400);
+    }
+
+    private static void assertMoney(JsonNode report, String field, String amount) {
+        assertThat(report.get(field).decimalValue()).as(field).isEqualByComparingTo(amount);
+    }
+
     // ---- steps
 
     private DeliverySession pickUp(String fee) throws Exception {

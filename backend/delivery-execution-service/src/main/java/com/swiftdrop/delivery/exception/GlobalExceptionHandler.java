@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.sql.SQLException;
 import java.util.stream.Collectors;
@@ -97,6 +98,13 @@ public class GlobalExceptionHandler {
         log.warn("Validation error on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(errors));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(400, "Validation Failed", errors, request.getRequestURI()));
+    }
+
+    /** A malformed id, date or district in the URL. Spring does not mark this one as a client error. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiErrorResponse.of(400, "Bad Request",
+                "Invalid value for " + ex.getName(), request.getRequestURI()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -318,6 +318,46 @@ paths:
         "403":
           description: The caller's role or district does not allow this
 
+  /api/v1/cash/report:
+    get:
+      tags:
+        - Cash
+      summary: Revenue and cash for 1 to 90 inclusive Colombo dates
+      description: >-
+        A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN gets every district or the one given.
+      operationId: getCashReport
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: district
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashReportResponse"
+        "400":
+          description: Missing or invalid dates
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+
   /api/v1/cash/handovers/{handoverId}/entries:
     get:
       tags:
@@ -962,6 +1002,116 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CashDepositResponse"
+
+    CashReportDay:
+      type: object
+      required:
+        - date
+        - revenue
+        - parcels
+      properties:
+        date:
+          type: string
+          format: date
+        revenue:
+          type: number
+        parcels:
+          type: integer
+
+    CashReportDistrict:
+      type: object
+      required:
+        - district
+        - revenue
+        - parcels
+        - lastMileDelivered
+      properties:
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        revenue:
+          type: number
+        parcels:
+          type: integer
+        lastMileDelivered:
+          type: integer
+          description: Parcels from other districts delivered here.
+
+    CashReportResponse:
+      type: object
+      description: Revenue and cash for a period, read from the cash ledger.
+      required:
+        - from
+        - to
+        - currency
+        - revenue
+        - refunds
+        - parcels
+        - cod
+        - shortage
+        - excess
+        - withCouriers
+        - toCount
+        - atHub
+        - toConfirm
+        - days
+        - districts
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        currency:
+          type: string
+          example: LKR
+        revenue:
+          type: number
+          description: Delivery fees collected minus refunds, under the pickup district.
+        refunds:
+          type: number
+        parcels:
+          type: integer
+        cod:
+          type: number
+          description: Cash on delivery collected. The merchants' money, never revenue.
+        shortage:
+          type: number
+        excess:
+          type: number
+        withCouriers:
+          type: number
+          description: Now, with couriers and not handed over.
+        toCount:
+          type: number
+          description: Now, handed over but not counted.
+        atHub:
+          type: number
+          description: Now, counted at the hub and not banked.
+        toConfirm:
+          type: number
+          description: Now, banked and waiting for an admin.
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashReportDay"
+        districts:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashReportDistrict"
+
+    ApiResponseCashReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CashReportResponse"
+        timestamp:
+          type: string
+          format: date-time
 
     CountHandoverRequest:
       type: object

@@ -224,6 +224,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Revenue and cash for 1 to 90 inclusive Colombo dates
+         * @description A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN gets every district or the one given.
+         */
+        get: operations["getCashReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash/handovers/{handoverId}/entries": {
         parameters: {
             query?: never;
@@ -539,6 +559,53 @@ export interface components {
             /** @example 670 */
             hubCash: number;
             deposits: components["schemas"]["CashDepositResponse"][];
+        };
+        CashReportDay: {
+            /** Format: date */
+            date: string;
+            revenue: number;
+            parcels: number;
+        };
+        CashReportDistrict: {
+            district: components["schemas"]["SriLankanDistrict"];
+            revenue: number;
+            parcels: number;
+            /** @description Parcels from other districts delivered here. */
+            lastMileDelivered: number;
+        };
+        /** @description Revenue and cash for a period, read from the cash ledger. */
+        CashReportResponse: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @example LKR */
+            currency: string;
+            /** @description Delivery fees collected minus refunds, under the pickup district. */
+            revenue: number;
+            refunds: number;
+            parcels: number;
+            /** @description Cash on delivery collected. The merchants' money, never revenue. */
+            cod: number;
+            shortage: number;
+            excess: number;
+            /** @description Now, with couriers and not handed over. */
+            withCouriers: number;
+            /** @description Now, handed over but not counted. */
+            toCount: number;
+            /** @description Now, counted at the hub and not banked. */
+            atHub: number;
+            /** @description Now, banked and waiting for an admin. */
+            toConfirm: number;
+            days: components["schemas"]["CashReportDay"][];
+            districts: components["schemas"]["CashReportDistrict"][];
+        };
+        ApiResponseCashReportResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CashReportResponse"];
+            /** Format: date-time */
+            timestamp?: string;
         };
         CountHandoverRequest: {
             /** @example 670 */
@@ -1028,6 +1095,51 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseCashDeskResponse"];
                 };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getCashReport: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashReportResponse"];
+                };
+            };
+            /** @description Missing or invalid dates */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Missing or invalid gateway identity headers */
             401: {
