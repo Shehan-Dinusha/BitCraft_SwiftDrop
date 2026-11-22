@@ -46,10 +46,6 @@ public record CourierJobResponse(
                 example = "670.00")
         BigDecimal feeToCollect,
 
-        @Schema(description = "Cash to collect from the recipient for the merchant; null when there is none",
-                example = "2500.00")
-        BigDecimal codToCollect,
-
         @Schema(description = "ISO currency", example = "LKR")
         String currency
 ) {

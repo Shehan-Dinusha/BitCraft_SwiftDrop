@@ -818,9 +818,6 @@ components:
         declaredValue:
           type: number
           minimum: 0
-        codAmount:
-          type: number
-          minimum: 0
     B2bOrderRequest:
       type: object
       required: [externalRef, pickup, delivery, parcel]

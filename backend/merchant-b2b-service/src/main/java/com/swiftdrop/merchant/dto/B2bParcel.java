@@ -21,5 +21,7 @@ public record B2bParcel(
         @NotNull @AssertTrue @Schema(description = "Explicit confirmation that no prohibited items are included") Boolean prohibitedItemsDeclared,
         @Size(max = 512) @Pattern(regexp = "[^<>]*") @Schema(description = "Optional contents description") String itemDescription,
         @DecimalMin("0") @Schema(description = "Declared value in LKR") BigDecimal declaredValue,
-        @DecimalMin("0") @Schema(description = "Cash on delivery amount in LKR") BigDecimal codAmount
+        // Refused rather than ignored, so a merchant never believes the courier collects their money.
+        @DecimalMax(value = "0", message = "SwiftDrop collects no money from the recipient; leave codAmount out")
+        @Schema(hidden = true) BigDecimal codAmount
 ) {}

@@ -161,28 +161,14 @@ export function ActiveDeliveryExecutionPage() {
   const shownJob = job?.deliveryId === deliveryId ? job : null;
   const orderCancelled = Boolean(shownJob?.cancelled);
 
-  // Picking up takes the sender's fee, delivering takes the recipient's cash on delivery.
-  const cashFrom =
-    currentState === 'ASSIGNED'
-      ? 'sender'
-      : currentState === 'OUT_FOR_DELIVERY'
-        ? 'recipient'
-        : null;
-  const cashDue =
-    (cashFrom === 'sender' ? shownJob?.feeToCollect : cashFrom && shownJob?.codToCollect) || 0;
-  const cashKey = `${deliveryId}:${cashFrom}:${cashDue}`;
+  // Only a pickup takes money: the delivery fee, from the sender.
+  const atPickup = currentState === 'ASSIGNED';
+  const cashDue = (atPickup && shownJob?.feeToCollect) || 0;
+  const cashKey = `${deliveryId}:${cashDue}`;
   const cashConfirmed = cashDue > 0 && confirmedCash === cashKey;
   // Until the job is loaded the amount is unknown, so the step waits for it.
-  const cashBlocked = cashFrom !== null && (!shownJob || (cashDue > 0 && !cashConfirmed));
+  const cashBlocked = atPickup && (!shownJob || (cashDue > 0 && !cashConfirmed));
   const CASH_FIRST = 'Collect the cash and tick the box first.';
-
-  const openPoD = () => {
-    if (cashBlocked) {
-      setErrorMsg(CASH_FIRST);
-      return;
-    }
-    setIsPoDModalOpen(true);
-  };
 
   // Handle state transition with optimistic update and rollback on 409 Conflict
   const handleTransition = async (
@@ -191,7 +177,7 @@ export function ActiveDeliveryExecutionPage() {
     notes?: string
   ) => {
     if (!session?.deliveryId) return;
-    const takesCash = targetState === 'PICKED_UP' || targetState === 'DELIVERED';
+    const takesCash = targetState === 'PICKED_UP';
     if (takesCash && cashBlocked) {
       setErrorMsg(CASH_FIRST);
       return;
@@ -403,7 +389,6 @@ export function ActiveDeliveryExecutionPage() {
               viaHubs={viaHubs}
               pickupDistrict={session.pickupDistrict}
               deliveryDistrict={session.deliveryDistrict}
-              cashFrom={cashFrom}
               cashConfirmed={cashConfirmed}
               onCashConfirmedChange={(checked) => setConfirmedCash(checked ? cashKey : null)}
             />
@@ -414,7 +399,7 @@ export function ActiveDeliveryExecutionPage() {
             <OneTapStateTransitionCard
               session={session}
               onTransition={handleTransition}
-              onOpenPoD={openPoD}
+              onOpenPoD={() => setIsPoDModalOpen(true)}
               blocked={cashBlocked}
               isPoDVerified={isPoDVerified}
               pendingState={pendingState}
@@ -428,7 +413,7 @@ export function ActiveDeliveryExecutionPage() {
                 next={allowedNextStates}
                 onTransition={(target) => {
                   if (target === 'DELIVERED' && !isPoDVerified) {
-                    openPoD();
+                    setIsPoDModalOpen(true);
                     return;
                   }
                   handleTransition(target);

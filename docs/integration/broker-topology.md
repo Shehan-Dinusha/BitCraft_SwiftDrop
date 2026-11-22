@@ -86,7 +86,6 @@
 | `ORDER_CANCELLED` | `order.cancelled` | customer-order-service |
 | `PARCEL_STATUS_CHANGED` | `parcel.status.changed` | delivery-execution-service |
 | `PARCEL_FEE_REVISED` | `parcel.fee.revised` | delivery-execution-service |
-| `CASH_TRANSACTION_RECORDED` | `cash.transaction.recorded` | delivery-execution-service |
 | `DISPATCH_COURIER_ASSIGNED` | `dispatch.courier.assigned` | dispatch-assignment-service |
 | `DISPATCH_FAILED` | `dispatch.failed` | dispatch-assignment-service |
 | `MERCHANT_APPROVED` | `merchant.approved` | merchant-b2b-service |

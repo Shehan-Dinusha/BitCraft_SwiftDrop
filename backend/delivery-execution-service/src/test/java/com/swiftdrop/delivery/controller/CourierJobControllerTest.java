@@ -49,7 +49,7 @@ class CourierJobControllerTest {
                 deliveryId, false, OrderSpeed.STANDARD,
                 new CourierJobStop("Nimal Perera", "+94771234567", null, "12 Galle Road", null, "Colombo 03", "00300",
                         SriLankanDistrict.COLOMBO),
-                null, null, "Books", null, null, null, BigDecimal.TWO, new BigDecimal("670.00"), null, "LKR"));
+                null, null, "Books", null, null, null, BigDecimal.TWO, new BigDecimal("670.00"), "LKR"));
 
         mockMvc.perform(asCourier())
                 .andExpect(status().isOk())

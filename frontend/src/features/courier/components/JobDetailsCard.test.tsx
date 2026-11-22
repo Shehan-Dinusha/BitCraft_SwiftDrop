@@ -38,13 +38,12 @@ const show = (value: CourierJobResponse, viaHubs: boolean) =>
   );
 
 describe('JobDetailsCard', () => {
-  it('asks the courier to tick only the cash the next step takes', async () => {
+  it('asks the courier to tick the fee they collected', async () => {
     const onChange = vi.fn();
     render(
       <JobDetailsCard
-        job={job({ pickup: sender, dropOff: recipient, feeToCollect: 350, codToCollect: 2500 })}
+        job={job({ pickup: sender, dropOff: recipient, feeToCollect: 350 })}
         viaHubs={false}
-        cashFrom="sender"
         onCashConfirmedChange={onChange}
       />
     );
@@ -71,12 +70,12 @@ describe('JobDetailsCard', () => {
     expect(screen.queryByText('Deliver to')).not.toBeInTheDocument();
   });
 
-  it('sends the last courier from the drop-off hub to the recipient, with the cash on delivery', () => {
-    show(job({ dropOff: recipient, codToCollect: 2500 }), true);
+  it('sends the last courier from the drop-off hub to the recipient, with no money to collect', () => {
+    show(job({ dropOff: recipient }), true);
 
     expect(screen.getByText('Kandy hub')).toBeInTheDocument();
     expect(screen.getByText('Kamala Silva')).toBeInTheDocument();
-    expect(screen.getByText('Collect cash from the recipient')).toBeInTheDocument();
+    expect(screen.queryByText(/Collect cash/)).not.toBeInTheDocument();
     expect(screen.queryByText('Hand in at')).not.toBeInTheDocument();
   });
 

@@ -27,7 +27,7 @@ import java.time.temporal.ChronoUnit;
  * contract, so only valid contract values can appear.</p>
  *
  * <p>Deliberately excluded: customer id, correlation id, internal sub-status, districts, merchant id, database ids,
- * and every monetary/pricing field ({@code codAmount}, {@code declaredValue}, {@code estimatedPrice},
+ * and every monetary/pricing field ({@code declaredValue}, {@code estimatedPrice},
  * {@code currency}) while D6 is provisional pending Member 7.</p>
  *
  * <p>Signing (Step 6) and sending (Step 7) must use exactly the bytes from {@link #buildBytes}.</p>

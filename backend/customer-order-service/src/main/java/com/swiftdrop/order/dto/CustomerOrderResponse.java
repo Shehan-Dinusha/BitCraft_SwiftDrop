@@ -125,9 +125,6 @@ public class CustomerOrderResponse {
     @Schema(description = "Declared merchandise value in LKR", example = "5000.00")
     private BigDecimal declaredValue;
 
-    @Schema(description = "COD amount in LKR", example = "0.00")
-    private BigDecimal codAmount;
-
     @Schema(description = "Prohibited items declaration flag", example = "true")
     private Boolean prohibitedItemsDeclared;
 
@@ -203,7 +200,6 @@ public class CustomerOrderResponse {
                 .itemDescription(order.getItemDescription())
                 .customerNotes(order.getCustomerNotes())
                 .declaredValue(order.getDeclaredValue())
-                .codAmount(order.getCodAmount())
                 .prohibitedItemsDeclared(order.getProhibitedItemsDeclared())
                 .pricingRuleVersionId(order.getPricingRuleVersionId())
                 .estimatedFee(order.getEstimatedFee())

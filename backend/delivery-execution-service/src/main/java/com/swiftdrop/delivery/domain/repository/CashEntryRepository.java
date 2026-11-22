@@ -3,7 +3,6 @@ package com.swiftdrop.delivery.domain.repository;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.delivery.domain.entity.CashEntry;
 import com.swiftdrop.delivery.domain.enums.CashEntryType;
-import com.swiftdrop.delivery.domain.enums.CashKind;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -31,7 +30,7 @@ public interface CashEntryRepository extends JpaRepository<CashEntry, Long> {
 
     List<CashEntry> findByHandoverIdOrderByRecordedAtDesc(UUID handoverId);
 
-    Optional<CashEntry> findByDeliveryIdAndKindAndEntryType(UUID deliveryId, CashKind kind, CashEntryType entryType);
+    Optional<CashEntry> findByDeliveryIdAndEntryType(UUID deliveryId, CashEntryType entryType);
 
     /**
      * Puts exactly the entries listed into the handover. Fewer rows than listed means another request took

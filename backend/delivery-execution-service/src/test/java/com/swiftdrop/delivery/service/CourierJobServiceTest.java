@@ -48,14 +48,13 @@ class CourierJobServiceTest {
     @DisplayName("Same district, before pickup: the sender, the fee and the recipient")
     void sameDistrictBeforePickup() {
         session(DeliveryState.ASSIGNED, SriLankanDistrict.COLOMBO);
-        order(false, "2500.00");
+        order(false);
 
         CourierJobResponse job = service().getJob(deliveryId, courier(courierId));
 
         assertThat(job.pickup().name()).isEqualTo("Sender");
         assertThat(job.dropOff().name()).isEqualTo("Recipient");
         assertThat(job.feeToCollect()).isEqualByComparingTo("670.00");
-        assertThat(job.codToCollect()).isEqualByComparingTo("2500.00");
         assertThat(job.notes()).isEqualTo("Ring twice");
     }
 
@@ -63,57 +62,53 @@ class CourierJobServiceTest {
     @DisplayName("Same district, after pickup: only the recipient, and the fee is no longer due")
     void sameDistrictAfterPickup() {
         session(DeliveryState.IN_TRANSIT, SriLankanDistrict.COLOMBO);
-        order(false, "0.00");
+        order(false);
 
         CourierJobResponse job = service().getJob(deliveryId, courier(courierId));
 
         assertThat(job.pickup()).isNull();
         assertThat(job.feeToCollect()).isNull();
         assertThat(job.dropOff()).isNotNull();
-        assertThat(job.codToCollect()).isNull();
     }
 
     @Test
-    @DisplayName("Cross-district, first courier: the sender and the fee, never the recipient or their cash")
+    @DisplayName("Cross-district, first courier: the sender and the fee, never the recipient")
     void firstCourierNeverSeesTheRecipient() {
         session(DeliveryState.ASSIGNED, SriLankanDistrict.KANDY);
-        order(false, "2500.00");
+        order(false);
 
         CourierJobResponse job = service().getJob(deliveryId, courier(courierId));
 
         assertThat(job.pickup()).isNotNull();
         assertThat(job.feeToCollect()).isEqualByComparingTo("670.00");
         assertThat(job.dropOff()).isNull();
-        assertThat(job.codToCollect()).isNull();
     }
 
     @Test
     @DisplayName("Cross-district, on the way to the hub: no contact is needed")
     void firstCourierAfterPickup() {
         session(DeliveryState.PICKED_UP, SriLankanDistrict.KANDY);
-        order(false, "2500.00");
+        order(false);
 
         CourierJobResponse job = service().getJob(deliveryId, courier(courierId));
 
         assertThat(job.pickup()).isNull();
         assertThat(job.dropOff()).isNull();
         assertThat(job.feeToCollect()).isNull();
-        assertThat(job.codToCollect()).isNull();
     }
 
     @ParameterizedTest
     @EnumSource(value = DeliveryState.class, names = {"AT_DESTINATION_HUB", "OUT_FOR_DELIVERY"})
-    @DisplayName("Cross-district, last courier: the recipient and their cash, never the sender or the fee")
+    @DisplayName("Cross-district, last courier: the recipient, never the sender or the fee")
     void lastCourierNeverSeesTheSender(DeliveryState state) {
         session(state, SriLankanDistrict.KANDY);
-        order(false, "2500.00");
+        order(false);
 
         CourierJobResponse job = service().getJob(deliveryId, courier(courierId));
 
         assertThat(job.pickup()).isNull();
         assertThat(job.feeToCollect()).isNull();
         assertThat(job.dropOff()).isNotNull();
-        assertThat(job.codToCollect()).isEqualByComparingTo("2500.00");
     }
 
     @ParameterizedTest
@@ -121,7 +116,7 @@ class CourierJobServiceTest {
     @DisplayName("A finished delivery gives no contacts and no amounts")
     void finishedDeliveryGivesNoContacts(DeliveryState state) {
         session(state, SriLankanDistrict.COLOMBO);
-        order(false, "2500.00");
+        order(false);
 
         assertNothingToDo(service().getJob(deliveryId, courier(courierId)));
     }
@@ -130,7 +125,7 @@ class CourierJobServiceTest {
     @DisplayName("An order cancelled after assignment: nothing to pick up or collect")
     void cancelledOrderGivesNothingToCollect() {
         session(DeliveryState.ASSIGNED, SriLankanDistrict.COLOMBO);
-        order(true, "2500.00");
+        order(true);
 
         CourierJobResponse job = service().getJob(deliveryId, courier(courierId));
 
@@ -176,7 +171,6 @@ class CourierJobServiceTest {
         assertThat(job.dropOff()).isNull();
         assertThat(job.notes()).isNull();
         assertThat(job.feeToCollect()).isNull();
-        assertThat(job.codToCollect()).isNull();
     }
 
     private CourierJobService service() {
@@ -194,11 +188,11 @@ class CourierJobServiceTest {
         when(repository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
     }
 
-    private void order(boolean cancelled, String cod) {
+    private void order(boolean cancelled) {
         when(orderJobClient.get(orderId)).thenReturn(new OrderJobClient.OrderJob(
                 cancelled, OrderSpeed.STANDARD, stop("Sender"), stop("Recipient"), "Ring twice", "Books",
                 BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TWO,
-                new BigDecimal("670.00"), new BigDecimal(cod), "LKR"));
+                new BigDecimal("670.00"), "LKR"));
     }
 
     private static CourierJobStop stop(String name) {

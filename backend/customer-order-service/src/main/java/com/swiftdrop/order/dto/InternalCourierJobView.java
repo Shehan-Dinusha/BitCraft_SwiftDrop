@@ -51,9 +51,6 @@ public record InternalCourierJobView(
         @Schema(description = "Delivery fee the sender pays at pickup", example = "670.00")
         BigDecimal fee,
 
-        @Schema(description = "Cash on delivery the recipient pays, belonging to the merchant", example = "0.00")
-        BigDecimal codAmount,
-
         @Schema(description = "ISO currency", example = "LKR")
         String currency
 ) {

@@ -6,7 +6,7 @@ import { CashState } from '@/design-system/components/CashState/CashState';
 import { MoneyAmount } from '@/design-system/components/MoneyAmount/MoneyAmount';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
-import { cashTime, handoverState, kindLabel, lkr } from '@/features/cash/cashDisplay';
+import { cashTime, handoverState, lkr } from '@/features/cash/cashDisplay';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { cashApi, type CourierCashResponse } from '@/services/api/cashApi';
 
@@ -93,22 +93,6 @@ export function CourierCashPage() {
                   <MoneyAmount amount={cash.inHand} currency={cash.currency} size="lg" />
                 </div>
               </div>
-              {cash.cod > 0 && (
-                <dl className="grid grid-cols-2 gap-3 text-body">
-                  <div>
-                    <dt className="text-label text-secondary">Delivery fees</dt>
-                    <dd>
-                      <MoneyAmount amount={cash.fees} currency={cash.currency} />
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-label text-secondary">Cash on delivery</dt>
-                    <dd>
-                      <MoneyAmount amount={cash.cod} currency={cash.currency} />
-                    </dd>
-                  </div>
-                </dl>
-              )}
               <Button
                 variant="primary"
                 className="min-h-target w-full"
@@ -135,9 +119,7 @@ export function CourierCashPage() {
                       <p className="truncate font-mono text-body-strong tabular-nums text-primary">
                         {entry.trackingNumber}
                       </p>
-                      <p className="text-caption text-secondary">
-                        {kindLabel(entry)} · {cashTime(entry.recordedAt)}
-                      </p>
+                      <p className="text-caption text-secondary">{cashTime(entry.recordedAt)}</p>
                     </div>
                     <MoneyAmount amount={entry.amount} currency={entry.currency} />
                   </li>

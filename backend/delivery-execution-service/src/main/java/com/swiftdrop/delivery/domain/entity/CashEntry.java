@@ -2,7 +2,6 @@ package com.swiftdrop.delivery.domain.entity;
 
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.delivery.domain.enums.CashEntryType;
-import com.swiftdrop.delivery.domain.enums.CashKind;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,7 +16,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One movement of cash for one parcel. The facts are written once and never change; only the handover and
+ * A delivery fee collected or refunded for one parcel. The facts are written once and never change; only the handover and
  * deposit that later carry it are filled in, by bulk updates in the repository.
  */
 @Entity
@@ -35,10 +34,6 @@ public class CashEntry {
     @Column(name = "entry_type", nullable = false, updatable = false, length = 16)
     private CashEntryType entryType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "kind", nullable = false, updatable = false, length = 16)
-    private CashKind kind;
-
     @Column(name = "delivery_id", nullable = false, updatable = false)
     private UUID deliveryId;
 
@@ -55,7 +50,7 @@ public class CashEntry {
     @Column(name = "courier_name", updatable = false, length = 128)
     private String courierName;
 
-    /** The pickup district for a fee, the drop-off district for cash on delivery. */
+    /** The pickup district: the fee is its revenue. */
     @Enumerated(EnumType.STRING)
     @Column(name = "district", updatable = false, length = 64)
     private SriLankanDistrict district;
@@ -84,11 +79,10 @@ public class CashEntry {
     protected CashEntry() {
     }
 
-    public CashEntry(CashEntryType entryType, CashKind kind, DeliverySession session, UUID courierId, String courierName,
+    public CashEntry(CashEntryType entryType, DeliverySession session, UUID courierId, String courierName,
                      SriLankanDistrict district, BigDecimal amount, String currency, String note, UUID recordedBy) {
         this.entryId = UUID.randomUUID();
         this.entryType = entryType;
-        this.kind = kind;
         this.deliveryId = session.getDeliveryId();
         this.orderId = session.getOrderId();
         this.trackingNumber = session.getTrackingNumber();
@@ -104,7 +98,6 @@ public class CashEntry {
 
     public UUID getEntryId() { return entryId; }
     public CashEntryType getEntryType() { return entryType; }
-    public CashKind getKind() { return kind; }
     public UUID getDeliveryId() { return deliveryId; }
     public UUID getOrderId() { return orderId; }
     public String getTrackingNumber() { return trackingNumber; }

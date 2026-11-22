@@ -46,9 +46,6 @@ public record OrderCreatedEvent(
         @JsonProperty("speed")
         OrderSpeed speed,
 
-        @JsonProperty("codAmount")
-        BigDecimal codAmount,
-
         @JsonProperty("declaredValue")
         BigDecimal declaredValue,
 

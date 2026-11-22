@@ -13,7 +13,6 @@ import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.domain.enums.CashDepositStatus;
 import com.swiftdrop.delivery.domain.enums.CashEntryType;
 import com.swiftdrop.delivery.domain.enums.CashHandoverStatus;
-import com.swiftdrop.delivery.domain.enums.CashKind;
 import com.swiftdrop.delivery.domain.repository.CashDepositRepository;
 import com.swiftdrop.delivery.domain.repository.CashEntryRepository;
 import com.swiftdrop.delivery.domain.repository.CashHandoverRepository;
@@ -166,23 +165,23 @@ public class CashDeskService {
         SriLankanDistrict district = ownDistrict(caller);
         DeliverySession session = deliverySessionRepository.findByTrackingNumber(request.trackingNumber().trim().toUpperCase())
                 .orElseThrow(() -> new CashRecordNotFoundException("No parcel with this tracking number."));
-        CashEntry fee = entryRepository.findByDeliveryIdAndKindAndEntryType(
-                        session.getDeliveryId(), CashKind.DELIVERY_FEE, CashEntryType.COLLECTION)
+        CashEntry fee = entryRepository.findByDeliveryIdAndEntryType(
+                        session.getDeliveryId(), CashEntryType.COLLECTION)
                 .filter(entry -> entry.getDistrict() == district)
                 .orElseThrow(() -> new CashRecordNotFoundException("Your district collected no fee for this parcel."));
         if (session.getCurrentState() != DeliveryState.FAILED || !REFUNDABLE.contains(session.getFailedReason())) {
             throw new CashConflictException(
                     "Only a delivery that failed because the parcel was lost or damaged can be refunded.");
         }
-        if (entryRepository.findByDeliveryIdAndKindAndEntryType(
-                session.getDeliveryId(), CashKind.DELIVERY_FEE, CashEntryType.REFUND).isPresent()) {
+        if (entryRepository.findByDeliveryIdAndEntryType(
+                session.getDeliveryId(), CashEntryType.REFUND).isPresent()) {
             throw new CashConflictException("This fee was already refunded.");
         }
         BigDecimal hubCash = counted(handoverRepository.findAtHub(district)).subtract(entryRepository.sumOpenRefunds(district));
         if (hubCash.compareTo(fee.getAmount()) < 0) {
             throw new CashConflictException("There is not enough counted cash at the hub for this refund.");
         }
-        return CashEntryResponse.of(entryRepository.saveAndFlush(new CashEntry(CashEntryType.REFUND, CashKind.DELIVERY_FEE,
+        return CashEntryResponse.of(entryRepository.saveAndFlush(new CashEntry(CashEntryType.REFUND,
                 session, fee.getCourierId(), fee.getCourierName(), district, fee.getAmount(), fee.getCurrency(),
                 request.reason().trim(), caller.userId())));
     }

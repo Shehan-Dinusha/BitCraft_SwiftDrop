@@ -51,7 +51,6 @@ public class InternalCourierJobService {
                 order.getHeightCm(),
                 order.getActualWeightKg(),
                 order.getFinalFee(),
-                order.getCodAmount(),
                 order.getCurrency());
     }
 }

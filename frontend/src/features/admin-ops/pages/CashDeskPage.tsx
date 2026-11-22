@@ -9,7 +9,7 @@ import { HighDensityDataGrid } from '@/design-system/components/HighDensityDataG
 import { MoneyAmount } from '@/design-system/components/MoneyAmount/MoneyAmount';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
 import { Tabs } from '@/design-system/components/Tabs/Tabs';
-import { cashTime, handoverState, kindLabel, lkr, parseAmount } from '@/features/cash/cashDisplay';
+import { cashTime, handoverState, lkr, parseAmount } from '@/features/cash/cashDisplay';
 import { districtLabel } from '@/features/profile/profileFormat';
 import { SRI_LANKAN_DISTRICTS } from '@/services/api/authApi';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
@@ -527,7 +527,8 @@ function EntryList({ entries }: { entries: CashEntryResponse[] }) {
               {entry.trackingNumber}
             </p>
             <p className="break-words text-caption text-secondary">
-              {entry.note ?? kindLabel(entry)} · {cashTime(entry.recordedAt)}
+              {entry.note ? `${entry.note} · ` : ''}
+              {cashTime(entry.recordedAt)}
             </p>
           </div>
           <MoneyAmount amount={entry.amount} currency={entry.currency} size="sm" />

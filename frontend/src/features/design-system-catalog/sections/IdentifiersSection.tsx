@@ -80,7 +80,7 @@ export function IdentifiersSection() {
         </DemoRow>
       </CatalogRow>
 
-      <CatalogRow label="Cash state" hint="Cash on delivery lifecycle">
+      <CatalogRow label="Cash state" hint="Courier cash lifecycle">
         <DemoRow>
           {cashStates.map((state) => (
             <CashState key={state} state={state} amount={450} />

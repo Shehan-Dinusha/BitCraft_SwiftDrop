@@ -67,7 +67,6 @@ class OrderPdfGeneratorServiceTest {
                 .widthCm(new BigDecimal("20.0"))
                 .heightCm(new BigDecimal("10.0"))
                 .itemDescription("Books")
-                .codAmount(new BigDecimal("2500.00"))
                 .declaredValue(new BigDecimal("7500.00"))
                 .prohibitedItemsDeclared(true)
                 .pricingRuleVersionId("PRICING-2026-V1")
@@ -99,8 +98,9 @@ class OrderPdfGeneratorServiceTest {
 
         assertThat(label)
                 .contains("Test Recipient", "+94 71 987 6543", "No. 12, Kandy Road", "Peradeniya", "20400")
-                .contains("NUWARA ELIYA", "EXPRESS", "COLLECT CASH FROM RECIPIENT", "LKR 2,500.00", "25.5 x 20 x 10 cm", "1 of 1");
+                .contains("NUWARA ELIYA", "EXPRESS", "25.5 x 20 x 10 cm", "1 of 1");
         assertThat(label)
+                .doesNotContain("LKR", "CASH")
                 .doesNotContain(PICKUP_PHONE, "+94 77 123 4567")
                 .doesNotContain(RECIPIENT_EMAIL)
                 .doesNotContain(sampleOrder.getOrderId().toString());
@@ -138,8 +138,7 @@ class OrderPdfGeneratorServiceTest {
         String receipt = pageText(new PdfReader(pdfGeneratorService.generateShippingLabelAndReceiptPdf(sampleOrder)), 2);
 
         assertThat(receipt)
-                .contains("Estimated delivery fee", "LKR 1,185.00", "Colombo 03", "Peradeniya", "Nuwara Eliya district")
-                .contains("Cash to collect from the recipient", "LKR 2,500.00");
+                .contains("Estimated delivery fee", "LKR 1,185.00", "Colombo 03", "Peradeniya", "Nuwara Eliya district");
         assertThat(receipt)
                 .doesNotContain(PICKUP_PHONE, RECIPIENT_PHONE, "+94 71 987 6543", RECIPIENT_EMAIL)
                 .doesNotContain("Galle Road", "Kandy Road")
@@ -168,7 +167,7 @@ class OrderPdfGeneratorServiceTest {
         String text = pageText(reader, 1);
         assertThat(text)
                 .contains("Delivery receipt", "DELIVERED", "SD-7K4M-9QX2", "Test Recipient")
-                .contains("Delivery fee", "LKR 1,185.00", "Cash collected from the recipient", "LKR 2,500.00");
+                .contains("Delivery fee", "LKR 1,185.00");
         assertThat(text)
                 .doesNotContain(PICKUP_PHONE, RECIPIENT_PHONE, "+94 71 987 6543", RECIPIENT_EMAIL)
                 .doesNotContain("TOTAL PAID", "Tax Invoice");
@@ -177,7 +176,6 @@ class OrderPdfGeneratorServiceTest {
     @Test
     @DisplayName("Optional fields may be missing without breaking the documents")
     void toleratesMissingOptionalFields() throws Exception {
-        sampleOrder.setCodAmount(null);
         sampleOrder.setDeclaredValue(null);
         sampleOrder.setItemDescription(null);
         sampleOrder.setChargeableWeightKg(null);

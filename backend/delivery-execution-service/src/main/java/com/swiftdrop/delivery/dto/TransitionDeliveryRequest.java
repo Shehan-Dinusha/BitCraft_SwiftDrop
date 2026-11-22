@@ -22,8 +22,8 @@ public record TransitionDeliveryRequest(
         @Schema(description = "Actor role executing transition", example = "COURIER")
         String actorRole,
 
-        @Schema(description = "Cash the courier confirms collecting with this step: the delivery fee for PICKED_UP, "
-                + "the cash on delivery for DELIVERED. Must match the amount due; leave out when nothing is due.",
+        @Schema(description = "The delivery fee the courier confirms collecting from the sender with PICKED_UP. "
+                + "Must match the fee; leave out for other steps and when nothing is due.",
                 example = "670.00")
         BigDecimal cashCollected
 ) {

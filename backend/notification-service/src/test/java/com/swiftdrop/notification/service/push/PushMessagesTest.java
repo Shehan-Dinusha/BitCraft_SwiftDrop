@@ -15,7 +15,7 @@ class PushMessagesTest {
             "courierName", "Kamal Perera",
             "failureReason", "the recipient was not available",
             "pickupDistrict", "Colombo",
-            "codAmount", "4500.00");
+            "declaredValue", "4500.00");
 
     @Test
     @DisplayName("Customers: picked up, out for delivery, delivered and failed open the tracking page")

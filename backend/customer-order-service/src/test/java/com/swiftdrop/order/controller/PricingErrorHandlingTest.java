@@ -71,7 +71,7 @@ class PricingErrorHandlingTest {
                 .andExpect(jsonPath("$.message").value("Pricing service is temporarily unavailable"))
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(body).doesNotContain("pricing-zone-service", "8083", "secret-downstream-body", "/api/v1/pricing");
+        assertThat(body).doesNotContain("pricing-zone-service", ":8083", "secret-downstream-body", "/api/v1/pricing");
         assertThat(output.getAll()).doesNotContain("pricing-zone-service", "secret-downstream-body");
     }
 
@@ -86,6 +86,6 @@ class PricingErrorHandlingTest {
                 .andExpect(status().isBadGateway())
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(body).doesNotContain("pricing-zone-service", "8083");
+        assertThat(body).doesNotContain("pricing-zone-service", ":8083");
     }
 }

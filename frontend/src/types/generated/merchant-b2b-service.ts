@@ -1422,7 +1422,6 @@ export interface components {
             prohibitedItemsDeclared: true;
             itemDescription?: string;
             declaredValue?: number;
-            codAmount?: number;
         };
         B2bOrderRequest: {
             externalRef: string;

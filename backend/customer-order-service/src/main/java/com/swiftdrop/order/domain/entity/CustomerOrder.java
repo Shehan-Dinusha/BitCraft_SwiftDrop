@@ -158,10 +158,6 @@ public class CustomerOrder {
     @Builder.Default
     private BigDecimal declaredValue = BigDecimal.ZERO;
 
-    @Column(name = "cod_amount", precision = 12, scale = 2)
-    @Builder.Default
-    private BigDecimal codAmount = BigDecimal.ZERO;
-
     @Column(name = "prohibited_items_declared", nullable = false)
     @Builder.Default
     private Boolean prohibitedItemsDeclared = false;

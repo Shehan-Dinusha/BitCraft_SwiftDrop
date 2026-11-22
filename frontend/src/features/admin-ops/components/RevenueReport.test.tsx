@@ -12,7 +12,6 @@ const report: CashReportResponse = {
   revenue: 770,
   refunds: 350,
   parcels: 3,
-  cod: 2500,
   shortage: 70,
   excess: 0,
   withCouriers: 2850,
@@ -48,12 +47,11 @@ describe('RevenueReport', () => {
     );
   });
 
-  it('keeps revenue, merchant money and cash not banked apart', async () => {
+  it('keeps revenue and cash not banked apart', async () => {
     vi.spyOn(cashApi, 'report').mockResolvedValue(report);
     show(true);
 
     expect(await screen.findByText('3 parcels, less LKR 350.00 refunded')).toBeInTheDocument();
-    expect(screen.getByText('LKR 2,500.00')).toBeInTheDocument();
     expect(screen.getByText('LKR 3,800.00')).toBeInTheDocument();
     expect(screen.getByText('Couriers LKR 2,850.00 · hubs LKR 950.00')).toBeInTheDocument();
     expect(screen.getByRole('row', { name: /Kandy/ })).toHaveTextContent('1');

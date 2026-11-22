@@ -65,7 +65,6 @@ public class CourierJobService {
                 order.heightCm(),
                 order.weightKg(),
                 beforePickup ? positive(order.fee()) : null,
-                deliversIt ? positive(order.codAmount()) : null,
                 order.currency());
     }
 

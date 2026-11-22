@@ -52,6 +52,15 @@ class MerchantOrderNormalizerTest {
         rejects(new B2bParcel(BigDecimal.ONE, null, max, max, max, true, null, null, null), "must not exceed 15,000 litres");
     }
 
+    @Test void refusesCashOnDeliveryInsteadOfIgnoringIt() {
+        rejects(new B2bParcel(BigDecimal.ONE, null, L, W, H, true, null, null, new BigDecimal("2500")),
+                "SwiftDrop collects no money from the recipient");
+        var base = B2bTestData.order();
+        var body = normalizer.normalize(UUID.randomUUID(), new B2bOrderRequest(base.externalRef(), base.pickup(),
+                base.delivery(), new B2bParcel(BigDecimal.ONE, null, L, W, H, true, null, null, BigDecimal.ZERO), base.speed()));
+        assertThat(body).doesNotContainKey("codAmount");
+    }
+
     private void rejects(B2bParcel parcel, String message) {
         var base = B2bTestData.order();
         assertThatThrownBy(() -> normalizer.normalize(UUID.randomUUID(), new B2bOrderRequest(

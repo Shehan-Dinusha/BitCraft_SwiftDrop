@@ -103,7 +103,7 @@ class CashLedgerIT {
     @Test
     @DisplayName("A pickup needs the exact fee confirmed, and records it once under the pickup district")
     void pickupRecordsTheFee() throws Exception {
-        DeliverySession job = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00", "2500.00");
+        DeliverySession job = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00");
 
         assertThat(message(step(job, courier, "PICKED_UP", null), 409)).contains("LKR 670.00 from the sender");
         assertThat(message(step(job, courier, "PICKED_UP", "350.00"), 409)).contains("LKR 670.00");
@@ -112,40 +112,36 @@ class CashLedgerIT {
         ok(step(job, courier, "PICKED_UP", "670"), 200);
 
         assertThat(state(job)).isEqualTo(DeliveryState.PICKED_UP);
-        assertThat(jdbc.queryForMap("SELECT kind, district, amount FROM cash_entries"))
-                .containsEntry("kind", "DELIVERY_FEE").containsEntry("district", "COLOMBO")
+        assertThat(jdbc.queryForMap("SELECT district, amount FROM cash_entries"))
+                .containsEntry("district", "COLOMBO")
                 .containsEntry("amount", new BigDecimal("670.00"));
         status(step(job, courier, "PICKED_UP", "670"), 409);
         JsonNode mine = ok(get("/api/v1/cash/me"), courier, 200);
         assertThat(mine.at("/data/inHand").decimalValue()).isEqualByComparingTo("670");
-        assertThat(mine.at("/data/cod").decimalValue()).isEqualByComparingTo("0");
     }
 
     @Test
-    @DisplayName("Cash on delivery goes to the drop-off district's courier, apart from the fee")
-    void codBelongsToTheLastCourier() throws Exception {
-        DeliverySession job = job(kandyCourier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00", "2500.00");
+    @DisplayName("A delivery takes no money: the recipient never pays")
+    void deliveryTakesNoMoney() throws Exception {
+        DeliverySession job = job(kandyCourier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00");
         job.setCurrentState(DeliveryState.OUT_FOR_DELIVERY);
         sessions.saveAndFlush(job);
 
-        assertThat(message(step(job, kandyCourier, "DELIVERED", null), 409)).contains("2,500.00 from the recipient");
-        ok(step(job, kandyCourier, "DELIVERED", "2500.00"), 200);
+        ok(step(job, kandyCourier, "DELIVERED", null), 200);
 
-        JsonNode mine = ok(get("/api/v1/cash/me"), kandyCourier, 200);
-        assertThat(mine.at("/data/cod").decimalValue()).isEqualByComparingTo("2500");
-        assertThat(mine.at("/data/fees").decimalValue()).isEqualByComparingTo("0");
-        assertThat(jdbc.queryForObject("SELECT district FROM cash_entries", String.class)).isEqualTo("KANDY");
+        assertThat(entries()).isZero();
+        assertThat(ok(get("/api/v1/cash/me"), kandyCourier, 200).at("/data/inHand").decimalValue()).isEqualByComparingTo("0");
     }
 
     @Test
     @DisplayName("Nothing due needs no confirmation; a cancelled order is never picked up")
     void nothingDueAndCancelled() throws Exception {
-        DeliverySession free = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, "0.00", "0.00");
+        DeliverySession free = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, "0.00");
         ok(step(free, courier, "PICKED_UP", null), 200);
         assertThat(entries()).isZero();
 
-        DeliverySession gone = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, "350.00", "0.00");
-        order(gone, true, "350.00", "0.00");
+        DeliverySession gone = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, "350.00");
+        order(gone, true, "350.00");
         assertThat(message(step(gone, courier, "PICKED_UP", "350.00"), 409)).contains("cancelled");
         assertThat(entries()).isZero();
     }
@@ -153,7 +149,7 @@ class CashLedgerIT {
     @Test
     @DisplayName("Without a verified caller, or for another courier's parcel, no step and no cash")
     void stepsNeedTheRightCaller() throws Exception {
-        DeliverySession job = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, "350.00", "0.00");
+        DeliverySession job = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, "350.00");
 
         status(mockMvc.perform(post("/api/v1/deliveries/{id}/transition", job.getDeliveryId())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -258,7 +254,7 @@ class CashLedgerIT {
     @Test
     @DisplayName("The first courier keeps a parcel they handed in at the hub in their day, without the next courier's part")
     void handedInParcelStaysInTheDay() throws Exception {
-        DeliverySession job = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00", "0.00");
+        DeliverySession job = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00");
         ok(step(job, courier, "PICKED_UP", "670"), 200);
         ok(step(job, courier, "AT_ORIGIN_HUB", null), 200);
         DeliverySession later = sessions.findByDeliveryId(job.getDeliveryId()).orElseThrow();
@@ -277,7 +273,7 @@ class CashLedgerIT {
     @Test
     @DisplayName("A cancelled order closes a job that was not picked up, and leaves one on the way alone")
     void cancelledOrderClosesTheJob() throws Exception {
-        DeliverySession waiting = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, "350.00", "0.00");
+        DeliverySession waiting = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, "350.00");
         DeliverySession moving = pickUp("350.00");
 
         for (DeliverySession job : new DeliverySession[] {waiting, moving, waiting}) {
@@ -297,10 +293,10 @@ class CashLedgerIT {
         DeliverySession old = pickUp("500.00");
         // 22 November 00:30 in Colombo is still the 21st in UTC.
         jdbc.update("UPDATE cash_entries SET recorded_at = '2026-11-21T19:00:00Z' WHERE delivery_id = ?", old.getDeliveryId());
-        DeliverySession cross = job(kandyCourier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00", "2500.00");
+        DeliverySession cross = job(kandyCourier, SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, "670.00");
         cross.setCurrentState(DeliveryState.OUT_FOR_DELIVERY);
         sessions.saveAndFlush(cross);
-        ok(step(cross, kandyCourier, "DELIVERED", "2500.00"), 200);
+        ok(step(cross, kandyCourier, "DELIVERED", null), 200);
         String id = ok(post("/api/v1/cash/handovers"), courier, 201).at("/data/handoverId").asText();
         ok(count(id, dispatcher, "1200.00", "70 missing"), 200);
         fail(damaged, "DAMAGED");
@@ -317,10 +313,9 @@ class CashLedgerIT {
         JsonNode all = ok(get("/api/v1/cash/report?from=" + today.minusDays(1) + "&to=" + today.plusDays(1)), admin, 200).get("data");
         assertMoney(all, "revenue", "770");
         assertMoney(all, "refunds", "350");
-        assertMoney(all, "cod", "2500");
         assertMoney(all, "shortage", "70");
         assertMoney(all, "excess", "0");
-        assertMoney(all, "withCouriers", "2850");
+        assertMoney(all, "withCouriers", "350");
         assertMoney(all, "atHub", "850");
         assertThat(all.get("parcels").asInt()).isEqualTo(3);
         assertThat(all.get("days")).hasSize(3);
@@ -333,7 +328,7 @@ class CashLedgerIT {
         JsonNode kandy = ok(get("/api/v1/cash/report?from=" + today + "&to=" + today + "&district=COLOMBO"),
                 kandyDispatcher, 200).get("data");
         assertMoney(kandy, "revenue", "0");
-        assertMoney(kandy, "withCouriers", "2500");
+        assertMoney(kandy, "withCouriers", "0");
         assertThat(kandy.get("districts")).hasSize(1);
     }
 
@@ -354,7 +349,7 @@ class CashLedgerIT {
     // ---- steps
 
     private DeliverySession pickUp(String fee) throws Exception {
-        DeliverySession job = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, fee, "0.00");
+        DeliverySession job = job(courier, SriLankanDistrict.COLOMBO, SriLankanDistrict.COLOMBO, fee);
         ok(step(job, courier, "PICKED_UP", fee), 200);
         return sessions.findByDeliveryId(job.getDeliveryId()).orElseThrow();
     }
@@ -391,7 +386,7 @@ class CashLedgerIT {
 
     // ---- fixtures
 
-    private DeliverySession job(Person holder, SriLankanDistrict from, SriLankanDistrict to, String fee, String cod) {
+    private DeliverySession job(Person holder, SriLankanDistrict from, SriLankanDistrict to, String fee) {
         DeliverySession session = new DeliverySession();
         session.setDeliveryId(UUID.randomUUID());
         session.setOrderId(UUID.randomUUID());
@@ -401,14 +396,14 @@ class CashLedgerIT {
         session.setPickupDistrict(from);
         session.setDeliveryDistrict(to);
         session.setCurrentState(DeliveryState.ASSIGNED);
-        order(session, false, fee, cod);
+        order(session, false, fee);
         return sessions.saveAndFlush(session);
     }
 
-    private void order(DeliverySession session, boolean cancelled, String fee, String cod) {
+    private void order(DeliverySession session, boolean cancelled, String fee) {
         when(orderJobClient.get(session.getOrderId())).thenReturn(new OrderJobClient.OrderJob(cancelled,
                 OrderSpeed.STANDARD, null, null, null, null, null, null, null, null,
-                new BigDecimal(fee), new BigDecimal(cod), "LKR"));
+                new BigDecimal(fee), "LKR"));
     }
 
     private DeliveryState state(DeliverySession job) {

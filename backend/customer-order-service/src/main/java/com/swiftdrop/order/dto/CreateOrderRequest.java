@@ -172,11 +172,6 @@ public class CreateOrderRequest {
     @Builder.Default
     private BigDecimal declaredValue = BigDecimal.ZERO;
 
-    @DecimalMin(value = "0.0", message = "COD amount must be non-negative")
-    @Schema(description = "Cash on Delivery collection amount in LKR", example = "0.00")
-    @Builder.Default
-    private BigDecimal codAmount = BigDecimal.ZERO;
-
     // Mandatory Prohibited-Items Declaration
     @NotNull(message = "Prohibited items declaration is mandatory")
     @AssertTrue(message = "You must declare that the parcel does not contain any prohibited items")

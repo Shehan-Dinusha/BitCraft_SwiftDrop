@@ -12,8 +12,6 @@ export interface JobDetailsCardProps {
   viaHubs: boolean;
   pickupDistrict?: string | null;
   deliveryDistrict?: string | null;
-  /** Whose cash the next step needs; that row gets the box the courier ticks. */
-  cashFrom?: 'sender' | 'recipient' | null;
   cashConfirmed?: boolean;
   onCashConfirmedChange?: (confirmed: boolean) => void;
 }
@@ -24,7 +22,6 @@ export function JobDetailsCard({
   viaHubs,
   pickupDistrict,
   deliveryDistrict,
-  cashFrom = null,
   cashConfirmed = false,
   onCashConfirmedChange
 }: JobDetailsCardProps) {
@@ -37,21 +34,9 @@ export function JobDetailsCard({
     <SurfaceCard>
       <div className="space-y-5">
         {job.feeToCollect != null && (
-          <CashToCollect
-            from="sender"
+          <FeeToCollect
             amount={job.feeToCollect}
             currency={job.currency}
-            confirm={cashFrom === 'sender'}
-            confirmed={cashConfirmed}
-            onConfirmedChange={onCashConfirmedChange}
-          />
-        )}
-        {job.codToCollect != null && (
-          <CashToCollect
-            from="recipient"
-            amount={job.codToCollect}
-            currency={job.currency}
-            confirm={cashFrom === 'recipient'}
             confirmed={cashConfirmed}
             onConfirmedChange={onCashConfirmedChange}
           />
@@ -81,19 +66,14 @@ export function JobDetailsCard({
   );
 }
 
-function CashToCollect({
-  from,
+function FeeToCollect({
   amount,
   currency,
-  confirm,
   confirmed,
   onConfirmedChange
 }: {
-  from: 'sender' | 'recipient';
   amount: number;
   currency?: string;
-  /** The next step takes this cash, so the courier ticks that they have it. */
-  confirm: boolean;
   confirmed: boolean;
   onConfirmedChange?: (confirmed: boolean) => void;
 }) {
@@ -102,18 +82,16 @@ function CashToCollect({
       <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         <span className="flex items-center gap-2 text-body-strong">
           <Banknote aria-hidden="true" className="size-5 shrink-0" />
-          Collect cash from the {from}
+          Collect cash from the sender
         </span>
         <MoneyAmount amount={amount} currency={currency} size="lg" inheritColor />
       </div>
-      {confirm && (
-        <Checkbox
-          className="min-h-target w-full border-t border-status-warning-border"
-          label={`I have this cash from the ${from}`}
-          checked={confirmed}
-          onChange={(event) => onConfirmedChange?.(event.target.checked)}
-        />
-      )}
+      <Checkbox
+        className="min-h-target w-full border-t border-status-warning-border"
+        label="I have this cash from the sender"
+        checked={confirmed}
+        onChange={(event) => onConfirmedChange?.(event.target.checked)}
+      />
     </div>
   );
 }

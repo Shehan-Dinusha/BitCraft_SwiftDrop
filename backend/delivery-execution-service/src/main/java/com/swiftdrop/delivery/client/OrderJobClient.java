@@ -52,7 +52,6 @@ public class OrderJobClient {
             BigDecimal heightCm,
             BigDecimal weightKg,
             BigDecimal fee,
-            BigDecimal codAmount,
             String currency
     ) {
     }

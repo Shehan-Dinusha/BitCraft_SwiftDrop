@@ -45,7 +45,6 @@ public class MerchantOrderNormalizer {
         body.put("prohibitedItemsDeclared", parcel.prohibitedItemsDeclared());
         body.put("itemDescription", parcel.itemDescription());
         body.put("declaredValue", parcel.declaredValue() != null ? parcel.declaredValue() : BigDecimal.ZERO);
-        body.put("codAmount", parcel.codAmount() != null ? parcel.codAmount() : BigDecimal.ZERO);
         try {
             body.put("speed", request.speed() == null || request.speed().isBlank() ? OrderSpeed.STANDARD
                     : OrderSpeed.valueOf(request.speed().trim().toUpperCase(Locale.ROOT)));

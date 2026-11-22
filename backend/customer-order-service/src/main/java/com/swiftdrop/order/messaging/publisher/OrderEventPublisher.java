@@ -37,7 +37,6 @@ public class OrderEventPublisher {
                 order.getPickupDistrict(),
                 order.getDeliveryDistrict(),
                 order.getOrderSpeed(),
-                order.getCodAmount(),
                 order.getDeclaredValue(),
                 order.getEstimatedFee(),
                 order.getCurrency(),

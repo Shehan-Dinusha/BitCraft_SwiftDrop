@@ -16,8 +16,6 @@ public record CashReportResponse(
         BigDecimal revenue,
         @Schema(description = "Refunds taken off the revenue", example = "350.00") BigDecimal refunds,
         @Schema(description = "Parcels a fee was collected for", example = "92") long parcels,
-        @Schema(description = "Cash on delivery collected; the merchants' money, never revenue", example = "112500.00")
-        BigDecimal cod,
         @Schema(description = "Missing from handovers counted in the period", example = "70.00") BigDecimal shortage,
         @Schema(description = "Too much in handovers counted in the period", example = "0.00") BigDecimal excess,
         @Schema(description = "Now: with couriers, not handed over", example = "3170.00") BigDecimal withCouriers,

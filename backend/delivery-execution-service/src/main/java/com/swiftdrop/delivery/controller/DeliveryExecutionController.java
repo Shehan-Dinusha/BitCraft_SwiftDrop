@@ -106,8 +106,8 @@ public class DeliveryExecutionController {
     }
 
     @PostMapping("/{deliveryId}/transition")
-    @Operation(summary = "Transition delivery lifecycle state", description = "PICKED_UP must confirm the delivery fee in cashCollected, and DELIVERED the cash on delivery, "
-            + "when one is due; a missing or different amount answers 409 with the amount to collect.")
+    @Operation(summary = "Transition delivery lifecycle state", description = "PICKED_UP must confirm the delivery fee in cashCollected; a missing or different amount "
+            + "answers 409 with the amount to collect.")
     public ApiResponse<DeliverySessionResponse> transition(
             @PathVariable UUID deliveryId,
             @Valid @RequestBody TransitionDeliveryRequest request,
