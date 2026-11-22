@@ -17,7 +17,6 @@ public final class EventRoutingKeys {
     public static final String PARCEL_STATUS_CHANGED = "parcel.status.changed";
     public static final String PARCEL_FEE_REVISED = "parcel.fee.revised";
 
-    public static final String CASH_TRANSACTION_RECORDED = "cash.transaction.recorded";
 
     public static final String DISPATCH_COURIER_ASSIGNED = "dispatch.courier.assigned";
     public static final String DISPATCH_FAILED = "dispatch.failed";

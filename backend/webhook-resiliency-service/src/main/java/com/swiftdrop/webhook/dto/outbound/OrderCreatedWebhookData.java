@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * {@code data} of an {@code order.created} webhook (payload v1).
  *
- * <p>D6 is PROVISIONAL, pending Member 7: no monetary field ({@code codAmount}, {@code declaredValue},
+ * <p>D6 is PROVISIONAL, pending Member 7: no monetary field ({@code declaredValue},
  * {@code estimatedPrice}, {@code currency}) and no pricing or payout data is included. Approved fields can be added
  * later as new, additive properties. Customer id, districts and correlation id are also excluded.</p>
  */

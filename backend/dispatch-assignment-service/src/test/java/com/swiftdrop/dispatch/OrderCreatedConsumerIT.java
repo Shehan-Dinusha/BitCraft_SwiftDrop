@@ -379,7 +379,6 @@ class OrderCreatedConsumerIT {
                 OrderSpeed.STANDARD,
                 null,
                 null,
-                null,
                 "LKR",
                 null,
                 new BigDecimal("30"),

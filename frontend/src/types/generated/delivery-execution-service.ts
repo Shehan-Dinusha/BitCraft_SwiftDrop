@@ -374,7 +374,7 @@ export interface components {
             failureReason?: components["schemas"]["DeliveryFailureReason"];
             actorRole?: string;
             /**
-             * @description Cash the courier confirms collecting with this step: the delivery fee for PICKED_UP, the cash on delivery for DELIVERED. Must match the amount due, or the answer is 409; leave out when nothing is due.
+             * @description The delivery fee the courier confirms collecting from the sender with PICKED_UP. Must match the fee, or the answer is 409; leave out for other steps and when nothing is due.
              * @example 670
              */
             cashCollected?: number;
@@ -450,8 +450,6 @@ export interface components {
              * @example 670
              */
             feeToCollect?: number | null;
-            /** @description Cash to collect from the recipient for the merchant; null when there is none. */
-            codToCollect?: number | null;
             /** @example LKR */
             currency?: string;
         };
@@ -462,14 +460,12 @@ export interface components {
             /** Format: date-time */
             timestamp?: string;
         };
-        /** @description Cash collected or refunded for one parcel. DELIVERY_FEE is revenue; COD is the merchant's money. */
+        /** @description A delivery fee collected or refunded for one parcel. */
         CashEntryResponse: {
             /** Format: uuid */
             entryId: string;
             /** @enum {string} */
             entryType: "COLLECTION" | "REFUND";
-            /** @enum {string} */
-            kind: "DELIVERY_FEE" | "COD";
             trackingNumber: string;
             /** @example 670 */
             amount: number;
@@ -538,10 +534,6 @@ export interface components {
         CourierCashResponse: {
             /** @example 670 */
             inHand: number;
-            /** @example 670 */
-            fees: number;
-            /** @example 670 */
-            cod: number;
             /** @example LKR */
             currency: string;
             entries: components["schemas"]["CashEntryResponse"][];
@@ -585,8 +577,6 @@ export interface components {
             revenue: number;
             refunds: number;
             parcels: number;
-            /** @description Cash on delivery collected. The merchants' money, never revenue. */
-            cod: number;
             shortage: number;
             excess: number;
             /** @description Now, with couriers and not handed over. */

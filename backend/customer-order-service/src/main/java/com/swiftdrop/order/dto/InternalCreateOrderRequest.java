@@ -136,9 +136,6 @@ public record InternalCreateOrderRequest(
         @DecimalMin(value = "0.0", message = "Declared value must be non-negative")
         BigDecimal declaredValue,
 
-        @DecimalMin(value = "0.0", message = "COD amount must be non-negative")
-        BigDecimal codAmount,
-
         @NotNull(message = "Prohibited items declaration is mandatory")
         @AssertTrue(message = "You must declare that the parcel does not contain any prohibited items")
         Boolean prohibitedItemsDeclared
@@ -170,7 +167,6 @@ public record InternalCreateOrderRequest(
                 .speed(speed != null ? speed : OrderSpeed.STANDARD)
                 .itemDescription(itemDescription)
                 .declaredValue(declaredValue != null ? declaredValue : BigDecimal.ZERO)
-                .codAmount(codAmount != null ? codAmount : BigDecimal.ZERO)
                 .prohibitedItemsDeclared(prohibitedItemsDeclared)
                 .build();
     }

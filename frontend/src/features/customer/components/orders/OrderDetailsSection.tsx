@@ -67,11 +67,6 @@ export function OrderDetailsSection({ order }: { order: CustomerOrderResponse })
                 Declared value <MoneyAmount amount={order.declaredValue} size="sm" />
               </Line>
             ) : null}
-            {order.codAmount ? (
-              <Line>
-                Collect on delivery <MoneyAmount amount={order.codAmount} size="sm" />
-              </Line>
-            ) : null}
           </Group>
         </div>
       ) : (

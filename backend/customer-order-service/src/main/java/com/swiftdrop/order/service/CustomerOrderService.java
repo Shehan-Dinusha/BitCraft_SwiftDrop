@@ -130,7 +130,6 @@ public class CustomerOrderService {
                 .itemDescription(request.getItemDescription())
                 .customerNotes(blankToNull(request.getCustomerNotes()))
                 .declaredValue(request.getDeclaredValue() != null ? request.getDeclaredValue() : BigDecimal.ZERO)
-                .codAmount(request.getCodAmount() != null ? request.getCodAmount() : BigDecimal.ZERO)
                 .prohibitedItemsDeclared(request.getProhibitedItemsDeclared())
                 .pricingRuleVersionId(estimate.getPricingRuleVersionId())
                 .estimatedFee(estimate.getEstimatedFee())
@@ -271,7 +270,6 @@ public class CustomerOrderService {
         if (request.getItemDescription() != null) order.setItemDescription(request.getItemDescription());
         if (request.getCustomerNotes() != null) order.setCustomerNotes(blankToNull(request.getCustomerNotes()));
         if (request.getDeclaredValue() != null) order.setDeclaredValue(request.getDeclaredValue());
-        if (request.getCodAmount() != null) order.setCodAmount(request.getCodAmount());
 
         boolean dimsOrSpeedChanged = false;
         if (request.getLengthCm() != null) { order.setLengthCm(request.getLengthCm()); dimsOrSpeedChanged = true; }

@@ -1,6 +1,6 @@
 package com.swiftdrop.delivery.domain.enums;
 
-/** A courier collected money, or a dispatcher gave a collected fee back. */
+/** A courier collected a delivery fee, or a dispatcher gave it back. */
 public enum CashEntryType {
     COLLECTION, REFUND
 }

@@ -25,7 +25,7 @@ export interface OneTapStateTransitionCardProps {
   onOpenPoD: () => void;
   isPoDVerified: boolean;
   pendingState: DeliveryState | null;
-  /** Cash is still to be confirmed, so the pickup or delivery cannot be completed yet. */
+  /** The fee is still to be confirmed, so the pickup cannot be completed yet. */
   blocked?: boolean;
 }
 
@@ -213,7 +213,7 @@ export function OneTapStateTransitionCard({
                 label="Slide to complete delivery"
                 confirmLabel="Release to deliver"
                 onConfirm={() => onTransition('DELIVERED', undefined, 'Handover completed with verified PoD')}
-                disabled={isPending || blocked}
+                disabled={isPending}
                 density="touch"
                 icon={<CheckCircle2 className="h-5 w-5" />}
               />

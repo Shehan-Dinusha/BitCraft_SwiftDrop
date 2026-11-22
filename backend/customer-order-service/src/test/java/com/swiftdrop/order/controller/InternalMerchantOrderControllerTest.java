@@ -66,7 +66,7 @@ class InternalMerchantOrderControllerTest {
         return new InternalCreateOrderRequest(MERCHANT_ID, "SHOP-2026-000123",
                 "No. 42, Galle Road", null, "Colombo 03", SriLankanDistrict.COLOMBO, "00300", "Sunil Perera", "+94771234567",
                 "No. 18, Peradeniya Road", null, "Kandy", SriLankanDistrict.KANDY, "20000", "Kasun Perera", "0711234567",
-                null, new BigDecimal("30"), new BigDecimal("20"), new BigDecimal("10"), new BigDecimal("2.4"), null, "Batik sarees", null, null, true);
+                null, new BigDecimal("30"), new BigDecimal("20"), new BigDecimal("10"), new BigDecimal("2.4"), null, "Batik sarees", null, true);
     }
 
     private ResultActions submit(UnaryOperator<String> mutateJson) throws Exception {
@@ -98,7 +98,7 @@ class InternalMerchantOrderControllerTest {
     }
 
     @Test
-    @DisplayName("Recipient email, speed and cod are optional")
+    @DisplayName("Recipient email and speed are optional")
     void optionalFieldsMayBeMissing() throws Exception {
         when(internalOrderService.createMerchantOrder(any(), any()))
                 .thenReturn(new InternalOrderService.CreateResult(savedOrder, true));

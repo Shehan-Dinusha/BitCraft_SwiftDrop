@@ -134,7 +134,6 @@ class CourierMatchingEngineTest {
                 SriLankanDistrict.COLOMBO,
                 SriLankanDistrict.GAMPAHA,
                 speed,
-                BigDecimal.valueOf(500),
                 BigDecimal.valueOf(1000),
                 BigDecimal.valueOf(450),
                 "LKR",

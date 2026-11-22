@@ -44,7 +44,7 @@ class OrderJobClientTest {
                 .andRespond(withSuccess("""
                         {"success":true,"data":{"orderId":"%s","cancelled":false,"speed":"EXPRESS",
                          "pickup":{"name":"Nimal","phone":"+94771234567","city":"Colombo 03","district":"COLOMBO","extra":1},
-                         "fee":670.00,"codAmount":0.00,"currency":"LKR","somethingNew":true}}
+                         "fee":670.00,"currency":"LKR","somethingNew":true}}
                         """.formatted(orderId), MediaType.APPLICATION_JSON));
 
         OrderJobClient.OrderJob job = client.get(orderId);

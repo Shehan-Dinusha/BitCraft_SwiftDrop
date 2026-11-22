@@ -72,7 +72,7 @@ export function RevenueReport({ from, to, district, showDistricts }: RevenueRepo
 
       {data && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Tile
               label="Revenue"
               amount={data.revenue}
@@ -81,11 +81,6 @@ export function RevenueReport({ from, to, district, showDistricts }: RevenueRepo
                   ? `${data.parcels} parcels, less ${lkr(data.refunds)} refunded`
                   : `${data.parcels} parcels`
               }
-            />
-            <Tile
-              label="Cash on delivery"
-              amount={data.cod}
-              detail="Belongs to merchants, not revenue"
             />
             <Tile
               label="Not banked yet"

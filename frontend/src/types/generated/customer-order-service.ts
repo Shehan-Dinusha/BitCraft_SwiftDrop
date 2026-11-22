@@ -479,11 +479,6 @@ export interface components {
              * @example 5000
              */
             declaredValue?: number;
-            /**
-             * Format: double
-             * @example 0
-             */
-            codAmount?: number;
             /** @example true */
             prohibitedItemsDeclared: boolean;
             /** @example PRICING-2026-V1 */
@@ -537,8 +532,6 @@ export interface components {
             customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
-            /** Format: double */
-            codAmount?: number;
         };
         CancelOrderRequest: {
             /** @example Sender no longer needs delivery */
@@ -598,8 +591,6 @@ export interface components {
             customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
-            /** Format: double */
-            codAmount?: number;
             prohibitedItemsDeclared?: boolean;
             pricingRuleVersionId?: string;
             /** Format: double */

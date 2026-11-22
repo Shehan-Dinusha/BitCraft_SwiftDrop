@@ -16,7 +16,7 @@ graph TD
 
     %% Routing Keys
     OrderSvc -->|"order.created<br/>order.cancelled"| MainExchange
-    DeliverySvc -->|"parcel.status.changed.*<br/>parcel.fee.revised<br/>cash.transaction.recorded"| MainExchange
+    DeliverySvc -->|"parcel.status.changed.*<br/>parcel.fee.revised"| MainExchange
     DispatchSvc -->|"dispatch.courier.assigned<br/>dispatch.failed"| MainExchange
     MerchantSvc -->|"merchant.approved"| MainExchange
     IamSvc -->|"auth.user.created"| MainExchange

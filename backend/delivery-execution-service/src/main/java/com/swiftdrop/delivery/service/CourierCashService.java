@@ -8,7 +8,6 @@ import com.swiftdrop.delivery.domain.entity.CashEntry;
 import com.swiftdrop.delivery.domain.entity.CashHandover;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.domain.enums.CashEntryType;
-import com.swiftdrop.delivery.domain.enums.CashKind;
 import com.swiftdrop.delivery.domain.repository.CashEntryRepository;
 import com.swiftdrop.delivery.domain.repository.CashHandoverRepository;
 import com.swiftdrop.delivery.dto.CashEntryResponse;
@@ -40,12 +39,11 @@ public class CourierCashService {
     /** Joins the delivery step's transaction. The courier on the delivery holds the cash, whoever took the step. */
     @Transactional
     public void recordCollection(DeliverySession session, CashDue due, CallerContext caller) {
-        SriLankanDistrict district = due.kind() == CashKind.DELIVERY_FEE
-                ? session.getPickupDistrict() : session.getDeliveryDistrict();
+        SriLankanDistrict district = session.getPickupDistrict();
         if (district == null && caller != null) {
             district = caller.districtId(); // sessions from before districts were recorded
         }
-        entryRepository.save(new CashEntry(CashEntryType.COLLECTION, due.kind(), session, session.getCourierId(),
+        entryRepository.save(new CashEntry(CashEntryType.COLLECTION, session, session.getCourierId(),
                 session.getCourierName(), district, due.amount(), due.currency(), null,
                 caller != null ? caller.userId() : null));
     }
@@ -54,9 +52,7 @@ public class CourierCashService {
     public CourierCashResponse mine(CallerContext caller) {
         caller.requireRole(UserRole.COURIER);
         List<CashEntry> entries = entryRepository.findInHand(caller.userId());
-        BigDecimal fees = sum(entries, CashKind.DELIVERY_FEE);
-        BigDecimal cod = sum(entries, CashKind.COD);
-        return new CourierCashResponse(fees.add(cod), fees, cod, "LKR",
+        return new CourierCashResponse(total(entries), "LKR",
                 entries.stream().map(CashEntryResponse::of).toList(),
                 handoverRepository.findByCourierIdOrderBySubmittedAtDesc(
                                 caller.userId(), PageRequest.of(0, RECENT_HANDOVERS)).stream()
@@ -74,9 +70,8 @@ public class CourierCashService {
         if (entries.isEmpty()) {
             throw new CashConflictException("You have no cash to hand over.");
         }
-        BigDecimal total = entries.stream().map(CashEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         CashHandover handover = handoverRepository.saveAndFlush(new CashHandover(
-                caller.userId(), entries.getFirst().getCourierName(), caller.districtId(), total));
+                caller.userId(), entries.getFirst().getCourierName(), caller.districtId(), total(entries)));
         int attached = entryRepository.attachToHandover(handover.getHandoverId(),
                 entries.stream().map(CashEntry::getEntryId).toList());
         if (attached != entries.size()) {
@@ -90,8 +85,7 @@ public class CourierCashService {
         return entryRepository.sumInHand(courierId);
     }
 
-    private static BigDecimal sum(List<CashEntry> entries, CashKind kind) {
-        return entries.stream().filter(entry -> entry.getKind() == kind)
-                .map(CashEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    private static BigDecimal total(List<CashEntry> entries) {
+        return entries.stream().map(CashEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

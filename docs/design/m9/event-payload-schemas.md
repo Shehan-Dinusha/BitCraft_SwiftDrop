@@ -44,7 +44,6 @@ Every event serialized onto the bus complies with the following baseline rules:
 | `pickupDistrict` | `String` (Enum) | No | Sri Lankan district of origin (e.g. `COLOMBO`) | Safe (No Street) |
 | `deliveryDistrict` | `String` (Enum) | No | Sri Lankan district of destination (e.g. `KANDY`) | Safe (No Street) |
 | `speed` | `String` (Enum) | No | Delivery service level: `STANDARD` or `EXPRESS` | Safe |
-| `codAmount` | `BigDecimal` | Yes | Cash on Delivery collection amount | Safe |
 | `declaredValue` | `BigDecimal` | Yes | Insured declared value of package contents | Safe |
 | `estimatedPrice` | `BigDecimal` | No | Calculated shipping charge | Safe |
 | `currency` | `String` | No | ISO currency code (default: `LKR`) | Safe |
@@ -64,7 +63,6 @@ Every event serialized onto the bus complies with the following baseline rules:
   "pickupDistrict": "COLOMBO",
   "deliveryDistrict": "KANDY",
   "speed": "EXPRESS",
-  "codAmount": 2500.00,
   "declaredValue": 10000.00,
   "estimatedPrice": 650.00,
   "currency": "LKR",
@@ -240,48 +238,6 @@ Fields: `eventId`, `correlationId`, `orderId`, `trackingNumber`, `pickupDistrict
   "ownerUserId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
   "approvedAt": "2026-11-13T11:20:00Z",
   "timestamp": "2026-11-13T11:20:01Z"
-}
-```
-
----
-
-### 2.6 `cash.transaction.recorded` — `CashTransactionRecordedEvent`
-
-* **Producer:** `delivery-execution-service` (:8085)
-* **Routing Key:** `cash.transaction.recorded`
-* **Destination Queues:** `analytics.events.queue`
-* **Consumers:** `analytics-ai-service`
-
-#### Field Specification
-
-| Field Name | Type | Nullable | Description | Privacy / PII |
-|---|---|---|---|---|
-| `eventId` | `UUID` | No | Unique event identifier | Safe |
-| `correlationId` | `UUID` | No | Trace correlation identifier | Safe |
-| `transactionId` | `UUID` | No | Ledger transaction UUID | Safe |
-| `orderId` | `UUID` | No | Associated order identifier | Safe |
-| `trackingNumber` | `String` | No | Tracking number | Safe |
-| `merchantId` | `UUID` | Yes | Merchant identifier for settlement | Safe |
-| `courierId` | `UUID` | No | Courier collecting/remitting cash | Safe |
-| `type` | `String` (Enum) | No | `COLLECTION`, `REMITTANCE`, or `REFUND` | Safe |
-| `amount` | `BigDecimal` | No | Cash transaction amount | Safe |
-| `currency` | `String` | No | ISO currency code (`LKR`) | Safe |
-| `timestamp` | `Instant` | No | Ledger entry timestamp | Safe |
-
-#### Example JSON Payload
-```json
-{
-  "eventId": "6c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f",
-  "correlationId": "c0a80101-8b2e-4b71-9c8e-3a1b2c3d4e5f",
-  "transactionId": "7d8e9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a",
-  "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "trackingNumber": "SD-7K4M-9QX2",
-  "merchantId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-  "courierId": "8b7c6d5e-4f3a-2b1c-0d9e-8f7a6b5c4d3e",
-  "type": "COLLECTION",
-  "amount": 2500.00,
-  "currency": "LKR",
-  "timestamp": "2026-11-13T16:15:35Z"
 }
 ```
 

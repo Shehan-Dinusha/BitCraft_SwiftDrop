@@ -103,7 +103,6 @@ const ORDER_FIELDS: [string, string, string][] = [
   ['parcel.prohibitedItemsDeclared', 'Yes', 'Must be true: nothing prohibited is inside'],
   ['parcel.itemDescription', 'No', 'Up to 512 characters'],
   ['parcel.declaredValue', 'No', 'LKR'],
-  ['parcel.codAmount', 'No', 'Cash to collect from the recipient, in LKR'],
   ['speed', 'No', 'STANDARD (default) or EXPRESS']
 ];
 

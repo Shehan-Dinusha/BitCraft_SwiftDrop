@@ -40,7 +40,6 @@ class InternalCourierJobServiceTest {
         InternalCourierJobView job = service.getCourierJob(orderId);
 
         assertThat(job.fee()).isEqualByComparingTo("750.00");
-        assertThat(job.codAmount()).isEqualByComparingTo("2500.00");
         assertThat(job.cancelled()).isFalse();
         assertThat(job.pickup().name()).isEqualTo("Nimal");
         assertThat(job.pickup().district()).isEqualTo(SriLankanDistrict.COLOMBO);
@@ -74,7 +73,6 @@ class InternalCourierJobServiceTest {
                 .deliveryDistrict(SriLankanDistrict.KANDY)
                 .estimatedFee(new BigDecimal("670.00"))
                 .finalFee(new BigDecimal("750.00"))
-                .codAmount(new BigDecimal("2500.00"))
                 .build();
     }
 }

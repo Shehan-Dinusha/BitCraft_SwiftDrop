@@ -1,5 +1,5 @@
 import type { CashStateKind } from '@/design-system/components/CashState/CashState';
-import type { CashEntryResponse, CashHandoverResponse } from '@/services/api/cashApi';
+import type { CashHandoverResponse } from '@/services/api/cashApi';
 
 const amountFormat = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
@@ -8,9 +8,6 @@ const amountFormat = new Intl.NumberFormat('en-US', {
 
 /** LKR 1,250.00, for sentences; use MoneyAmount where the amount stands on its own. */
 export const lkr = (amount: number) => `LKR ${amountFormat.format(amount)}`;
-
-export const kindLabel = (entry: Pick<CashEntryResponse, 'kind'>) =>
-  entry.kind === 'COD' ? 'Cash on delivery' : 'Delivery fee';
 
 export const cashTime = (iso?: string | null) =>
   iso

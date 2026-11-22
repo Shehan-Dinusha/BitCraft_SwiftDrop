@@ -60,10 +60,9 @@ public class CashReportService {
                 .addValue("district", district == null ? null : district.name(), Types.VARCHAR);
 
         Map<String, Object> period = jdbc.queryForMap("""
-                SELECT COALESCE(SUM(amount) FILTER (WHERE kind = 'DELIVERY_FEE' AND entry_type = 'COLLECTION'), 0) AS fees,
-                       COALESCE(SUM(amount) FILTER (WHERE kind = 'DELIVERY_FEE' AND entry_type = 'REFUND'), 0) AS refunds,
-                       COALESCE(SUM(amount) FILTER (WHERE kind = 'COD' AND entry_type = 'COLLECTION'), 0) AS cod,
-                       COUNT(*) FILTER (WHERE kind = 'DELIVERY_FEE' AND entry_type = 'COLLECTION') AS parcels
+                SELECT COALESCE(SUM(amount) FILTER (WHERE entry_type = 'COLLECTION'), 0) AS fees,
+                       COALESCE(SUM(amount) FILTER (WHERE entry_type = 'REFUND'), 0) AS refunds,
+                       COUNT(*) FILTER (WHERE entry_type = 'COLLECTION') AS parcels
                 FROM cash_entries WHERE""" + IN_PERIOD + IN_DISTRICT, params);
         Map<String, Object> counts = jdbc.queryForMap("""
                 SELECT COALESCE(SUM(GREATEST(expected_amount - counted_amount, 0)), 0) AS shortage,
@@ -73,7 +72,7 @@ public class CashReportService {
 
         return new CashReportResponse(from, to, "LKR",
                 money(period, "fees").subtract(refunds), refunds, ((Number) period.get("parcels")).longValue(),
-                money(period, "cod"), money(counts, "shortage"), money(counts, "excess"),
+                money(counts, "shortage"), money(counts, "excess"),
                 amount("SELECT COALESCE(SUM(amount), 0) FROM cash_entries "
                         + "WHERE entry_type = 'COLLECTION' AND handover_id IS NULL" + IN_DISTRICT, params),
                 amount("SELECT COALESCE(SUM(expected_amount), 0) FROM cash_handovers "
@@ -90,7 +89,7 @@ public class CashReportService {
     private List<CashReportResponse.Day> days(LocalDate from, LocalDate to, MapSqlParameterSource params) {
         Map<LocalDate, CashReportResponse.Day> recorded = jdbc.query(
                 "SELECT CAST(recorded_at AT TIME ZONE :zone AS date) AS day, " + REVENUE + " AS revenue, " + PARCELS
-                        + " AS parcels FROM cash_entries WHERE kind = 'DELIVERY_FEE' AND" + IN_PERIOD + IN_DISTRICT
+                        + " AS parcels FROM cash_entries WHERE" + IN_PERIOD + IN_DISTRICT
                         + "GROUP BY 1", params,
                 (rs, row) -> new CashReportResponse.Day(rs.getObject("day", LocalDate.class),
                         rs.getBigDecimal("revenue"), rs.getLong("parcels"))).stream()
@@ -104,7 +103,7 @@ public class CashReportService {
         return jdbc.query("""
                 SELECT district, SUM(revenue) AS revenue, SUM(parcels) AS parcels, SUM(last_mile) AS last_mile
                 FROM (SELECT district, %s AS revenue, %s AS parcels, 0 AS last_mile
-                      FROM cash_entries WHERE kind = 'DELIVERY_FEE' AND %s GROUP BY district
+                      FROM cash_entries WHERE %s GROUP BY district
                       UNION ALL
                       SELECT delivery_district, 0, 0, COUNT(*)
                       FROM delivery_sessions
