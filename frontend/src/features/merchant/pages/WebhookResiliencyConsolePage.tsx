@@ -3,7 +3,9 @@ import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard'
 import { Button } from '@/design-system/primitives/Button';
 import { Modal } from '@/design-system/primitives/Modal';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
-import { WebhookDlqReplayTable } from '../components/WebhookDlqReplayTable';
+import { Checkbox } from '@/design-system';
+import { FailedDeliveriesTable } from '../components/FailedDeliveriesTable';
+import { Link } from 'react-router-dom';
 import {
   webhookApi,
   type WebhookEndpointResponse,
@@ -31,6 +33,12 @@ function attemptOutcomeLabel(attempt: WebhookDeliveryAttemptResponse): string {
   return attempt.errorClass ?? (attempt.success ? 'OK' : 'NO RESPONSE');
 }
 
+/** The events the backend can send. */
+const WEBHOOK_EVENTS = [
+  { type: 'parcel.status.changed', label: 'Parcel status changed' },
+  { type: 'order.created', label: 'Order created' }
+];
+
 export function WebhookResiliencyConsolePage() {
   const [endpoints, setEndpoints] = useState<WebhookEndpointResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +48,7 @@ export function WebhookResiliencyConsolePage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [targetUrl, setTargetUrl] = useState('');
-  const [subscribedEvents, setSubscribedEvents] = useState('parcel.status.changed');
+  const [subscribedEvents, setSubscribedEvents] = useState<string[]>(['parcel.status.changed']);
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -87,7 +95,7 @@ export function WebhookResiliencyConsolePage() {
       // No merchantId: the backend registers the endpoint under the caller's own merchant identity.
       const request: CreateWebhookEndpointRequest = {
         targetUrl: targetUrl.trim(),
-        subscribedEvents: subscribedEvents.trim() || 'parcel.status.changed',
+        subscribedEvents: subscribedEvents.join(','),
         description: description.trim() || undefined
       };
 
@@ -190,8 +198,6 @@ export function WebhookResiliencyConsolePage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const activeCount = endpoints.filter((e) => e.active).length;
-
   return (
     <main className="space-y-5 p-4 md:p-6" data-density="compact">
       {/* Header */}
@@ -202,13 +208,13 @@ export function WebhookResiliencyConsolePage() {
             <h1 className="text-xl font-bold tracking-tight text-primary">
               Webhooks
             </h1>
-            <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
-              HMAC-SHA256 Signed
-            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <Link to="/merchant/api-guide" className="text-xs font-semibold text-brand-primary underline">
+            API guide
+          </Link>
           <Button
             variant="outline"
             className="h-8 text-xs"
@@ -225,7 +231,7 @@ export function WebhookResiliencyConsolePage() {
             onClick={() => setIsCreateModalOpen(true)}
           >
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Register Webhook
+            Add endpoint
           </Button>
         </div>
       </header>
@@ -240,26 +246,6 @@ export function WebhookResiliencyConsolePage() {
         </StatusBanner>
       )}
 
-      {/* KPI Highlights */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SurfaceCard className="p-3">
-          <span className="text-xs text-secondary">Registered Endpoints</span>
-          <p className="mt-1 text-xl font-bold text-primary">{endpoints.length}</p>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <span className="text-xs text-secondary">Active Listeners</span>
-          <p className="mt-1 text-xl font-bold text-status-success-fg">{activeCount}</p>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <span className="text-xs text-secondary">Backoff Retry Policy</span>
-          <p className="mt-1 text-xs font-semibold text-primary">3 Retries (2s, 4s exp)</p>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <span className="text-xs text-secondary">Payload Security</span>
-          <p className="mt-1 text-xs font-semibold text-brand-primary">X-SwiftDrop-Signature</p>
-        </SurfaceCard>
-      </div>
-
       {/* Registered Endpoints Section */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -267,7 +253,6 @@ export function WebhookResiliencyConsolePage() {
             <Activity className="h-4 w-4 text-brand-primary" />
             Endpoints
           </h2>
-          <span className="text-xs text-secondary">{endpoints.length} configured</span>
         </div>
 
         {endpoints.length === 0 ? (
@@ -275,7 +260,7 @@ export function WebhookResiliencyConsolePage() {
             <Webhook className="mx-auto h-8 w-8 text-secondary opacity-40" />
             <p className="mt-2 text-sm font-semibold text-primary">No endpoints yet</p>
             <p className="mt-1 text-xs text-secondary">
-              Add an HTTPS URL to receive parcel and order events.
+              Add an HTTPS address to hear about your parcels.
             </p>
             <Button
               variant="outline"
@@ -283,7 +268,7 @@ export function WebhookResiliencyConsolePage() {
               onClick={() => setIsCreateModalOpen(true)}
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
-              Register Your First Endpoint
+              Add your first endpoint
             </Button>
           </SurfaceCard>
         ) : (
@@ -307,7 +292,7 @@ export function WebhookResiliencyConsolePage() {
                           </span>
                         )}
                         {ep.description && (
-                          <span className="text-xs text-secondary">? {ep.description}</span>
+                          <span className="text-xs text-secondary">· {ep.description}</span>
                         )}
                       </div>
 
@@ -347,7 +332,7 @@ export function WebhookResiliencyConsolePage() {
                         onClick={() => ep.endpointId && handleTestPing(ep.endpointId)}
                       >
                         <Play className={`mr-1 h-3 w-3 ${isPinging ? 'animate-spin' : ''}`} />
-                        Test Ping
+                        Test
                       </Button>
 
                       <Button
@@ -386,19 +371,12 @@ export function WebhookResiliencyConsolePage() {
         )}
       </section>
 
-      {/* Dead-Letter Queue (DLQ) & Manual Replay Section */}
       <section className="space-y-3 pt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-sm font-bold text-primary">
-              <AlertTriangle className="h-4 w-4 text-status-danger-fg" />
-              Failed events
-            </h2>
-            <p className="text-xs text-secondary">Events that failed after 3 retries. Replay them here.</p>
-          </div>
-        </div>
-
-        <WebhookDlqReplayTable />
+        <h2 className="flex items-center gap-2 text-sm font-bold text-primary">
+          <AlertTriangle className="h-4 w-4 text-status-danger-fg" />
+          Failed events
+        </h2>
+        <FailedDeliveriesTable />
       </section>
 
       {/* One-time signing secret (create response only) */}
@@ -469,19 +447,22 @@ export function WebhookResiliencyConsolePage() {
             </p>
           </div>
 
-          <div>
-            <label htmlFor="webhook-events" className="block font-medium text-primary">Event patterns (comma-separated)</label>
-            <input id="webhook-events"
-              type="text"
-              required
-              value={subscribedEvents}
-              onChange={(e) => setSubscribedEvents(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border-subtle bg-canvas px-3 py-2 text-xs text-primary focus:border-brand-primary focus:outline-none"
-            />
-            <p className="mt-1 text-[11px] text-secondary">
-              Comma-separated topics (e.g. <code>parcel.status.changed</code>, <code>order.created</code>, or <code>*</code>).
-            </p>
-          </div>
+          <fieldset className="space-y-2">
+            <legend className="font-medium text-primary">Events</legend>
+            {WEBHOOK_EVENTS.map(({ type, label }) => (
+              <Checkbox
+                key={type}
+                label={label}
+                className="flex"
+                checked={subscribedEvents.includes(type)}
+                onChange={(event) =>
+                  setSubscribedEvents((current) =>
+                    event.target.checked ? [...current, type] : current.filter((item) => item !== type)
+                  )
+                }
+              />
+            ))}
+          </fieldset>
 
           <div>
             <label htmlFor="webhook-description" className="block font-medium text-primary">Description (Optional)</label>
@@ -501,8 +482,12 @@ export function WebhookResiliencyConsolePage() {
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={creating}>
-              {creating ? 'Registering...' : 'Save & Generate Secret'}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={creating || subscribedEvents.length === 0}
+            >
+              {creating ? 'Adding…' : 'Add endpoint'}
             </Button>
           </div>
         </form>

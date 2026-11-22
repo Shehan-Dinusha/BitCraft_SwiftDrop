@@ -5,74 +5,13 @@ import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
 import { Modal } from '@/design-system/primitives/Modal';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
+import { Link } from 'react-router-dom';
+import { orderCurl, orderPostman } from '../apiGuide';
 import { merchantApi, type ApiKeyResponse } from '@/services/api/merchantApi';
 import { Key, Plus, Trash2, Copy, Check, ShieldAlert, Clock, RefreshCw } from 'lucide-react';
 
 export interface ApiKeyManagerCardProps {
   merchantId: string;
-}
-
-function usageExamples(secret: string) {
-  const url = `${window.location.origin}/api/v1/b2b/orders`;
-  const payload = {
-    externalRef: 'SHOP-001',
-    pickup: {
-      addressLine1: '10 Galle Road',
-      city: 'Colombo',
-      district: 'COLOMBO',
-      postalCode: '00300',
-      contactName: 'Test Shop',
-      contactPhone: '+94771234567'
-    },
-    delivery: {
-      addressLine1: '25 Kandy Road',
-      city: 'Gampaha',
-      district: 'GAMPAHA',
-      postalCode: '11000',
-      contactName: 'Test Recipient',
-      contactPhone: '+94711234567'
-    },
-    parcel: {
-      weightGrams: 1500,
-      lengthCm: 30,
-      widthCm: 20,
-      heightCm: 10,
-      prohibitedItemsDeclared: true,
-      itemDescription: 'Books'
-    },
-    speed: 'STANDARD'
-  };
-  return {
-    curl: `curl --request POST '${url}' --header 'X-API-Key: ${secret}' --header 'Content-Type: application/json' --data '${JSON.stringify(payload)}'`,
-    postman: JSON.stringify(
-      {
-        info: {
-          name: 'SwiftDrop merchant order',
-          schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
-        },
-        item: [
-          {
-            name: 'Create order',
-            request: {
-              method: 'POST',
-              url,
-              header: [
-                { key: 'X-API-Key', value: secret },
-                { key: 'Content-Type', value: 'application/json' }
-              ],
-              body: {
-                mode: 'raw',
-                raw: JSON.stringify(payload, null, 2),
-                options: { raw: { language: 'json' } }
-              }
-            }
-          }
-        ]
-      },
-      null,
-      2
-    )
-  };
 }
 
 export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
@@ -200,9 +139,12 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-2">
           <Key className="h-4 w-4 text-brand-primary" />
-          <h3 className="text-sm font-bold text-primary">API Keys & Machine Integration</h3>
+          <h3 className="text-sm font-bold text-primary">API keys</h3>
         </div>
         <div className="flex items-center gap-2">
+          <Link to="/merchant/api-guide" className="text-xs font-semibold text-brand-primary underline">
+            API guide
+          </Link>
           <Button
             variant="outline"
             className="h-8 px-2 text-xs"
@@ -369,12 +311,12 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
                 className="w-full rounded border border-border-subtle bg-card p-2 font-mono"
                 rows={6}
                 readOnly
-                value={usageExamples(newlyCreatedKey.rawApiKey || '').curl}
+                value={orderCurl(newlyCreatedKey.rawApiKey || '')}
               />
               <Button
                 variant="outline"
                 onClick={() =>
-                  handleCopySecret(usageExamples(newlyCreatedKey.rawApiKey || '').curl)
+                  handleCopySecret(orderCurl(newlyCreatedKey.rawApiKey || ''))
                 }
               >
                 Copy cURL
@@ -384,12 +326,12 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
                 className="w-full rounded border border-border-subtle bg-card p-2 font-mono"
                 rows={5}
                 readOnly
-                value={usageExamples(newlyCreatedKey.rawApiKey || '').postman}
+                value={orderPostman(newlyCreatedKey.rawApiKey || '')}
               />
               <Button
                 variant="outline"
                 onClick={() =>
-                  handleCopySecret(usageExamples(newlyCreatedKey.rawApiKey || '').postman)
+                  handleCopySecret(orderPostman(newlyCreatedKey.rawApiKey || ''))
                 }
               >
                 Copy Postman collection

@@ -1,6 +1,6 @@
 import { Navigate, RouteObject } from 'react-router-dom';
 import { AppShell } from '@/app/AppShell';
-import { AdminOnly, RoleGuard } from '@/app/RoleGuard';
+import { RoleGuard } from '@/app/RoleGuard';
 import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { SignUpPage } from '@/features/auth/pages/SignUpPage';
@@ -21,6 +21,7 @@ import { CourierShiftDashboard } from '@/features/courier/pages/CourierShiftDash
 import { ActiveDeliveryExecutionPage } from '@/features/courier/pages/ActiveDeliveryExecutionPage';
 import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPortalDashboard';
 import { MerchantRegistrationPage } from '@/features/merchant/pages/MerchantRegistrationPage';
+import { ApiGuidePage } from '@/features/merchant/pages/ApiGuidePage';
 import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
 import { ZonePricingEditorPage } from '@/features/admin-ops/pages/ZonePricingEditorPage';
@@ -227,6 +228,14 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/merchant/api-guide',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <ApiGuidePage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/merchant/register',
         element: (
           <RoleGuard roles={['MERCHANT']}>
@@ -239,16 +248,6 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
             <FleetControlTowerPage />
-          </RoleGuard>
-        )
-      },
-      {
-        path: '/ops/webhooks',
-        element: (
-          <RoleGuard roles={['ADMIN_OPS']}>
-            <AdminOnly>
-              <WebhookResiliencyConsolePage />
-            </AdminOnly>
           </RoleGuard>
         )
       },

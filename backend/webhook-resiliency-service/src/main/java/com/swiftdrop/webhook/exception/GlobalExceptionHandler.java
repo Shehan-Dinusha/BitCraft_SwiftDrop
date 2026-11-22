@@ -32,6 +32,12 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(HttpStatus.NOT_FOUND.value(), "DLQ Record Not Found", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(FailedDeliveryNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleFailedDeliveryNotFound(FailedDeliveryNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiErrorResponse.of(HttpStatus.NOT_FOUND.value(), "Failed Delivery Not Found", ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex, HttpServletRequest request) {
         String errors = ex.getBindingResult().getFieldErrors().stream()

@@ -31,8 +31,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Legacy synchronous dispatcher used by the endpoint test ping ({@link #ping}) and legacy dead-letter replay
- * ({@link #dispatch}).
+ * Legacy synchronous dispatcher, used only by legacy dead-letter replay ({@link #dispatch}).
  *
  * <p>Every attempt is recorded with the real HTTP status (null when no response arrived), a classification
  * and the latency. The remote response body is discarded unread, and neither logs nor stored rows contain the
@@ -42,8 +41,8 @@ import java.util.concurrent.TimeoutException;
  * is recorded as {@link AttemptErrorClass#BLOCKED_DESTINATION} without any request being made.</p>
  *
  * @deprecated Event ingestion no longer calls this class; it creates persistent {@code webhook_deliveries}
- * jobs instead. Remove it once the delivery worker and the replay redesign take over the two remaining
- * operations. Do not add new callers.
+ * jobs instead. Failed deliveries are
+ * replayed by {@link FailedDeliveryService} and test pings use {@link TestPingService}. Do not add new callers.
  */
 @Deprecated
 @Slf4j
@@ -60,14 +59,6 @@ public class OutboundWebhookDispatcher {
     private final DeadLetterWebhookRecordRepository dlqRepository;
     private final ObjectMapper objectMapper;
     private final WebhookUrlPolicy urlPolicy;
-
-    /**
-     * Connectivity check: exactly one signed attempt, no retry, and never a dead-letter record.
-     */
-    public WebhookDeliveryAttemptResponse ping(WebhookEndpoint endpoint, String eventType, Object payloadObj) {
-        WebhookDeliveryAttempt attempt = sendOnce(endpoint, eventType, toJson(payloadObj), 1);
-        return AttemptResponseMapper.toResponse(attempt);
-    }
 
     /**
      * Legacy replay: up to {@link ExponentialBackoffScheduler#MAX_ATTEMPTS} attempts, then a legacy dead-letter
