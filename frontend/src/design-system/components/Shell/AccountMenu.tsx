@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { LogOut } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { Avatar } from '../Avatar/Avatar';
 
 export interface AccountMenuItem {
   id: string;
@@ -14,27 +15,21 @@ export interface AccountMenuItem {
 export interface AccountMenuProps {
   name: string;
   email?: string;
+  /** Profile picture URL; initials are shown when absent. */
+  avatarUrl?: string | null;
   items: AccountMenuItem[];
   onSignOut: () => void;
   className?: string;
 }
 
-const initials = (name: string) =>
-  name
-    .split(/[\s._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || '?';
-
 const itemClass =
-  'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body text-primary transition-colors hover:bg-elevated focus-visible:bg-elevated focus-visible:outline-none';
+  'flex w-full items-center gap-2 rounded-lg px-3 py-2 max-md:min-h-target text-left text-primary transition-colors hover:bg-elevated focus-visible:bg-elevated focus-visible:outline-none';
 
 /**
  * The signed-in person's avatar in the top bar. Opens a small menu with their account pages and
  * Sign out. Closes on Escape, on a click outside and when an item is chosen.
  */
-export function AccountMenu({ name, email, items, onSignOut, className }: AccountMenuProps) {
+export function AccountMenu({ name, email, avatarUrl, items, onSignOut, className }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -73,9 +68,9 @@ export function AccountMenu({ name, email, items, onSignOut, className }: Accoun
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((current) => !current)}
-        className="grid size-9 place-items-center rounded-full bg-elevated text-label font-semibold text-primary transition-colors hover:bg-border-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+        className="grid size-11 place-items-center rounded-full transition-colors hover:bg-brand-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus max-md:size-14"
       >
-        {initials(name)}
+        <Avatar name={name} src={avatarUrl} />
       </button>
 
       {open ? (
@@ -83,9 +78,9 @@ export function AccountMenu({ name, email, items, onSignOut, className }: Accoun
           id={menuId}
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-11 z-50 w-64 rounded-xl border border-border-subtle bg-card p-1.5 shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-border-strong bg-card p-1.5 shadow-lg"
         >
-          <div className="border-b border-border-subtle px-3 pb-2 pt-1.5">
+          <div className="border-b border-border-strong px-3 pb-2 pt-1.5">
             <p className="truncate text-body-strong text-primary">{name}</p>
             {email ? <p className="truncate text-caption text-muted">{email}</p> : null}
           </div>
@@ -94,7 +89,7 @@ export function AccountMenu({ name, email, items, onSignOut, className }: Accoun
               const content = (
                 <>
                   {item.icon}
-                  {item.label}
+                  <span className="text-body">{item.label}</span>
                 </>
               );
               if (item.render) {
@@ -122,14 +117,14 @@ export function AccountMenu({ name, email, items, onSignOut, className }: Accoun
             <button
               type="button"
               role="menuitem"
-              className={cn(itemClass, 'text-status-danger')}
+              className={cn(itemClass, 'text-status-danger-fg hover:bg-status-danger-bg')}
               onClick={() => {
                 close();
                 onSignOut();
               }}
             >
               <LogOut aria-hidden="true" className="size-4" />
-              Sign out
+              <span className="text-body">Sign out</span>
             </button>
           </div>
         </div>

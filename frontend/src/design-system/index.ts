@@ -197,6 +197,8 @@ export type {
 } from './components/AiAssistant/AiAssistant';
 export { BrandMark } from './components/BrandMark/BrandMark';
 export type { BrandMarkProps } from './components/BrandMark/BrandMark';
+export { Avatar } from './components/Avatar/Avatar';
+export type { AvatarProps } from './components/Avatar/Avatar';
 export { NavItem } from './components/Shell/NavItem';
 export type { NavItemProps } from './components/Shell/NavItem';
 export { SideNav } from './components/Shell/SideNav';
@@ -208,7 +210,7 @@ export type { PublicHeaderProps, TopBarProps } from './components/Shell/TopBar';
 export { BottomNav } from './components/Shell/BottomNav';
 export type { BottomNavProps } from './components/Shell/BottomNav';
 export { roleShellSpec } from './components/Shell/roleNav';
-export type { NavEntry, NavGroup, RoleShellSpec, ShellRole } from './components/Shell/roleNav';
+export type { NavEntry, RoleShellSpec, ShellRole } from './components/Shell/roleNav';
 export { navIcons } from './components/Shell/navIcons';
 export type { NavIconName } from './components/Shell/navIcons';
 export { useMediaQuery } from './components/Shell/useMediaQuery';

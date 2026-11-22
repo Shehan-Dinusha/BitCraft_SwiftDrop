@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { centreSquare, initials, sourceProblem } from './avatar';
+import { centreSquare, sourceProblem } from './avatar';
 
 describe('profile picture helpers', () => {
   it('accepts PNG, JPEG and WebP up to 15 MB only', () => {
@@ -14,11 +14,5 @@ describe('profile picture helpers', () => {
     expect(centreSquare(4000, 3000)).toEqual({ sx: 500, sy: 0, side: 3000 });
     expect(centreSquare(1080, 1920)).toEqual({ sx: 0, sy: 420, side: 1080 });
     expect(centreSquare(256, 256)).toEqual({ sx: 0, sy: 0, side: 256 });
-  });
-
-  it('falls back to initials', () => {
-    expect(initials('Nimal Perera')).toBe('NP');
-    expect(initials('umesh')).toBe('U');
-    expect(initials('  ')).toBe('?');
   });
 });

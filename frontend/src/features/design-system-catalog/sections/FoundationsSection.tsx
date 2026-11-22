@@ -97,7 +97,9 @@ export function FoundationsSection() {
             'surface-canvas',
             'surface-card',
             'surface-elevated',
+            'surface-nav',
             'border-subtle',
+            'border-strong',
             'disabled-bg',
             'disabled-fg'
           ]}
