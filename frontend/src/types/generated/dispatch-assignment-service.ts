@@ -580,6 +580,11 @@ export interface components {
             hubStage?: components["schemas"]["HubStage"];
             /** @description The district whose dispatcher manages the order now. */
             responsibleDistrict?: components["schemas"]["SriLankanDistrict"];
+            /**
+             * Format: date-time
+             * @description When the courier of the current leg collected the parcel; reassignment is blocked once set.
+             */
+            pickedUpAt?: string;
         };
         CourierShiftResponse: {
             /** Format: uuid */
