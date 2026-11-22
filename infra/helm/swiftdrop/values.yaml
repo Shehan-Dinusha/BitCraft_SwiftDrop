@@ -364,6 +364,8 @@ services:
       repository: merchant-b2b-service
     hpa: { minReplicas: 2, maxReplicas: 8, scaleUpPods: 2 }
     config:
+      # The pickup queue, for "ready for pickup".
+      DISPATCH_SERVICE_URL: "http://dispatch-assignment-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       ORDER_SERVICE_URL: "http://customer-order-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
 
   webhook-resiliency-service:

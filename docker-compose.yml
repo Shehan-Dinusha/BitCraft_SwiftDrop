@@ -323,6 +323,8 @@ services:
     ports:
       - "8086:8086"
     environment:
+      # The pickup queue, for "ready for pickup".
+      DISPATCH_SERVICE_URL: http://dispatch-assignment-service:8084
       ORDER_SERVICE_URL: http://customer-order-service:8082
       DB_URL: jdbc:postgresql://merchant-postgres:5432/swiftdrop_merchant
       DB_USERNAME: ${POSTGRES_USER:-swiftdrop}

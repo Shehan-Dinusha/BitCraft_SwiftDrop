@@ -4,6 +4,10 @@ import type { components } from '@/types/generated/delivery-execution-service';
 export type DeliverySessionResponse = components['schemas']['DeliverySessionResponse'];
 export type CourierJobResponse = components['schemas']['CourierJobResponse'];
 export type CourierJobStop = components['schemas']['CourierJobStop'];
+export type ShopStopResponse = components['schemas']['ShopStopResponse'];
+export type ShopStopAddress = components['schemas']['ShopStopAddress'];
+export type CollectShopRequest = components['schemas']['CollectShopRequest'];
+export type CollectShopResponse = components['schemas']['CollectShopResponse'];
 export type TransitionDeliveryRequest = components['schemas']['TransitionDeliveryRequest'];
 export type ProofOfDeliveryUploadRequest = components['schemas']['ProofOfDeliveryUploadRequest'];
 export type ProofOfDeliveryResponse = components['schemas']['ProofOfDeliveryResponse'];
@@ -22,6 +26,22 @@ export const deliveryApi = {
   getJob: async (deliveryId: string) => {
     const { data } = await apiClient.get<{ success: boolean; data: CourierJobResponse }>(
       `/v1/deliveries/${deliveryId}/job`
+    );
+    return data.data;
+  },
+
+  /** A shop's parcels this courier collects in one visit. */
+  getShopStop: async (merchantId: string) => {
+    const { data } = await apiClient.get<{ success: boolean; data: ShopStopResponse }>(
+      `/v1/deliveries/shops/${merchantId}`
+    );
+    return data.data;
+  },
+
+  collectShop: async (merchantId: string, request: CollectShopRequest) => {
+    const { data } = await apiClient.post<{ success: boolean; data: CollectShopResponse }>(
+      `/v1/deliveries/shops/${merchantId}/collect`,
+      request
     );
     return data.data;
   },
@@ -95,5 +115,5 @@ export const deliveryApi = {
       `/v1/deliveries/${deliveryId}/proof-of-delivery`
     );
     return data.data;
-  },
+  }
 };

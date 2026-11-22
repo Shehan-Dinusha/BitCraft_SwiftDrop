@@ -190,7 +190,7 @@ class CourierJobServiceTest {
 
     private void order(boolean cancelled) {
         when(orderJobClient.get(orderId)).thenReturn(new OrderJobClient.OrderJob(
-                cancelled, OrderSpeed.STANDARD, stop("Sender"), stop("Recipient"), "Ring twice", "Books",
+                orderId, cancelled, OrderSpeed.STANDARD, stop("Sender"), stop("Recipient"), "Ring twice", "Books",
                 BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TWO,
                 new BigDecimal("670.00"), "LKR"));
     }

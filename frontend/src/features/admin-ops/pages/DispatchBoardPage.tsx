@@ -278,7 +278,12 @@ export function DispatchBoardPage() {
             orders={search(unassigned.data ?? [])}
             searching={searching}
             now={now}
+            showDistrict={isAdmin && !scope}
             onAssign={openAssignment}
+            onShopAssigned={(title) => {
+              setNotice({ tone: 'success', title });
+              void refresh();
+            }}
           />
         );
     }

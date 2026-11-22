@@ -45,6 +45,7 @@ import org.springframework.stereotype.Service;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -120,6 +121,18 @@ public class OrderPdfGeneratorService {
             buildShippingLabel(doc, writer, order);
             doc.newPage();
             buildBookingReceipt(doc, order);
+        });
+    }
+
+    /** One A5 page per order: the labels only, to print and attach. */
+    public byte[] generateShippingLabelsPdf(List<CustomerOrder> orders) {
+        return render(orders.size() == 1 ? orders.getFirst().getTrackingNumber() : "Shipping labels", orders.getFirst(), "shipping labels", "Shipping labels", orders.size(), (doc, writer) -> {
+            for (int i = 0; i < orders.size(); i++) {
+                if (i > 0) {
+                    doc.newPage();
+                }
+                buildShippingLabel(doc, writer, orders.get(i));
+            }
         });
     }
 
@@ -805,11 +818,15 @@ public class OrderPdfGeneratorService {
     }
 
     private byte[] render(CustomerOrder order, String kind, String title, int pages, PageBuilder builder) {
+        return render(order.getTrackingNumber(), order, kind, title, pages, builder);
+    }
+
+    private byte[] render(String name, CustomerOrder order, String kind, String title, int pages, PageBuilder builder) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A5, MARGIN, MARGIN, MARGIN, MARGIN + FOOTER_SPACE);
             PdfWriter writer = PdfWriter.getInstance(document, out);
-            writer.setPageEvent(new Footer(order.getTrackingNumber(), pages));
-            document.addTitle(title + " " + safe(order.getTrackingNumber()));
+            writer.setPageEvent(new Footer(name, pages));
+            document.addTitle(title + " " + safe(name));
             document.addAuthor("SwiftDrop");
             document.addCreator("SwiftDrop customer-order-service");
             document.open();

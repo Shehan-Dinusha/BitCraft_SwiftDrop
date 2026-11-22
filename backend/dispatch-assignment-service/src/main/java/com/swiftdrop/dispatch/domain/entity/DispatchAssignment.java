@@ -105,6 +105,14 @@ public class DispatchAssignment {
     @Column(name = "volume_litres", precision = 12, scale = 2)
     private BigDecimal volumeLitres;
 
+    /** The shop's name, known once it has asked for a pickup. */
+    @Column(name = "merchant_name", length = 150)
+    private String merchantName;
+
+    /** When the shop said the parcel is packed. */
+    @Column(name = "ready_at")
+    private Instant readyAt;
+
     @Column(name = "estimated_pickup_minutes")
     private Integer estimatedPickupMinutes = 30;
 
@@ -235,6 +243,30 @@ public class DispatchAssignment {
     /** Null when the size is unknown. */
     public BigDecimal getLongestSideCm() {
         return volumeLitres == null ? null : lengthCm.max(widthCm).max(heightCm);
+    }
+
+    public String getMerchantName() { return merchantName; }
+    public void setMerchantName(String merchantName) { this.merchantName = merchantName; }
+
+    public Instant getReadyAt() { return readyAt; }
+    public void setReadyAt(Instant readyAt) { this.readyAt = readyAt; }
+
+    /** Sent by a shop. Such an order carries the shop's id as its customer too; a customer's order never does. */
+    public boolean isMerchantOrder() {
+        return merchantId != null && merchantId.equals(customerId);
+    }
+
+    /**
+     * Collected together with the shop's other parcels: a standard merchant order that waits at the shop.
+     * Faster services are assigned on their own.
+     */
+    public boolean isShopPickup() {
+        return isMerchantOrder() && leg == AssignmentLeg.FIRST_MILE && orderSpeed == OrderSpeed.STANDARD;
+    }
+
+    /** A courier can be sent for it: a shop's parcel only once the shop said it is packed. */
+    public boolean isReadyForPickup() {
+        return !isShopPickup() || readyAt != null;
     }
 
     public Integer getEstimatedPickupMinutes() { return estimatedPickupMinutes; }

@@ -442,6 +442,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/shops/{merchantId}/couriers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Couriers on shift and which of the shop's ready parcels each has room for
+         * @description A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN must give it.
+         */
+        get: operations["getShopCouriers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/shops/{merchantId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give a shop's ready parcels to one courier, all of them or none */
+        post: operations["assignShopPickup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -556,6 +593,27 @@ export interface components {
             courierId: string;
             status: components["schemas"]["ShiftStatus"];
         };
+        ShopCourierSuggestionResponse: {
+            /** Format: uuid */
+            courierId: string;
+            courierName: string;
+            vehicleType: components["schemas"]["VehicleType"];
+            activeParcels: number;
+            maxCapacity: number;
+            fittingOrderIds: string[];
+        };
+        AssignShopPickupRequest: {
+            /** Format: uuid */
+            courierId: string;
+            orderIds: string[];
+        };
+        ApiResponseListShopCourierSuggestionResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ShopCourierSuggestionResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
         DispatchAssignmentResponse: {
             /** Format: uuid */
             assignmentId?: string;
@@ -600,6 +658,18 @@ export interface components {
             heightCm?: number;
             /** @example 2.5 */
             weightKg?: number;
+            /**
+             * Format: uuid
+             * @description The shop, for an order it sent.
+             */
+            merchantId?: string | null;
+            merchantName?: string | null;
+            /** @description Collected together with the shop's other parcels (a standard order still at the shop). */
+            shopPickup?: boolean;
+            /** @description Whether a courier can be sent. A shop's parcel only once the shop said it is packed. */
+            readyForPickup?: boolean;
+            /** Format: date-time */
+            readyAt?: string | null;
         };
         CourierShiftResponse: {
             /** Format: uuid */
@@ -1787,6 +1857,91 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
+            };
+        };
+    };
+    getShopCouriers: {
+        parameters: {
+            query?: {
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListShopCourierSuggestionResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    assignShopPickup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignShopPickupRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A parcel is not packed, no longer waiting, or does not fit the courier's vehicle */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

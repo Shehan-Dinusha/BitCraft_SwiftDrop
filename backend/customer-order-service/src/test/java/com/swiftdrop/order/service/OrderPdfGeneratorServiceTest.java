@@ -24,6 +24,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,6 +90,17 @@ class OrderPdfGeneratorServiceTest {
         assertThat(reader.getNumberOfPages()).isEqualTo(2);
         assertThat(pageText(reader, 1)).contains("SwiftDrop", "SD-7K4M-9QX2", "DELIVER TO", "Print at actual size");
         assertThat(pageText(reader, 2)).contains("Booking receipt", "SD-7K4M-9QX2");
+    }
+
+    @Test
+    @DisplayName("Many labels: one page each, labels only, no receipt and no fee")
+    void manyLabels() throws Exception {
+        PdfReader reader = new PdfReader(pdfGeneratorService.generateShippingLabelsPdf(List.of(sampleOrder, sampleOrder, sampleOrder)));
+
+        assertThat(reader.getNumberOfPages()).isEqualTo(3);
+        for (int page = 1; page <= 3; page++) {
+            assertThat(pageText(reader, page)).contains("DELIVER TO", "SD-7K4M-9QX2").doesNotContain("LKR", "Booking receipt");
+        }
     }
 
     @Test

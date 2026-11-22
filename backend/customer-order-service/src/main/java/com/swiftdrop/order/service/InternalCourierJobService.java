@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -19,9 +21,18 @@ public class InternalCourierJobService {
 
     @Transactional(readOnly = true)
     public InternalCourierJobView getCourierJob(UUID orderId) {
-        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+        return view(customerOrderRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found")));
+    }
 
+    /** Unknown orders are left out. */
+    @Transactional(readOnly = true)
+    public List<InternalCourierJobView> getCourierJobs(List<UUID> orderIds) {
+        return customerOrderRepository.findByOrderIdIn(Set.copyOf(orderIds)).stream()
+                .map(InternalCourierJobService::view).toList();
+    }
+
+    private static InternalCourierJobView view(CustomerOrder order) {
         return new InternalCourierJobView(
                 order.getOrderId(),
                 order.getStatus() == PublicOrderStatus.CANCELLED,

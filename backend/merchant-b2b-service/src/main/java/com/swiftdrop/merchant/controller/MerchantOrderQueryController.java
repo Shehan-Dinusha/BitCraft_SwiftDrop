@@ -35,7 +35,7 @@ public class MerchantOrderQueryController {
         var result = receipts.findByMerchantIdOrderByCreatedAtDesc(merchantId,
                 PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))));
         return ApiResponse.success(result.map(r -> new MerchantOrderReceiptResponse(
-                r.getExternalRef(), r.getOrderId(), r.getTrackingNumber(), r.getCreatedAt())).getContent(),
+                r.getExternalRef(), r.getOrderId(), r.getTrackingNumber(), r.getCreatedAt(), r.getFee(), r.getCurrency())).getContent(),
                 "Merchant orders retrieved");
     }
 }

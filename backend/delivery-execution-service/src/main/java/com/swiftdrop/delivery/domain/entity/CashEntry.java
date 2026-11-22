@@ -70,6 +70,10 @@ public class CashEntry {
     @Column(name = "recorded_at", nullable = false, updatable = false)
     private Instant recordedAt;
 
+    /** The shop's payment it is part of; null for a customer's fee. */
+    @Column(name = "payment_id", updatable = false)
+    private UUID paymentId;
+
     @Column(name = "handover_id")
     private UUID handoverId;
 
@@ -80,7 +84,7 @@ public class CashEntry {
     }
 
     public CashEntry(CashEntryType entryType, DeliverySession session, UUID courierId, String courierName,
-                     SriLankanDistrict district, BigDecimal amount, String currency, String note, UUID recordedBy) {
+                     SriLankanDistrict district, BigDecimal amount, String currency, String note, UUID recordedBy, UUID paymentId) {
         this.entryId = UUID.randomUUID();
         this.entryType = entryType;
         this.deliveryId = session.getDeliveryId();
@@ -93,6 +97,7 @@ public class CashEntry {
         this.currency = currency != null ? currency : "LKR";
         this.note = note;
         this.recordedBy = recordedBy;
+        this.paymentId = paymentId;
         this.recordedAt = Instant.now();
     }
 
@@ -108,6 +113,7 @@ public class CashEntry {
     public String getCurrency() { return currency; }
     public String getNote() { return note; }
     public Instant getRecordedAt() { return recordedAt; }
+    public UUID getPaymentId() { return paymentId; }
     public UUID getHandoverId() { return handoverId; }
     public UUID getDepositId() { return depositId; }
 }

@@ -138,6 +138,18 @@ export const orderApi = {
   downloadReceipt: (orderId: string, trackingNumber?: string) =>
     downloadPdf(`/v1/orders/${orderId}/shipping-label`, 'receipt', trackingNumber ?? orderId),
 
+  /** Labels only, one page per order; the server prints at most 100 at once. */
+  downloadShippingLabels: async (orderIds: string[]) => {
+    for (let start = 0; start < orderIds.length; start += 100) {
+      const response = await apiClient.post<Blob>(
+        '/v1/orders/labels',
+        { orderIds: orderIds.slice(start, start + 100) },
+        { responseType: 'blob' }
+      );
+      saveBlob(response.data, 'shipping-labels.pdf');
+    }
+  },
+
   /** Final delivery and cash collection receipt, available once the parcel is delivered. */
   downloadDeliveryReceipt: (orderId: string, trackingNumber?: string) =>
     downloadPdf(

@@ -387,6 +387,23 @@ public class CustomerOrderService {
         return new PdfDownload(order.getTrackingNumber(), orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(order));
     }
 
+    /** One label per page, in the order asked for. A merchant prints labels of their own company's orders. */
+    @Transactional(readOnly = true)
+    public byte[] getShippingLabelsPdf(List<UUID> orderIds, UUID callerId, String callerRole) {
+        List<CustomerOrder> orders = orderIds.stream().distinct().map(orderId -> {
+            CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+            boolean ownMerchantOrder = UserRole.fromClaim(callerRole) == UserRole.MERCHANT
+                    && order.getSource() == OrderSource.MERCHANT
+                    && order.getMerchantId() != null && order.getMerchantId().equals(CallerMerchant.current());
+            if (!ownMerchantOrder) {
+                assertCallerCanAccess(order, callerId, callerRole);
+            }
+            return order;
+        }).toList();
+        return orderPdfGeneratorService.generateShippingLabelsPdf(orders);
+    }
+
     @Transactional(readOnly = true)
     public PdfDownload getDeliveryReceiptPdf(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);

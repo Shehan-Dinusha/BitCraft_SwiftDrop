@@ -530,6 +530,31 @@ paths:
         "404":
           description: Order not found, or not owned by the caller
 
+  /api/v1/orders/labels:
+    post:
+      tags: [Order]
+      summary: Download shipping labels for up to 100 orders, one A5 page each
+      description: >-
+        A customer for their own orders, a merchant for their company's, a dispatcher for their district's.
+        404 if any order is not the caller's.
+      operationId: downloadShippingLabels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShippingLabelsRequest"
+      responses:
+        "200":
+          description: PDF, sent as an attachment named shipping-labels.pdf with Cache-Control no-store
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Order not found
+
   /api/v1/orders/{orderId}/shipping-label:
     get:
       tags: [Order]
@@ -1071,6 +1096,18 @@ components:
         declaredValue:
           type: number
           format: double
+
+    ShippingLabelsRequest:
+      type: object
+      required:
+        - orderIds
+      properties:
+        orderIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 100
 
     CancelOrderRequest:
       type: object

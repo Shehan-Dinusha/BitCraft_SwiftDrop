@@ -57,7 +57,11 @@ public record CourierAssignedEvent(
         SriLankanDistrict pickupDistrict,
 
         @JsonProperty("deliveryDistrict")
-        SriLankanDistrict deliveryDistrict
+        SriLankanDistrict deliveryDistrict,
+
+        /** The shop's name, for a merchant order collected with the shop's other parcels; null otherwise. */
+        @JsonProperty("merchantName")
+        String merchantName
 
 ) {
     public CourierAssignedEvent {
@@ -66,6 +70,26 @@ public record CourierAssignedEvent(
         if (timestamp == null) timestamp = Instant.now();
         if (assignedAt == null) assignedAt = Instant.now();
         // trackingNumber, merchantId, customerId and the districts are intentionally nullable
+    }
+
+    /** For callers without a merchant name. */
+    public CourierAssignedEvent(
+            UUID eventId,
+            UUID correlationId,
+            UUID orderId,
+            UUID courierId,
+            String courierName,
+            int estimatedPickupMinutes,
+            Instant assignedAt,
+            Instant timestamp,
+            String trackingNumber,
+            UUID merchantId,
+            UUID customerId,
+            SriLankanDistrict pickupDistrict,
+            SriLankanDistrict deliveryDistrict
+    ) {
+        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp,
+                trackingNumber, merchantId, customerId, pickupDistrict, deliveryDistrict, null);
     }
 
     /**

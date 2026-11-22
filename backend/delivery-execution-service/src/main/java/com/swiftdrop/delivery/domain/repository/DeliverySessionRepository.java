@@ -41,5 +41,8 @@ public interface DeliverySessionRepository extends JpaRepository<DeliverySession
     List<DeliverySession> findByFirstMileCourierIdAndHandedInAtGreaterThanEqualAndHandedInAtLessThanOrderByHandedInAtAsc(
             UUID courierId, java.time.Instant from, java.time.Instant to);
 
+    List<DeliverySession> findByCourierIdAndMerchantIdAndCurrentStateOrderByCreatedAtAsc(
+            UUID courierId, UUID merchantId, DeliveryState currentState);
+
     Page<DeliverySession> findByCurrentState(DeliveryState currentState, Pageable pageable);
 }

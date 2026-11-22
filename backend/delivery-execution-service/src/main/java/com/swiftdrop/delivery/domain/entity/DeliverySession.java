@@ -67,6 +67,13 @@ public class DeliverySession {
     @Column(name = "attempt_count", nullable = false)
     private Integer attemptCount = 0;
 
+    /** The shop that sent the parcel; null for a customer's parcel. */
+    @Column(name = "merchant_id")
+    private UUID merchantId;
+
+    @Column(name = "merchant_name", length = 150)
+    private String merchantName;
+
     /** The courier who brought a cross-district parcel to the pickup district's hub. */
     @Column(name = "first_mile_courier_id")
     private UUID firstMileCourierId;
@@ -144,6 +151,12 @@ public class DeliverySession {
 
     public Integer getAttemptCount() { return attemptCount; }
     public void setAttemptCount(Integer attemptCount) { this.attemptCount = attemptCount; }
+
+    public UUID getMerchantId() { return merchantId; }
+    public void setMerchantId(UUID merchantId) { this.merchantId = merchantId; }
+
+    public String getMerchantName() { return merchantName; }
+    public void setMerchantName(String merchantName) { this.merchantName = merchantName; }
 
     public UUID getFirstMileCourierId() { return firstMileCourierId; }
     public void setFirstMileCourierId(UUID firstMileCourierId) { this.firstMileCourierId = firstMileCourierId; }

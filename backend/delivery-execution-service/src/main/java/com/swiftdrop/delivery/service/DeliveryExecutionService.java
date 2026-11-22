@@ -104,6 +104,11 @@ public class DeliveryExecutionService {
         if (event.deliveryDistrict() != null) {
             session.setDeliveryDistrict(event.deliveryDistrict());
         }
+        // A shop's order carries the shop's id as its customer too; a customer's order never does.
+        if (event.merchantId() != null && event.merchantId().equals(event.customerId())) {
+            session.setMerchantId(event.merchantId());
+            session.setMerchantName(event.merchantName());
+        }
         session.setPreviousState(prevState);
         session.setCurrentState(DeliveryState.ASSIGNED);
         session = deliverySessionRepository.save(session);

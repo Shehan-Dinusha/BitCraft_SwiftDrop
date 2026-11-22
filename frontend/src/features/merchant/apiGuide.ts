@@ -6,6 +6,11 @@
  */
 export const ordersUrl = () => `${window.location.origin}/api/v1/b2b/orders`;
 
+export const pickupReadyUrl = () => `${window.location.origin}/api/v1/b2b/pickups/ready`;
+
+export const pickupReadyCurl = (apiKey: string) =>
+  `curl -X POST ${pickupReadyUrl()} \\\n  -H "X-API-Key: ${apiKey}"`;
+
 export const ORDER_REQUEST = {
   externalRef: 'SHOP-001',
   pickup: {
@@ -44,7 +49,9 @@ export const ORDER_RESPONSE = {
     externalRef: 'SHOP-001',
     orderId: ORDER_ID,
     trackingNumber: 'SD-7K4M-9QX2',
-    created: true
+    created: true,
+    fee: 430,
+    currency: 'LKR'
   },
   timestamp: '2026-11-22T06:10:00Z'
 };
@@ -61,7 +68,9 @@ export const BULK_RESPONSE = {
         externalRef: 'SHOP-001',
         orderId: ORDER_ID,
         trackingNumber: 'SD-7K4M-9QX2',
-        created: true
+        created: true,
+        fee: 430,
+        currency: 'LKR'
       },
       {
         externalRef: 'SHOP-002',

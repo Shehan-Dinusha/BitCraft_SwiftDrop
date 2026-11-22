@@ -205,6 +205,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download shipping labels for up to 100 orders, one A5 page each
+         * @description A customer for their own orders, a merchant for their company's, a dispatcher for their district's. 404 if any order is not the caller's.
+         */
+        post: operations["downloadShippingLabels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/{orderId}/shipping-label": {
         parameters: {
             query?: never;
@@ -532,6 +552,9 @@ export interface components {
             customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
+        };
+        ShippingLabelsRequest: {
+            orderIds: string[];
         };
         CancelOrderRequest: {
             /** @example Sender no longer needs delivery */
@@ -1276,6 +1299,37 @@ export interface operations {
                 };
             };
             /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    downloadShippingLabels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingLabelsRequest"];
+            };
+        };
+        responses: {
+            /** @description PDF, sent as an attachment named shipping-labels.pdf with Cache-Control no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Order not found */
             404: {
                 headers: {
                     [name: string]: unknown;

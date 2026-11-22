@@ -53,8 +53,24 @@ public record DeliverySessionResponse(
         Instant createdAt,
 
         @Schema(description = "Last updated timestamp")
-        Instant updatedAt
+        Instant updatedAt,
+
+        @Schema(description = "The shop that sent it, so its parcels are collected together; null for a customer's parcel")
+        UUID merchantId,
+
+        @Schema(description = "Shop name; null when not known", example = "Nimal Fashion")
+        String merchantName
 ) {
+    /** For callers without a shop. */
+    public DeliverySessionResponse(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, String courierName,
+                                   SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
+                                   DeliveryState currentState, DeliveryState previousState, String failedReason,
+                                   Integer attemptCount, Instant pickupAt, Instant deliveredAt, Instant createdAt,
+                                   Instant updatedAt) {
+        this(deliveryId, orderId, trackingNumber, courierId, courierName, pickupDistrict, deliveryDistrict, currentState,
+                previousState, failedReason, attemptCount, pickupAt, deliveredAt, createdAt, updatedAt, null, null);
+    }
+
     /**
      * How a cross-district delivery looks to the courier who handed it in: their part ended at the hub, and
      * nothing after it (the next courier, the delivery) is theirs to see.
@@ -83,7 +99,9 @@ public record DeliverySessionResponse(
                 entity.getPickupAt(),
                 entity.getDeliveredAt(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                entity.getMerchantId(),
+                entity.getMerchantName()
         );
     }
 }

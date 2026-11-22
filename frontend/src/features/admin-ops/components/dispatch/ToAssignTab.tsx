@@ -3,9 +3,11 @@ import { UserCheck } from 'lucide-react';
 import { Button, QueueChip } from '@/design-system';
 import type { DispatchAssignmentResponse } from '@/services/api/dispatchApi';
 import { Badge, CELL, DispatchTable, RouteCell, TabEmpty, TrackingCell } from './DispatchTable';
+import { ShopPickups } from './ShopPickups';
 import { parcelSize } from './courierFit';
 import {
   formatAge,
+  groupByShop,
   isAtHub,
   orderKey,
   orderLabel,
@@ -17,17 +19,25 @@ type Filter = 'all' | 'pickup' | 'hub';
 
 /** Orders waiting for a courier: pickups in this district, and parcels its hub has accepted. */
 export function ToAssignTab({
-  orders,
+  orders: all,
   searching,
   now,
-  onAssign
+  showDistrict,
+  onAssign,
+  onShopAssigned
 }: {
   orders: DispatchAssignmentResponse[];
   searching: boolean;
   now: number;
+  /** An admin looking at every district. */
+  showDistrict: boolean;
   onAssign: (order: DispatchAssignmentResponse) => void;
+  onShopAssigned: (message: string) => void;
 }) {
   const [filter, setFilter] = useState<Filter>('all');
+  // A shop's parcels are one row above, not one row each.
+  const shops = groupByShop(all);
+  const orders = all.filter((order) => !order.shopPickup);
   const atHub = orders.filter(isAtHub);
   const pickups = orders.filter((order) => !isAtHub(order));
   const chips: { id: Filter; label: string; list: DispatchAssignmentResponse[] }[] = [
@@ -41,6 +51,12 @@ export function ToAssignTab({
 
   return (
     <>
+      <ShopPickups
+        shops={shops}
+        now={now}
+        showDistrict={showDistrict}
+        onAssigned={onShopAssigned}
+      />
       <div className="flex flex-wrap gap-2 px-3 pb-3">
         {chips.map((chip) => (
           <QueueChip
