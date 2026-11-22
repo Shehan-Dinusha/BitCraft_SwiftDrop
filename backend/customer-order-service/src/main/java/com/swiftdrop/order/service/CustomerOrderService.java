@@ -1,5 +1,6 @@
 package com.swiftdrop.order.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.dto.PagedResult;
 import com.swiftdrop.contracts.enums.FeeRevisionStatus;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
@@ -110,16 +111,16 @@ public class CustomerOrderService {
                 .pickupDistrict(request.getPickupDistrict())
                 .pickupPostalCode(request.getPickupPostalCode())
                 .pickupContactName(request.getPickupContactName())
-                .pickupContactPhone(request.getPickupContactPhone())
-                .pickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()))
+                .pickupContactPhone(SriLankanPhone.toE164(request.getPickupContactPhone()))
+                .pickupContactAlternatePhone(SriLankanPhone.toE164OrNull(request.getPickupContactAlternatePhone()))
                 .deliveryAddressLine1(request.getDeliveryAddressLine1())
                 .deliveryAddressLine2(request.getDeliveryAddressLine2())
                 .deliveryCity(request.getDeliveryCity())
                 .deliveryDistrict(request.getDeliveryDistrict())
                 .deliveryPostalCode(request.getDeliveryPostalCode())
                 .recipientName(request.getRecipientName())
-                .recipientPhone(request.getRecipientPhone())
-                .recipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()))
+                .recipientPhone(SriLankanPhone.toE164(request.getRecipientPhone()))
+                .recipientAlternatePhone(SriLankanPhone.toE164OrNull(request.getRecipientAlternatePhone()))
                 .recipientEmail(request.getRecipientEmail())
                 .lengthCm(request.getLengthCm())
                 .widthCm(request.getWidthCm())
@@ -129,7 +130,6 @@ public class CustomerOrderService {
                 .itemDescription(request.getItemDescription())
                 .customerNotes(blankToNull(request.getCustomerNotes()))
                 .declaredValue(request.getDeclaredValue() != null ? request.getDeclaredValue() : BigDecimal.ZERO)
-                .codAmount(request.getCodAmount() != null ? request.getCodAmount() : BigDecimal.ZERO)
                 .prohibitedItemsDeclared(request.getProhibitedItemsDeclared())
                 .pricingRuleVersionId(estimate.getPricingRuleVersionId())
                 .estimatedFee(estimate.getEstimatedFee())
@@ -254,8 +254,8 @@ public class CustomerOrderService {
         if (request.getPickupDistrict() != null) order.setPickupDistrict(request.getPickupDistrict());
         if (request.getPickupPostalCode() != null) order.setPickupPostalCode(request.getPickupPostalCode());
         if (request.getPickupContactName() != null) order.setPickupContactName(request.getPickupContactName());
-        if (request.getPickupContactPhone() != null) order.setPickupContactPhone(request.getPickupContactPhone());
-        if (request.getPickupContactAlternatePhone() != null) order.setPickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()));
+        if (request.getPickupContactPhone() != null) order.setPickupContactPhone(SriLankanPhone.toE164(request.getPickupContactPhone()));
+        if (request.getPickupContactAlternatePhone() != null) order.setPickupContactAlternatePhone(SriLankanPhone.toE164OrNull(request.getPickupContactAlternatePhone()));
 
         if (request.getDeliveryAddressLine1() != null) order.setDeliveryAddressLine1(request.getDeliveryAddressLine1());
         if (request.getDeliveryAddressLine2() != null) order.setDeliveryAddressLine2(request.getDeliveryAddressLine2());
@@ -263,14 +263,13 @@ public class CustomerOrderService {
         if (request.getDeliveryDistrict() != null) order.setDeliveryDistrict(request.getDeliveryDistrict());
         if (request.getDeliveryPostalCode() != null) order.setDeliveryPostalCode(request.getDeliveryPostalCode());
         if (request.getRecipientName() != null) order.setRecipientName(request.getRecipientName());
-        if (request.getRecipientPhone() != null) order.setRecipientPhone(request.getRecipientPhone());
-        if (request.getRecipientAlternatePhone() != null) order.setRecipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()));
+        if (request.getRecipientPhone() != null) order.setRecipientPhone(SriLankanPhone.toE164(request.getRecipientPhone()));
+        if (request.getRecipientAlternatePhone() != null) order.setRecipientAlternatePhone(SriLankanPhone.toE164OrNull(request.getRecipientAlternatePhone()));
         if (request.getRecipientEmail() != null) order.setRecipientEmail(request.getRecipientEmail());
 
         if (request.getItemDescription() != null) order.setItemDescription(request.getItemDescription());
         if (request.getCustomerNotes() != null) order.setCustomerNotes(blankToNull(request.getCustomerNotes()));
         if (request.getDeclaredValue() != null) order.setDeclaredValue(request.getDeclaredValue());
-        if (request.getCodAmount() != null) order.setCodAmount(request.getCodAmount());
 
         boolean dimsOrSpeedChanged = false;
         if (request.getLengthCm() != null) { order.setLengthCm(request.getLengthCm()); dimsOrSpeedChanged = true; }
@@ -386,6 +385,23 @@ public class CustomerOrderService {
     public PdfDownload getShippingLabelPdf(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = findAccessibleOrder(orderId, callerId, callerRole);
         return new PdfDownload(order.getTrackingNumber(), orderPdfGeneratorService.generateShippingLabelAndReceiptPdf(order));
+    }
+
+    /** One label per page, in the order asked for. A merchant prints labels of their own company's orders. */
+    @Transactional(readOnly = true)
+    public byte[] getShippingLabelsPdf(List<UUID> orderIds, UUID callerId, String callerRole) {
+        List<CustomerOrder> orders = orderIds.stream().distinct().map(orderId -> {
+            CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+            boolean ownMerchantOrder = UserRole.fromClaim(callerRole) == UserRole.MERCHANT
+                    && order.getSource() == OrderSource.MERCHANT
+                    && order.getMerchantId() != null && order.getMerchantId().equals(CallerMerchant.current());
+            if (!ownMerchantOrder) {
+                assertCallerCanAccess(order, callerId, callerRole);
+            }
+            return order;
+        }).toList();
+        return orderPdfGeneratorService.generateShippingLabelsPdf(orders);
     }
 
     @Transactional(readOnly = true)

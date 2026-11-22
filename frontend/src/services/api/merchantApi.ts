@@ -15,6 +15,9 @@ export type MerchantApprovalResponse = components['schemas']['MerchantApprovalRe
 export type MerchantStatus = components['schemas']['MerchantStatus'];
 export type MerchantOrderReceiptResponse = components['schemas']['MerchantOrderReceiptResponse'];
 
+export type MerchantPickupResponse = components['schemas']['MerchantPickupResponse'];
+export type MerchantPickupState = components['schemas']['MerchantPickupState'];
+
 export const merchantApi = {
   register: async (request: RegisterMerchantRequest) => {
     const { data } = await apiClient.post<{ data: MerchantApprovalResponse }>(
@@ -72,6 +75,20 @@ export const merchantApi = {
   regenerateApiKey: async (merchantId: string, keyId: string) => {
     const { data } = await apiClient.post<{ data: ApiKeyResponse }>(
       `/v1/merchants/${merchantId}/api-keys/${keyId}/regenerate`
+    );
+    return data.data;
+  },
+  /** Parcels no courier has collected yet, and the cash to prepare. */
+  getPickup: async (merchantId: string) => {
+    const { data } = await apiClient.get<{ data: MerchantPickupResponse }>(
+      `/v1/merchants/${merchantId}/pickup`
+    );
+    return data.data;
+  },
+  /** Everything booked so far is packed. */
+  markPickupReady: async (merchantId: string) => {
+    const { data } = await apiClient.post<{ data: MerchantPickupResponse }>(
+      `/v1/merchants/${merchantId}/pickup/ready`
     );
     return data.data;
   },

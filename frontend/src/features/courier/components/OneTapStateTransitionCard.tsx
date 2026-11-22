@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 import { Button } from '@/design-system/primitives/Button';
 import { SlideToTransitionBar } from '@/design-system/components/SlideToTransitionBar/SlideToTransitionBar';
-import { FAILURE_REASONS } from './DeliveryFailureReportModal';
+import { failureLabel } from '@/utils/failureReasons';
 import type { DeliverySessionResponse, DeliveryState, DeliveryFailureReason } from '@/services/api/deliveryApi';
 import { crossesDistricts } from '@/types/fsm';
 import { districtLabel } from '@/features/profile/profileFormat';
@@ -13,8 +12,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileCheck,
-  ChevronDown,
-  ChevronUp,
   MapPin,
   Warehouse
 } from 'lucide-react';
@@ -25,6 +22,10 @@ export interface OneTapStateTransitionCardProps {
   onOpenPoD: () => void;
   isPoDVerified: boolean;
   pendingState: DeliveryState | null;
+  /** The fee is still to be confirmed, so the pickup cannot be completed yet. */
+  blocked?: boolean;
+  /** This courier just handed it in at a hub, so it is no longer theirs. */
+  handedIn?: boolean;
 }
 
 export function OneTapStateTransitionCard({
@@ -32,21 +33,14 @@ export function OneTapStateTransitionCard({
   onTransition,
   onOpenPoD,
   isPoDVerified,
-  pendingState
+  pendingState,
+  blocked = false,
+  handedIn = false
 }: OneTapStateTransitionCardProps) {
-  const [showFailurePanel, setShowFailurePanel] = useState(false);
-  const [failureReason, setFailureReason] = useState<DeliveryFailureReason>('RECIPIENT_UNAVAILABLE');
-  const [failureNotes, setFailureNotes] = useState('');
-
   const currentState = session.currentState as DeliveryState;
   const isPending = pendingState !== null;
   // Going to another district: the courier hands it in at their district's hub instead of delivering it.
   const viaHubs = crossesDistricts(session);
-
-  const handleReportFailure = async () => {
-    await onTransition('FAILED', failureReason, failureNotes || 'Reported by courier via mobile app');
-    setShowFailurePanel(false);
-  };
 
   return (
     <SurfaceCard variant="elevated" className="space-y-4 p-5" data-density="touch">
@@ -66,7 +60,7 @@ export function OneTapStateTransitionCard({
               label="Slide to confirm pickup"
               confirmLabel="Release to pick up"
               onConfirm={() => onTransition('PICKED_UP', undefined, 'Courier picked up package')}
-              disabled={isPending}
+              disabled={isPending || blocked}
               density="touch"
               icon={<PackageCheck className="h-5 w-5" />}
             />
@@ -75,7 +69,7 @@ export function OneTapStateTransitionCard({
               className="w-full min-h-[48px] text-sm"
               onClick={() => onTransition('PICKED_UP', undefined, 'Courier confirmed pickup')}
               loading={pendingState === 'PICKED_UP'}
-              disabled={isPending}
+              disabled={isPending || blocked}
             >
               <PackageCheck className="mr-2 h-4 w-4 text-status-success-fg" />
               Confirm pickup
@@ -151,7 +145,7 @@ export function OneTapStateTransitionCard({
           </div>
         )}
 
-        {currentState === 'IN_TRANSIT' && (
+        {currentState === 'IN_TRANSIT' && !viaHubs && (
           <div className="space-y-3">
             <p className="text-sm text-secondary">
               Confirm when you reach the recipient.
@@ -226,6 +220,91 @@ export function OneTapStateTransitionCard({
           </div>
         )}
 
+        {currentState === 'ATTEMPT_FAILED' && (
+          <div className="space-y-3">
+            <p className="text-body text-primary">
+              {failureLabel(session.failedReason)}. Bring it to the{' '}
+              {districtLabel(session.deliveryDistrict)} hub.
+            </p>
+            <Button
+              variant="primary"
+              className="w-full min-h-target"
+              onClick={() =>
+                onTransition('HELD_AT_HUB', undefined, 'Courier handed the parcel in after a failed delivery')
+              }
+              loading={pendingState === 'HELD_AT_HUB'}
+              disabled={isPending}
+            >
+              <Warehouse className="mr-2 h-4 w-4" />
+              Handed in at the {districtLabel(session.deliveryDistrict)} hub
+            </Button>
+          </div>
+        )}
+
+        {currentState === 'RETURN_AT_HUB' && !handedIn && (
+          <div className="space-y-3">
+            <p className="text-body text-primary">
+              Collect the parcel from the {districtLabel(session.pickupDistrict)} hub, then bring it
+              back to the sender.
+            </p>
+            <Button
+              variant="primary"
+              className="w-full min-h-target"
+              onClick={() =>
+                onTransition('OUT_FOR_RETURN', undefined, 'Courier collected the return from the hub')
+              }
+              loading={pendingState === 'OUT_FOR_RETURN'}
+              disabled={isPending}
+            >
+              <PackageCheck className="mr-2 h-4 w-4" />
+              Collected from the hub
+            </Button>
+          </div>
+        )}
+
+        {currentState === 'OUT_FOR_RETURN' && (
+          <div className="space-y-3">
+            <p className="text-body text-primary">
+              Hand the parcel back to the sender and take a photo. Nothing is to be paid.
+            </p>
+            <Button
+              variant="primary"
+              className="w-full min-h-target"
+              onClick={onOpenPoD}
+              disabled={isPending}
+            >
+              <FileCheck className="mr-2 h-4 w-4" />
+              Take a photo to complete
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full min-h-target"
+              onClick={() =>
+                onTransition('RETURN_AT_HUB', undefined, 'The sender could not take it; back at the hub')
+              }
+              loading={pendingState === 'RETURN_AT_HUB'}
+              disabled={isPending}
+            >
+              <Warehouse className="mr-2 h-4 w-4" />
+              Sender not there, back at the hub
+            </Button>
+          </div>
+        )}
+
+        {(handedIn || currentState === 'HELD_AT_HUB') && (
+          <div className="rounded-xl border border-status-success-border bg-status-success-bg p-4 text-center">
+            <CheckCircle2 className="mx-auto h-8 w-8 text-status-success-fg" />
+            <h4 className="mt-2 font-bold text-primary">Handed in at the hub</h4>
+          </div>
+        )}
+
+        {currentState === 'RETURNED' && (
+          <div className="rounded-xl border border-status-success-border bg-status-success-bg p-4 text-center">
+            <CheckCircle2 className="mx-auto h-8 w-8 text-status-success-fg" />
+            <h4 className="mt-2 font-bold text-primary">Returned to the sender</h4>
+          </div>
+        )}
+
         {currentState === 'DELIVERED' && (
           <div className="rounded-xl border border-status-success-border bg-status-success-bg p-4 text-center">
             <CheckCircle2 className="mx-auto h-8 w-8 text-status-success-fg" />
@@ -243,77 +322,8 @@ export function OneTapStateTransitionCard({
               {currentState === 'FAILED' ? 'Delivery failed' : 'Cancelled'}
             </h4>
             <p className="mt-1 text-xs text-secondary">
-              {FAILURE_REASONS.find((r) => r.value === session.failedReason)?.label ??
-                (session.failedReason || 'No reason given')}
+              {failureLabel(session.failedReason)}
             </p>
-          </div>
-        )}
-
-        {/* Collapsible Report Failure Section for active states */}
-        {(currentState === 'ASSIGNED' || currentState === 'PICKED_UP' || currentState === 'IN_TRANSIT' || currentState === 'OUT_FOR_DELIVERY') && (
-          <div className="pt-2">
-            <button
-              type="button"
-              className="flex w-full items-center justify-between text-xs font-semibold text-status-danger-fg hover:text-danger-hover"
-              onClick={() => setShowFailurePanel(!showFailurePanel)}
-            >
-              <span>Can't deliver?</span>
-              {showFailurePanel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-
-            {showFailurePanel && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleReportFailure();
-                }}
-                className="mt-3 space-y-3 rounded-xl border border-status-danger-border bg-status-danger-bg p-4"
-              >
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-status-danger-fg" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-status-danger-fg">
-                    Report failed delivery
-                  </h4>
-                </div>
-
-                <label htmlFor="failure-reason" className="block text-xs font-semibold text-primary">
-                  Reason
-                </label>
-                <select id="failure-reason"
-                  value={failureReason}
-                  onChange={(e) => setFailureReason(e.target.value as DeliveryFailureReason)}
-                  className="w-full rounded-lg border border-border-subtle bg-card p-2.5 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-status-danger min-h-[44px]"
-                >
-                  {FAILURE_REASONS.map((r) => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-
-                <label htmlFor="failure-notes" className="block text-xs font-semibold text-primary">
-                  Note
-                </label>
-                <input id="failure-notes"
-                  type="text"
-                  value={failureNotes}
-                  onChange={(e) => setFailureNotes(e.target.value)}
-                  className="w-full rounded-lg border border-border-subtle bg-card p-2.5 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-status-danger min-h-[44px]"
-                  required
-                />
-
-                <Button
-                  type="submit"
-                  variant="destructive"
-                  className="w-full min-h-[44px] text-xs font-bold"
-                  loading={pendingState === 'FAILED'}
-                  disabled={isPending || !failureNotes.trim()}
-                >
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  Report failed delivery
-                </Button>
-              </form>
-            )}
           </div>
         )}
       </div>

@@ -39,7 +39,7 @@ const states: Record<CashStateKind, { label: string; tone: string; Icon: typeof 
   }
 };
 
-/** Figma CashState: cash-on-delivery status pill (pending, collected, handed over, shortage, excess). */
+/** Figma CashState: courier cash status pill (pending, collected, handed over, shortage, excess). */
 export function CashState({ state, amount, className }: CashStateProps) {
   const { label, tone, Icon } = states[state];
   return (

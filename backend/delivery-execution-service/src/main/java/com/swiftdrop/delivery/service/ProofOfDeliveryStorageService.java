@@ -171,6 +171,12 @@ public class ProofOfDeliveryStorageService {
                 .orElse(false);
     }
 
+    public boolean isVerifiedSince(UUID deliveryId, Instant since) {
+        return repository.findTopByDeliveryIdOrderByCreatedAtDesc(deliveryId)
+                .map(pod -> pod.isVerified() && pod.getVerifiedAt() != null && pod.getVerifiedAt().isAfter(since))
+                .orElse(false);
+    }
+
     public ProofOfDeliveryResponse getByDeliveryId(UUID deliveryId) {
         return repository.findTopByDeliveryIdOrderByCreatedAtDesc(deliveryId)
                 .map(this::toResponse)

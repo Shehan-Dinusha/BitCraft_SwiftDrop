@@ -37,10 +37,10 @@ public record DeliverySessionResponse(
         @Schema(description = "Previous FSM delivery state")
         DeliveryState previousState,
 
-        @Schema(description = "Failure reason if FAILED")
+        @Schema(description = "Why the last attempt or the delivery failed")
         String failedReason,
 
-        @Schema(description = "Delivery attempt count")
+        @Schema(description = "Delivery attempts that failed")
         Integer attemptCount,
 
         @Schema(description = "Timestamp when package was picked up")
@@ -53,8 +53,41 @@ public record DeliverySessionResponse(
         Instant createdAt,
 
         @Schema(description = "Last updated timestamp")
-        Instant updatedAt
+        Instant updatedAt,
+
+        @Schema(description = "The shop that sent it, so its parcels are collected together; null for a customer's parcel")
+        UUID merchantId,
+
+        @Schema(description = "Shop name; null when not known", example = "Nimal Fashion")
+        String merchantName,
+
+        @Schema(description = "Proof from before this moment belongs to an earlier attempt and does not count; null on a first attempt")
+        Instant proofSince,
+
+        @Schema(description = "When the sender got the parcel back")
+        Instant returnedAt
 ) {
+    /** For callers without a shop. */
+    public DeliverySessionResponse(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, String courierName,
+                                   SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
+                                   DeliveryState currentState, DeliveryState previousState, String failedReason,
+                                   Integer attemptCount, Instant pickupAt, Instant deliveredAt, Instant createdAt,
+                                   Instant updatedAt) {
+        this(deliveryId, orderId, trackingNumber, courierId, courierName, pickupDistrict, deliveryDistrict, currentState,
+                previousState, failedReason, attemptCount, pickupAt, deliveredAt, createdAt, updatedAt, null, null, null, null);
+    }
+
+    /**
+     * How a cross-district delivery looks to the courier who handed it in: their part ended at the hub, and
+     * nothing after it (the next courier, the delivery) is theirs to see.
+     */
+    public static DeliverySessionResponse handedIn(DeliverySession entity) {
+        return new DeliverySessionResponse(entity.getDeliveryId(), entity.getOrderId(), entity.getTrackingNumber(),
+                entity.getFirstMileCourierId(), null, entity.getPickupDistrict(), entity.getDeliveryDistrict(),
+                DeliveryState.AT_ORIGIN_HUB, DeliveryState.PICKED_UP, null, entity.getAttemptCount(),
+                entity.getPickupAt(), null, entity.getCreatedAt(), entity.getHandedInAt());
+    }
+
     public static DeliverySessionResponse fromEntity(DeliverySession entity) {
         if (entity == null) return null;
         return new DeliverySessionResponse(
@@ -72,7 +105,11 @@ public record DeliverySessionResponse(
                 entity.getPickupAt(),
                 entity.getDeliveredAt(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                entity.getMerchantId(),
+                entity.getMerchantName(),
+                entity.getProofSince(),
+                entity.getReturnedAt()
         );
     }
 }

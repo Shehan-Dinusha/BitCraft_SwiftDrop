@@ -1,6 +1,10 @@
 package com.swiftdrop.dispatch.service;
 
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.enums.UserRole;
+import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.contracts.security.ForbiddenException;
+import com.swiftdrop.dispatch.client.CourierCashClient;
 import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
@@ -20,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -31,6 +36,9 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CourierShiftServiceTest {
+
+    @Mock
+    private CourierCashClient courierCashClient;
 
     @Mock
     private CourierShiftRepository courierShiftRepository;
@@ -57,11 +65,11 @@ class CourierShiftServiceTest {
         StartShiftRequest request = new StartShiftRequest(
                 courierId,
                 "Nuwan Perera",
-                "+94771112233",
-                SriLankanDistrict.COLOMBO
+                "+94771112233"
         );
         CourierProfile profile = new CourierProfile();
         profile.setCourierId(courierId);
+        profile.setDistrict(SriLankanDistrict.COLOMBO);
         profile.setVehicleType(VehicleType.THREE_WHEELER);
         profile.setMaxCapacity(6);
 
@@ -69,7 +77,7 @@ class CourierShiftServiceTest {
         when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.empty());
         when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        CourierShiftResponse response = courierShiftService.startShift(request);
+        CourierShiftResponse response = courierShiftService.startShift(request, courier(SriLankanDistrict.COLOMBO));
 
         assertThat(response.courierId()).isEqualTo(courierId);
         assertThat(response.courierName()).isEqualTo("Nuwan Perera");
@@ -81,12 +89,54 @@ class CourierShiftServiceTest {
     }
 
     @Test
+    @DisplayName("Start shift: a courier an admin moved works in their new district, and the profile follows")
+    void testStartShift_FollowsAccountDistrict() {
+        CourierProfile profile = profileIn(SriLankanDistrict.COLOMBO);
+        when(courierProfileRepository.findByCourierId(courierId)).thenReturn(Optional.of(profile));
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.empty());
+        when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CourierShiftResponse response = courierShiftService.startShift(
+                new StartShiftRequest(courierId, "Nuwan Perera", null), courier(SriLankanDistrict.GAMPAHA));
+
+        assertThat(response.currentDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
+        assertThat(profile.getDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
+    }
+
+    @Test
+    @DisplayName("Start shift: a dispatcher cannot start a shift for another district's courier")
+    void testStartShift_DispatcherOfAnotherDistrict() {
+        when(courierProfileRepository.findByCourierId(courierId))
+                .thenReturn(Optional.of(profileIn(SriLankanDistrict.KANDY)));
+        CallerContext dispatcher = new CallerContext(
+                UUID.randomUUID(), UserRole.DISPATCHER, null, SriLankanDistrict.COLOMBO);
+
+        assertThatThrownBy(() -> courierShiftService.startShift(
+                new StartShiftRequest(courierId, "Nuwan Perera", null), dispatcher))
+                .isInstanceOf(ForbiddenException.class);
+        verify(courierShiftRepository, never()).save(any());
+    }
+
+    private CallerContext courier(SriLankanDistrict district) {
+        return new CallerContext(courierId, UserRole.COURIER, null, district);
+    }
+
+    private CourierProfile profileIn(SriLankanDistrict district) {
+        CourierProfile profile = new CourierProfile();
+        profile.setCourierId(courierId);
+        profile.setDistrict(district);
+        profile.setVehicleType(VehicleType.MOTORCYCLE);
+        profile.setMaxCapacity(5);
+        return profile;
+    }
+
+    @Test
     @DisplayName("Start shift: refused until the courier has registered a vehicle")
     void testStartShift_RequiresVehicleProfile() {
-        StartShiftRequest request = new StartShiftRequest(courierId, "Nuwan Perera", null, SriLankanDistrict.COLOMBO);
+        StartShiftRequest request = new StartShiftRequest(courierId, "Nuwan Perera", null);
         when(courierProfileRepository.findByCourierId(courierId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> courierShiftService.startShift(request))
+        assertThatThrownBy(() -> courierShiftService.startShift(request, courier(SriLankanDistrict.COLOMBO)))
                 .isInstanceOf(CourierNotAvailableException.class)
                 .hasMessageContaining("vehicle");
         verify(courierShiftRepository, never()).save(any());
@@ -105,10 +155,34 @@ class CourierShiftServiceTest {
         when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
         when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        CourierShiftResponse response = courierShiftService.endShift(courierId);
+        when(courierCashClient.inHand(courierId)).thenReturn(BigDecimal.ZERO);
+
+        CourierShiftResponse response = courierShiftService.endShift(courierId, courier(SriLankanDistrict.COLOMBO));
 
         assertThat(response.shiftStatus()).isEqualTo(ShiftStatus.OFFLINE);
         assertThat(response.shiftEndedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("End shift: a courier who still holds cash hands it over first; their dispatcher may end it anyway")
+    void testEndShift_CashInHand() {
+        CourierShift shift = new CourierShift();
+        shift.setCourierId(courierId);
+        shift.setCurrentDistrict(SriLankanDistrict.COLOMBO);
+        shift.setShiftStatus(ShiftStatus.AVAILABLE);
+        shift.setActiveParcelsCount(0);
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
+        when(courierCashClient.inHand(courierId)).thenReturn(new BigDecimal("1340.00"));
+
+        assertThatThrownBy(() -> courierShiftService.endShift(courierId, courier(SriLankanDistrict.COLOMBO)))
+                .isInstanceOf(ShiftEndNotAllowedException.class)
+                .hasMessageContaining("1,340.00");
+        assertThat(shift.getShiftStatus()).isEqualTo(ShiftStatus.AVAILABLE);
+
+        when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
+        CallerContext dispatcher = new CallerContext(
+                UUID.randomUUID(), UserRole.DISPATCHER, null, SriLankanDistrict.COLOMBO);
+        assertThat(courierShiftService.endShift(courierId, dispatcher).shiftStatus()).isEqualTo(ShiftStatus.OFFLINE);
     }
 
     @Test
@@ -121,7 +195,7 @@ class CourierShiftServiceTest {
 
         when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
 
-        assertThatThrownBy(() -> courierShiftService.endShift(courierId))
+        assertThatThrownBy(() -> courierShiftService.endShift(courierId, courier(SriLankanDistrict.COLOMBO)))
                 .isInstanceOf(ShiftEndNotAllowedException.class)
                 .hasMessageContaining("2 active parcel(s)");
 

@@ -90,11 +90,17 @@ public class ManualOverrideService {
         }
         if (assignment.getStatus() == AssignmentStatus.IN_TRANSFER) {
             throw new AssignmentConflictException("Order " + request.orderId()
-                    + " is between district hubs. The drop-off district assigns a courier once its hub accepts it.");
+                    + (assignment.getHubStage() == InternalQueueStatus.HELD_AT_HUB
+                    ? " is held after a failed delivery. Try again or return it first."
+                    : " is between district hubs. A courier is assigned once the next hub accepts it."));
         }
         if (assignment.getStatus() != AssignmentStatus.UNASSIGNED || assignment.getCourierId() != null) {
             throw new AssignmentConflictException("Order " + request.orderId()
                     + " is already assigned to a courier. Refresh the queue, or use reassignment to change the courier.");
+        }
+        if (!assignment.isReadyForPickup()) {
+            throw new AssignmentConflictException("Order " + request.orderId()
+                    + " is not packed yet. The shop says when it is ready for pickup.");
         }
         PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
 
@@ -103,9 +109,9 @@ public class ManualOverrideService {
         incrementWorkload(courier);
 
         assignment = applyCourier(assignment, courier, AssignmentStatus.ASSIGNED, request.assignedBy());
-        if (assignment.getLeg() == AssignmentLeg.LAST_MILE) {
-            // The parcel waits at the drop-off hub: customers already see it in transit, so only the
-            // courier assignment is published (a PICKUP_ASSIGNED status would move it backwards).
+        if (assignment.getLeg() != AssignmentLeg.FIRST_MILE) {
+            // The parcel waits at a hub: customers already see it on its way, so only the courier
+            // assignment is published (a PICKUP_ASSIGNED status would move it backwards).
             publishCourierAssigned(assignment, courier, eventCorrelationId(correlationId));
         } else {
             publishAssignmentEvents(assignment, courier, previousPublicStatus, correlationId);
@@ -223,16 +229,19 @@ public class ManualOverrideService {
     }
 
     /**
-     * A courier works only in their own district: the pickup district for the first leg, the drop-off
-     * district for the last.
+     * A courier works only in their own district: the pickup district for the first leg and a return, the
+     * drop-off district for the last.
      */
     private void requireCourierInPickupDistrict(CourierShift courier, DispatchAssignment assignment) {
         var district = assignment.getResponsibleDistrict();
         if (district != null && courier.getCurrentDistrict() != district) {
             throw new CourierNotAvailableException("Courier " + courier.getCourierName() + " works in "
                     + DistrictScope.label(courier.getCurrentDistrict()) + ", but this parcel is "
-                    + (assignment.getLeg() == AssignmentLeg.LAST_MILE ? "delivered from the " : "picked up in ")
-                    + DistrictScope.label(district) + (assignment.getLeg() == AssignmentLeg.LAST_MILE ? " hub" : ""));
+                    + switch (assignment.getLeg()) {
+                        case FIRST_MILE -> "picked up in " + DistrictScope.label(district);
+                        case LAST_MILE -> "delivered from the " + DistrictScope.label(district) + " hub";
+                        case RETURN -> "returned from the " + DistrictScope.label(district) + " hub";
+                    });
         }
     }
 
@@ -314,7 +323,8 @@ public class ManualOverrideService {
                 // notifications and analytics rejects status events without a district.
                 assignment.getCustomerId(),
                 assignment.getPickupDistrict(),
-                assignment.getDeliveryDistrict()
+                assignment.getDeliveryDistrict(),
+                assignment.getMerchantName()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
     }

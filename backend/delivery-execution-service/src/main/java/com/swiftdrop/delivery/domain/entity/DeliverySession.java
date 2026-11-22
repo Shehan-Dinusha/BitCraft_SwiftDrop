@@ -67,6 +67,27 @@ public class DeliverySession {
     @Column(name = "attempt_count", nullable = false)
     private Integer attemptCount = 0;
 
+    /** Proof from before this moment belongs to an earlier attempt and does not count. */
+    @Column(name = "proof_since")
+    private Instant proofSince;
+
+    @Column(name = "returned_at")
+    private Instant returnedAt;
+
+    /** The shop that sent the parcel; null for a customer's parcel. */
+    @Column(name = "merchant_id")
+    private UUID merchantId;
+
+    @Column(name = "merchant_name", length = 150)
+    private String merchantName;
+
+    /** The courier who brought a cross-district parcel to the pickup district's hub. */
+    @Column(name = "first_mile_courier_id")
+    private UUID firstMileCourierId;
+
+    @Column(name = "handed_in_at")
+    private Instant handedInAt;
+
     @Column(name = "pickup_at")
     private Instant pickupAt;
 
@@ -137,6 +158,24 @@ public class DeliverySession {
 
     public Integer getAttemptCount() { return attemptCount; }
     public void setAttemptCount(Integer attemptCount) { this.attemptCount = attemptCount; }
+
+    public Instant getProofSince() { return proofSince; }
+    public void setProofSince(Instant proofSince) { this.proofSince = proofSince; }
+
+    public Instant getReturnedAt() { return returnedAt; }
+    public void setReturnedAt(Instant returnedAt) { this.returnedAt = returnedAt; }
+
+    public UUID getMerchantId() { return merchantId; }
+    public void setMerchantId(UUID merchantId) { this.merchantId = merchantId; }
+
+    public String getMerchantName() { return merchantName; }
+    public void setMerchantName(String merchantName) { this.merchantName = merchantName; }
+
+    public UUID getFirstMileCourierId() { return firstMileCourierId; }
+    public void setFirstMileCourierId(UUID firstMileCourierId) { this.firstMileCourierId = firstMileCourierId; }
+
+    public Instant getHandedInAt() { return handedInAt; }
+    public void setHandedInAt(Instant handedInAt) { this.handedInAt = handedInAt; }
 
     public Instant getPickupAt() { return pickupAt; }
     public void setPickupAt(Instant pickupAt) { this.pickupAt = pickupAt; }

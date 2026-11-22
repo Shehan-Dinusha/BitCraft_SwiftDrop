@@ -1316,6 +1316,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/merchants/{merchantId}/pickup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The shop's parcels that no courier has collected, and the cash to prepare */
+        get: operations["getMerchantPickup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/merchants/{merchantId}/pickup/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Everything the shop has booked so far is packed
+         * @description Safe to repeat.
+         */
+        post: operations["markPickupReady"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/b2b/pickups/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The same, for a merchant's own system
+         * @description Authenticated by API key. Safe to repeat.
+         */
+        post: operations["markPickupReadyByApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1375,6 +1432,38 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        /** @enum {string} */
+        MerchantPickupState: "WAITING" | "READY" | "ASSIGNED";
+        MerchantPickupGroup: {
+            parcels: number;
+            total: number;
+            withoutFee: number;
+        };
+        MerchantPickupParcel: {
+            /** Format: uuid */
+            orderId: string;
+            trackingNumber: string;
+            externalRef?: string | null;
+            state: components["schemas"]["MerchantPickupState"];
+            courierName?: string | null;
+            /** Format: date-time */
+            readyAt?: string | null;
+            fee?: number | null;
+        };
+        MerchantPickupResponse: {
+            waiting: components["schemas"]["MerchantPickupGroup"];
+            ready: components["schemas"]["MerchantPickupGroup"];
+            assigned: components["schemas"]["MerchantPickupGroup"];
+            currency: string;
+            parcels: components["schemas"]["MerchantPickupParcel"][];
+        };
+        ApiResponseMerchantPickupResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["MerchantPickupResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
         MerchantOrderReceiptResponse: {
             externalRef: string;
             /** Format: uuid */
@@ -1382,6 +1471,9 @@ export interface components {
             trackingNumber: string;
             /** Format: date-time */
             createdAt: string;
+            /** @description Delivery fee paid in cash at pickup. Null for older orders. */
+            fee?: number | null;
+            currency?: string | null;
         };
         ApiResponseMerchantApprovalResponse: {
             success?: boolean;
@@ -1405,7 +1497,7 @@ export interface components {
             district: string;
             postalCode: string;
             contactName: string;
-            /** @description Local or international Sri Lankan number, normalized to +94 */
+            /** @description 9 digits, with or without 0 or +94 in front; stored as +94 and 9 digits. */
             contactPhone: string;
         };
         /** @description Supply exactly one of actualWeightKg and weightGrams. Length x width x height must not exceed 15,000 litres. */
@@ -1422,7 +1514,6 @@ export interface components {
             prohibitedItemsDeclared: true;
             itemDescription?: string;
             declaredValue?: number;
-            codAmount?: number;
         };
         B2bOrderRequest: {
             externalRef: string;
@@ -1443,6 +1534,9 @@ export interface components {
             created?: boolean;
             /** @description Present only for a failed bulk item */
             error?: string;
+            /** @description Delivery fee paid in cash at pickup */
+            fee?: number | null;
+            currency?: string | null;
         };
         B2bBulkResponse: {
             total?: number;
@@ -1636,4 +1730,139 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    getMerchantPickup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseMerchantPickupResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    markPickupReady: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseMerchantPickupResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description There are no parcels to pick up */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pickups are not available right now */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    markPickupReadyByApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseMerchantPickupResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description There are no parcels to pick up */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pickups are not available right now */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+}

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Field } from '@/design-system';
-import { normalisePhoneDigits } from './bookingForm';
+import { PHONE_HINT, phoneDigits } from '@/utils/phone';
 import { AddressFields, type BookingStepProps } from './AddressFields';
 
 export function PickupStep({
@@ -32,7 +32,7 @@ export function PickupStep({
         />
         <Field
           label="Contact phone"
-          hint="9 digits after +94"
+          hint={PHONE_HINT}
           required
           variant="phone"
           autoComplete="section-pickup tel-national"
@@ -40,7 +40,7 @@ export function PickupStep({
           value={form.pickupContactPhone}
           error={errors.pickupContactPhone}
           onChange={(event) =>
-            onChange('pickupContactPhone', normalisePhoneDigits(event.target.value))
+            onChange('pickupContactPhone', phoneDigits(event.target.value))
           }
           onBlur={() => onBlur('pickupContactPhone')}
         />
@@ -53,7 +53,7 @@ export function PickupStep({
           error={errors.pickupContactAlternatePhone}
           hint="Optional"
           onChange={(event) =>
-            onChange('pickupContactAlternatePhone', normalisePhoneDigits(event.target.value))
+            onChange('pickupContactAlternatePhone', phoneDigits(event.target.value))
           }
           onBlur={() => onBlur('pickupContactAlternatePhone')}
         />

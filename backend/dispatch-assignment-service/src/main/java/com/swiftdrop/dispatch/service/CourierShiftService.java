@@ -1,6 +1,10 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.enums.UserRole;
+import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.dispatch.client.CourierCashClient;
 import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
@@ -12,11 +16,13 @@ import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import com.swiftdrop.dispatch.exception.ShiftEndNotAllowedException;
+import com.swiftdrop.dispatch.security.DistrictScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -30,24 +36,35 @@ public class CourierShiftService {
     private final CourierShiftRepository courierShiftRepository;
     private final CourierProfileRepository courierProfileRepository;
     private final DispatchAssignmentRepository assignmentRepository;
+    private final CourierCashClient courierCashClient;
 
     public CourierShiftService(CourierShiftRepository courierShiftRepository,
                                CourierProfileRepository courierProfileRepository,
-                               DispatchAssignmentRepository assignmentRepository) {
+                               DispatchAssignmentRepository assignmentRepository,
+                               CourierCashClient courierCashClient) {
         this.courierShiftRepository = courierShiftRepository;
         this.courierProfileRepository = courierProfileRepository;
         this.assignmentRepository = assignmentRepository;
+        this.courierCashClient = courierCashClient;
     }
 
+    /**
+     * Starts the courier's shift in their home district, never one named in the request: the parcels they
+     * carry and the cash they collect belong to that district's dispatcher.
+     */
     @Transactional
-    public CourierShiftResponse startShift(StartShiftRequest request) {
-        log.info("Starting shift for courier: {} ({}) in district: {}",
-                request.courierName(), request.courierId(), request.initialDistrict());
-
+    public CourierShiftResponse startShift(StartShiftRequest request, CallerContext caller) {
         // Couriers use their own registered vehicle; without one there is nothing to dispatch with.
         CourierProfile profile = courierProfileRepository.findByCourierId(request.courierId())
                 .orElseThrow(() -> new CourierNotAvailableException(
                         "Add your vehicle details before starting a shift"));
+        // Their account decides the district; the profile keeps a copy, refreshed when an admin moved them.
+        if (caller.role() == UserRole.COURIER && caller.districtId() != null
+                && caller.districtId() != profile.getDistrict()) {
+            profile.setDistrict(caller.districtId());
+        }
+        DistrictScope.requireCourier(caller, profile.getDistrict());
+        log.info("Starting shift for courier: {} in district: {}", request.courierId(), profile.getDistrict());
 
         CourierShift shift = courierShiftRepository.findByCourierId(request.courierId())
                 .orElseGet(() -> {
@@ -58,10 +75,10 @@ public class CourierShiftService {
                 });
 
         shift.setCourierName(request.courierName());
-        if (request.phone() != null) shift.setPhone(request.phone());
+        if (request.phone() != null) shift.setPhone(SriLankanPhone.toE164OrNull(request.phone()));
         shift.setVehicleType(profile.getVehicleType());
         shift.setMaxCapacity(profile.getMaxCapacity());
-        shift.setCurrentDistrict(request.initialDistrict());
+        shift.setCurrentDistrict(profile.getDistrict());
         shift.setShiftStatus(ShiftStatus.AVAILABLE);
         shift.setShiftStartedAt(Instant.now());
         shift.setShiftEndedAt(null);
@@ -71,8 +88,12 @@ public class CourierShiftService {
         return toResponse(shift);
     }
 
+    /**
+     * A courier hands over all their cash before ending a shift. Operations may end it without: the cash stays
+     * listed under the courier on the cash desk.
+     */
     @Transactional
-    public CourierShiftResponse endShift(UUID courierId) {
+    public CourierShiftResponse endShift(UUID courierId, CallerContext caller) {
         log.info("Ending shift for courier: {}", courierId);
 
         CourierShift shift = courierShiftRepository.findByCourierId(courierId)
@@ -81,6 +102,14 @@ public class CourierShiftService {
         if (shift.getActiveParcelsCount() > 0) {
             throw new ShiftEndNotAllowedException("Cannot end shift: the courier still has "
                     + shift.getActiveParcelsCount() + " active parcel(s). Complete or reassign them first.");
+        }
+
+        if (caller.role() == UserRole.COURIER) {
+            BigDecimal inHand = courierCashClient.inHand(courierId);
+            if (inHand.signum() > 0) {
+                throw new ShiftEndNotAllowedException(
+                        "Hand over your cash first: LKR %,.2f.".formatted(inHand));
+            }
         }
 
         shift.setShiftStatus(ShiftStatus.OFFLINE);

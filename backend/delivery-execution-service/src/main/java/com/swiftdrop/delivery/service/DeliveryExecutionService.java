@@ -3,10 +3,12 @@ package com.swiftdrop.delivery.service;
 import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
+import com.swiftdrop.contracts.enums.DeliveryFailureReason;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
+import com.swiftdrop.contracts.events.order.OrderCancelledEvent;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.domain.repository.DeliverySessionRepository;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
@@ -16,6 +18,7 @@ import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 import com.swiftdrop.delivery.messaging.publisher.DeliveryEventPublisher;
 import com.swiftdrop.delivery.security.DeliveryAccessPolicy;
 import com.swiftdrop.delivery.statemachine.DeliveryStateMachine;
+import com.swiftdrop.delivery.statemachine.ReturnRoute;
 import com.swiftdrop.delivery.statemachine.actions.AuditTransitionAction;
 import com.swiftdrop.delivery.statemachine.actions.PublishStateTransitionAction;
 import com.swiftdrop.delivery.statemachine.guards.ProofOfDeliveryGuard;
@@ -30,6 +33,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 public class DeliveryExecutionService {
@@ -42,6 +46,7 @@ public class DeliveryExecutionService {
     private final AuditTransitionAction auditTransitionAction;
     private final PublishStateTransitionAction publishStateTransitionAction;
     private final DeliveryEventPublisher eventPublisher;
+    private final CourierCashService courierCashService;
 
     public DeliveryExecutionService(
             DeliverySessionRepository deliverySessionRepository,
@@ -49,13 +54,15 @@ public class DeliveryExecutionService {
             ProofOfDeliveryGuard proofOfDeliveryGuard,
             AuditTransitionAction auditTransitionAction,
             PublishStateTransitionAction publishStateTransitionAction,
-            DeliveryEventPublisher eventPublisher) {
+            DeliveryEventPublisher eventPublisher,
+            CourierCashService courierCashService) {
         this.deliverySessionRepository = deliverySessionRepository;
         this.stateMachine = stateMachine;
         this.proofOfDeliveryGuard = proofOfDeliveryGuard;
         this.auditTransitionAction = auditTransitionAction;
         this.publishStateTransitionAction = publishStateTransitionAction;
         this.eventPublisher = eventPublisher;
+        this.courierCashService = courierCashService;
     }
 
     @Transactional
@@ -75,8 +82,13 @@ public class DeliveryExecutionService {
                 });
 
         DeliveryState prevState = session.getCurrentState();
-        if (prevState == DeliveryState.AT_DESTINATION_HUB) {
-            return assignLastMileCourier(session, event);
+        if (prevState == DeliveryState.AT_DESTINATION_HUB || prevState == DeliveryState.RETURN_AT_HUB) {
+            return assignHubCourier(session, event);
+        }
+        if (prevState != DeliveryState.CREATED && prevState != DeliveryState.ASSIGNED) {
+            // A late or repeated assignment must not bring a cancelled job back, or move one backwards.
+            log.info("Ignoring assignment of order {} in state {}", event.orderId(), prevState);
+            return session;
         }
         session.setCourierId(event.courierId());
         session.setCourierName(event.courierName());
@@ -93,6 +105,11 @@ public class DeliveryExecutionService {
         }
         if (event.deliveryDistrict() != null) {
             session.setDeliveryDistrict(event.deliveryDistrict());
+        }
+        // A shop's order carries the shop's id as its customer too; a customer's order never does.
+        if (event.merchantId() != null && event.merchantId().equals(event.customerId())) {
+            session.setMerchantId(event.merchantId());
+            session.setMerchantName(event.merchantName());
         }
         session.setPreviousState(prevState);
         session.setCurrentState(DeliveryState.ASSIGNED);
@@ -126,17 +143,38 @@ public class DeliveryExecutionService {
     }
 
     /**
-     * The drop-off district's dispatcher assigned (or changed) the courier who collects the parcel from
-     * their hub. The parcel stays AT_DESTINATION_HUB until that courier collects it; customers see no
+     * The order was cancelled: a job nobody picked up yet is closed, so no courier goes for it. A parcel
+     * already on the way stays with its courier, who has to bring it back. No status event is published; the
+     * order service announced the cancellation.
+     */
+    @Transactional
+    public void handleOrderCancelled(OrderCancelledEvent event) {
+        deliverySessionRepository.findByOrderId(event.orderId()).ifPresent(session -> {
+            DeliveryState from = session.getCurrentState();
+            if (from != DeliveryState.CREATED && from != DeliveryState.ASSIGNED) {
+                return;
+            }
+            session.setPreviousState(from);
+            session.setCurrentState(DeliveryState.CANCELLED);
+            session.setStatus("CANCELLED");
+            deliverySessionRepository.save(session);
+            auditTransitionAction.execute(session.getDeliveryId(), session.getOrderId(), from, DeliveryState.CANCELLED,
+                    "ORDER_CANCELLED_EVENT", "SYSTEM", "Order cancelled before pickup");
+        });
+    }
+
+    /**
+     * A hub's dispatcher assigned (or changed) the courier who collects the parcel there: to deliver it, or
+     * to bring it back to the sender. It stays at the hub until that courier collects it; customers see no
      * change, so no status event is published.
      */
-    private DeliverySession assignLastMileCourier(DeliverySession session, CourierAssignedEvent event) {
+    private DeliverySession assignHubCourier(DeliverySession session, CourierAssignedEvent event) {
         session.setCourierId(event.courierId());
         session.setCourierName(event.courierName());
         session = deliverySessionRepository.save(session);
         auditTransitionAction.execute(session.getDeliveryId(), session.getOrderId(),
-                DeliveryState.AT_DESTINATION_HUB, DeliveryState.AT_DESTINATION_HUB,
-                "DISPATCH_ASSIGNMENT_EVENT", "SYSTEM", "Last-mile courier assigned at the drop-off hub");
+                session.getCurrentState(), session.getCurrentState(),
+                "DISPATCH_ASSIGNMENT_EVENT", "SYSTEM", "Courier assigned at the hub");
         return session;
     }
 
@@ -160,6 +198,21 @@ public class DeliveryExecutionService {
         if (accept && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
             throw new ForbiddenException("Only the drop-off district's dispatcher can accept this parcel");
         }
+        if (from == DeliveryState.HELD_AT_HUB && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
+            throw new ForbiddenException("Only the dispatcher of the hub that holds this parcel can decide");
+        }
+        boolean heldHandIn = from == DeliveryState.ATTEMPT_FAILED && to == DeliveryState.HELD_AT_HUB;
+        if (heldHandIn && caller.role() == UserRole.DISPATCHER && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
+            throw new ForbiddenException("Only the courier's own hub can receive this parcel");
+        }
+        boolean atSendersHub = from == DeliveryState.RETURN_IN_TRANSIT || from == DeliveryState.RETURN_AT_HUB
+                || from == DeliveryState.OUT_FOR_RETURN;
+        if (from == DeliveryState.RETURN_IN_TRANSIT && !isDispatcherOf(caller, session.getPickupDistrict())) {
+            throw new ForbiddenException("Only the sender's hub can accept this return");
+        }
+        if (atSendersHub && caller.role() == UserRole.DISPATCHER && !isDispatcherOf(caller, session.getPickupDistrict())) {
+            throw new ForbiddenException("This return is handled by the sender's district");
+        }
         if (handIn && caller.role() == UserRole.DISPATCHER && !isDispatcherOf(caller, session.getPickupDistrict())) {
             throw new ForbiddenException("Only the pickup district's hub can receive this parcel");
         }
@@ -176,6 +229,13 @@ public class DeliveryExecutionService {
 
     @Transactional
     public DeliverySession transition(UUID deliveryId, TransitionDeliveryRequest request, CallerContext caller) {
+        return transition(deliveryId, request, caller, null);
+    }
+
+    /** {@code due} is the cash confirmed for this step ({@link CourierStepService}), saved together with it. */
+    @Transactional
+    public DeliverySession transition(UUID deliveryId, TransitionDeliveryRequest request, CallerContext caller,
+                                      CashDue due) {
         log.info("Attempting delivery transition for deliveryId: {} to targetState: {}",
                 deliveryId, request.targetState());
 
@@ -187,7 +247,7 @@ public class DeliveryExecutionService {
         }
 
         DeliveryState fromState = session.getCurrentState();
-        DeliveryState toState = request.targetState();
+        DeliveryState toState = ReturnRoute.resolve(fromState, request.targetState(), request.failureReason(), session);
 
         if (!stateMachine.canTransition(fromState, toState)) {
             throw new InvalidStateTransitionException(
@@ -200,7 +260,7 @@ public class DeliveryExecutionService {
 
         // Enforce Proof of Delivery Guard before transitioning to DELIVERED
         if (toState == DeliveryState.DELIVERED) {
-            if (!proofOfDeliveryGuard.isSatisfied(deliveryId)) {
+            if (!proofOfDeliveryGuard.isSatisfied(deliveryId, session.getProofSince())) {
                 throw new InvalidStateTransitionException(
                         "Proof of delivery must be verified with an uploaded photo or signature before marking delivery as DELIVERED");
             }
@@ -214,10 +274,29 @@ public class DeliveryExecutionService {
                     : (request.notes() != null ? request.notes() : "Delivery attempt failed"));
             session.setAttemptCount((session.getAttemptCount() != null ? session.getAttemptCount() : 0) + 1);
             session.setStatus("FAILED");
+        } else if (toState == DeliveryState.ATTEMPT_FAILED) {
+            session.setFailedReason(request.failureReason() != null
+                    ? request.failureReason().name() : DeliveryFailureReason.OTHER.name());
+            session.setAttemptCount((session.getAttemptCount() != null ? session.getAttemptCount() : 0) + 1);
+            session.setProofSince(Instant.now());
+        } else if (toState == DeliveryState.HELD_AT_HUB || toState == DeliveryState.RETURN_AT_HUB) {
+            // At a hub nobody carries it until its dispatcher assigns a courier.
+            session.setCourierId(null);
+            session.setCourierName(null);
+        } else if (toState == DeliveryState.OUT_FOR_RETURN) {
+            session.setProofSince(Instant.now());
+        } else if (toState == DeliveryState.RETURNED) {
+            if (!proofOfDeliveryGuard.isSatisfied(deliveryId, session.getProofSince())) {
+                throw new InvalidStateTransitionException("Take a photo of the parcel with the sender first");
+            }
+            session.setReturnedAt(Instant.now());
+            session.setStatus("RETURNED");
         } else if (toState == DeliveryState.CANCELLED) {
             session.setStatus("CANCELLED");
         } else if (toState == DeliveryState.AT_ORIGIN_HUB) {
-            // The first courier's part ends at the hub: the parcel leaves their list and workload.
+            // The first courier's part ends at the hub: the parcel leaves their workload.
+            session.setFirstMileCourierId(session.getCourierId());
+            session.setHandedInAt(Instant.now());
             session.setCourierId(null);
             session.setCourierName(null);
         }
@@ -225,6 +304,9 @@ public class DeliveryExecutionService {
         session.setPreviousState(fromState);
         session.setCurrentState(toState);
         session = deliverySessionRepository.save(session);
+        if (due != null) {
+            courierCashService.recordCollection(session, due, caller);
+        }
 
         auditTransitionAction.execute(
                 session.getDeliveryId(),
@@ -331,8 +413,10 @@ public class DeliveryExecutionService {
     @Transactional(readOnly = true)
     public List<DeliverySessionResponse> getMyDeliveries(UUID courierId, String dateStr) {
         LocalDate targetDate;
+        boolean today = false;
         if (dateStr == null || dateStr.isBlank() || "today".equalsIgnoreCase(dateStr.trim())) {
             targetDate = LocalDate.now(ZoneId.of("Asia/Colombo"));
+            today = true;
         } else if ("all".equalsIgnoreCase(dateStr.trim())) {
             return deliverySessionRepository.findByCourierIdOrderByCreatedAtAsc(courierId)
                     .stream()
@@ -349,8 +433,16 @@ public class DeliveryExecutionService {
         Instant startOfDay = targetDate.atStartOfDay(ZoneId.of("Asia/Colombo")).toInstant();
         Instant endOfDay = targetDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Colombo")).toInstant();
 
-        List<DeliverySession> sessions = deliverySessionRepository.findByCourierIdAndDateRange(courierId, startOfDay, endOfDay);
-        return sessions.stream().map(DeliverySessionResponse::fromEntity).toList();
+        List<DeliverySession> sessions = today
+                ? deliverySessionRepository.findTodayAndOpenByCourierId(courierId, startOfDay, endOfDay)
+                : deliverySessionRepository.findByCourierIdAndDateRange(courierId, startOfDay, endOfDay);
+        // A courier's finished first legs stay in their day, after everything still on them.
+        List<DeliverySession> handedIn = deliverySessionRepository
+                .findByFirstMileCourierIdAndHandedInAtGreaterThanEqualAndHandedInAtLessThanOrderByHandedInAtAsc(
+                        courierId, startOfDay, endOfDay);
+        return Stream.concat(sessions.stream().map(DeliverySessionResponse::fromEntity),
+                handedIn.stream().filter(session -> !courierId.equals(session.getCourierId()))
+                        .map(DeliverySessionResponse::handedIn)).toList();
     }
 
     @Transactional(readOnly = true)

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Field, Textarea } from '@/design-system';
-import { normalisePhoneDigits } from './bookingForm';
+import { PHONE_HINT, phoneDigits } from '@/utils/phone';
 import { AddressFields, type BookingStepProps } from './AddressFields';
 
 export function DropoffStep({
@@ -38,8 +38,8 @@ export function DropoffStep({
           inputMode="numeric"
           value={form.recipientPhone}
           error={errors.recipientPhone}
-          hint="9 digits after +94"
-          onChange={(event) => onChange('recipientPhone', normalisePhoneDigits(event.target.value))}
+          hint={PHONE_HINT}
+          onChange={(event) => onChange('recipientPhone', phoneDigits(event.target.value))}
           onBlur={() => onBlur('recipientPhone')}
         />
         <Field
@@ -51,7 +51,7 @@ export function DropoffStep({
           error={errors.recipientAlternatePhone}
           hint="Optional"
           onChange={(event) =>
-            onChange('recipientAlternatePhone', normalisePhoneDigits(event.target.value))
+            onChange('recipientAlternatePhone', phoneDigits(event.target.value))
           }
           onBlur={() => onBlur('recipientAlternatePhone')}
         />

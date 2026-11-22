@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.dto;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -26,7 +27,7 @@ public record RegisterUserRequest(
         String email,
 
         @Size(max = 32)
-        @Pattern(regexp = "^$|^\\+?[0-9]{7,15}$", message = "Phone number is invalid")
+        @Pattern(regexp = SriLankanPhone.OPTIONAL_REGEX, message = SriLankanPhone.MESSAGE)
         @Schema(description = "Optional E.164-compatible phone number.", example = "+94771234567")
         String phone,
 

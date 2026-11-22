@@ -30,7 +30,7 @@ export interface paths {
         };
         /**
          * List deliveries assigned to the authenticated courier
-         * @description Returns today's deliveries (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
+         * @description Returns today's deliveries and every unfinished one (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
          */
         get: operations["getMyDeliveries"];
         put?: never;
@@ -109,6 +109,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deliveries/{deliveryId}/job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the addresses, contacts and cash for a delivery
+         * @description For the assigned courier, a DISPATCHER of either district, or a SYSTEM_ADMIN. Shows only what the current leg needs: the sender and the fee until pickup, and the recipient for the courier who delivers. A finished or cancelled delivery gives no contacts and no amounts. Never cached.
+         */
+        get: operations["getCourierJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/deliveries/{deliveryId}/transition": {
         parameters: {
             query?: never;
@@ -147,17 +167,279 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in courier's cash and latest handovers */
+        get: operations["getMyCash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/handovers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Courier hands over all the cash they hold
+         * @description To the dispatcher of their district. Required before the courier ends their shift.
+         */
+        post: operations["submitHandover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/desk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A hub's cash
+         * @description A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN gets every district or the one given.
+         */
+        get: operations["getCashDesk"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Revenue and cash for 1 to 90 inclusive Colombo dates
+         * @description A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN gets every district or the one given.
+         */
+        get: operations["getCashReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/handovers/{handoverId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The parcels a handover came from */
+        get: operations["getHandoverEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/handovers/{handoverId}/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dispatcher counts a handover
+         * @description Only the DISPATCHER of that district. A different amount needs a note.
+         */
+        post: operations["countHandover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/deposits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispatcher banks all the cash at their hub */
+        post: operations["createDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/deposits/{depositId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** SYSTEM_ADMIN confirms a deposit reached the bank */
+        post: operations["confirmDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/deposits/{depositId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * SYSTEM_ADMIN rejects a deposit
+         * @description Its cash goes back to the hub.
+         */
+        post: operations["rejectDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dispatcher refunds a delivery fee from the hub's cash
+         * @description Only for a delivery that failed because SwiftDrop lost or damaged the parcel, and only by the DISPATCHER of the district that collected the fee.
+         */
+        post: operations["refundFee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/shops/{merchantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The shop's parcels this courier collects, with the address, contact and fees */
+        get: operations["getShopStop"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/shops/{merchantId}/collect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pick up the chosen parcels and confirm one payment for them
+         * @description All of them, or none. The amount must be exactly their fees; parcels left out stay for later.
+         */
+        post: operations["collectShop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in merchant's payments, newest first, 20 a page */
+        get: operations["getMerchantPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/payments/{paymentId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The parcels a payment was for
+         * @description Only the merchant who paid it.
+         */
+        get: operations["getMerchantPaymentEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * @description Same district: PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY. Different districts go through both hubs: PICKED_UP -> AT_ORIGIN_HUB (the first courier hands it in) -> IN_TRANSIT (the pickup district's dispatcher marks it Outbound) -> AT_DESTINATION_HUB (the drop-off district's dispatcher accepts it) -> OUT_FOR_DELIVERY (a courier of the drop-off district collects it).
+         * @description Same district: PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY. Different districts go through both hubs: PICKED_UP -> AT_ORIGIN_HUB (the first courier hands it in) -> IN_TRANSIT (the pickup district's dispatcher marks it Outbound) -> AT_DESTINATION_HUB (the drop-off district's dispatcher accepts it) -> OUT_FOR_DELIVERY (a courier of the drop-off district collects it). A failed attempt: ATTEMPT_FAILED (the courier brings it to their hub) -> HELD_AT_HUB (its dispatcher decides) -> AT_DESTINATION_HUB (tried again: two attempts, none after a refusal) or back: RETURN_IN_TRANSIT (different districts only) -> RETURN_AT_HUB (the sender's hub) -> OUT_FOR_RETURN -> RETURNED (with a photo). FAILED is final: the pickup failed, or the parcel was lost or damaged. A FAILED request with another reason counts as ATTEMPT_FAILED.
          * @enum {string}
          */
-        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "AT_ORIGIN_HUB" | "IN_TRANSIT" | "AT_DESTINATION_HUB" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED" | "CANCELLED";
+        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "AT_ORIGIN_HUB" | "IN_TRANSIT" | "AT_DESTINATION_HUB" | "OUT_FOR_DELIVERY" | "DELIVERED" | "ATTEMPT_FAILED" | "HELD_AT_HUB" | "RETURN_IN_TRANSIT" | "RETURN_AT_HUB" | "OUT_FOR_RETURN" | "RETURNED" | "FAILED" | "CANCELLED";
         /** @enum {string} */
-        DeliveryFailureReason: "RECIPIENT_UNAVAILABLE" | "INCORRECT_ADDRESS" | "ACCESS_RESTRICTED" | "RECIPIENT_REJECTED" | "DAMAGED_IN_TRANSIT" | "ADVERSE_WEATHER" | "SYSTEM_CANCELLATION" | "OTHER";
+        DeliveryFailureReason: "RECIPIENT_UNAVAILABLE" | "INCORRECT_ADDRESS" | "ACCESS_RESTRICTED" | "RECIPIENT_REJECTED" | "DAMAGED_IN_TRANSIT" | "LOST" | "ADVERSE_WEATHER" | "PAYMENT_FAILED" | "OTHER";
         /** @enum {string} */
         SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
         TransitionDeliveryRequest: {
@@ -165,6 +447,11 @@ export interface components {
             notes?: string;
             failureReason?: components["schemas"]["DeliveryFailureReason"];
             actorRole?: string;
+            /**
+             * @description The delivery fee the courier confirms collecting from the sender with PICKED_UP. Must match the fee, or the answer is 409; leave out for other steps and when nothing is due.
+             * @example 670
+             */
+            cashCollected?: number;
         };
         ProofOfDeliveryUploadRequest: {
             photoUrl: string;
@@ -203,6 +490,334 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /**
+             * Format: uuid
+             * @description The shop that sent it, so its parcels are collected together.
+             */
+            merchantId?: string | null;
+            merchantName?: string | null;
+            /**
+             * Format: date-time
+             * @description Proof from before this moment belongs to an earlier attempt and does not count.
+             */
+            proofSince?: string | null;
+            /**
+             * Format: date-time
+             * @description When the sender got the parcel back.
+             */
+            returnedAt?: string | null;
+        };
+        /** @description A contact and address the courier visits. */
+        CourierJobStop: {
+            name?: string;
+            /** @example +94771234567 */
+            phone?: string;
+            alternatePhone?: string | null;
+            addressLine1?: string;
+            addressLine2?: string | null;
+            city?: string;
+            postalCode?: string;
+            district?: components["schemas"]["SriLankanDistrict"];
+        };
+        /** @description What the courier needs on the leg they are carrying. Stops and amounts that belong to another leg, or to a finished or cancelled delivery, are null. */
+        CourierJobResponse: {
+            /** Format: uuid */
+            deliveryId: string;
+            /** @description The order was cancelled, so nothing is to be picked up or collected. */
+            cancelled: boolean;
+            /** @enum {string} */
+            speed?: "STANDARD" | "EXPRESS" | "SAME_DAY";
+            pickup?: components["schemas"]["CourierJobStop"] | null;
+            dropOff?: components["schemas"]["CourierJobStop"] | null;
+            /** @description The sender, for the courier bringing the parcel back. */
+            returnTo?: components["schemas"]["CourierJobStop"] | null;
+            notes?: string | null;
+            itemDescription?: string | null;
+            lengthCm?: number | null;
+            widthCm?: number | null;
+            heightCm?: number | null;
+            weightKg?: number | null;
+            /**
+             * @description Delivery fee to collect in cash from the sender, until the parcel is picked up.
+             * @example 670
+             */
+            feeToCollect?: number | null;
+            /** @example LKR */
+            currency?: string;
+        };
+        ApiResponseCourierJobResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierJobResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        /** @description A delivery fee collected or refunded for one parcel. */
+        CashEntryResponse: {
+            /** Format: uuid */
+            entryId: string;
+            /** @enum {string} */
+            entryType: "COLLECTION" | "REFUND";
+            trackingNumber: string;
+            /** @example 670 */
+            amount: number;
+            /** @example LKR */
+            currency: string;
+            note?: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        /** @description Cash a courier handed to their dispatcher. */
+        CashHandoverResponse: {
+            /** Format: uuid */
+            handoverId: string;
+            /** Format: uuid */
+            courierId: string;
+            courierName?: string | null;
+            district: components["schemas"]["SriLankanDistrict"];
+            /** @example 670 */
+            expectedAmount: number;
+            countedAmount?: number | null;
+            /** @description Counted minus expected. Negative is a shortage, positive an excess. */
+            difference?: number | null;
+            /** @example LKR */
+            currency: string;
+            /** @enum {string} */
+            status: "SUBMITTED" | "COUNTED";
+            note?: string | null;
+            /** Format: date-time */
+            submittedAt: string;
+            /** Format: date-time */
+            countedAt?: string | null;
+            /** Format: uuid */
+            depositId?: string | null;
+        };
+        /** @description Cash a hub banked. */
+        CashDepositResponse: {
+            /** Format: uuid */
+            depositId: string;
+            district: components["schemas"]["SriLankanDistrict"];
+            /** @example 670 */
+            amount: number;
+            /** @example LKR */
+            currency: string;
+            /** @example BOC-884213 */
+            reference: string;
+            /** @enum {string} */
+            status: "SUBMITTED" | "CONFIRMED" | "REJECTED";
+            /** Format: date-time */
+            depositedAt: string;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewNote?: string | null;
+        };
+        /** @description A courier who holds cash they have not handed over yet. */
+        CashHoldingResponse: {
+            /** Format: uuid */
+            courierId: string;
+            courierName?: string | null;
+            /** @example 670 */
+            amount: number;
+            parcels: number;
+            /** Format: date-time */
+            since: string;
+        };
+        /** @description The signed-in courier's cash. */
+        CourierCashResponse: {
+            /** @example 670 */
+            inHand: number;
+            /** @example LKR */
+            currency: string;
+            entries: components["schemas"]["CashEntryResponse"][];
+            handovers: components["schemas"]["CashHandoverResponse"][];
+        };
+        /** @description A hub's cash. */
+        CashDeskResponse: {
+            district?: components["schemas"]["SriLankanDistrict"] | null;
+            /** @example LKR */
+            currency: string;
+            withCouriers: components["schemas"]["CashHoldingResponse"][];
+            toCount: components["schemas"]["CashHandoverResponse"][];
+            atHub: components["schemas"]["CashHandoverResponse"][];
+            refunds: components["schemas"]["CashEntryResponse"][];
+            /** @example 670 */
+            hubCash: number;
+            deposits: components["schemas"]["CashDepositResponse"][];
+        };
+        CashReportDay: {
+            /** Format: date */
+            date: string;
+            revenue: number;
+            parcels: number;
+        };
+        CashReportDistrict: {
+            district: components["schemas"]["SriLankanDistrict"];
+            revenue: number;
+            parcels: number;
+            /** @description Parcels from other districts delivered here. */
+            lastMileDelivered: number;
+        };
+        /** @description Revenue and cash for a period, read from the cash ledger. */
+        CashReportResponse: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @example LKR */
+            currency: string;
+            /** @description Delivery fees collected minus refunds, under the pickup district. */
+            revenue: number;
+            refunds: number;
+            parcels: number;
+            shortage: number;
+            excess: number;
+            /** @description Now, with couriers and not handed over. */
+            withCouriers: number;
+            /** @description Now, handed over but not counted. */
+            toCount: number;
+            /** @description Now, counted at the hub and not banked. */
+            atHub: number;
+            /** @description Now, banked and waiting for an admin. */
+            toConfirm: number;
+            days: components["schemas"]["CashReportDay"][];
+            districts: components["schemas"]["CashReportDistrict"][];
+        };
+        ApiResponseCashReportResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CashReportResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        CountHandoverRequest: {
+            /** @example 670 */
+            countedAmount: number;
+            /** @description Why it differs; required when it does. */
+            note?: string;
+        };
+        CreateDepositRequest: {
+            /**
+             * @description The hub cash shown to the dispatcher; refused if it changed meanwhile.
+             * @example 670
+             */
+            amount: number;
+            /** @description Bank slip number */
+            reference: string;
+        };
+        RejectDepositRequest: {
+            reason: string;
+        };
+        RefundFeeRequest: {
+            /** @example SD-7K4M-9QX2 */
+            trackingNumber: string;
+            reason: string;
+        };
+        ApiResponseCourierCashResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierCashResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCashHandoverResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CashHandoverResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCashDeskResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CashDeskResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCashDepositResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CashDepositResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCashEntryResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CashEntryResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListCashEntryResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CashEntryResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ShopParcel: {
+            /** Format: uuid */
+            deliveryId: string;
+            trackingNumber: string;
+            itemDescription?: string | null;
+            weightKg?: number | null;
+            deliveryDistrict: components["schemas"]["SriLankanDistrict"];
+            viaHub: boolean;
+            fee: number;
+        };
+        ShopStopAddress: {
+            pickup: components["schemas"]["CourierJobStop"];
+            parcels: components["schemas"]["ShopParcel"][];
+            total: number;
+        };
+        /** @description A shop the courier visits, grouped by pickup address. */
+        ShopStopResponse: {
+            /** Format: uuid */
+            merchantId: string;
+            merchantName?: string | null;
+            currency: string;
+            addresses: components["schemas"]["ShopStopAddress"][];
+        };
+        CollectShopRequest: {
+            deliveryIds: string[];
+            cashCollected: number;
+        };
+        /** @description What a shop paid at one pickup visit. */
+        MerchantPaymentResponse: {
+            /** Format: uuid */
+            paymentId: string;
+            merchantName?: string | null;
+            courierName?: string | null;
+            district: components["schemas"]["SriLankanDistrict"];
+            amount: number;
+            currency: string;
+            parcels: number;
+            /** Format: date-time */
+            paidAt: string;
+        };
+        CollectShopResponse: {
+            parcels: number;
+            payment?: components["schemas"]["MerchantPaymentResponse"] | null;
+        };
+        ApiResponseShopStopResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ShopStopResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCollectShopResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CollectShopResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListMerchantPaymentResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["MerchantPaymentResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
         };
         ApiResponseString: {
             success?: boolean;
@@ -395,6 +1010,56 @@ export interface operations {
             };
         };
     };
+    getCourierJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery job retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierJobResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller does not carry this delivery, or works in another district */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Delivery or order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The order service did not answer; try again */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     transitionDelivery: {
         parameters: {
             query?: never;
@@ -480,6 +1145,622 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseProofOfDeliveryResponse"];
                 };
+            };
+        };
+    };
+    getMyCash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierCashResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    submitHandover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashHandoverResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No cash to hand over */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getCashDesk: {
+        parameters: {
+            query?: {
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashDeskResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getCashReport: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashReportResponse"];
+                };
+            };
+            /** @description Missing or invalid dates */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getHandoverEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                handoverId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListCashEntryResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Handover not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    countHandover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                handoverId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountHandoverRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashHandoverResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Handover not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already counted, or a different amount without a note */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createDeposit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDepositRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashDepositResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No cash at the hub, or it changed since it was shown */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    confirmDeposit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                depositId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashDepositResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Deposit not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already reviewed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rejectDeposit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                depositId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectDepositRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashDepositResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Deposit not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already reviewed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    refundFee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundFeeRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCashEntryResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role or district does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such parcel, or this district collected no fee for it */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not refundable, already refunded, or not enough cash at the hub */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getShopStop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseShopStopResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    collectShop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectShopRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCollectShopResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A different amount, a cancelled parcel, or one that is no longer the courier's */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMerchantPayments: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListMerchantPaymentResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMerchantPaymentEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListCashEntryResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -9,6 +9,7 @@ import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.OrderStatusHistoryEntry;
+import com.swiftdrop.order.dto.ShippingLabelsRequest;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.service.CustomerOrderBookingService;
 import com.swiftdrop.order.service.CustomerOrderService;
@@ -200,6 +201,24 @@ public class OrderController {
 
         CustomerOrderService.PdfDownload label = customerOrderService.getShippingLabelPdf(orderId, HeaderParsing.parseUuidSafe(userIdHeader), userRoleHeader);
         return pdfAttachment(label, "receipt");
+    }
+
+    @PostMapping(value = "/labels", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Download shipping labels for up to 100 orders, one A5 page each",
+            description = "A customer for their own orders, a merchant for their company's, a dispatcher for their district's. "
+                    + "Sent as an attachment with Cache-Control: no-store. 404 if any order is not the caller's.")
+    public ResponseEntity<byte[]> downloadShippingLabels(
+            @Valid @RequestBody ShippingLabelsRequest request,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ID, required = false) String userIdHeader,
+            @RequestHeader(value = JwtHeaderConstants.X_USER_ROLE, required = false) String userRoleHeader) {
+
+        byte[] pdf = customerOrderService.getShippingLabelsPdf(
+                request.orderIds(), HeaderParsing.parseUuidSafe(userIdHeader), userRoleHeader);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"shipping-labels.pdf\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     @GetMapping(value = "/{orderId}/delivery-receipt", produces = MediaType.APPLICATION_PDF_VALUE)

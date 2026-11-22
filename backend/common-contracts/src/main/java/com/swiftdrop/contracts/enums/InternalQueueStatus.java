@@ -20,6 +20,16 @@ public enum InternalQueueStatus {
     OUTBOUND,
     INCOMING,
     DELIVERED,
+    /** The courier has a parcel whose delivery failed and brings it to the hub. */
+    RETURN_TO_HUB,
+    /** At the hub after a failed attempt, waiting for the dispatcher's decision. */
+    HELD_AT_HUB,
+    /** On its way back to the sender's hub. */
+    RETURN_OUTBOUND,
+    /** At the sender's hub, waiting for a courier. */
+    RETURN_AT_HUB,
+    /** A courier is bringing it back to the sender. */
+    OUT_FOR_RETURN,
     FAILED_ATTEMPT,
     FAILED_RETURN,
     CANCELLED;
@@ -32,6 +42,8 @@ public enum InternalQueueStatus {
             case AT_HUB, OUTBOUND, INCOMING -> PublicOrderStatus.IN_TRANSIT;
             case OUT_FOR_DELIVERY -> PublicOrderStatus.OUT_FOR_DELIVERY;
             case DELIVERED -> PublicOrderStatus.DELIVERED;
+            case RETURN_TO_HUB, HELD_AT_HUB -> PublicOrderStatus.DELIVERY_ATTEMPTED;
+            case RETURN_OUTBOUND, RETURN_AT_HUB, OUT_FOR_RETURN -> PublicOrderStatus.RETURNING;
             case FAILED_ATTEMPT -> PublicOrderStatus.FAILED;
             case FAILED_RETURN -> PublicOrderStatus.RETURNED_TO_SENDER;
             case CANCELLED -> PublicOrderStatus.CANCELLED;
@@ -56,6 +68,12 @@ public enum InternalQueueStatus {
             case AT_DESTINATION_HUB -> INCOMING;
             case OUT_FOR_DELIVERY -> OUT_FOR_DELIVERY;
             case DELIVERED -> DELIVERED;
+            case ATTEMPT_FAILED -> RETURN_TO_HUB;
+            case HELD_AT_HUB -> HELD_AT_HUB;
+            case RETURN_IN_TRANSIT -> RETURN_OUTBOUND;
+            case RETURN_AT_HUB -> RETURN_AT_HUB;
+            case OUT_FOR_RETURN -> OUT_FOR_RETURN;
+            case RETURNED -> FAILED_RETURN;
             case FAILED -> FAILED_ATTEMPT;
             case CANCELLED -> CANCELLED;
         };

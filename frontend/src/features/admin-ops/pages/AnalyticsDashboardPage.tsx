@@ -25,9 +25,14 @@ import {
   YAxis
 } from 'recharts';
 import { Link } from 'react-router-dom';
-import { Button, StatusBanner, SurfaceCard } from '@/design-system';
+import { Button, SelectDropdown, StatusBanner, SurfaceCard } from '@/design-system';
 import { analyticsAiApi } from '@/services/api/analyticsAiApi';
+import type { SriLankanDistrict } from '@/services/api/dispatchApi';
+import { districtLabel } from '@/features/profile/profileFormat';
 import { useAuthStore } from '@/store/useAuthStore';
+import { colomboToday } from '@/utils/colomboDate';
+import { ALL_DISTRICTS, DISTRICT_OPTIONS } from '../components/dispatch/districtOptions';
+import { RevenueReport } from '../components/RevenueReport';
 
 const series = [
   { key: 'created', label: 'Created', color: 'var(--color-fsm-created-fg)' },
@@ -45,12 +50,7 @@ const tooltipStyle = {
 const dateLabel = (date: string) =>
   new Date(`${date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 function initialRange(days = 7) {
-  const today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Colombo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date());
+  const today = colomboToday();
   const start = new Date(`${today}T00:00:00Z`);
   start.setUTCDate(start.getUTCDate() - days + 1);
   return { from: start.toISOString().slice(0, 10), to: today };
@@ -99,16 +99,22 @@ function EmptyChart({
 export function AnalyticsDashboardPage() {
   const [range, setRange] = useState(() => initialRange());
   const [draft, setDraft] = useState(range);
-  const userId = useAuthStore((state) => state.user?.id);
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.id;
+  const isAdmin = user?.role === 'SYSTEM_ADMIN';
+  // A dispatcher always gets their own district from the server; an admin sees all or picks one.
+  const [adminDistrict, setAdminDistrict] = useState<string>(ALL_DISTRICTS);
+  const scope =
+    isAdmin && adminDistrict !== ALL_DISTRICTS ? (adminDistrict as SriLankanDistrict) : undefined;
   const dayCount = (Date.parse(draft.to) - Date.parse(draft.from)) / 86_400_000 + 1;
   const valid = Boolean(draft.from && draft.to && dayCount >= 1 && dayCount <= 90);
   const reports = useQuery({
-    queryKey: ['analytics-reports', userId, range.from, range.to],
+    queryKey: ['analytics-reports', userId, scope ?? 'all', range.from, range.to],
     queryFn: async ({ signal }) => {
       const [daily, outcomes, workload] = await Promise.all([
-        analyticsAiApi.getDailyDeliveries(range.from, range.to, signal),
-        analyticsAiApi.getSuccessRate(range.from, range.to, signal),
-        analyticsAiApi.getCourierWorkload(signal)
+        analyticsAiApi.getDailyDeliveries(range.from, range.to, scope, signal),
+        analyticsAiApi.getSuccessRate(range.from, range.to, scope, signal),
+        analyticsAiApi.getCourierWorkload(scope, signal)
       ]);
       return { daily, outcomes, workload };
     },
@@ -117,8 +123,8 @@ export function AnalyticsDashboardPage() {
   });
   const { data } = reports;
   const courierProfiles = useQuery({
-    queryKey: ['analytics-courier-names', userId],
-    queryFn: () => analyticsAiApi.getCourierPerformances(),
+    queryKey: ['analytics-courier-names', userId, scope ?? 'all'],
+    queryFn: () => analyticsAiApi.getCourierPerformances(scope),
     staleTime: 60_000,
     retry: false
   });
@@ -147,8 +153,21 @@ export function AnalyticsDashboardPage() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Delivery analytics</h1>
+          {!isAdmin && user?.district ? (
+            <p className="text-caption text-secondary">{districtLabel(user.district)} district</p>
+          ) : null}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+          {isAdmin ? (
+            <SelectDropdown
+              label="District"
+              searchable
+              options={DISTRICT_OPTIONS}
+              value={adminDistrict}
+              onChange={setAdminDistrict}
+              className="w-56"
+            />
+          ) : null}
           {reports.dataUpdatedAt > 0 && (
             <span className="hidden text-xs text-secondary sm:block">
               Updated{' '}
@@ -494,7 +513,7 @@ export function AnalyticsDashboardPage() {
                 </span>
               </div>
               {workload.length === 0 ? (
-                <EmptyChart icon={<Truck size={24} />} title="No couriers in the projection yet">
+                <EmptyChart icon={<Truck size={24} />} title="No couriers yet">
                   Workload appears after the first courier assignment.
                   <Link to="/ops" className="mt-3 block font-semibold text-brand-primary">
                     Open control tower →
@@ -572,6 +591,7 @@ export function AnalyticsDashboardPage() {
           </div>
         </>
       )}
+      <RevenueReport from={range.from} to={range.to} district={scope} showDistricts={isAdmin} />
     </div>
   );
 }

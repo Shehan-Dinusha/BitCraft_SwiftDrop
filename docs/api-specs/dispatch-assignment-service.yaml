@@ -337,6 +337,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
 
+  /api/v1/dispatch/returns:
+    get:
+      tags:
+        - Dispatch
+      summary: List failed deliveries a district deals with
+      description: >-
+        RETURN_TO_HUB: a courier brings it back. HELD_AT_HUB: try again (delivery transition
+        HELD_AT_HUB -> AT_DESTINATION_HUB, while canRetry) or return it (-> RETURN_IN_TRANSIT, or
+        -> RETURN_AT_HUB when the sender is in the same district). RETURN_OUTBOUND: accept it at the
+        sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district; a SYSTEM_ADMIN must give
+        the district (400 otherwise).
+      operationId: getReturns
+      parameters:
+        - name: district
+          in: query
+          required: false
+          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Returns retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
+        "400":
+          description: A SYSTEM_ADMIN did not give a district
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
   /api/v1/dispatch/incoming:
     get:
       tags:
@@ -771,9 +810,10 @@ paths:
         - CourierAvailability
       summary: Start or register courier shift
       description: >-
-        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
-        The vehicle type and parcel capacity come from the courier's registered vehicle; without one the
-        answer is 409 Courier Not Available.
+        A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their
+        district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and
+        parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier
+        Not Available.
       operationId: startShift
       requestBody:
         required: true
@@ -825,7 +865,7 @@ paths:
         - CourierAvailability
       summary: End courier shift
       description: >-
-        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+        A COURIER must have handed over all their cash first (409 Shift Conflict otherwise). A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
       operationId: endShift
       parameters:
         - name: courierId
@@ -906,6 +946,71 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
 
+  /api/v1/dispatch/shops/{merchantId}/couriers:
+    get:
+      tags:
+        - ShopPickup
+      summary: Couriers on shift and which of the shop's ready parcels each has room for
+      description: >-
+        A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN must give it.
+      operationId: getShopCouriers
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: district
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListShopCourierSuggestionResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+
+  /api/v1/dispatch/shops/{merchantId}/assign:
+    post:
+      tags:
+        - ShopPickup
+      summary: Give a shop's ready parcels to one courier, all of them or none
+      operationId: assignShopPickup
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignShopPickupRequest"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+        "409":
+          description: A parcel is not packed, no longer waiting, or does not fit the courier's vehicle
+
 components:
   securitySchemes:
     bearerAuth:
@@ -922,13 +1027,32 @@ components:
       type: string
       description: >-
         FIRST_MILE is managed by the pickup district; a cross-district order moves to LAST_MILE, managed
-        by the drop-off district, when its hub accepts it.
-      enum: [FIRST_MILE, LAST_MILE]
+        by the drop-off district, when its hub accepts it, and so does an order tried again after a failed
+        attempt. RETURN, back to the sender, is managed by the pickup district.
+      enum: [FIRST_MILE, LAST_MILE, RETURN]
 
     HubStage:
       type: string
-      description: Where a cross-district order is between the legs.
-      enum: [AT_HUB, OUTBOUND, INCOMING]
+      description: Where an order is between the legs, or after a failed delivery.
+      enum: [AT_HUB, OUTBOUND, INCOMING, RETURN_TO_HUB, HELD_AT_HUB, RETURN_OUTBOUND, RETURN_AT_HUB]
+
+    DeliveryFailureReason:
+      type: string
+      enum:
+        - CUSTOMER_UNAVAILABLE
+        - RECIPIENT_UNAVAILABLE
+        - WRONG_ADDRESS
+        - INCORRECT_ADDRESS
+        - REFUSED_BY_CUSTOMER
+        - RECIPIENT_REJECTED
+        - ACCESS_RESTRICTED
+        - PAYMENT_FAILED
+        - DAMAGED
+        - DAMAGED_IN_TRANSIT
+        - LOST
+        - WEATHER_DELAY
+        - ADVERSE_WEATHER
+        - OTHER
 
     ShiftStatus:
       type: string
@@ -1029,7 +1153,6 @@ components:
       required:
         - courierId
         - courierName
-        - initialDistrict
       properties:
         courierId:
           type: string
@@ -1039,9 +1162,8 @@ components:
           example: Sunil Perera
         phone:
           type: string
+          pattern: '^$|^(?:\+94|0)?[1-9][0-9]{8}$'
           example: "+94771234567"
-        initialDistrict:
-          $ref: "#/components/schemas/SriLankanDistrict"
 
     CourierVehicleRequest:
       type: object
@@ -1135,6 +1257,63 @@ components:
         status:
           $ref: "#/components/schemas/ShiftStatus"
 
+    ShopCourierSuggestionResponse:
+      type: object
+      required:
+        - courierId
+        - courierName
+        - vehicleType
+        - activeParcels
+        - maxCapacity
+        - fittingOrderIds
+      properties:
+        courierId:
+          type: string
+          format: uuid
+        courierName:
+          type: string
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        activeParcels:
+          type: integer
+        maxCapacity:
+          type: integer
+        fittingOrderIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    AssignShopPickupRequest:
+      type: object
+      required:
+        - courierId
+        - orderIds
+      properties:
+        courierId:
+          type: string
+          format: uuid
+        orderIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    ApiResponseListShopCourierSuggestionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopCourierSuggestionResponse"
+        timestamp:
+          type: string
+          format: date-time
+
     DispatchAssignmentResponse:
       type: object
       properties:
@@ -1202,6 +1381,32 @@ components:
         weightKg:
           type: number
           example: 2.5
+        merchantId:
+          type: [string, "null"]
+          format: uuid
+          description: The shop, for an order it sent.
+        merchantName:
+          type: [string, "null"]
+        shopPickup:
+          type: boolean
+          description: Collected together with the shop's other parcels (a standard order still at the shop).
+        readyForPickup:
+          type: boolean
+          description: Whether a courier can be sent. A shop's parcel only once the shop said it is packed.
+        readyAt:
+          type: [string, "null"]
+          format: date-time
+        deliveryAttempts:
+          type: integer
+          description: Delivery attempts that failed.
+        lastAttemptReason:
+          description: Why the last attempt failed.
+          oneOf:
+            - $ref: "#/components/schemas/DeliveryFailureReason"
+            - type: "null"
+        canRetry:
+          type: boolean
+          description: Whether it may still go out for another attempt.
 
     CourierShiftResponse:
       type: object

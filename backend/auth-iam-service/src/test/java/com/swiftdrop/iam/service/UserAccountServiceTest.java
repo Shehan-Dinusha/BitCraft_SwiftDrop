@@ -301,7 +301,7 @@ class UserAccountServiceTest {
         when(userAccountRepository.existsByPhone("+94771234567")).thenReturn(true);
 
         assertThatThrownBy(() -> userAccountService.updateOwnProfile(admin.getPublicId(),
-                new UpdateProfileRequest("Nimal", "Perera", "+94771234567", SriLankanDistrict.KANDY)))
+                new UpdateProfileRequest("Nimal", "Perera", "0771234567", SriLankanDistrict.KANDY)))
                 .isInstanceOf(UserAlreadyExistsException.class);
         verify(userAccountRepository, never()).save(any());
     }

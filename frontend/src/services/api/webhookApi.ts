@@ -6,8 +6,7 @@ export type WebhookEndpointResponse = components['schemas']['WebhookEndpointResp
 /** Create-only response: the endpoint plus its signing secret, which the API returns this one time only. */
 export type WebhookEndpointCreatedResponse = components['schemas']['WebhookEndpointCreatedResponse'];
 export type WebhookDeliveryAttemptResponse = components['schemas']['WebhookDeliveryAttemptResponse'];
-export type DeadLetterWebhookResponse = components['schemas']['DeadLetterWebhookResponse'];
-export type ReplayDlqResponse = components['schemas']['ReplayDlqResponse'];
+export type FailedDeliveryResponse = components['schemas']['FailedDeliveryResponse'];
 
 export const webhookApi = {
   /**
@@ -68,41 +67,27 @@ export const webhookApi = {
     return data.data;
   },
 
-  /** Scoped to the caller's merchant by the backend; `adminMerchantFilter` is for SYSTEM_ADMIN/DISPATCHER only. */
-  listDlq: async (unreplayedOnly: boolean = false, adminMerchantFilter?: string) => {
-    const params: Record<string, string | boolean> = { unreplayedOnly };
-    if (adminMerchantFilter) {
-      params.merchantId = adminMerchantFilter;
-    }
-    const { data } = await apiClient.get<{ success: boolean; data: DeadLetterWebhookResponse[] }>(
-      '/v1/webhooks/dlq',
-      { params }
+  /** Deliveries that used up their attempts, newest first. */
+  listFailedDeliveries: async () => {
+    const { data } = await apiClient.get<{ success: boolean; data: FailedDeliveryResponse[] }>(
+      '/v1/webhooks/deliveries/failed'
     );
     return data.data;
   },
 
-  getDlqRecord: async (dlqId: string) => {
-    const { data } = await apiClient.get<{ success: boolean; data: DeadLetterWebhookResponse }>(
-      `/v1/webhooks/dlq/${dlqId}`
+  /** Queues it to be sent again in the background. Safe to repeat. */
+  replayFailedDelivery: async (deliveryId: string) => {
+    const { data } = await apiClient.post<{ success: boolean; data: FailedDeliveryResponse }>(
+      `/v1/webhooks/deliveries/failed/${deliveryId}/replay`
     );
     return data.data;
   },
 
-  replayDlq: async (dlqId: string) => {
-    const { data } = await apiClient.post<{ success: boolean; data: ReplayDlqResponse }>(
-      `/v1/webhooks/dlq/${dlqId}/replay`
+  /** Queues every one not yet replayed, and returns how many. */
+  replayAllFailedDeliveries: async () => {
+    const { data } = await apiClient.post<{ success: boolean; data: number }>(
+      '/v1/webhooks/deliveries/failed/replay'
     );
     return data.data;
-  },
-
-  /** Replays the caller's own records; `adminMerchantFilter` is for SYSTEM_ADMIN only. */
-  replayAllDlq: async (adminMerchantFilter?: string) => {
-    const params = adminMerchantFilter ? { merchantId: adminMerchantFilter } : {};
-    const { data } = await apiClient.post<{ success: boolean; data: ReplayDlqResponse[] }>(
-      '/v1/webhooks/dlq/replay-all',
-      null,
-      { params }
-    );
-    return data.data;
-  },
+  }
 };

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { CheckCheck, Ellipsis, Inbox, Settings } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCheck, Inbox } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { notificationMeta, notificationTone, type NotificationType } from './notificationTypes';
 
@@ -21,9 +21,6 @@ export interface NotificationTrayProps {
   loading?: boolean;
   onItemClick: (item: TrayItem) => void;
   onMarkAllRead: () => void;
-  onOpenSettings: () => void;
-  /** `page` shows the full list without the popover height limit. */
-  variant?: 'popover' | 'page';
 }
 
 type Filter = 'all' | 'unread';
@@ -47,39 +44,15 @@ function isToday(dateString?: string): boolean {
   return new Date(dateString).toDateString() === new Date().toDateString();
 }
 
-/** In-app notification popover: type icons, All/Unread filter and a menu with "Mark all as read" and settings. */
+/** The inbox: All/Unread filter, "Mark all as read" and the notifications grouped by day. */
 export function NotificationTray({
   items,
   unreadCount,
   loading = false,
   onItemClick,
-  onMarkAllRead,
-  onOpenSettings,
-  variant = 'popover'
+  onMarkAllRead
 }: NotificationTrayProps) {
   const [filter, setFilter] = useState<Filter>('all');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onPointer = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey, true);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey, true);
-    };
-  }, [menuOpen]);
-
   const visible = filter === 'unread' ? items.filter((i) => i.unread) : items;
   const today = visible.filter((i) => isToday(i.createdAt));
   const earlier = visible.filter((i) => !isToday(i.createdAt));
@@ -107,16 +80,26 @@ export function NotificationTray({
           </span>
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
             <span className="flex items-baseline justify-between gap-2">
-              <span className={cn('truncate text-body-strong', item.unread ? 'text-primary' : 'text-secondary')}>
+              <span
+                className={cn(
+                  'truncate text-body-strong',
+                  item.unread ? 'text-primary' : 'text-secondary'
+                )}
+              >
                 {item.title}
               </span>
-              <span className="shrink-0 text-caption text-muted">{relativeTime(item.createdAt)}</span>
+              <span className="shrink-0 text-caption text-muted">
+                {relativeTime(item.createdAt)}
+              </span>
             </span>
             <span className="line-clamp-2 text-caption text-secondary">{item.message}</span>
           </span>
           {item.unread ? (
             <>
-              <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-brand-primary" />
+              <span
+                aria-hidden="true"
+                className="mt-2 size-2 shrink-0 rounded-full bg-brand-primary"
+              />
               <span className="sr-only">Unread</span>
             </>
           ) : null}
@@ -128,7 +111,9 @@ export function NotificationTray({
   const group = (label: string, list: TrayItem[]) =>
     list.length === 0 ? null : (
       <div>
-        <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</p>
+        <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          {label}
+        </p>
         <ul className="divide-y divide-border-subtle">{list.map(renderItem)}</ul>
       </div>
     );
@@ -136,89 +121,41 @@ export function NotificationTray({
   return (
     <section
       aria-label="Notifications"
-      className={cn(
-        'w-full overflow-hidden rounded-2xl border border-border-subtle bg-card',
-        variant === 'popover' && 'shadow-ambient'
-      )}
+      className="w-full overflow-hidden rounded-2xl border border-border-subtle bg-card"
     >
-      <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-h3 text-primary">Notifications</h2>
-          {unreadCount > 0 ? (
-            <span className="rounded-full bg-brand-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums text-brand-on">
-              {unreadCount > 99 ? '99+' : unreadCount} new
-            </span>
-          ) : null}
+      <header className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+        <div role="tablist" aria-label="Filter notifications" className="flex gap-1">
+          {(['all', 'unread'] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={filter === f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                'rounded-full px-3 py-1 text-label transition-colors',
+                filter === f
+                  ? 'bg-brand-subtle text-brand-primary'
+                  : 'text-secondary hover:bg-elevated hover:text-primary'
+              )}
+            >
+              {f === 'all' ? 'All' : `Unread${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
+            </button>
+          ))}
         </div>
-
-        <div ref={menuRef} className="relative">
+        {unreadCount > 0 ? (
           <button
             type="button"
-            aria-label="Notification options"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-            className="inline-flex size-8 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-elevated hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+            onClick={onMarkAllRead}
+            className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-label text-brand-primary transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
           >
-            <Ellipsis aria-hidden="true" className="size-[18px]" />
+            <CheckCheck aria-hidden="true" className="size-4" />
+            Mark all as read
           </button>
-          {menuOpen ? (
-            <div
-              role="menu"
-              aria-label="Notification options"
-              className="absolute right-0 top-full z-10 mt-1 w-56 overflow-hidden rounded-xl border border-border-subtle bg-card py-1 shadow-ambient"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                disabled={unreadCount === 0}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onMarkAllRead();
-                }}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-body text-primary transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:text-disabled-fg disabled:hover:bg-transparent"
-              >
-                <CheckCheck aria-hidden="true" className="size-4 shrink-0" />
-                Mark all as read
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onOpenSettings();
-                }}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-body text-primary transition-colors hover:bg-elevated"
-              >
-                <Settings aria-hidden="true" className="size-4 shrink-0" />
-                Notification settings
-              </button>
-            </div>
-          ) : null}
-        </div>
+        ) : null}
       </header>
 
-      <div role="tablist" aria-label="Filter notifications" className="flex gap-1 px-4 pb-2">
-        {(['all', 'unread'] as const).map((f) => (
-          <button
-            key={f}
-            type="button"
-            role="tab"
-            aria-selected={filter === f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              'rounded-full px-3 py-1 text-label transition-colors',
-              filter === f
-                ? 'bg-brand-subtle text-brand-primary'
-                : 'text-secondary hover:bg-elevated hover:text-primary'
-            )}
-          >
-            {f === 'all' ? 'All' : `Unread${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
-          </button>
-        ))}
-      </div>
-
-      <div className={cn('border-t border-border-subtle', variant === 'popover' && 'max-h-[420px] overflow-y-auto')}>
+      <div className="border-t border-border-subtle">
         {loading && items.length === 0 ? (
           <p className="p-8 text-center text-caption text-secondary">Loading notifications…</p>
         ) : visible.length === 0 ? (
@@ -229,7 +166,9 @@ export function NotificationTray({
             <p className="text-body-strong text-primary">
               {filter === 'unread' ? 'No unread notifications' : "You're all caught up"}
             </p>
-            <p className="text-caption text-secondary">Parcel updates will appear here as they happen.</p>
+            <p className="text-caption text-secondary">
+              Parcel updates will appear here as they happen.
+            </p>
           </div>
         ) : (
           <>

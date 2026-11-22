@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileDown, Receipt, Route } from 'lucide-react';
+import { FileDown, Receipt } from 'lucide-react';
 import {
   Alert,
   Button,
@@ -14,6 +14,7 @@ import {
   SurfaceCard
 } from '@/design-system';
 import { orderApi, readOrderApiError, type CustomerOrderResponse } from '@/services/api/orderApi';
+import { isTerminalPublicStatus } from '@/services/api/trackingHubApi';
 import { placeLabel } from '../components/booking/bookingForm';
 import {
   canCancel,
@@ -54,6 +55,7 @@ function problemFor(error: unknown): ActionProblem {
   return 'failed';
 }
 
+const REFRESH_MS = 30_000;
 const PAGE = 'mx-auto flex w-full max-w-4xl flex-col gap-5 p-4 sm:p-6';
 
 export function OrderDetailPage() {
@@ -77,14 +79,21 @@ export function OrderDetailPage() {
     queryKey: ['customer-order', orderId],
     queryFn: () => orderApi.getOrderById(orderId as string),
     enabled: validId,
+    // This page is where a customer follows the parcel, so it keeps itself up to date until the end.
+    refetchInterval: ({ state }) =>
+      state.data && !isTerminalPublicStatus(orderStatus(state.data)) ? REFRESH_MS : false,
     retry: (count, error) => count < 2 && (readOrderApiError(error).status ?? 500) >= 500
   });
+
+  const following =
+    !!orderQuery.data && !isTerminalPublicStatus(orderStatus(orderQuery.data));
 
   // The history is extra detail: if it cannot be loaded the page simply leaves it out.
   const historyQuery = useQuery({
     queryKey: ['customer-order-history', orderId],
     queryFn: () => orderApi.getStatusHistory(orderId as string),
     enabled: validId,
+    refetchInterval: () => (following ? REFRESH_MS : false),
     retry: false
   });
 
@@ -226,16 +235,6 @@ export function OrderDetailPage() {
   const beforePickup = status === 'CREATED' || status === 'PICKUP_ASSIGNED';
   const route = `${placeLabel(order.pickupCity, order.pickupDistrict)} to ${placeLabel(order.deliveryCity, order.deliveryDistrict)}`;
 
-  const trackButton = (primary: boolean) => (
-    <Button
-      type="button"
-      variant={primary ? 'primary' : 'secondary'}
-      leftIcon={<Route />}
-      onClick={() => navigate(`/customer/tracking/${encodeURIComponent(trackingNumber)}`)}
-    >
-      Track parcel
-    </Button>
-  );
   const labelButton = (primary: boolean) => (
     <Button
       type="button"
@@ -260,26 +259,16 @@ export function OrderDetailPage() {
     </Button>
   );
 
-  // One primary action per state: print the label before pickup, follow the parcel while it moves,
-  // keep the receipt once delivered. Cancelled parcels have nothing left to do.
-  // While a fee change waits for an answer, that answer is the primary action, not the header.
-  const lead = !pendingRevision;
+  // One primary action: print the label before pickup, keep the receipt once delivered. While a fee
+  // change waits for an answer, that answer is the primary action. Cancelled parcels have nothing to do.
   const actions =
-    status === 'CANCELLED' ? null : beforePickup ? (
-      <>
-        {labelButton(lead)}
-        {trackButton(false)}
-      </>
-    ) : status === 'DELIVERED' ? (
+    status === 'CANCELLED' ? null : status === 'DELIVERED' ? (
       <>
         {deliveryReceiptButton}
         {labelButton(false)}
       </>
     ) : (
-      <>
-        {trackButton(lead)}
-        {labelButton(false)}
-      </>
+      labelButton(beforePickup && !pendingRevision)
     );
 
   return (
@@ -362,7 +351,10 @@ export function OrderDetailPage() {
 
       {canCancel(order) ? (
         <SurfaceCard>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            data-assistant-avoid
+            className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          >
             <p className="text-body text-secondary">
               You can cancel until pickup.
             </p>

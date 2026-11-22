@@ -12,6 +12,8 @@ import { RegistrationSuccessPage } from '@/features/auth/pages/RegistrationSucce
 import { InviteAcceptPage } from '@/features/auth/pages/InviteAcceptPage';
 import { CourierVehicleSetupPage } from '@/features/courier/pages/CourierVehicleSetupPage';
 import { CourierTodayDeliveriesPage } from '@/features/courier/pages/CourierTodayDeliveriesPage';
+import { CourierShopStopPage } from '@/features/courier/pages/CourierShopStopPage';
+import { CourierCashPage } from '@/features/courier/pages/CourierCashPage';
 import { CourierManagementPage } from '@/features/admin-ops/pages/CourierManagementPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
@@ -21,9 +23,11 @@ import { CourierShiftDashboard } from '@/features/courier/pages/CourierShiftDash
 import { ActiveDeliveryExecutionPage } from '@/features/courier/pages/ActiveDeliveryExecutionPage';
 import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPortalDashboard';
 import { MerchantRegistrationPage } from '@/features/merchant/pages/MerchantRegistrationPage';
+import { ApiGuidePage } from '@/features/merchant/pages/ApiGuidePage';
 import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
 import { ZonePricingEditorPage } from '@/features/admin-ops/pages/ZonePricingEditorPage';
+import { CashDeskPage } from '@/features/admin-ops/pages/CashDeskPage';
 import { DispatchBoardPage } from '@/features/admin-ops/pages/DispatchBoardPage';
 import { MerchantApprovalsPage } from '@/features/admin-ops/pages/MerchantApprovalsPage';
 import { NotificationConsolePage } from '@/features/admin-ops/pages/NotificationConsolePage';
@@ -195,6 +199,22 @@ export const routes: RouteObject[] = [
         )
       },
       {
+        path: '/courier/shops/:merchantId',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <CourierShopStopPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/courier/cash',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <CourierCashPage />
+          </RoleGuard>
+        )
+      },
+      {
         path: '/courier/deliveries',
         element: (
           <RoleGuard roles={['COURIER']}>
@@ -221,8 +241,16 @@ export const routes: RouteObject[] = [
       {
         path: '/merchant/webhooks',
         element: (
-          <RoleGuard roles={['MERCHANT', 'ADMIN_OPS']}>
+          <RoleGuard roles={['MERCHANT']}>
             <WebhookResiliencyConsolePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/api-guide',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <ApiGuidePage />
           </RoleGuard>
         )
       },
@@ -243,14 +271,6 @@ export const routes: RouteObject[] = [
         )
       },
       {
-        path: '/ops/webhooks',
-        element: (
-          <RoleGuard roles={['ADMIN_OPS']}>
-            <WebhookResiliencyConsolePage />
-          </RoleGuard>
-        )
-      },
-      {
         path: '/ops/zones',
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
@@ -263,6 +283,14 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
             <DispatchBoardPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/cash',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <CashDeskPage />
           </RoleGuard>
         )
       },

@@ -133,7 +133,4 @@ public class UpdateOrderRequest {
 
     @Schema(description = "Declared merchandise value in LKR", example = "5000.00")
     private BigDecimal declaredValue;
-
-    @Schema(description = "COD amount in LKR", example = "0.00")
-    private BigDecimal codAmount;
 }

@@ -56,6 +56,42 @@ export const deliveryStateColors: Record<DeliveryState, DeliveryStateTokens> = {
     border: 'border-fsm-delivered-border',
     glyph: '✓'
   },
+  ATTEMPT_FAILED: {
+    background: 'bg-status-warning-bg',
+    foreground: 'text-status-warning-fg',
+    border: 'border-status-warning-border',
+    glyph: '!'
+  },
+  HELD_AT_HUB: {
+    background: 'bg-status-warning-bg',
+    foreground: 'text-status-warning-fg',
+    border: 'border-status-warning-border',
+    glyph: '⌂'
+  },
+  RETURN_IN_TRANSIT: {
+    background: 'bg-fsm-returned-to-sender-bg',
+    foreground: 'text-fsm-returned-to-sender-fg',
+    border: 'border-fsm-returned-to-sender-border',
+    glyph: '«'
+  },
+  RETURN_AT_HUB: {
+    background: 'bg-fsm-returned-to-sender-bg',
+    foreground: 'text-fsm-returned-to-sender-fg',
+    border: 'border-fsm-returned-to-sender-border',
+    glyph: '⌂'
+  },
+  OUT_FOR_RETURN: {
+    background: 'bg-fsm-returned-to-sender-bg',
+    foreground: 'text-fsm-returned-to-sender-fg',
+    border: 'border-fsm-returned-to-sender-border',
+    glyph: '«'
+  },
+  RETURNED: {
+    background: 'bg-fsm-returned-to-sender-bg',
+    foreground: 'text-fsm-returned-to-sender-fg',
+    border: 'border-fsm-returned-to-sender-border',
+    glyph: '↩'
+  },
   FAILED: {
     background: 'bg-fsm-failed-bg',
     foreground: 'text-fsm-failed-fg',
@@ -132,6 +168,20 @@ export const publicStatusColors: Record<PublicOrderStatus, PublicStatusTokens> =
     dot: 'bg-fsm-delivered-fg',
     glyph: '✓'
   },
+  DELIVERY_ATTEMPTED: {
+    background: 'bg-status-warning-bg',
+    foreground: 'text-status-warning-fg',
+    border: 'border-status-warning-border',
+    dot: 'bg-status-warning-fg',
+    glyph: '!'
+  },
+  RETURNING: {
+    background: 'bg-fsm-returned-to-sender-bg',
+    foreground: 'text-fsm-returned-to-sender-fg',
+    border: 'border-fsm-returned-to-sender-border',
+    dot: 'bg-fsm-returned-to-sender-fg',
+    glyph: '«'
+  },
   FAILED: {
     background: 'bg-fsm-failed-bg',
     foreground: 'text-fsm-failed-fg',
@@ -160,5 +210,17 @@ export function toPublicStatus(state: DeliveryState | PublicOrderStatus): Public
   if (state === 'ASSIGNED') return 'PICKUP_ASSIGNED';
   // Customers see the hub steps as "in transit", the same as the delivery service publishes them.
   if (state === 'AT_ORIGIN_HUB' || state === 'AT_DESTINATION_HUB') return 'IN_TRANSIT';
-  return state;
+  switch (state) {
+    case 'ATTEMPT_FAILED':
+    case 'HELD_AT_HUB':
+      return 'DELIVERY_ATTEMPTED';
+    case 'RETURN_IN_TRANSIT':
+    case 'RETURN_AT_HUB':
+    case 'OUT_FOR_RETURN':
+      return 'RETURNING';
+    case 'RETURNED':
+      return 'RETURNED_TO_SENDER';
+    default:
+      return state;
+  }
 }

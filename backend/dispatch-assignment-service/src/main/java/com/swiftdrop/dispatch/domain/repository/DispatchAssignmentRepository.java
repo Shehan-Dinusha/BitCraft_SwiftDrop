@@ -26,14 +26,22 @@ public interface DispatchAssignmentRepository extends JpaRepository<DispatchAssi
 
     List<DispatchAssignment> findByCourierIdAndStatus(UUID courierId, AssignmentStatus status);
 
+    /** The shop's parcels that no courier has collected yet. */
+    @Query("SELECT a FROM DispatchAssignment a WHERE a.merchantId = :merchantId AND a.customerId = :merchantId "
+            + "AND a.leg = com.swiftdrop.dispatch.domain.enums.AssignmentLeg.FIRST_MILE AND a.pickedUpAt IS NULL "
+            + "AND a.status IN (com.swiftdrop.dispatch.domain.enums.AssignmentStatus.UNASSIGNED, "
+            + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.ASSIGNED, "
+            + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.REASSIGNED) ORDER BY a.createdAt")
+    List<DispatchAssignment> findAtShop(@Param("merchantId") UUID merchantId);
+
     List<DispatchAssignment> findByStatus(AssignmentStatus status);
 
     Page<DispatchAssignment> findByStatus(AssignmentStatus status, Pageable pageable);
 
     Page<DispatchAssignment> findByCourierId(UUID courierId, Pageable pageable);
 
-    /** The district's own orders: picked up there (first leg) or taken over at its hub (last leg). */
-    String HANDLED_BY = "((a.leg = com.swiftdrop.dispatch.domain.enums.AssignmentLeg.FIRST_MILE AND a.pickupDistrict = :district) "
+    /** The district's own orders: picked up there (first leg and returns) or taken over at its hub (last leg). */
+    String HANDLED_BY = "((a.leg <> com.swiftdrop.dispatch.domain.enums.AssignmentLeg.LAST_MILE AND a.pickupDistrict = :district) "
             + "OR (a.leg = com.swiftdrop.dispatch.domain.enums.AssignmentLeg.LAST_MILE AND a.deliveryDistrict = :district))";
 
     @Query("SELECT a FROM DispatchAssignment a WHERE " + HANDLED_BY)
@@ -69,4 +77,16 @@ public interface DispatchAssignmentRepository extends JpaRepository<DispatchAssi
             + "AND a.status NOT IN (com.swiftdrop.dispatch.domain.enums.AssignmentStatus.COMPLETED, "
             + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.CANCELLED) ORDER BY a.createdAt DESC")
     List<DispatchAssignment> findIncoming(@Param("district") SriLankanDistrict district);
+
+    /**
+     * Failed deliveries a district deals with: coming back with a courier or held at its hub (the drop-off
+     * district), and returns on their way to its hub (the pickup district).
+     */
+    @Query("SELECT a FROM DispatchAssignment a WHERE a.status NOT IN ("
+            + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.COMPLETED, "
+            + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.CANCELLED) AND ((a.deliveryDistrict = :district "
+            + "AND a.hubStage IN (com.swiftdrop.contracts.enums.InternalQueueStatus.RETURN_TO_HUB, "
+            + "com.swiftdrop.contracts.enums.InternalQueueStatus.HELD_AT_HUB)) OR (a.pickupDistrict = :district "
+            + "AND a.hubStage = com.swiftdrop.contracts.enums.InternalQueueStatus.RETURN_OUTBOUND)) ORDER BY a.updatedAt")
+    List<DispatchAssignment> findReturns(@Param("district") SriLankanDistrict district);
 }

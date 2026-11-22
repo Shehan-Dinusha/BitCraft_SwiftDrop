@@ -328,6 +328,9 @@ services:
     image:
       repository: dispatch-assignment-service
     hpa: { minReplicas: 2, maxReplicas: 10, scaleUpPods: 2 }
+    config:
+      # The cash ledger: a courier hands over their cash before ending a shift.
+      DELIVERY_SERVICE_URL: "http://delivery-execution-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
 
   delivery-execution-service:
     enabled: true
@@ -341,6 +344,8 @@ services:
       # is set; otherwise to POD_STORAGE_DIR (mount a volume there with `persistence`).
       AZURE_STORAGE_CONTAINER_NAME: pod-images
       POD_STORAGE_DIR: /var/lib/swiftdrop/pod
+      # Addresses and fee for the courier carrying a parcel.
+      ORDER_SERVICE_URL: "http://customer-order-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
     secretEnv:
       - { name: AZURE_STORAGE_CONNECTION_STRING, secretName: delivery-pod-storage, key: azure-connection-string, optional: true }
     # Disabled here: production runs several replicas across nodes, so photos must live in
@@ -359,6 +364,8 @@ services:
       repository: merchant-b2b-service
     hpa: { minReplicas: 2, maxReplicas: 8, scaleUpPods: 2 }
     config:
+      # The pickup queue, for "ready for pickup".
+      DISPATCH_SERVICE_URL: "http://dispatch-assignment-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       ORDER_SERVICE_URL: "http://customer-order-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
 
   webhook-resiliency-service:

@@ -31,11 +31,13 @@ public class B2bOrderSubmissionService {
         var existing = receipts.findByMerchantIdAndExternalRef(merchantId, request.externalRef());
         if (existing.isPresent()) {
             var receipt = existing.get();
-            return new B2bOrderResult(request.externalRef(), receipt.getOrderId(), receipt.getTrackingNumber(), false, null);
+            return new B2bOrderResult(request.externalRef(), receipt.getOrderId(), receipt.getTrackingNumber(), false, null,
+                    receipt.getFee(), receipt.getCurrency());
         }
         var result = orders.create(body, correlationId != null ? correlationId : UUID.randomUUID());
         receipts.save(MerchantOrderReceipt.builder().merchantId(merchantId).externalRef(request.externalRef())
-                .orderId(result.orderId()).trackingNumber(result.trackingNumber()).build());
+                .orderId(result.orderId()).trackingNumber(result.trackingNumber())
+                .fee(result.fee()).currency(result.currency()).build());
         return result;
     }
 }

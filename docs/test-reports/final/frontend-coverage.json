@@ -1,0 +1,6820 @@
+{
+ "total": {
+  "lines": {
+   "total": 6165,
+   "covered": 1551,
+   "skipped": 0,
+   "pct": 25.15
+  },
+  "statements": {
+   "total": 6922,
+   "covered": 1721,
+   "skipped": 0,
+   "pct": 24.86
+  },
+  "functions": {
+   "total": 2298,
+   "covered": 466,
+   "skipped": 0,
+   "pct": 20.27
+  },
+  "branches": {
+   "total": 6469,
+   "covered": 1661,
+   "skipped": 0,
+   "pct": 25.67
+  },
+  "branchesTrue": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/catalog-main.tsx": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/main.tsx": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/sw.ts": {
+  "lines": {
+   "total": 23,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 25,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/vite-env.d.ts": {
+  "lines": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/app/App.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/app/AppShell.tsx": {
+  "lines": {
+   "total": 46,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 19,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 51,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 57,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/app/RoleGuard.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 5,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/app/devAuthBypass.ts": {
+  "lines": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/app/roleHome.ts": {
+  "lines": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/app/routes.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/app/providers/AuthProvider.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/app/providers/DensityProvider.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/app/providers/QueryProvider.tsx": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/app/providers/WebSocketProvider.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/index.ts": {
+  "lines": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/components/AiAssistant/AiAssistant.tsx": {
+  "lines": {
+   "total": 35,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 18,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 39,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 39,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/AiAssistantDock/AiAssistantDock.tsx": {
+  "lines": {
+   "total": 28,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 3.57
+  },
+  "functions": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 32,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 3.12
+  },
+  "branches": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/AiAssistantDock/AiAssistantSlot.tsx": {
+  "lines": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Alert/Alert.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "branches": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Avatar/Avatar.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "branches": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Avatar/initials.ts": {
+  "lines": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 8,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/components/BottomSheet/BottomSheet.tsx": {
+  "lines": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 16,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/BrandMark/BrandMark.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/CashState/CashState.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/components/Checkbox/Checkbox.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 88.88
+  },
+  "functions": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 12,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 83.33
+  },
+  "branches": {
+   "total": 13,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 76.92
+  }
+ },
+ "src/design-system/components/ChoiceChip/ChoiceChip.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "branches": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/DataTable/OrderTable.tsx": {
+  "lines": {
+   "total": 12,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 8.33
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 12,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 8.33
+  },
+  "branches": {
+   "total": 17,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/DataTable/TableHeaderCell.tsx": {
+  "lines": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper.tsx": {
+  "lines": {
+   "total": 19,
+   "covered": 19,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 19,
+   "covered": 19,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 33,
+   "covered": 29,
+   "skipped": 0,
+   "pct": 87.87
+  }
+ },
+ "src/design-system/components/DropdownMenu/DropdownItem.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 20
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 6,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 16.66
+  },
+  "branches": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/DropdownMenu/DropdownMenu.tsx": {
+  "lines": {
+   "total": 17,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 35.29
+  },
+  "functions": {
+   "total": 6,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "statements": {
+   "total": 21,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 38.09
+  },
+  "branches": {
+   "total": 25,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 32
+  }
+ },
+ "src/design-system/components/EmptyState/EmptyState.tsx": {
+  "lines": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 10,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 60
+  }
+ },
+ "src/design-system/components/ErgonomicActionBar/ErgonomicActionBar.tsx": {
+  "lines": {
+   "total": 12,
+   "covered": 12,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 4,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 75
+  },
+  "statements": {
+   "total": 14,
+   "covered": 12,
+   "skipped": 0,
+   "pct": 85.71
+  },
+  "branches": {
+   "total": 17,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 64.7
+  }
+ },
+ "src/design-system/components/FilterBar/FilterBar.tsx": {
+  "lines": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/FsmStatusBadge/FsmStatusBadge.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 9,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 20,
+   "covered": 13,
+   "skipped": 0,
+   "pct": 65
+  }
+ },
+ "src/design-system/components/HighDensityDataGrid/HighDensityDataGrid.tsx": {
+  "lines": {
+   "total": 13,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 69.23
+  },
+  "functions": {
+   "total": 8,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 50
+  },
+  "statements": {
+   "total": 13,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 69.23
+  },
+  "branches": {
+   "total": 22,
+   "covered": 17,
+   "skipped": 0,
+   "pct": 77.27
+  }
+ },
+ "src/design-system/components/LiveIndicator/LiveIndicator.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 20
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 7,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 14.28
+  },
+  "branches": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/ModalDrawerShell/ModalDrawerShell.tsx": {
+  "lines": {
+   "total": 40,
+   "covered": 26,
+   "skipped": 0,
+   "pct": 65
+  },
+  "functions": {
+   "total": 7,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 85.71
+  },
+  "statements": {
+   "total": 46,
+   "covered": 31,
+   "skipped": 0,
+   "pct": 67.39
+  },
+  "branches": {
+   "total": 54,
+   "covered": 31,
+   "skipped": 0,
+   "pct": 57.4
+  }
+ },
+ "src/design-system/components/MoneyAmount/MoneyAmount.tsx": {
+  "lines": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 9,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 88.88
+  }
+ },
+ "src/design-system/components/Notifications/Notifications.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 24,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/OrderCard/OrderCard.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 24,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/PageHeader/PageHeader.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Pagination/Pagination.tsx": {
+  "lines": {
+   "total": 18,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 5.55
+  },
+  "functions": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 24,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 4.16
+  },
+  "branches": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/PhotoUpload/PhotoUpload.tsx": {
+  "lines": {
+   "total": 14,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 7.14
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 16,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 6.25
+  },
+  "branches": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/PriceBreakdown/PriceBreakdown.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 25
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 8,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 25
+  },
+  "branches": {
+   "total": 43,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/QueueChip/QueueChip.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 5,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/components/Radio/Radio.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/RadioCard/RadioCard.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "branches": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/RoleTag/RoleTag.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "branches": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/SelectDropdown/SelectDropdown.tsx": {
+  "lines": {
+   "total": 95,
+   "covered": 39,
+   "skipped": 0,
+   "pct": 41.05
+  },
+  "functions": {
+   "total": 17,
+   "covered": 7,
+   "skipped": 0,
+   "pct": 41.17
+  },
+  "statements": {
+   "total": 109,
+   "covered": 41,
+   "skipped": 0,
+   "pct": 37.61
+  },
+  "branches": {
+   "total": 126,
+   "covered": 49,
+   "skipped": 0,
+   "pct": 38.88
+  }
+ },
+ "src/design-system/components/Shell/AccountMenu.tsx": {
+  "lines": {
+   "total": 29,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 3.44
+  },
+  "functions": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 33,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 3.03
+  },
+  "branches": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Shell/BottomNav.tsx": {
+  "lines": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 21,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Shell/NavItem.tsx": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Shell/SideNav.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 22.22
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 9,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 22.22
+  },
+  "branches": {
+   "total": 47,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Shell/TopBar.tsx": {
+  "lines": {
+   "total": 41,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 43,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 75,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Shell/navIcons.ts": {
+  "lines": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/components/Shell/roleNav.ts": {
+  "lines": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/components/Shell/useMediaQuery.ts": {
+  "lines": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/SlideToConfirm/SlideToConfirm.tsx": {
+  "lines": {
+   "total": 73,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 4.1
+  },
+  "functions": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 82,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 3.65
+  },
+  "branches": {
+   "total": 112,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/SlideToTransitionBar/SlideToTransitionBar.tsx": {
+  "lines": {
+   "total": 56,
+   "covered": 35,
+   "skipped": 0,
+   "pct": 62.5
+  },
+  "functions": {
+   "total": 14,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 42.85
+  },
+  "statements": {
+   "total": 66,
+   "covered": 37,
+   "skipped": 0,
+   "pct": 56.06
+  },
+  "branches": {
+   "total": 93,
+   "covered": 53,
+   "skipped": 0,
+   "pct": 56.98
+  }
+ },
+ "src/design-system/components/SlotChip/SlotChip.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 22.22
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 9,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 22.22
+  },
+  "branches": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/SpecialField/SpecialField.tsx": {
+  "lines": {
+   "total": 18,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 11.11
+  },
+  "functions": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 18,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 11.11
+  },
+  "branches": {
+   "total": 30,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/SpeedTag/SpeedTag.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/components/StatusBanner/StatusBanner.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 5,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 11,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/components/StatusProgress/StatusProgress.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 11.11
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 10,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 10
+  },
+  "branches": {
+   "total": 34,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/StatusTimeline/StatusTimeline.tsx": {
+  "lines": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/StatusTimeline/TimelineStep.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "branches": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/SurfaceCard/SurfaceCard.tsx": {
+  "lines": {
+   "total": 14,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 64.28
+  },
+  "functions": {
+   "total": 2,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 50
+  },
+  "statements": {
+   "total": 15,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 60
+  },
+  "branches": {
+   "total": 53,
+   "covered": 25,
+   "skipped": 0,
+   "pct": 47.16
+  }
+ },
+ "src/design-system/components/Tabs/Tabs.tsx": {
+  "lines": {
+   "total": 20,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 40
+  },
+  "functions": {
+   "total": 8,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 50
+  },
+  "statements": {
+   "total": 25,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 32
+  },
+  "branches": {
+   "total": 17,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 52.94
+  }
+ },
+ "src/design-system/components/Textarea/Textarea.tsx": {
+  "lines": {
+   "total": 12,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 16.66
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 12,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 16.66
+  },
+  "branches": {
+   "total": 29,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Toast/Toast.tsx": {
+  "lines": {
+   "total": 24,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 12.5
+  },
+  "functions": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 31,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 9.67
+  },
+  "branches": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/components/Toggle/Toggle.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 4,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 75
+  }
+ },
+ "src/design-system/components/TrackingNumber/TrackingNumber.tsx": {
+  "lines": {
+   "total": 13,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 7.69
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 16,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 6.25
+  },
+  "branches": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/design-system/primitives/Button.tsx": {
+  "lines": {
+   "total": 18,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 18,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 37,
+   "covered": 33,
+   "skipped": 0,
+   "pct": 89.18
+  }
+ },
+ "src/design-system/primitives/Card.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/primitives/Drawer.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/primitives/Field.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 2,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 8,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 28,
+   "covered": 22,
+   "skipped": 0,
+   "pct": 78.57
+  }
+ },
+ "src/design-system/primitives/IconButton.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/primitives/Input.tsx": {
+  "lines": {
+   "total": 26,
+   "covered": 25,
+   "skipped": 0,
+   "pct": 96.15
+  },
+  "functions": {
+   "total": 3,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "statements": {
+   "total": 27,
+   "covered": 25,
+   "skipped": 0,
+   "pct": 92.59
+  },
+  "branches": {
+   "total": 82,
+   "covered": 53,
+   "skipped": 0,
+   "pct": 64.63
+  }
+ },
+ "src/design-system/primitives/Modal.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/primitives/Skeleton.tsx": {
+  "lines": {
+   "total": 14,
+   "covered": 7,
+   "skipped": 0,
+   "pct": 50
+  },
+  "functions": {
+   "total": 4,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 75
+  },
+  "statements": {
+   "total": 15,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 53.33
+  },
+  "branches": {
+   "total": 12,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 41.66
+  }
+ },
+ "src/design-system/providers/DensityProvider.tsx": {
+  "lines": {
+   "total": 4,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 75
+  },
+  "functions": {
+   "total": 3,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "statements": {
+   "total": 5,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 60
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/tokens/colors.ts": {
+  "lines": {
+   "total": 10,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 12,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 91.66
+  },
+  "branches": {
+   "total": 13,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 84.61
+  }
+ },
+ "src/design-system/tokens/density.ts": {
+  "lines": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/design-system/tokens/typography.ts": {
+  "lines": {
+   "total": 2,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 2,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/admin-ops/components/LiveFleetHeatmap.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/components/ManualDispatchOverrideModal.tsx": {
+  "lines": {
+   "total": 15,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 11,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 18,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 40,
+   "covered": 32,
+   "skipped": 0,
+   "pct": 80
+  }
+ },
+ "src/features/admin-ops/components/RevenueReport.tsx": {
+  "lines": {
+   "total": 21,
+   "covered": 17,
+   "skipped": 0,
+   "pct": 80.95
+  },
+  "functions": {
+   "total": 16,
+   "covered": 12,
+   "skipped": 0,
+   "pct": 75
+  },
+  "statements": {
+   "total": 23,
+   "covered": 19,
+   "skipped": 0,
+   "pct": 82.6
+  },
+  "branches": {
+   "total": 21,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 85.71
+  }
+ },
+ "src/features/admin-ops/components/dispatch/AssignedTab.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 7,
+   "skipped": 0,
+   "pct": 87.5
+  },
+  "functions": {
+   "total": 4,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 75
+  },
+  "statements": {
+   "total": 12,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 66.66
+  },
+  "branches": {
+   "total": 26,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 57.69
+  }
+ },
+ "src/features/admin-ops/components/dispatch/CouriersTab.tsx": {
+  "lines": {
+   "total": 7,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 14.28
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 8,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 12.5
+  },
+  "branches": {
+   "total": 28,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/components/dispatch/DispatchTable.tsx": {
+  "lines": {
+   "total": 10,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 8,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 10,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 19,
+   "covered": 16,
+   "skipped": 0,
+   "pct": 84.21
+  }
+ },
+ "src/features/admin-ops/components/dispatch/HubParcelTable.tsx": {
+  "lines": {
+   "total": 20,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 90
+  },
+  "functions": {
+   "total": 11,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 90.9
+  },
+  "statements": {
+   "total": 22,
+   "covered": 20,
+   "skipped": 0,
+   "pct": 90.9
+  },
+  "branches": {
+   "total": 12,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 83.33
+  }
+ },
+ "src/features/admin-ops/components/dispatch/HubTabs.tsx": {
+  "lines": {
+   "total": 11,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 90.9
+  },
+  "functions": {
+   "total": 6,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 16,
+   "covered": 12,
+   "skipped": 0,
+   "pct": 75
+  },
+  "branches": {
+   "total": 16,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 50
+  }
+ },
+ "src/features/admin-ops/components/dispatch/LoadBar.tsx": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/components/dispatch/ReturnsTab.tsx": {
+  "lines": {
+   "total": 19,
+   "covered": 16,
+   "skipped": 0,
+   "pct": 84.21
+  },
+  "functions": {
+   "total": 16,
+   "covered": 13,
+   "skipped": 0,
+   "pct": 81.25
+  },
+  "statements": {
+   "total": 23,
+   "covered": 20,
+   "skipped": 0,
+   "pct": 86.95
+  },
+  "branches": {
+   "total": 28,
+   "covered": 22,
+   "skipped": 0,
+   "pct": 78.57
+  }
+ },
+ "src/features/admin-ops/components/dispatch/ShopPickups.tsx": {
+  "lines": {
+   "total": 33,
+   "covered": 27,
+   "skipped": 0,
+   "pct": 81.81
+  },
+  "functions": {
+   "total": 15,
+   "covered": 12,
+   "skipped": 0,
+   "pct": 80
+  },
+  "statements": {
+   "total": 39,
+   "covered": 31,
+   "skipped": 0,
+   "pct": 79.48
+  },
+  "branches": {
+   "total": 44,
+   "covered": 33,
+   "skipped": 0,
+   "pct": 75
+  }
+ },
+ "src/features/admin-ops/components/dispatch/ToAssignTab.tsx": {
+  "lines": {
+   "total": 13,
+   "covered": 12,
+   "skipped": 0,
+   "pct": 92.3
+  },
+  "functions": {
+   "total": 9,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 88.88
+  },
+  "statements": {
+   "total": 17,
+   "covered": 16,
+   "skipped": 0,
+   "pct": 94.11
+  },
+  "branches": {
+   "total": 20,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 45
+  }
+ },
+ "src/features/admin-ops/components/dispatch/courierFit.ts": {
+  "lines": {
+   "total": 16,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 50
+  },
+  "functions": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 18,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 55.55
+  },
+  "branches": {
+   "total": 21,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 47.61
+  }
+ },
+ "src/features/admin-ops/components/dispatch/dispatchQueues.ts": {
+  "lines": {
+   "total": 62,
+   "covered": 60,
+   "skipped": 0,
+   "pct": 96.77
+  },
+  "functions": {
+   "total": 24,
+   "covered": 23,
+   "skipped": 0,
+   "pct": 95.83
+  },
+  "statements": {
+   "total": 74,
+   "covered": 72,
+   "skipped": 0,
+   "pct": 97.29
+  },
+  "branches": {
+   "total": 98,
+   "covered": 67,
+   "skipped": 0,
+   "pct": 68.36
+  }
+ },
+ "src/features/admin-ops/components/dispatch/districtOptions.ts": {
+  "lines": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/admin-ops/components/dispatch/useDispatchData.ts": {
+  "lines": {
+   "total": 21,
+   "covered": 21,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 9,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 23,
+   "covered": 23,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 2,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/admin-ops/pages/AnalyticsDashboardPage.tsx": {
+  "lines": {
+   "total": 55,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 31,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 60,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 78,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/pages/CashDeskPage.tsx": {
+  "lines": {
+   "total": 133,
+   "covered": 71,
+   "skipped": 0,
+   "pct": 53.38
+  },
+  "functions": {
+   "total": 74,
+   "covered": 29,
+   "skipped": 0,
+   "pct": 39.18
+  },
+  "statements": {
+   "total": 145,
+   "covered": 76,
+   "skipped": 0,
+   "pct": 52.41
+  },
+  "branches": {
+   "total": 117,
+   "covered": 70,
+   "skipped": 0,
+   "pct": 59.82
+  }
+ },
+ "src/features/admin-ops/pages/CourierManagementPage.tsx": {
+  "lines": {
+   "total": 145,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 59,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 161,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 157,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/pages/DispatchBoardPage.tsx": {
+  "lines": {
+   "total": 116,
+   "covered": 104,
+   "skipped": 0,
+   "pct": 89.65
+  },
+  "functions": {
+   "total": 41,
+   "covered": 31,
+   "skipped": 0,
+   "pct": 75.6
+  },
+  "statements": {
+   "total": 136,
+   "covered": 118,
+   "skipped": 0,
+   "pct": 86.76
+  },
+  "branches": {
+   "total": 106,
+   "covered": 78,
+   "skipped": 0,
+   "pct": 73.58
+  }
+ },
+ "src/features/admin-ops/pages/FleetControlTowerPage.tsx": {
+  "lines": {
+   "total": 22,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 56,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/pages/MerchantApprovalsPage.tsx": {
+  "lines": {
+   "total": 73,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 34,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 88,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 93,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/pages/NotificationConsolePage.tsx": {
+  "lines": {
+   "total": 36,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 40,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 49,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/pages/TariffEditor.tsx": {
+  "lines": {
+   "total": 50,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 17,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 57,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 73,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/pages/UserManagementPage.tsx": {
+  "lines": {
+   "total": 70,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 74,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 97,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/admin-ops/pages/ZoneManagementPage.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/admin-ops/pages/ZonePricingEditorPage.tsx": {
+  "lines": {
+   "total": 90,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 41,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 101,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 108,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/authStyles.ts": {
+  "lines": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/leaveToLogin.ts": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/auth/passwordPolicy.ts": {
+  "lines": {
+   "total": 36,
+   "covered": 36,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 47,
+   "covered": 47,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 53,
+   "covered": 51,
+   "skipped": 0,
+   "pct": 96.22
+  }
+ },
+ "src/features/auth/useCooldown.ts": {
+  "lines": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/useSignedInRedirect.ts": {
+  "lines": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/useUsernameAvailability.ts": {
+  "lines": {
+   "total": 18,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 22,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/components/AuthShell.tsx": {
+  "lines": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/components/PasswordStrengthMeter.tsx": {
+  "lines": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 17,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 28,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/components/PersonaSwitcherDevBar.tsx": {
+  "lines": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/components/SignOutDialog.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/components/SkyBackdrop.tsx": {
+  "lines": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/pages/ForgotPasswordPage.tsx": {
+  "lines": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/pages/InviteAcceptPage.tsx": {
+  "lines": {
+   "total": 51,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 53,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 44,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/pages/LoginPage.tsx": {
+  "lines": {
+   "total": 65,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 69,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 36,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/pages/OAuthCallbackPage.tsx": {
+  "lines": {
+   "total": 28,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 30,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/pages/RegistrationSuccessPage.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/pages/ResetPasswordPage.tsx": {
+  "lines": {
+   "total": 43,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 43,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 30,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/pages/SignUpPage.tsx": {
+  "lines": {
+   "total": 44,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 49,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 57,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/auth/pages/VerifyEmailPage.tsx": {
+  "lines": {
+   "total": 39,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 40,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 31,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/cash/cashDisplay.ts": {
+  "lines": {
+   "total": 11,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 15,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 12,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 83.33
+  }
+ },
+ "src/features/courier/components/DeliveryFailureReportModal.tsx": {
+  "lines": {
+   "total": 18,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 83.33
+  },
+  "functions": {
+   "total": 5,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 80
+  },
+  "statements": {
+   "total": 19,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 78.94
+  },
+  "branches": {
+   "total": 13,
+   "covered": 7,
+   "skipped": 0,
+   "pct": 53.84
+  }
+ },
+ "src/features/courier/components/JobDetailsCard.tsx": {
+  "lines": {
+   "total": 22,
+   "covered": 22,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 12,
+   "covered": 12,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 22,
+   "covered": 22,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 42,
+   "covered": 35,
+   "skipped": 0,
+   "pct": 83.33
+  }
+ },
+ "src/features/courier/components/OneTapStateTransitionCard.tsx": {
+  "lines": {
+   "total": 16,
+   "covered": 7,
+   "skipped": 0,
+   "pct": 43.75
+  },
+  "functions": {
+   "total": 13,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 30.76
+  },
+  "statements": {
+   "total": 16,
+   "covered": 7,
+   "skipped": 0,
+   "pct": 43.75
+  },
+  "branches": {
+   "total": 54,
+   "covered": 37,
+   "skipped": 0,
+   "pct": 68.51
+  }
+ },
+ "src/features/courier/components/ProofOfDeliveryCaptureModal.tsx": {
+  "lines": {
+   "total": 67,
+   "covered": 14,
+   "skipped": 0,
+   "pct": 20.89
+  },
+  "functions": {
+   "total": 13,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 15.38
+  },
+  "statements": {
+   "total": 70,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 21.42
+  },
+  "branches": {
+   "total": 42,
+   "covered": 13,
+   "skipped": 0,
+   "pct": 30.95
+  }
+ },
+ "src/features/courier/pages/ActiveDeliveryExecutionPage.tsx": {
+  "lines": {
+   "total": 149,
+   "covered": 106,
+   "skipped": 0,
+   "pct": 71.14
+  },
+  "functions": {
+   "total": 32,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 56.25
+  },
+  "statements": {
+   "total": 157,
+   "covered": 110,
+   "skipped": 0,
+   "pct": 70.06
+  },
+  "branches": {
+   "total": 175,
+   "covered": 112,
+   "skipped": 0,
+   "pct": 64
+  }
+ },
+ "src/features/courier/pages/CourierCashPage.tsx": {
+  "lines": {
+   "total": 38,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 40,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 22,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/courier/pages/CourierShiftDashboard.tsx": {
+  "lines": {
+   "total": 98,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 23,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 107,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 117,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/courier/pages/CourierShopStopPage.tsx": {
+  "lines": {
+   "total": 59,
+   "covered": 54,
+   "skipped": 0,
+   "pct": 91.52
+  },
+  "functions": {
+   "total": 24,
+   "covered": 20,
+   "skipped": 0,
+   "pct": 83.33
+  },
+  "statements": {
+   "total": 63,
+   "covered": 57,
+   "skipped": 0,
+   "pct": 90.47
+  },
+  "branches": {
+   "total": 42,
+   "covered": 33,
+   "skipped": 0,
+   "pct": 78.57
+  }
+ },
+ "src/features/courier/pages/CourierTodayDeliveriesPage.tsx": {
+  "lines": {
+   "total": 67,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 22,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 72,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 83,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/courier/pages/CourierVehicleSetupPage.tsx": {
+  "lines": {
+   "total": 44,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 44,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/CustomerAiAssistant.tsx": {
+  "lines": {
+   "total": 71,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 20,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 86,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 61,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/OrderBookingWizard.tsx": {
+  "lines": {
+   "total": 180,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 50,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 212,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 174,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/useAssistantDocked.ts": {
+  "lines": {
+   "total": 35,
+   "covered": 7,
+   "skipped": 0,
+   "pct": 20
+  },
+  "functions": {
+   "total": 9,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 33.33
+  },
+  "statements": {
+   "total": 44,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 20.45
+  },
+  "branches": {
+   "total": 24,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 45.83
+  }
+ },
+ "src/features/customer/components/usePageTitle.ts": {
+  "lines": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 16,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/booking/AddressFields.tsx": {
+  "lines": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 27,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/booking/BookingSuccess.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 16,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/booking/DropoffStep.tsx": {
+  "lines": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/customer/components/booking/ParcelStep.tsx": {
+  "lines": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/customer/components/booking/PickupStep.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/customer/components/booking/ReviewStep.tsx": {
+  "lines": {
+   "total": 17,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 17,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 53,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/booking/SavedAddressPicker.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/booking/StepIndicator.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 21,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/booking/bookingDraft.ts": {
+  "lines": {
+   "total": 32,
+   "covered": 29,
+   "skipped": 0,
+   "pct": 90.62
+  },
+  "functions": {
+   "total": 10,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 80
+  },
+  "statements": {
+   "total": 37,
+   "covered": 34,
+   "skipped": 0,
+   "pct": 91.89
+  },
+  "branches": {
+   "total": 19,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 94.73
+  }
+ },
+ "src/features/customer/components/booking/bookingForm.ts": {
+  "lines": {
+   "total": 21,
+   "covered": 13,
+   "skipped": 0,
+   "pct": 61.9
+  },
+  "functions": {
+   "total": 17,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 47.05
+  },
+  "statements": {
+   "total": 31,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 58.06
+  },
+  "branches": {
+   "total": 22,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 36.36
+  }
+ },
+ "src/features/customer/components/booking/savedAddresses.ts": {
+  "lines": {
+   "total": 17,
+   "covered": 14,
+   "skipped": 0,
+   "pct": 82.35
+  },
+  "functions": {
+   "total": 7,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 71.42
+  },
+  "statements": {
+   "total": 22,
+   "covered": 17,
+   "skipped": 0,
+   "pct": 77.27
+  },
+  "branches": {
+   "total": 52,
+   "covered": 33,
+   "skipped": 0,
+   "pct": 63.46
+  }
+ },
+ "src/features/customer/components/booking/useFeeEstimate.ts": {
+  "lines": {
+   "total": 25,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 30,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/booking/validation.ts": {
+  "lines": {
+   "total": 82,
+   "covered": 82,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 15,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 102,
+   "covered": 97,
+   "skipped": 0,
+   "pct": 95.09
+  },
+  "branches": {
+   "total": 106,
+   "covered": 97,
+   "skipped": 0,
+   "pct": 91.5
+  }
+ },
+ "src/features/customer/components/orders/OrderActionDialogs.tsx": {
+  "lines": {
+   "total": 38,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 44,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 28,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/orders/OrderCourierCard.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/orders/OrderDetailsSection.tsx": {
+  "lines": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 20,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/orders/OrderFeeSection.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 19,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/orders/OrderStatusSection.tsx": {
+  "lines": {
+   "total": 21,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 38,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/orders/orderDisplay.ts": {
+  "lines": {
+   "total": 44,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 48,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 51,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/orders/useReceiptDownload.ts": {
+  "lines": {
+   "total": 18,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 19,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/profile/DeleteAccountCard.tsx": {
+  "lines": {
+   "total": 24,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 27,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/components/profile/SavedAddressesCard.tsx": {
+  "lines": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 16,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/pages/CustomerBookingPage.tsx": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/customer/pages/LiveTrackingPage.tsx": {
+  "lines": {
+   "total": 19,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 21,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 39,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/pages/OrderDetailPage.tsx": {
+  "lines": {
+   "total": 103,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 37,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 110,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 78,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/customer/pages/OrderHistoryPage.tsx": {
+  "lines": {
+   "total": 50,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 31,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 56,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 64,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/CatalogGroupPage.tsx": {
+  "lines": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 16,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/CatalogHome.tsx": {
+  "lines": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/CatalogLayout.tsx": {
+  "lines": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 18,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/ShellPreviewPage.tsx": {
+  "lines": {
+   "total": 38,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 19,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 41,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 34,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/catalogNav.ts": {
+  "lines": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/catalogRoutes.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/families.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/standalone.ts": {
+  "lines": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/components/catalog-kit.tsx": {
+  "lines": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/AlertsSection.tsx": {
+  "lines": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/ButtonsSection.tsx": {
+  "lines": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/sections/CourierAssistantSection.tsx": {
+  "lines": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/sections/DataSection.tsx": {
+  "lines": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/DialogsSection.tsx": {
+  "lines": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/sections/FeedbackSection.tsx": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/sections/FormControlsSection.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/FoundationsSection.tsx": {
+  "lines": {
+   "total": 29,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 31,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/IdentifiersSection.tsx": {
+  "lines": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/sections/MenusSection.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/OrderPatternsSection.tsx": {
+  "lines": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 17,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/PageStructureSection.tsx": {
+  "lines": {
+   "total": 16,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 18,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/ProgressSection.tsx": {
+  "lines": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/sections/SelectionSection.tsx": {
+  "lines": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/ShellSection.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/sections/ShellsGallery.tsx": {
+  "lines": {
+   "total": 24,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 29,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 19,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/StatusSection.tsx": {
+  "lines": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/design-system-catalog/sections/SurfacesSection.tsx": {
+  "lines": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/TimelineSection.tsx": {
+  "lines": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/design-system-catalog/sections/TypographySection.tsx": {
+  "lines": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/landing/pages/LandingPage.tsx": {
+  "lines": {
+   "total": 19,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 21,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/apiGuide.ts": {
+  "lines": {
+   "total": 17,
+   "covered": 14,
+   "skipped": 0,
+   "pct": 82.35
+  },
+  "functions": {
+   "total": 6,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 16.66
+  },
+  "statements": {
+   "total": 20,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 75
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/merchant/components/ApiKeyManagerCard.tsx": {
+  "lines": {
+   "total": 94,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 22,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 97,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 88,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/components/BulkCsvDropzone.tsx": {
+  "lines": {
+   "total": 77,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 84,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 39,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/components/FailedDeliveriesTable.tsx": {
+  "lines": {
+   "total": 38,
+   "covered": 35,
+   "skipped": 0,
+   "pct": 92.1
+  },
+  "functions": {
+   "total": 19,
+   "covered": 17,
+   "skipped": 0,
+   "pct": 89.47
+  },
+  "statements": {
+   "total": 44,
+   "covered": 41,
+   "skipped": 0,
+   "pct": 93.18
+  },
+  "branches": {
+   "total": 41,
+   "covered": 32,
+   "skipped": 0,
+   "pct": 78.04
+  }
+ },
+ "src/features/merchant/components/MerchantApplicationStatus.tsx": {
+  "lines": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 18,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/components/MerchantOrdersTable.tsx": {
+  "lines": {
+   "total": 39,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 17,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 47,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 25,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/components/MerchantPaymentsCard.tsx": {
+  "lines": {
+   "total": 37,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 23,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 45,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 32,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/components/MerchantPickupCard.tsx": {
+  "lines": {
+   "total": 44,
+   "covered": 38,
+   "skipped": 0,
+   "pct": 86.36
+  },
+  "functions": {
+   "total": 16,
+   "covered": 13,
+   "skipped": 0,
+   "pct": 81.25
+  },
+  "statements": {
+   "total": 44,
+   "covered": 38,
+   "skipped": 0,
+   "pct": 86.36
+  },
+  "branches": {
+   "total": 35,
+   "covered": 30,
+   "skipped": 0,
+   "pct": 85.71
+  }
+ },
+ "src/features/merchant/components/merchantApplication.ts": {
+  "lines": {
+   "total": 46,
+   "covered": 43,
+   "skipped": 0,
+   "pct": 93.47
+  },
+  "functions": {
+   "total": 11,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 54.54
+  },
+  "statements": {
+   "total": 60,
+   "covered": 48,
+   "skipped": 0,
+   "pct": 80
+  },
+  "branches": {
+   "total": 94,
+   "covered": 59,
+   "skipped": 0,
+   "pct": 62.76
+  }
+ },
+ "src/features/merchant/pages/ApiGuidePage.tsx": {
+  "lines": {
+   "total": 28,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 17,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 29,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/pages/MerchantPortalDashboard.tsx": {
+  "lines": {
+   "total": 78,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 22,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 89,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 93,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/pages/MerchantRegistrationPage.tsx": {
+  "lines": {
+   "total": 84,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 29,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 96,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 63,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/merchant/pages/WebhookResiliencyConsolePage.tsx": {
+  "lines": {
+   "total": 119,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 39,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 131,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 101,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/notifications/DevicePushRow.tsx": {
+  "lines": {
+   "total": 38,
+   "covered": 33,
+   "skipped": 0,
+   "pct": 86.84
+  },
+  "functions": {
+   "total": 9,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 88.88
+  },
+  "statements": {
+   "total": 40,
+   "covered": 34,
+   "skipped": 0,
+   "pct": 85
+  },
+  "branches": {
+   "total": 42,
+   "covered": 27,
+   "skipped": 0,
+   "pct": 64.28
+  }
+ },
+ "src/features/notifications/NotificationSettings.tsx": {
+  "lines": {
+   "total": 37,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 41,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 41,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/notifications/NotificationTray.tsx": {
+  "lines": {
+   "total": 26,
+   "covered": 26,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 11,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 36,
+   "covered": 30,
+   "skipped": 0,
+   "pct": 83.33
+  },
+  "branches": {
+   "total": 41,
+   "covered": 30,
+   "skipped": 0,
+   "pct": 73.17
+  }
+ },
+ "src/features/notifications/NotificationsPage.tsx": {
+  "lines": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 16,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/notifications/notificationTypes.ts": {
+  "lines": {
+   "total": 22,
+   "covered": 21,
+   "skipped": 0,
+   "pct": 95.45
+  },
+  "functions": {
+   "total": 5,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 29,
+   "covered": 24,
+   "skipped": 0,
+   "pct": 82.75
+  },
+  "branches": {
+   "total": 40,
+   "covered": 29,
+   "skipped": 0,
+   "pct": 72.5
+  }
+ },
+ "src/features/notifications/useNotificationInbox.ts": {
+  "lines": {
+   "total": 20,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 27,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 16,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/pricing/PriceEstimatePreview.tsx": {
+  "lines": {
+   "total": 28,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 31,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 40,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/profile/ProfilePage.tsx": {
+  "lines": {
+   "total": 108,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 37,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 123,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 79,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/profile/avatar.tsx": {
+  "lines": {
+   "total": 43,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 18.6
+  },
+  "functions": {
+   "total": 16,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 12.5
+  },
+  "statements": {
+   "total": 54,
+   "covered": 10,
+   "skipped": 0,
+   "pct": 18.51
+  },
+  "branches": {
+   "total": 21,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 19.04
+  }
+ },
+ "src/features/profile/profileFormat.ts": {
+  "lines": {
+   "total": 23,
+   "covered": 19,
+   "skipped": 0,
+   "pct": 82.6
+  },
+  "functions": {
+   "total": 8,
+   "covered": 7,
+   "skipped": 0,
+   "pct": 87.5
+  },
+  "statements": {
+   "total": 33,
+   "covered": 27,
+   "skipped": 0,
+   "pct": 81.81
+  },
+  "branches": {
+   "total": 46,
+   "covered": 31,
+   "skipped": 0,
+   "pct": 67.39
+  }
+ },
+ "src/features/public-tracking/components/TrackingDetails.tsx": {
+  "lines": {
+   "total": 32,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 36,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 48,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/public-tracking/components/TrackingSearchForm.tsx": {
+  "lines": {
+   "total": 20,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 21,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 9,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/public-tracking/pages/PublicTrackingPage.tsx": {
+  "lines": {
+   "total": 22,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 25,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 35,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/features/pwa/pushPayload.ts": {
+  "lines": {
+   "total": 12,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 91.66
+  },
+  "functions": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 14,
+   "covered": 13,
+   "skipped": 0,
+   "pct": 92.85
+  },
+  "branches": {
+   "total": 16,
+   "covered": 16,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/pwa/pwaSupport.ts": {
+  "lines": {
+   "total": 32,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 34.37
+  },
+  "functions": {
+   "total": 15,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 26.66
+  },
+  "statements": {
+   "total": 35,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 31.42
+  },
+  "branches": {
+   "total": 8,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/features/pwa/webPush.ts": {
+  "lines": {
+   "total": 48,
+   "covered": 45,
+   "skipped": 0,
+   "pct": 93.75
+  },
+  "functions": {
+   "total": 13,
+   "covered": 12,
+   "skipped": 0,
+   "pct": 92.3
+  },
+  "statements": {
+   "total": 56,
+   "covered": 48,
+   "skipped": 0,
+   "pct": 85.71
+  },
+  "branches": {
+   "total": 52,
+   "covered": 38,
+   "skipped": 0,
+   "pct": 73.07
+  }
+ },
+ "src/hooks/useAiAssistant.ts": {
+  "lines": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/hooks/useFsmTransition.ts": {
+  "lines": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 7,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/hooks/usePersonaDensity.ts": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/hooks/useTrackingStream.ts": {
+  "lines": {
+   "total": 136,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 25,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 154,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 78,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/analyticsAiApi.ts": {
+  "lines": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 5,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/apiClient.ts": {
+  "lines": {
+   "total": 47,
+   "covered": 31,
+   "skipped": 0,
+   "pct": 65.95
+  },
+  "functions": {
+   "total": 8,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 75
+  },
+  "statements": {
+   "total": 50,
+   "covered": 32,
+   "skipped": 0,
+   "pct": 64
+  },
+  "branches": {
+   "total": 27,
+   "covered": 20,
+   "skipped": 0,
+   "pct": 74.07
+  }
+ },
+ "src/services/api/apiError.ts": {
+  "lines": {
+   "total": 5,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 80
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 6,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 83.33
+  },
+  "branches": {
+   "total": 6,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 50
+  }
+ },
+ "src/services/api/apiErrorMessage.ts": {
+  "lines": {
+   "total": 5,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 40
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 5,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 40
+  },
+  "branches": {
+   "total": 10,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 40
+  }
+ },
+ "src/services/api/authApi.ts": {
+  "lines": {
+   "total": 63,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 3.17
+  },
+  "functions": {
+   "total": 31,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 3.22
+  },
+  "statements": {
+   "total": 64,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 3.12
+  },
+  "branches": {
+   "total": 45,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/cashApi.ts": {
+  "lines": {
+   "total": 15,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 20
+  },
+  "functions": {
+   "total": 14,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 17,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 17.64
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/deliveryApi.ts": {
+  "lines": {
+   "total": 29,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 3.44
+  },
+  "functions": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 30,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 3.33
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/dispatchApi.ts": {
+  "lines": {
+   "total": 52,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 1.92
+  },
+  "functions": {
+   "total": 24,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 53,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 1.88
+  },
+  "branches": {
+   "total": 6,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/merchantApi.ts": {
+  "lines": {
+   "total": 50,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 2
+  },
+  "functions": {
+   "total": 22,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 51,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 1.96
+  },
+  "branches": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/notificationApi.ts": {
+  "lines": {
+   "total": 25,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 4
+  },
+  "functions": {
+   "total": 13,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 25,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 4
+  },
+  "branches": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/orderApi.ts": {
+  "lines": {
+   "total": 54,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 3.7
+  },
+  "functions": {
+   "total": 24,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 58,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 3.44
+  },
+  "branches": {
+   "total": 24,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/pricingApi.ts": {
+  "lines": {
+   "total": 25,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 12,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 26,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/trackingHubApi.ts": {
+  "lines": {
+   "total": 33,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 38,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 19,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/api/webhookApi.ts": {
+  "lines": {
+   "total": 22,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 4.54
+  },
+  "functions": {
+   "total": 10,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 22,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 4.54
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/services/websocket/stompTrackingClient.ts": {
+  "lines": {
+   "total": 11,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 8,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 15,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/store/useActiveDeliveryStore.ts": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/store/useAuthStore.ts": {
+  "lines": {
+   "total": 14,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 64.28
+  },
+  "functions": {
+   "total": 8,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 75
+  },
+  "statements": {
+   "total": 14,
+   "covered": 9,
+   "skipped": 0,
+   "pct": 64.28
+  },
+  "branches": {
+   "total": 7,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 28.57
+  }
+ },
+ "src/types/contracts.ts": {
+  "lines": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 3,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/types/fsm.ts": {
+  "lines": {
+   "total": 18,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 5,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 18,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 22,
+   "covered": 22,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/utils/cn.ts": {
+  "lines": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 1,
+   "covered": 1,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 2,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/utils/colomboDate.ts": {
+  "lines": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 0,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/utils/etaCalculator.ts": {
+  "lines": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 1,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/utils/failureReasons.ts": {
+  "lines": {
+   "total": 15,
+   "covered": 15,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 6,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 18,
+   "covered": 18,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 20,
+   "covered": 19,
+   "skipped": 0,
+   "pct": 95
+  }
+ },
+ "src/utils/geoFormatters.ts": {
+  "lines": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "functions": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "statements": {
+   "total": 4,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  },
+  "branches": {
+   "total": 2,
+   "covered": 0,
+   "skipped": 0,
+   "pct": 0
+  }
+ },
+ "src/utils/phone.ts": {
+  "lines": {
+   "total": 8,
+   "covered": 8,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 3,
+   "covered": 3,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 11,
+   "covered": 11,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 6,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 100
+  }
+ },
+ "src/utils/vehicles.ts": {
+  "lines": {
+   "total": 5,
+   "covered": 5,
+   "skipped": 0,
+   "pct": 100
+  },
+  "functions": {
+   "total": 4,
+   "covered": 4,
+   "skipped": 0,
+   "pct": 100
+  },
+  "statements": {
+   "total": 6,
+   "covered": 6,
+   "skipped": 0,
+   "pct": 100
+  },
+  "branches": {
+   "total": 2,
+   "covered": 2,
+   "skipped": 0,
+   "pct": 100
+  }
+ }
+}

@@ -234,7 +234,7 @@ export interface paths {
         put?: never;
         /**
          * Dispatch a test ping to the webhook endpoint
-         * @description Connectivity check: exactly one signed POST of a fixed test payload, with no retry and no dead-letter record. Returns the HTTP status, failure classification and latency; the endpoint's response body is never returned.
+         * @description One POST of event `webhook.test.ping`, with the same envelope, headers and signature as a real event and no retry. Returns the HTTP status, failure classification and latency; the endpoint's response body is never returned.
          */
         post: {
             parameters: {
@@ -302,6 +302,63 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/deliveries/failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List failed deliveries, newest first (up to 200)
+         * @description A MERCHANT sees its own; a SYSTEM_ADMIN every merchant's. Other roles receive 403.
+         */
+        get: operations["listFailedDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/deliveries/failed/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue every failed delivery that has not been replayed */
+        post: operations["replayAllFailedDeliveries"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/deliveries/failed/{deliveryId}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a failed delivery to be sent again
+         * @description Sent in the background with the same event id and a new delivery id, on the normal retry schedule. Safe to repeat: one that is already waiting, running or delivered is returned unchanged.
+         */
+        post: operations["replayFailedDelivery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -595,6 +652,56 @@ export interface components {
             /** Format: date-time */
             attemptedAt?: string;
         };
+        /** @description A webhook delivery that failed for good, with its latest replay if there is one. */
+        FailedDeliveryResponse: {
+            /** Format: uuid */
+            deliveryId?: string;
+            /** Format: uuid */
+            endpointId?: string;
+            /**
+             * Format: uuid
+             * @description The same in every attempt and replay.
+             */
+            eventId?: string;
+            /** @example parcel.status.changed */
+            eventType?: string;
+            /** Format: uuid */
+            orderId?: string | null;
+            trackingNumber?: string | null;
+            attempts?: number;
+            /** @description Null when there was no response. */
+            lastHttpStatus?: number | null;
+            /** @enum {string|null} */
+            errorClass?: "TIMEOUT" | "CONNECTION_FAILURE" | "HTTP_CLIENT_ERROR" | "HTTP_RATE_LIMITED" | "HTTP_SERVER_ERROR" | "INVALID_RESPONSE" | "BLOCKED_DESTINATION" | "UNKNOWN" | null;
+            /** @description The reason as a sentence from a fixed set. */
+            errorMessage?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+            /** Format: date-time */
+            failedAt?: string;
+            /**
+             * @description Status of the latest replay; null when it was never replayed.
+             * @enum {string|null}
+             */
+            replayStatus?: "PENDING" | "IN_FLIGHT" | "SUCCEEDED" | "RETRY" | "DEAD" | null;
+            /** Format: date-time */
+            replayedAt?: string | null;
+        };
+        ApiResponseFailedDeliveryResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["FailedDeliveryResponse"];
+        };
+        ApiResponseListFailedDeliveryResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["FailedDeliveryResponse"][];
+        };
+        ApiResponseInteger: {
+            success?: boolean;
+            message?: string;
+            data?: number;
+        };
         DeadLetterWebhookResponse: {
             /** Format: uuid */
             dlqId?: string;
@@ -744,4 +851,74 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    listFailedDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deliveries that used up their attempts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListFailedDeliveryResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    replayAllFailedDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description How many replays were queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseInteger"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    replayFailedDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The failed delivery with its latest replay */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseFailedDeliveryResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+}

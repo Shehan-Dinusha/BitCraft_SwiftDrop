@@ -64,7 +64,7 @@ Request body (field names and rules; all text fields use the same allow-lists an
 | `externalRef` | yes | 1-128 chars, `A-Z a-z 0-9 . _ : / # -` only |
 | `pickupAddressLine1` / `pickupAddressLine2` | line 1 yes | 5-200 chars (line 2 optional, up to 200) |
 | `pickupCity`, `pickupDistrict`, `pickupPostalCode` | yes | city 2-100, district enum (e.g. `COLOMBO`), 5-digit postal code |
-| `pickupContactName`, `pickupContactPhone` | yes | name 2-100, phone `0771234567` or `+94771234567` |
+| `pickupContactName`, `pickupContactPhone` | yes | name 2-100, phone `771234567`, `0771234567` or `+94771234567` |
 | `deliveryAddressLine1` / `deliveryAddressLine2` | line 1 yes | as pickup |
 | `deliveryCity`, `deliveryDistrict`, `deliveryPostalCode` | yes | as pickup |
 | `recipientName`, `recipientPhone` | yes | as above |

@@ -27,6 +27,8 @@ export interface PagedDispatchResult {
   hasPrevious: boolean;
 }
 
+export type ShopCourierSuggestionResponse = components['schemas']['ShopCourierSuggestionResponse'];
+
 export const dispatchApi = {
   /** A dispatcher always gets their own district; `district` only applies to a system admin. */
   getAssignments: async (params?: {
@@ -77,6 +79,15 @@ export const dispatchApi = {
   getIncoming: async (district?: SriLankanDistrict) => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
       '/v1/dispatch/incoming',
+      { params: { district } }
+    );
+    return data.data;
+  },
+
+  /** Failed deliveries the district deals with, and returns coming to its hub. */
+  getReturns: async (district?: SriLankanDistrict) => {
+    const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
+      '/v1/dispatch/returns',
       { params: { district } }
     );
     return data.data;
@@ -133,6 +144,24 @@ export const dispatchApi = {
   getCourier: async (courierId: string) => {
     const { data } = await apiClient.get<{ success: boolean; data: CourierShiftResponse }>(
       `/v1/dispatch/couriers/${courierId}`
+    );
+    return data.data;
+  },
+
+  /** Couriers on shift and which of a shop's ready parcels each has room for. */
+  getShopCouriers: async (merchantId: string, district?: SriLankanDistrict) => {
+    const { data } = await apiClient.get<{ data: ShopCourierSuggestionResponse[] }>(
+      `/v1/dispatch/shops/${merchantId}/couriers`,
+      { params: { district } }
+    );
+    return data.data;
+  },
+
+  /** All of these parcels to one courier, or none. */
+  assignShop: async (merchantId: string, courierId: string, orderIds: string[]) => {
+    const { data } = await apiClient.post<{ data: DispatchAssignmentResponse[] }>(
+      `/v1/dispatch/shops/${merchantId}/assign`,
+      { courierId, orderIds }
     );
     return data.data;
   },

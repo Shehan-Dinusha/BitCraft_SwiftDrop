@@ -28,7 +28,7 @@ paths:
       tags:
         - DeliveryExecution
       summary: List deliveries assigned to the authenticated courier
-      description: Returns today's deliveries (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
+      description: Returns today's deliveries and every unfinished one (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
       operationId: getMyDeliveries
       parameters:
         - name: date
@@ -140,6 +140,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDeliverySessionResponse"
 
+  /api/v1/deliveries/{deliveryId}/job:
+    get:
+      tags:
+        - CourierJob
+      summary: Get the addresses, contacts and cash for a delivery
+      description: >-
+        For the assigned courier, a DISPATCHER of either district, or a SYSTEM_ADMIN. Shows only what the
+        current leg needs: the sender and the fee until pickup, and the recipient for the courier who
+        delivers. A finished or cancelled delivery gives no contacts and no amounts. Never cached.
+      operationId: getCourierJob
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Delivery job retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCourierJobResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller does not carry this delivery, or works in another district
+        "404":
+          description: Delivery or order not found
+        "503":
+          description: The order service did not answer; try again
+
   /api/v1/deliveries/{deliveryId}/transition:
     post:
       tags:
@@ -219,6 +252,411 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseProofOfDeliveryResponse"
 
+  /api/v1/cash/me:
+    get:
+      tags:
+        - Cash
+      summary: The signed-in courier's cash and latest handovers
+      operationId: getMyCash
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCourierCashResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+
+  /api/v1/cash/handovers:
+    post:
+      tags:
+        - Cash
+      summary: Courier hands over all the cash they hold
+      description: >-
+        To the dispatcher of their district. Required before the courier ends their shift.
+      operationId: submitHandover
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashHandoverResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+        "409":
+          description: No cash to hand over
+
+  /api/v1/cash/desk:
+    get:
+      tags:
+        - Cash
+      summary: A hub's cash
+      description: >-
+        A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN gets every district or the one given.
+      operationId: getCashDesk
+      parameters:
+        - name: district
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashDeskResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+
+  /api/v1/cash/report:
+    get:
+      tags:
+        - Cash
+      summary: Revenue and cash for 1 to 90 inclusive Colombo dates
+      description: >-
+        A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN gets every district or the one given.
+      operationId: getCashReport
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: district
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashReportResponse"
+        "400":
+          description: Missing or invalid dates
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+
+  /api/v1/cash/handovers/{handoverId}/entries:
+    get:
+      tags:
+        - Cash
+      summary: The parcels a handover came from
+      operationId: getHandoverEntries
+      parameters:
+        - name: handoverId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListCashEntryResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+        "404":
+          description: Handover not found
+
+  /api/v1/cash/handovers/{handoverId}/count:
+    post:
+      tags:
+        - Cash
+      summary: Dispatcher counts a handover
+      description: >-
+        Only the DISPATCHER of that district. A different amount needs a note.
+      operationId: countHandover
+      parameters:
+        - name: handoverId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CountHandoverRequest"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashHandoverResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+        "404":
+          description: Handover not found
+        "409":
+          description: Already counted, or a different amount without a note
+
+  /api/v1/cash/deposits:
+    post:
+      tags:
+        - Cash
+      summary: Dispatcher banks all the cash at their hub
+      operationId: createDeposit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDepositRequest"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashDepositResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+        "409":
+          description: No cash at the hub, or it changed since it was shown
+
+  /api/v1/cash/deposits/{depositId}/confirm:
+    post:
+      tags:
+        - Cash
+      summary: SYSTEM_ADMIN confirms a deposit reached the bank
+      operationId: confirmDeposit
+      parameters:
+        - name: depositId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashDepositResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+        "404":
+          description: Deposit not found
+        "409":
+          description: Already reviewed
+
+  /api/v1/cash/deposits/{depositId}/reject:
+    post:
+      tags:
+        - Cash
+      summary: SYSTEM_ADMIN rejects a deposit
+      description: >-
+        Its cash goes back to the hub.
+      operationId: rejectDeposit
+      parameters:
+        - name: depositId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectDepositRequest"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashDepositResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+        "404":
+          description: Deposit not found
+        "409":
+          description: Already reviewed
+
+  /api/v1/cash/refunds:
+    post:
+      tags:
+        - Cash
+      summary: Dispatcher refunds a delivery fee from the hub's cash
+      description: >-
+        Only for a delivery that failed because SwiftDrop lost or damaged the parcel, and only by the DISPATCHER of the district that collected the fee.
+      operationId: refundFee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefundFeeRequest"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCashEntryResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role or district does not allow this
+        "404":
+          description: No such parcel, or this district collected no fee for it
+        "409":
+          description: Not refundable, already refunded, or not enough cash at the hub
+
+  /api/v1/deliveries/shops/{merchantId}:
+    get:
+      tags:
+        - ShopStop
+      summary: The shop's parcels this courier collects, with the address, contact and fees
+      operationId: getShopStop
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseShopStopResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+
+  /api/v1/deliveries/shops/{merchantId}/collect:
+    post:
+      tags:
+        - ShopStop
+      summary: Pick up the chosen parcels and confirm one payment for them
+      description: >-
+        All of them, or none. The amount must be exactly their fees; parcels left out stay for later.
+      operationId: collectShop
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectShopRequest"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCollectShopResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+        "409":
+          description: A different amount, a cancelled parcel, or one that is no longer the courier's
+
+  /api/v1/cash/payments:
+    get:
+      tags:
+        - Cash
+      summary: The signed-in merchant's payments, newest first, 20 a page
+      operationId: getMerchantPayments
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListMerchantPaymentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+
+  /api/v1/cash/payments/{paymentId}/entries:
+    get:
+      tags:
+        - Cash
+      summary: The parcels a payment was for
+      description: >-
+        Only the merchant who paid it.
+      operationId: getMerchantPaymentEntries
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListCashEntryResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+        "404":
+          description: Payment not found
+
 components:
   securitySchemes:
     bearerAuth:
@@ -233,6 +671,11 @@ components:
         hubs: PICKED_UP -> AT_ORIGIN_HUB (the first courier hands it in) -> IN_TRANSIT (the pickup
         district's dispatcher marks it Outbound) -> AT_DESTINATION_HUB (the drop-off district's
         dispatcher accepts it) -> OUT_FOR_DELIVERY (a courier of the drop-off district collects it).
+        A failed attempt: ATTEMPT_FAILED (the courier brings it to their hub) -> HELD_AT_HUB (its
+        dispatcher decides) -> AT_DESTINATION_HUB (tried again: two attempts, none after a refusal) or
+        back: RETURN_IN_TRANSIT (different districts only) -> RETURN_AT_HUB (the sender's hub) ->
+        OUT_FOR_RETURN -> RETURNED (with a photo). FAILED is final: the pickup failed, or the parcel was
+        lost or damaged. A FAILED request with another reason counts as ATTEMPT_FAILED.
       enum:
         - CREATED
         - ASSIGNED
@@ -242,6 +685,12 @@ components:
         - AT_DESTINATION_HUB
         - OUT_FOR_DELIVERY
         - DELIVERED
+        - ATTEMPT_FAILED
+        - HELD_AT_HUB
+        - RETURN_IN_TRANSIT
+        - RETURN_AT_HUB
+        - OUT_FOR_RETURN
+        - RETURNED
         - FAILED
         - CANCELLED
 
@@ -253,8 +702,9 @@ components:
         - ACCESS_RESTRICTED
         - RECIPIENT_REJECTED
         - DAMAGED_IN_TRANSIT
+        - LOST
         - ADVERSE_WEATHER
-        - SYSTEM_CANCELLATION
+        - PAYMENT_FAILED
         - OTHER
 
     SriLankanDistrict:
@@ -299,6 +749,12 @@ components:
           $ref: "#/components/schemas/DeliveryFailureReason"
         actorRole:
           type: string
+        cashCollected:
+          type: number
+          description: >-
+            The delivery fee the courier confirms collecting from the sender with PICKED_UP. Must match the fee,
+            or the answer is 409; leave out for other steps and when nothing is due.
+          example: 670.00
 
     ProofOfDeliveryUploadRequest:
       type: object
@@ -366,6 +822,708 @@ components:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+        merchantId:
+          type: [string, "null"]
+          format: uuid
+          description: The shop that sent it, so its parcels are collected together.
+        merchantName:
+          type: [string, "null"]
+        proofSince:
+          type: [string, "null"]
+          format: date-time
+          description: Proof from before this moment belongs to an earlier attempt and does not count.
+        returnedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the sender got the parcel back.
+
+    CourierJobStop:
+      type: object
+      description: A contact and address the courier visits.
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+          example: "+94771234567"
+        alternatePhone:
+          type: [string, "null"]
+        addressLine1:
+          type: string
+        addressLine2:
+          type: [string, "null"]
+        city:
+          type: string
+        postalCode:
+          type: string
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+
+    CourierJobResponse:
+      type: object
+      description: >-
+        What the courier needs on the leg they are carrying. Stops and amounts that belong to another leg,
+        or to a finished or cancelled delivery, are null.
+      required:
+        - deliveryId
+        - cancelled
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+        cancelled:
+          type: boolean
+          description: The order was cancelled, so nothing is to be picked up or collected.
+        speed:
+          type: string
+          enum: [STANDARD, EXPRESS, SAME_DAY]
+        pickup:
+          oneOf:
+            - $ref: "#/components/schemas/CourierJobStop"
+            - type: "null"
+        dropOff:
+          oneOf:
+            - $ref: "#/components/schemas/CourierJobStop"
+            - type: "null"
+        returnTo:
+          description: The sender, for the courier bringing the parcel back.
+          oneOf:
+            - $ref: "#/components/schemas/CourierJobStop"
+            - type: "null"
+        notes:
+          type: [string, "null"]
+        itemDescription:
+          type: [string, "null"]
+        lengthCm:
+          type: [number, "null"]
+        widthCm:
+          type: [number, "null"]
+        heightCm:
+          type: [number, "null"]
+        weightKg:
+          type: [number, "null"]
+        feeToCollect:
+          type: [number, "null"]
+          description: Delivery fee to collect in cash from the sender, until the parcel is picked up.
+          example: 670.00
+        currency:
+          type: string
+          example: LKR
+
+    ApiResponseCourierJobResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CourierJobResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    CashEntryResponse:
+      type: object
+      description: A delivery fee collected or refunded for one parcel.
+      required:
+        - entryId
+        - entryType
+        - trackingNumber
+        - amount
+        - currency
+        - recordedAt
+      properties:
+        entryId:
+          type: string
+          format: uuid
+        entryType:
+          type: string
+          enum: [COLLECTION, REFUND]
+        trackingNumber:
+          type: string
+        amount:
+          type: number
+          example: 670.00
+        currency:
+          type: string
+          example: LKR
+        note:
+          type: [string, "null"]
+        recordedAt:
+          type: string
+          format: date-time
+
+    CashHandoverResponse:
+      type: object
+      description: Cash a courier handed to their dispatcher.
+      required:
+        - handoverId
+        - courierId
+        - district
+        - expectedAmount
+        - currency
+        - status
+        - submittedAt
+      properties:
+        handoverId:
+          type: string
+          format: uuid
+        courierId:
+          type: string
+          format: uuid
+        courierName:
+          type: [string, "null"]
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        expectedAmount:
+          type: number
+          example: 670.00
+        countedAmount:
+          type: [number, "null"]
+        difference:
+          type: [number, "null"]
+          description: Counted minus expected. Negative is a shortage, positive an excess.
+        currency:
+          type: string
+          example: LKR
+        status:
+          type: string
+          enum: [SUBMITTED, COUNTED]
+        note:
+          type: [string, "null"]
+        submittedAt:
+          type: string
+          format: date-time
+        countedAt:
+          type: [string, "null"]
+          format: date-time
+        depositId:
+          type: [string, "null"]
+          format: uuid
+
+    CashDepositResponse:
+      type: object
+      description: Cash a hub banked.
+      required:
+        - depositId
+        - district
+        - amount
+        - currency
+        - reference
+        - status
+        - depositedAt
+      properties:
+        depositId:
+          type: string
+          format: uuid
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        amount:
+          type: number
+          example: 670.00
+        currency:
+          type: string
+          example: LKR
+        reference:
+          type: string
+          example: BOC-884213
+        status:
+          type: string
+          enum: [SUBMITTED, CONFIRMED, REJECTED]
+        depositedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: [string, "null"]
+          format: date-time
+        reviewNote:
+          type: [string, "null"]
+
+    CashHoldingResponse:
+      type: object
+      description: A courier who holds cash they have not handed over yet.
+      required:
+        - courierId
+        - amount
+        - parcels
+        - since
+      properties:
+        courierId:
+          type: string
+          format: uuid
+        courierName:
+          type: [string, "null"]
+        amount:
+          type: number
+          example: 670.00
+        parcels:
+          type: integer
+        since:
+          type: string
+          format: date-time
+
+    CourierCashResponse:
+      type: object
+      description: The signed-in courier's cash.
+      required:
+        - inHand
+        - currency
+        - entries
+        - handovers
+      properties:
+        inHand:
+          type: number
+          example: 670.00
+        currency:
+          type: string
+          example: LKR
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashEntryResponse"
+        handovers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashHandoverResponse"
+
+    CashDeskResponse:
+      type: object
+      description: A hub's cash.
+      required:
+        - currency
+        - withCouriers
+        - toCount
+        - atHub
+        - refunds
+        - hubCash
+        - deposits
+      properties:
+        district:
+          oneOf:
+            - $ref: "#/components/schemas/SriLankanDistrict"
+            - type: "null"
+        currency:
+          type: string
+          example: LKR
+        withCouriers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashHoldingResponse"
+        toCount:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashHandoverResponse"
+        atHub:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashHandoverResponse"
+        refunds:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashEntryResponse"
+        hubCash:
+          type: number
+          example: 670.00
+        deposits:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashDepositResponse"
+
+    CashReportDay:
+      type: object
+      required:
+        - date
+        - revenue
+        - parcels
+      properties:
+        date:
+          type: string
+          format: date
+        revenue:
+          type: number
+        parcels:
+          type: integer
+
+    CashReportDistrict:
+      type: object
+      required:
+        - district
+        - revenue
+        - parcels
+        - lastMileDelivered
+      properties:
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        revenue:
+          type: number
+        parcels:
+          type: integer
+        lastMileDelivered:
+          type: integer
+          description: Parcels from other districts delivered here.
+
+    CashReportResponse:
+      type: object
+      description: Revenue and cash for a period, read from the cash ledger.
+      required:
+        - from
+        - to
+        - currency
+        - revenue
+        - refunds
+        - parcels
+        - shortage
+        - excess
+        - withCouriers
+        - toCount
+        - atHub
+        - toConfirm
+        - days
+        - districts
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        currency:
+          type: string
+          example: LKR
+        revenue:
+          type: number
+          description: Delivery fees collected minus refunds, under the pickup district.
+        refunds:
+          type: number
+        parcels:
+          type: integer
+        shortage:
+          type: number
+        excess:
+          type: number
+        withCouriers:
+          type: number
+          description: Now, with couriers and not handed over.
+        toCount:
+          type: number
+          description: Now, handed over but not counted.
+        atHub:
+          type: number
+          description: Now, counted at the hub and not banked.
+        toConfirm:
+          type: number
+          description: Now, banked and waiting for an admin.
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashReportDay"
+        districts:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashReportDistrict"
+
+    ApiResponseCashReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CashReportResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    CountHandoverRequest:
+      type: object
+      required:
+        - countedAmount
+      properties:
+        countedAmount:
+          type: number
+          example: 670.00
+        note:
+          type: string
+          maxLength: 256
+          description: Why it differs; required when it does.
+
+    CreateDepositRequest:
+      type: object
+      required:
+        - amount
+        - reference
+      properties:
+        amount:
+          type: number
+          example: 670.00
+          description: The hub cash shown to the dispatcher; refused if it changed meanwhile.
+        reference:
+          type: string
+          maxLength: 64
+          description: Bank slip number
+
+    RejectDepositRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          maxLength: 256
+
+    RefundFeeRequest:
+      type: object
+      required:
+        - trackingNumber
+        - reason
+      properties:
+        trackingNumber:
+          type: string
+          maxLength: 32
+          example: SD-7K4M-9QX2
+        reason:
+          type: string
+          maxLength: 256
+
+    ApiResponseCourierCashResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CourierCashResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseCashHandoverResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CashHandoverResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseCashDeskResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CashDeskResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseCashDepositResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CashDepositResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseCashEntryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CashEntryResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListCashEntryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashEntryResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ShopParcel:
+      type: object
+      required:
+        - deliveryId
+        - trackingNumber
+        - deliveryDistrict
+        - viaHub
+        - fee
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+        trackingNumber:
+          type: string
+        itemDescription:
+          type: [string, "null"]
+        weightKg:
+          type: [number, "null"]
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        viaHub:
+          type: boolean
+        fee:
+          type: number
+
+    ShopStopAddress:
+      type: object
+      required:
+        - pickup
+        - parcels
+        - total
+      properties:
+        pickup:
+          $ref: "#/components/schemas/CourierJobStop"
+        parcels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopParcel"
+        total:
+          type: number
+
+    ShopStopResponse:
+      type: object
+      description: A shop the courier visits, grouped by pickup address.
+      required:
+        - merchantId
+        - currency
+        - addresses
+      properties:
+        merchantId:
+          type: string
+          format: uuid
+        merchantName:
+          type: [string, "null"]
+        currency:
+          type: string
+        addresses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopStopAddress"
+
+    CollectShopRequest:
+      type: object
+      required:
+        - deliveryIds
+        - cashCollected
+      properties:
+        deliveryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        cashCollected:
+          type: number
+
+    MerchantPaymentResponse:
+      type: object
+      description: What a shop paid at one pickup visit.
+      required:
+        - paymentId
+        - district
+        - amount
+        - currency
+        - parcels
+        - paidAt
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+        merchantName:
+          type: [string, "null"]
+        courierName:
+          type: [string, "null"]
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        amount:
+          type: number
+        currency:
+          type: string
+        parcels:
+          type: integer
+        paidAt:
+          type: string
+          format: date-time
+
+    CollectShopResponse:
+      type: object
+      required:
+        - parcels
+      properties:
+        parcels:
+          type: integer
+        payment:
+          oneOf:
+            - $ref: "#/components/schemas/MerchantPaymentResponse"
+            - type: "null"
+
+    ApiResponseShopStopResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/ShopStopResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseCollectShopResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CollectShopResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListMerchantPaymentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MerchantPaymentResponse"
+        timestamp:
           type: string
           format: date-time
 

@@ -86,8 +86,8 @@ public class WebhookSubscriptionController {
 
     @PostMapping("/{endpointId}/test")
     @Operation(summary = "Dispatch a test ping to the webhook endpoint",
-            description = "Connectivity check: exactly one signed POST of a fixed test payload, with no retry and no "
-                    + "dead-letter record. Returns the HTTP status, failure classification and latency; the "
+            description = "One POST of event webhook.test.ping, with the same envelope, headers and signature as a real "
+                    + "event; no retry. Returns the HTTP status, failure classification and latency; the "
                     + "endpoint's response body is never returned.")
     public ApiResponse<WebhookDeliveryAttemptResponse> testPing(@PathVariable UUID endpointId, CallerContext caller) {
         log.info("Triggering test ping for endpoint: {}", endpointId);

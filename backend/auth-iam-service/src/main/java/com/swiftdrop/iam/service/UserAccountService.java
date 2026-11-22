@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.dto.PagedResult;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
@@ -179,7 +180,7 @@ public class UserAccountService {
             throw new AuthException(HttpStatus.FORBIDDEN,
                     "Your district is assigned by SwiftDrop operations and cannot be changed here");
         }
-        String phone = normalizeNullable(request.phone());
+        String phone = SriLankanPhone.toE164OrNull(request.phone());
         if (phone != null && !phone.equals(user.getPhone()) && userAccountRepository.existsByPhone(phone)) {
             throw new UserAlreadyExistsException("Phone number is already registered");
         }
@@ -259,7 +260,7 @@ public class UserAccountService {
                                    UUID merchantId, boolean emailVerified) {
         String normalizedUsername = username.trim();
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
-        String normalizedPhone = normalizeNullable(phone);
+        String normalizedPhone = SriLankanPhone.toE164OrNull(phone);
 
         if (userAccountRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
             throw new UserAlreadyExistsException("Username is already registered");
@@ -293,7 +294,7 @@ public class UserAccountService {
 
     private UserProfileResponse refreshPendingRegistration(UserAccount existing, RegisterUserRequest request) {
         String username = request.username().trim();
-        String phone = normalizeNullable(request.phone());
+        String phone = SriLankanPhone.toE164OrNull(request.phone());
 
         userAccountRepository.findByUsernameIgnoreCase(username)
                 .filter(other -> !other.getId().equals(existing.getId()))

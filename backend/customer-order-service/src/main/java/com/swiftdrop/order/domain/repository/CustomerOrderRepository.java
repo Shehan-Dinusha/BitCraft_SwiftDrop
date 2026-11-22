@@ -17,6 +17,8 @@ public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Lo
 
     Optional<CustomerOrder> findByOrderId(UUID orderId);
 
+    java.util.List<CustomerOrder> findByOrderIdIn(java.util.Collection<UUID> orderIds);
+
     /**
      * Loads the order with a row lock held until the transaction ends, so status writers
      * (event sync, cancel, fee revision) run one at a time per order.

@@ -86,26 +86,27 @@ public class CourierAvailabilityController {
 
     @PostMapping("/shifts/start")
     @Operation(summary = "Start or register courier shift",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+            description = "A COURIER may use only their own courier ID, a DISPATCHER the couriers of their district, "
+                    + "a SYSTEM_ADMIN any. The shift starts in the courier's home district.")
     public ApiResponse<CourierShiftResponse> startShift(
             @Valid @RequestBody StartShiftRequest request,
             HttpServletRequest httpRequest) {
-        DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
+        CallerContext caller = DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
         return ApiResponse.success(
-                courierShiftService.startShift(request),
+                courierShiftService.startShift(request, caller),
                 "Courier shift started successfully"
         );
     }
 
     @PostMapping("/shifts/{courierId}/end")
     @Operation(summary = "End courier shift",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+            description = "A COURIER must have handed over all their cash first. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
     public ApiResponse<CourierShiftResponse> endShift(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
-        requireCourierAccess(httpRequest, courierId);
+        CallerContext caller = requireCourierAccess(httpRequest, courierId);
         return ApiResponse.success(
-                courierShiftService.endShift(courierId),
+                courierShiftService.endShift(courierId, caller),
                 "Courier shift ended successfully"
         );
     }

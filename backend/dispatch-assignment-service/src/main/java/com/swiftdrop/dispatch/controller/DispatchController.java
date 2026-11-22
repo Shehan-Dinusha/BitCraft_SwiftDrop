@@ -201,6 +201,24 @@ public class DispatchController {
         return ApiResponse.success(dispatchAssignmentService.getIncoming(scope), "Incoming orders retrieved");
     }
 
+    @GetMapping("/returns")
+    @Operation(summary = "List failed deliveries a district deals with",
+            description = "RETURN_TO_HUB: a courier brings it back. HELD_AT_HUB: try again (delivery transition "
+                    + "HELD_AT_HUB -> AT_DESTINATION_HUB, while canRetry) or return it (-> RETURN_IN_TRANSIT, or "
+                    + "-> RETURN_AT_HUB when the sender is in the same district). RETURN_OUTBOUND: accept it at the "
+                    + "sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district; a SYSTEM_ADMIN must "
+                    + "give the district.")
+    public ApiResponse<List<DispatchAssignmentResponse>> getReturns(
+            @RequestParam(required = false) SriLankanDistrict district,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = DispatchAccess.requireOperations(httpRequest);
+        SriLankanDistrict scope = DistrictScope.listDistrict(caller, district);
+        if (scope == null) {
+            throw new IllegalArgumentException("Choose a district");
+        }
+        return ApiResponse.success(dispatchAssignmentService.getReturns(scope), "Returns retrieved");
+    }
+
     @GetMapping("/couriers/{courierId}/assignments")
     @Operation(summary = "List active assignments for a courier",
             description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")

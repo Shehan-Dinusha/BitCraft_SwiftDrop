@@ -41,7 +41,7 @@ public class OutForDeliveryState implements DeliveryStateHandler {
 
     @Override
     public Set<DeliveryState> allowedNext() {
-        return EnumSet.of(DeliveryState.DELIVERED, DeliveryState.FAILED);
+        return EnumSet.of(DeliveryState.DELIVERED, DeliveryState.ATTEMPT_FAILED, DeliveryState.FAILED);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class OutForDeliveryState implements DeliveryStateHandler {
         if (target == DeliveryState.DELIVERED) {
             // Fail closed: no guard, no session or no delivery id means proof cannot be confirmed.
             boolean proven = proofOfDeliveryGuard != null && session != null && session.getDeliveryId() != null
-                    && proofOfDeliveryGuard.isSatisfied(session.getDeliveryId());
+                    && proofOfDeliveryGuard.isSatisfied(session.getDeliveryId(), session.getProofSince());
             if (!proven) {
                 throw new InvalidStateTransitionException(
                         "Proof of delivery must be verified with an uploaded photo or signature before marking delivery as DELIVERED");

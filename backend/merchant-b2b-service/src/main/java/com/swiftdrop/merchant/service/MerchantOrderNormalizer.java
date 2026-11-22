@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.parcel.ParcelLimits;
@@ -34,9 +35,9 @@ public class MerchantOrderNormalizer {
         address(body, "pickup", request.pickup());
         address(body, "delivery", request.delivery());
         body.put("pickupContactName", request.pickup().contactName().trim());
-        body.put("pickupContactPhone", phone(request.pickup().contactPhone()));
+        body.put("pickupContactPhone", SriLankanPhone.toE164(request.pickup().contactPhone()));
         body.put("recipientName", request.delivery().contactName().trim());
-        body.put("recipientPhone", phone(request.delivery().contactPhone()));
+        body.put("recipientPhone", SriLankanPhone.toE164(request.delivery().contactPhone()));
         body.put("actualWeightKg", parcel.actualWeightKg() != null ? parcel.actualWeightKg() : parcel.weightGrams().movePointLeft(3));
         body.put("lengthCm", parcel.lengthCm());
         body.put("widthCm", parcel.widthCm());
@@ -44,7 +45,6 @@ public class MerchantOrderNormalizer {
         body.put("prohibitedItemsDeclared", parcel.prohibitedItemsDeclared());
         body.put("itemDescription", parcel.itemDescription());
         body.put("declaredValue", parcel.declaredValue() != null ? parcel.declaredValue() : BigDecimal.ZERO);
-        body.put("codAmount", parcel.codAmount() != null ? parcel.codAmount() : BigDecimal.ZERO);
         try {
             body.put("speed", request.speed() == null || request.speed().isBlank() ? OrderSpeed.STANDARD
                     : OrderSpeed.valueOf(request.speed().trim().toUpperCase(Locale.ROOT)));
@@ -65,14 +65,5 @@ public class MerchantOrderNormalizer {
         if (value == null) throw new IllegalArgumentException("Invalid Sri Lankan district");
         try { return SriLankanDistrict.valueOf(value.trim().toUpperCase(Locale.ROOT).replaceAll("[\\s-]+", "_")); }
         catch (IllegalArgumentException ex) { throw new IllegalArgumentException("Invalid Sri Lankan district"); }
-    }
-
-    public String phone(String value) {
-        String number = value.trim().replaceAll("[\\s()\\-]", "");
-        if (number.startsWith("0094")) number = "+" + number.substring(2);
-        else if (number.matches("94\\d{9}")) number = "+" + number;
-        else if (number.matches("0\\d{9}")) number = "+94" + number.substring(1);
-        if (!number.matches("\\+94\\d{9}")) throw new IllegalArgumentException("Invalid Sri Lankan phone number");
-        return number;
     }
 }

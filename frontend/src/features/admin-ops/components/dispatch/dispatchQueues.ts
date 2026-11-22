@@ -19,9 +19,13 @@ export function toSpeed(value?: string): Speed {
   return value === 'SAME_DAY' ? 'same-day' : 'standard';
 }
 
-export const isAtHub = (order: DispatchAssignmentResponse) => order.leg === 'LAST_MILE';
+export const isReturn = (order: DispatchAssignmentResponse) => order.leg === 'RETURN';
 
-/** When the order joined its current queue: accepted at the hub on the last leg, booked otherwise. */
+/** Waiting at this district's hub: to go out for delivery, or back to the sender. */
+export const isAtHub = (order: DispatchAssignmentResponse) =>
+  order.leg === 'LAST_MILE' || isReturn(order);
+
+/** When the order joined its current queue: accepted at the hub, booked otherwise. */
 export const waitingSince = (order: DispatchAssignmentResponse) =>
   isAtHub(order) ? (order.updatedAt ?? order.createdAt) : order.createdAt;
 
@@ -83,6 +87,55 @@ export function groupByDistrict(
     .sort((a, b) => b.orders.length - a.orders.length || a.label.localeCompare(b.label));
 }
 
+export interface ShopGroup {
+  key: string;
+  merchantId: string;
+  name: string;
+  district: string;
+  /** Packed, longest waiting first. */
+  ready: DispatchAssignmentResponse[];
+  notReady: number;
+  weightKg: number;
+  readySince?: string;
+}
+
+/** Shops with parcels to collect, one entry per shop and district; those with packed parcels first. */
+export function groupByShop(orders: DispatchAssignmentResponse[]): ShopGroup[] {
+  const groups = new Map<string, ShopGroup>();
+  for (const order of orders) {
+    if (!order.shopPickup || !order.merchantId) continue;
+    const district = order.pickupDistrict ?? '';
+    const key = `${order.merchantId}:${district}`;
+    const group = groups.get(key) ?? {
+      key,
+      merchantId: order.merchantId,
+      name: 'Shop',
+      district,
+      ready: [],
+      notReady: 0,
+      weightKg: 0
+    };
+    if (order.merchantName) group.name = order.merchantName;
+    if (order.readyForPickup) {
+      group.ready.push(order);
+      group.weightKg += order.weightKg ?? 0;
+      const since = order.readyAt ?? order.createdAt;
+      if (since && (!group.readySince || time(since) < time(group.readySince))) {
+        group.readySince = since;
+      }
+    } else {
+      group.notReady += 1;
+    }
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort(
+    (a, b) =>
+      Number(b.ready.length > 0) - Number(a.ready.length > 0) ||
+      time(a.readySince) - time(b.readySince) ||
+      a.name.localeCompare(b.name)
+  );
+}
+
 const contains = (values: (string | undefined)[], query: string) => {
   const term = query.trim().toLowerCase();
   return !term || values.some((value) => value?.toLowerCase().includes(term));
@@ -92,6 +145,7 @@ export const matchesOrder = (order: DispatchAssignmentResponse, query: string) =
   contains(
     [
       order.trackingNumber,
+      order.merchantName ?? undefined,
       order.courierName,
       districtLabel(order.pickupDistrict),
       districtLabel(order.deliveryDistrict),

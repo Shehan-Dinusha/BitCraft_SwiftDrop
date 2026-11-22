@@ -2,6 +2,7 @@ package com.swiftdrop.dispatch.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
@@ -65,8 +66,7 @@ class CourierAvailabilityControllerTest {
         StartShiftRequest request = new StartShiftRequest(
                 courierId,
                 "Kamal Silva",
-                "+94772345678",
-                SriLankanDistrict.COLOMBO
+                "+94772345678"
         );
 
         CourierShiftResponse response = new CourierShiftResponse(
@@ -87,7 +87,7 @@ class CourierAvailabilityControllerTest {
                 100
         );
 
-        when(courierShiftService.startShift(any(StartShiftRequest.class))).thenReturn(response);
+        when(courierShiftService.startShift(any(StartShiftRequest.class), any(CallerContext.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/start").with(courier(courierId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -157,7 +157,7 @@ class CourierAvailabilityControllerTest {
     @DisplayName("POST /shifts/{courierId}/end returns 409 Shift Conflict while active parcels remain")
     void testEndShift_ActiveParcelsConflict() throws Exception {
         UUID courierId = UUID.randomUUID();
-        when(courierShiftService.endShift(courierId)).thenThrow(new ShiftEndNotAllowedException(
+        when(courierShiftService.endShift(eq(courierId), any(CallerContext.class))).thenThrow(new ShiftEndNotAllowedException(
                 "Cannot end shift: the courier still has 2 active parcel(s). Complete or reassign them first."));
 
         mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId).with(courier(courierId)))
@@ -171,7 +171,7 @@ class CourierAvailabilityControllerTest {
     @Test
     @DisplayName("A unique-key violation returns 409 Data Conflict without database details")
     void testStartShift_UniqueViolationIsSafeConflict() throws Exception {
-        when(courierShiftService.startShift(any(StartShiftRequest.class))).thenThrow(new DataIntegrityViolationException(
+        when(courierShiftService.startShift(any(StartShiftRequest.class), any(CallerContext.class))).thenThrow(new DataIntegrityViolationException(
                 "could not execute statement [duplicate key value violates unique constraint \"courier_shifts_courier_id_key\"]",
                 new SQLException("duplicate key value violates unique constraint", "23505")));
 
@@ -188,7 +188,7 @@ class CourierAvailabilityControllerTest {
     @Test
     @DisplayName("Other integrity violations are not misreported as conflicts: generic 500, no details")
     void testStartShift_OtherIntegrityViolationIsGenericServerError() throws Exception {
-        when(courierShiftService.startShift(any(StartShiftRequest.class))).thenThrow(new DataIntegrityViolationException(
+        when(courierShiftService.startShift(any(StartShiftRequest.class), any(CallerContext.class))).thenThrow(new DataIntegrityViolationException(
                 "null value in column \"courier_name\" violates not-null constraint",
                 new SQLException("null value in column", "23502")));
 
@@ -202,6 +202,6 @@ class CourierAvailabilityControllerTest {
     }
 
     private StartShiftRequest startShiftRequest() {
-        return new StartShiftRequest(UUID.randomUUID(), "Shift Courier", null, SriLankanDistrict.COLOMBO);
+        return new StartShiftRequest(UUID.randomUUID(), "Shift Courier", null);
     }
 }

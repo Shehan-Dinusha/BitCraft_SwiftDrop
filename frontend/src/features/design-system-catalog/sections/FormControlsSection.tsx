@@ -25,7 +25,7 @@ export function FormControlsSection() {
             aria-label="Search input"
           />
           <Input variant="currency" defaultValue="24.50" aria-label="Currency input" />
-          <Input variant="phone" defaultValue="555 018 2244" aria-label="Phone input" />
+          <Input variant="phone" defaultValue="771234567" aria-label="Phone input" />
         </DemoGrid>
       </CatalogRow>
 

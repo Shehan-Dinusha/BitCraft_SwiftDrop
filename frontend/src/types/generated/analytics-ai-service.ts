@@ -148,10 +148,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Retrieve system-wide and district-level operational KPIs */
+        /** Operational KPIs for today */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description For a SYSTEM_ADMIN, one district (omit it for the whole island). Ignored for a DISPATCHER, who always gets their own district. */
+                    district?: components["parameters"]["ReportDistrict"];
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -188,7 +191,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    district?: string;
+                    /** @description For a SYSTEM_ADMIN, one district (omit it for the whole island). Ignored for a DISPATCHER, who always gets their own district. */
+                    district?: components["parameters"]["ReportDistrict"];
                 };
                 header?: never;
                 path?: never;
@@ -272,7 +276,10 @@ export interface paths {
         /** Read current persisted analytics projections */
         post: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description For a SYSTEM_ADMIN, one district (omit it for the whole island). Ignored for a DISPATCHER, who always gets their own district. */
+                    district?: components["parameters"]["ReportDistrict"];
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -837,6 +844,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description For a SYSTEM_ADMIN, one district (omit it for the whole island). Ignored for a DISPATCHER, who always gets their own district. */
+        ReportDistrict: string;
         /** @description First included Asia/Colombo date; range must contain 1 to 90 inclusive days. */
         FromDate: string;
         /** @description Last included Asia/Colombo date; must be on or after from. */
@@ -1020,6 +1029,8 @@ export interface operations {
                 from: components["parameters"]["FromDate"];
                 /** @description Last included Asia/Colombo date; must be on or after from. */
                 to: components["parameters"]["ToDate"];
+                /** @description For a SYSTEM_ADMIN, one district (omit it for the whole island). Ignored for a DISPATCHER, who always gets their own district. */
+                district?: components["parameters"]["ReportDistrict"];
             };
             header?: never;
             path?: never;
@@ -1049,6 +1060,8 @@ export interface operations {
                 from: components["parameters"]["FromDate"];
                 /** @description Last included Asia/Colombo date; must be on or after from. */
                 to: components["parameters"]["ToDate"];
+                /** @description For a SYSTEM_ADMIN, one district (omit it for the whole island). Ignored for a DISPATCHER, who always gets their own district. */
+                district?: components["parameters"]["ReportDistrict"];
             };
             header?: never;
             path?: never;
@@ -1073,7 +1086,10 @@ export interface operations {
     };
     courierWorkloadReport: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description For a SYSTEM_ADMIN, one district (omit it for the whole island). Ignored for a DISPATCHER, who always gets their own district. */
+                district?: components["parameters"]["ReportDistrict"];
+            };
             header?: never;
             path?: never;
             cookie?: never;

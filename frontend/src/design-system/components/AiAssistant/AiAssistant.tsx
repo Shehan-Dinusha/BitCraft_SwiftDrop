@@ -58,7 +58,7 @@ export interface AssistantPanelProps {
   className?: string;
 }
 
-/** Figma AIAssistantPanel: 380×520 chat card with header, messages, suggestion chips and an input. State = Open / Typing. */
+/** AIAssistantPanel: 380×520 chat card with a brand header so it stands out from the page, messages, suggestion chips and an input. State = Open / Typing. */
 export function AssistantPanel({
   messages,
   suggestions = [],
@@ -91,20 +91,20 @@ export function AssistantPanel({
     <aside
       aria-label={title}
       className={cn(
-        'flex h-[520px] w-[380px] max-w-full flex-col overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-ambient',
+        'flex h-[520px] w-[380px] max-w-full flex-col overflow-hidden rounded-2xl border border-border-strong bg-card shadow-panel',
         className
       )}
     >
-      <header className="flex items-center gap-2.5 border-b border-border-subtle px-4 py-3.5">
+      <header className="flex items-center gap-2.5 bg-brand-primary px-4 py-3.5 text-brand-on">
         <span
           aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-brand-primary"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card text-brand-primary"
         >
           <Sparkles className="size-4" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <p className="truncate text-body-strong text-primary">{title}</p>
-          <p className="truncate text-caption text-secondary">{subtitle}</p>
+          <p className="truncate text-body-strong">{title}</p>
+          <p className="truncate text-caption">{subtitle}</p>
         </div>
         {onReset ? (
           <button
@@ -112,7 +112,7 @@ export function AssistantPanel({
             onClick={onReset}
             disabled={typing}
             aria-label="New conversation"
-            className="inline-flex size-7 items-center justify-center rounded-md text-secondary hover:bg-elevated disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+            className="inline-flex size-8 items-center justify-center rounded-md hover:bg-brand-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-on"
           >
             <RotateCcw aria-hidden="true" className="size-[18px]" />
           </button>
@@ -122,7 +122,7 @@ export function AssistantPanel({
             type="button"
             onClick={onClose}
             aria-label="Close assistant"
-            className="inline-flex size-7 items-center justify-center rounded-md text-secondary hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+            className="inline-flex size-8 items-center justify-center rounded-md hover:bg-brand-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-on"
           >
             <X aria-hidden="true" className="size-[18px]" />
           </button>
@@ -145,7 +145,7 @@ export function AssistantPanel({
                 'flex max-w-[260px] flex-col gap-1 rounded-xl px-3 py-2.5 text-body',
                 message.role === 'user'
                   ? 'bg-brand-primary text-brand-on'
-                  : 'border border-border-subtle bg-card text-primary'
+                  : 'border border-border-strong bg-card text-primary'
               )}
             >
               <span>{message.text}</span>
@@ -176,7 +176,7 @@ export function AssistantPanel({
               type="button"
               disabled={typing || disabled}
               onClick={() => send(suggestion)}
-              className="rounded-full border border-border-subtle px-2.5 py-[5px] text-caption text-primary transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+              className="rounded-full border border-border-strong px-2.5 py-[5px] text-caption text-primary transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
             >
               {suggestion}
             </button>
@@ -185,7 +185,7 @@ export function AssistantPanel({
       ) : null}
 
       <form
-        className="flex items-center gap-2 border-t border-border-subtle px-4 py-3"
+        className="flex items-center gap-2 border-t border-border-strong px-4 py-3"
         onSubmit={(event) => {
           event.preventDefault();
           send(value);
@@ -201,7 +201,7 @@ export function AssistantPanel({
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-[10px] border border-border-subtle bg-card px-3 py-2.5 text-body text-primary outline-none placeholder:text-muted focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-border-focus"
+          className="min-w-0 flex-1 rounded-[10px] border border-border-strong bg-card px-3 py-2.5 text-body text-primary outline-none placeholder:text-muted focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-border-focus"
         />
         <button
           type="submit"

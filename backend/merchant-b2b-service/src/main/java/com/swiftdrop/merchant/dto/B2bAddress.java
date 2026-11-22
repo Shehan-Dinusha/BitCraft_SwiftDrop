@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.dto;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 
@@ -10,5 +11,6 @@ public record B2bAddress(
         @NotBlank @Schema(description = "Sri Lankan district name; spaces and hyphens accepted") String district,
         @NotBlank @Pattern(regexp = "\\d{5}") @Schema(description = "Five-digit postal code") String postalCode,
         @NotBlank @Size(min = 2, max = 100) @Schema(description = "Contact name") String contactName,
-        @NotBlank @Schema(description = "Sri Lankan local or international phone") String contactPhone
+        @NotBlank @Pattern(regexp = SriLankanPhone.REGEX, message = SriLankanPhone.MESSAGE)
+        @Schema(description = "Phone: 9 digits, with or without 0 or +94 in front", example = "+94771234567") String contactPhone
 ) {}

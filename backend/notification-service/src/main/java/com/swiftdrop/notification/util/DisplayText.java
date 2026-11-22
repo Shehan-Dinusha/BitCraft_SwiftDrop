@@ -54,8 +54,9 @@ public final class DisplayText {
             case "WRONG_ADDRESS", "INCORRECT_ADDRESS" -> "the delivery address could not be found";
             case "REFUSED_BY_CUSTOMER", "RECIPIENT_REJECTED" -> "the recipient refused the parcel";
             case "ACCESS_RESTRICTED" -> "the courier could not reach the address";
-            case "PAYMENT_FAILED" -> "the cash on delivery payment could not be collected";
+            case "PAYMENT_FAILED" -> "the delivery fee was not paid";
             case "DAMAGED", "DAMAGED_IN_TRANSIT" -> "the parcel was damaged";
+            case "LOST" -> "the parcel was lost";
             case "WEATHER_DELAY", "ADVERSE_WEATHER" -> "bad weather prevented the delivery";
             case "OTHER" -> "the delivery attempt was not successful";
             default -> {

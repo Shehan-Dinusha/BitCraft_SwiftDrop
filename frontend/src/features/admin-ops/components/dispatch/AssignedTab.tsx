@@ -1,9 +1,11 @@
 import { Button } from '@/design-system';
 import type { DispatchAssignmentResponse } from '@/services/api/dispatchApi';
 import { Badge, CELL, DispatchTable, RouteCell, TabEmpty, TrackingCell } from './DispatchTable';
-import { formatAge, isAtHub, orderKey, orderLabel } from './dispatchQueues';
+import { formatAge, isAtHub, isReturn, orderKey, orderLabel } from './dispatchQueues';
 
 function stage(order: DispatchAssignmentResponse) {
+  if (order.hubStage === 'RETURN_TO_HUB') return 'Bringing it back';
+  if (isReturn(order) && order.pickedUpAt) return 'Out to the sender';
   if (order.pickedUpAt) return isAtHub(order) ? 'Out for delivery' : 'Picked up';
   return isAtHub(order) ? 'Collecting from the hub' : 'Going to pick up';
 }

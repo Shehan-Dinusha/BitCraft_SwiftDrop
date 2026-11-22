@@ -46,11 +46,16 @@ management:
       exposure:
         include: health,info
 springdoc:
+  # Service-to-service endpoints: the gateway never routes /internal/**, so keep them out of the public docs.
+  paths-to-exclude:
+    - /internal/**
   api-docs:
     version: OPENAPI_3_1
   swagger-ui:
     path: /swagger-ui.html
 swiftdrop:
+  # Addresses and fee for the courier carrying a parcel.
+  order-service-url: ${ORDER_SERVICE_URL:http://localhost:8082}
   delivery:
     pod-storage-dir: ${POD_STORAGE_DIR:/tmp/swiftdrop/pod}
 azure:

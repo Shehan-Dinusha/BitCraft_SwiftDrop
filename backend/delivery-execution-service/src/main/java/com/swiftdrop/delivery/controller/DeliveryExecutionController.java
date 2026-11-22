@@ -7,6 +7,7 @@ import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
+import com.swiftdrop.delivery.service.CourierStepService;
 import com.swiftdrop.delivery.service.DeliveryExecutionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,9 +30,11 @@ import java.util.UUID;
 public class DeliveryExecutionController {
 
     private final DeliveryExecutionService deliveryService;
+    private final CourierStepService courierStepService;
 
-    public DeliveryExecutionController(DeliveryExecutionService deliveryService) {
+    public DeliveryExecutionController(DeliveryExecutionService deliveryService, CourierStepService courierStepService) {
         this.deliveryService = deliveryService;
+        this.courierStepService = courierStepService;
     }
 
     @GetMapping("/health")
@@ -41,7 +44,7 @@ public class DeliveryExecutionController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "List deliveries assigned to the authenticated courier", description = "Returns today's deliveries (or for a given date) assigned to the logged-in courier, ordered by assignment time.")
+    @Operation(summary = "List deliveries assigned to the authenticated courier", description = "Returns today's deliveries and every unfinished one (or those for a given date) assigned to the logged-in courier, ordered by assignment time.")
     public ApiResponse<List<DeliverySessionResponse>> getMyDeliveries(
             @RequestParam(required = false) String date,
             HttpServletRequest request) {
@@ -103,15 +106,14 @@ public class DeliveryExecutionController {
     }
 
     @PostMapping("/{deliveryId}/transition")
-    @Operation(summary = "Transition delivery lifecycle state", description = "Executes courier mobile action transitions governed by 12-state FSM.")
+    @Operation(summary = "Transition delivery lifecycle state", description = "PICKED_UP must confirm the delivery fee in cashCollected; a missing or different amount "
+            + "answers 409 with the amount to collect.")
     public ApiResponse<DeliverySessionResponse> transition(
             @PathVariable UUID deliveryId,
             @Valid @RequestBody TransitionDeliveryRequest request,
             HttpServletRequest httpRequest) {
-        CallerContext caller = resolveCaller(httpRequest);
-        var session = caller != null
-                ? deliveryService.transition(deliveryId, request, caller)
-                : deliveryService.transition(deliveryId, request);
+        // The cash taken with a step needs a verified caller, so there is no anonymous path here.
+        var session = courierStepService.step(deliveryId, request, CallerContext.from(httpRequest::getHeader));
         return ApiResponse.success(DeliverySessionResponse.fromEntity(session), "Delivery transitioned to " + session.getCurrentState());
     }
 

@@ -42,6 +42,8 @@ export const STATUS_LABEL: Record<PublicOrderStatus, string> = {
   PICKED_UP: 'Picked up',
   IN_TRANSIT: 'In transit',
   OUT_FOR_DELIVERY: 'Out for delivery',
+  DELIVERY_ATTEMPTED: 'Not delivered yet',
+  RETURNING: 'Coming back to you',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',
   FAILED: 'Delivery failed',
@@ -68,6 +70,8 @@ export function nextStep(order: CustomerOrderResponse): string | null {
       return order.recipientName
         ? `Out for delivery to ${order.recipientName}.`
         : 'Your parcel is out for delivery.';
+    case 'DELIVERY_ATTEMPTED':
+      return 'We could not deliver it. We try again, or bring it back to you for free.';
     default:
       return null;
   }
@@ -99,7 +103,15 @@ export const STATUS_GROUPS: { id: StatusGroup; label: string; statuses: PublicOr
   {
     id: 'active',
     label: 'On the way',
-    statuses: ['CREATED', 'PICKUP_ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY']
+    statuses: [
+      'CREATED',
+      'PICKUP_ASSIGNED',
+      'PICKED_UP',
+      'IN_TRANSIT',
+      'OUT_FOR_DELIVERY',
+      'DELIVERY_ATTEMPTED',
+      'RETURNING'
+    ]
   },
   { id: 'delivered', label: 'Delivered', statuses: ['DELIVERED'] },
   {
@@ -116,7 +128,8 @@ export function inStatusGroup(order: CustomerOrderResponse, group: StatusGroup) 
 
 /**
  * `StatusProgress` shows the five public milestones. Pickup assigned has no step of its own (it sits
- * between Created and Picked up), and the terminal failure states are shown with an alert instead.
+ * between Created and Picked up), a failed attempt stays at Out for delivery, and a return and the
+ * terminal failure states are shown with an alert instead.
  */
 export function progressStep(status: PublicOrderStatus): StatusProgressStatus | null {
   switch (status) {
@@ -128,6 +141,8 @@ export function progressStep(status: PublicOrderStatus): StatusProgressStatus | 
     case 'OUT_FOR_DELIVERY':
     case 'DELIVERED':
       return status;
+    case 'DELIVERY_ATTEMPTED':
+      return 'OUT_FOR_DELIVERY';
     default:
       return null;
   }

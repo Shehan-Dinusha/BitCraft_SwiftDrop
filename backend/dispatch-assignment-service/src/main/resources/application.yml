@@ -39,7 +39,13 @@ management:
     web:
       exposure:
         include: health,info
+swiftdrop:
+  # The cash ledger: a courier hands over their cash before ending a shift.
+  delivery-service-url: ${DELIVERY_SERVICE_URL:http://localhost:8085}
 springdoc:
+  # Service-to-service endpoints: the gateway never routes /internal/**, so keep them out of the public docs.
+  paths-to-exclude:
+    - /internal/**
   api-docs:
     version: OPENAPI_3_1
   swagger-ui:

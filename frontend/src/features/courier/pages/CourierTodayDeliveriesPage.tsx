@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isOpenForCourier } from '@/types/fsm';
+import { failureLabel } from '@/utils/failureReasons';
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
@@ -16,6 +18,11 @@ import {
   Calendar,
   MapPin
 } from 'lucide-react';
+
+const isDone = (item: DeliverySessionResponse) =>
+  item.currentState === 'DELIVERED' ||
+  item.currentState === 'RETURNED' ||
+  item.currentState === 'AT_ORIGIN_HUB';
 
 type FilterTab = 'all' | 'active' | 'delivered' | 'failed';
 
@@ -52,7 +59,8 @@ export function CourierTodayDeliveriesPage() {
   // Counts for summary metrics
   const stats = useMemo(() => {
     const total = deliveries.length;
-    const delivered = deliveries.filter((d) => d.currentState === 'DELIVERED').length;
+    // A parcel handed in at the hub is done for this courier.
+    const delivered = deliveries.filter(isDone).length;
     const failed = deliveries.filter((d) => d.currentState === 'FAILED' || d.currentState === 'CANCELLED').length;
     const active = total - delivered - failed;
     return { total, active, delivered, failed };
@@ -63,11 +71,11 @@ export function CourierTodayDeliveriesPage() {
     return deliveries.filter((item) => {
       // Tab filter
       if (activeTab === 'active') {
-        if (item.currentState === 'DELIVERED' || item.currentState === 'FAILED' || item.currentState === 'CANCELLED') {
+        if (!isOpenForCourier(item.currentState)) {
           return false;
         }
       } else if (activeTab === 'delivered') {
-        if (item.currentState !== 'DELIVERED') return false;
+        if (!isDone(item)) return false;
       } else if (activeTab === 'failed') {
         if (item.currentState !== 'FAILED' && item.currentState !== 'CANCELLED') return false;
       }
@@ -212,7 +220,7 @@ export function CourierTodayDeliveriesPage() {
                 : 'bg-card text-secondary hover:bg-canvas hover:text-primary'
             }`}
           >
-            Delivered ({stats.delivered})
+            Done ({stats.delivered})
           </button>
           <button
             type="button"
@@ -320,7 +328,8 @@ export function CourierTodayDeliveriesPage() {
                       <FsmStatusBadge state={delivery.currentState || 'ASSIGNED'} size="sm" />
                       {delivery.attemptCount && delivery.attemptCount > 0 ? (
                         <span className="rounded bg-brand-subtle px-2 py-0.5 text-[10px] font-semibold text-brand-primary">
-                          Attempt #{delivery.attemptCount}
+                          {delivery.attemptCount} failed{' '}
+                          {delivery.attemptCount === 1 ? 'attempt' : 'attempts'}
                         </span>
                       ) : null}
                     </div>
@@ -356,7 +365,7 @@ export function CourierTodayDeliveriesPage() {
                       )}
                       {delivery.failedReason && (
                         <span className="text-status-danger-fg font-medium">
-                          Reason: {delivery.failedReason}
+                          {failureLabel(delivery.failedReason)}
                         </span>
                       )}
                     </div>
@@ -364,14 +373,18 @@ export function CourierTodayDeliveriesPage() {
 
                   {/* Action Button */}
                   <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                    <Button
-                      variant={isDelivered ? 'secondary' : 'primary'}
-                      onClick={() => navigate(`/courier/delivery/${delivery.deliveryId}`)}
-                      className="flex items-center gap-1.5"
-                    >
-                      <span>{isDelivered ? 'View Details' : 'Execute Delivery'}</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    {delivery.currentState === 'AT_ORIGIN_HUB' ? (
+                      <span className="text-label text-secondary">Handed in at the hub</span>
+                    ) : (
+                      <Button
+                        variant={isDelivered ? 'secondary' : 'primary'}
+                        onClick={() => navigate(`/courier/delivery/${delivery.deliveryId}`)}
+                        className="flex items-center gap-1.5"
+                      >
+                        <span>{isDelivered ? 'View details' : 'Open'}</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </SurfaceCard>
               );

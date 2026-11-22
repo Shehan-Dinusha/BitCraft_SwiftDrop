@@ -53,7 +53,7 @@ class MerchantAccountControllerTest {
         CreateMerchantRequest request = new CreateMerchantRequest(
                 "Lanka E-Commerce Hub",
                 "info@lankahub.lk",
-                "+94 11 999 8888",
+                "+94119998888",
                 "10 Union Place, Colombo 02",
                 SriLankanDistrict.COLOMBO
         );
@@ -62,7 +62,7 @@ class MerchantAccountControllerTest {
                 merchantId,
                 "Lanka E-Commerce Hub",
                 "info@lankahub.lk",
-                "+94 11 999 8888",
+                "+94119998888",
                 "10 Union Place, Colombo 02",
                 SriLankanDistrict.COLOMBO,
                 "ACTIVE",
@@ -86,7 +86,7 @@ class MerchantAccountControllerTest {
                 merchantId,
                 "Lanka E-Commerce Hub",
                 "info@lankahub.lk",
-                "+94 11 999 8888",
+                "+94119998888",
                 "10 Union Place, Colombo 02",
                 SriLankanDistrict.COLOMBO,
                 "ACTIVE",

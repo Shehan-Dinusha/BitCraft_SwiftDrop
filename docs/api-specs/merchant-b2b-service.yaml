@@ -595,6 +595,88 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseListBulkBatchItemResponse"
 
+  /api/v1/merchants/{merchantId}/pickup:
+    get:
+      tags:
+        - MerchantPickups
+      summary: The shop's parcels that no courier has collected, and the cash to prepare
+      operationId: getMerchantPickup
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantPickupResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+
+  /api/v1/merchants/{merchantId}/pickup/ready:
+    post:
+      tags:
+        - MerchantPickups
+      summary: Everything the shop has booked so far is packed
+      description: >-
+        Safe to repeat.
+      operationId: markPickupReady
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantPickupResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+        "409":
+          description: There are no parcels to pick up
+        "503":
+          description: Pickups are not available right now
+
+  /api/v1/b2b/pickups/ready:
+    post:
+      tags:
+        - MerchantPickups
+      summary: The same, for a merchant's own system
+      description: >-
+        Authenticated by API key. Safe to repeat.
+      security:
+        - apiKeyAuth: []
+      operationId: markPickupReadyByApiKey
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMerchantPickupResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+        "409":
+          description: There are no parcels to pick up
+        "503":
+          description: Pickups are not available right now
+
 components:
   securitySchemes:
     bearerAuth:
@@ -667,7 +749,7 @@ components:
         contactEmail: { type: string, format: email, maxLength: 100 }
         contactPhone:
           type: string
-          pattern: "^(0\\d{9}|\\+94\\d{9})$"
+          pattern: "^(?:\\+94|0)?[1-9][0-9]{8}$"
           description: Sri Lankan number; stored as +94 followed by 9 digits.
         pickupAddress: { type: string, minLength: 5, maxLength: 255 }
         pickupCity: { type: string, minLength: 2, maxLength: 100 }
@@ -720,6 +802,83 @@ components:
         approvedAt: { type: string, format: date-time }
         rejectionReason: { type: string }
         createdAt: { type: string, format: date-time }
+    MerchantPickupState:
+      type: string
+      enum: [WAITING, READY, ASSIGNED]
+
+    MerchantPickupGroup:
+      type: object
+      required:
+        - parcels
+        - total
+        - withoutFee
+      properties:
+        parcels:
+          type: integer
+        total:
+          type: number
+        withoutFee:
+          type: integer
+
+    MerchantPickupParcel:
+      type: object
+      required:
+        - orderId
+        - trackingNumber
+        - state
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        trackingNumber:
+          type: string
+        externalRef:
+          type: [string, "null"]
+        state:
+          $ref: "#/components/schemas/MerchantPickupState"
+        courierName:
+          type: [string, "null"]
+        readyAt:
+          type: [string, "null"]
+          format: date-time
+        fee:
+          type: [number, "null"]
+
+    MerchantPickupResponse:
+      type: object
+      required:
+        - waiting
+        - ready
+        - assigned
+        - currency
+        - parcels
+      properties:
+        waiting:
+          $ref: "#/components/schemas/MerchantPickupGroup"
+        ready:
+          $ref: "#/components/schemas/MerchantPickupGroup"
+        assigned:
+          $ref: "#/components/schemas/MerchantPickupGroup"
+        currency:
+          type: string
+        parcels:
+          type: array
+          items:
+            $ref: "#/components/schemas/MerchantPickupParcel"
+
+    ApiResponseMerchantPickupResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/MerchantPickupResponse"
+        timestamp:
+          type: string
+          format: date-time
+
     MerchantOrderReceiptResponse:
       type: object
       required: [externalRef, orderId, trackingNumber, createdAt]
@@ -728,6 +887,11 @@ components:
         orderId: { type: string, format: uuid }
         trackingNumber: { type: string }
         createdAt: { type: string, format: date-time }
+        fee:
+          type: [number, "null"]
+          description: Delivery fee paid in cash at pickup. Null for older orders.
+        currency:
+          type: [string, "null"]
     ApiResponseMerchantApprovalResponse:
       type: object
       properties:
@@ -778,7 +942,8 @@ components:
           maxLength: 100
         contactPhone:
           type: string
-          description: Local or international Sri Lankan number, normalized to +94
+          pattern: "^(?:\\+94|0)?[1-9][0-9]{8}$"
+          description: 9 digits, with or without 0 or +94 in front; stored as +94 and 9 digits.
     B2bParcel:
       type: object
       required: [lengthCm, widthCm, heightCm, prohibitedItemsDeclared]
@@ -815,9 +980,6 @@ components:
           type: string
           maxLength: 512
         declaredValue:
-          type: number
-          minimum: 0
-        codAmount:
           type: number
           minimum: 0
     B2bOrderRequest:
@@ -863,6 +1025,11 @@ components:
         error:
           type: string
           description: Present only for a failed bulk item
+        fee:
+          type: [number, "null"]
+          description: Delivery fee paid in cash at pickup
+        currency:
+          type: [string, "null"]
     B2bBulkResponse:
       type: object
       properties:
@@ -944,6 +1111,7 @@ components:
           type: string
         contactPhone:
           type: string
+          pattern: "^(?:\\+94|0)?[1-9][0-9]{8}$"
         pickupAddress:
           type: string
         operatingDistrict:

@@ -1,5 +1,7 @@
 # Shipping label (page 1): design rationale
 
+> **Cash on delivery was removed (2026-11).** SwiftDrop collects only the delivery fee, from the sender, so the label shows no money. The cash panel and COD tag described below no longer exist.
+
 The label was redesigned from a UI/UX engineering review: research on carrier labels and label standards, a critique of the first version, and a zone-by-zone spec. It was then implemented and checked against real renders and scans. This file records why the label looks the way it does, so reviewers and future agents can keep it consistent.
 
 ## Who reads the label, and how

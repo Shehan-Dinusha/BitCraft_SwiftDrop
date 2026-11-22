@@ -161,6 +161,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List failed deliveries a district deals with
+         * @description RETURN_TO_HUB: a courier brings it back. HELD_AT_HUB: try again (delivery transition HELD_AT_HUB -> AT_DESTINATION_HUB, while canRetry) or return it (-> RETURN_IN_TRANSIT, or -> RETURN_AT_HUB when the sender is in the same district). RETURN_OUTBOUND: accept it at the sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+         */
+        get: operations["getReturns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatch/incoming": {
         parameters: {
             query?: never;
@@ -393,7 +413,7 @@ export interface paths {
         put?: never;
         /**
          * Start or register courier shift
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available.
+         * @description A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available.
          */
         post: operations["startShift"];
         delete?: never;
@@ -413,7 +433,7 @@ export interface paths {
         put?: never;
         /**
          * End courier shift
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description A COURIER must have handed over all their cash first (409 Shift Conflict otherwise). A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
          */
         post: operations["endShift"];
         delete?: never;
@@ -442,6 +462,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/shops/{merchantId}/couriers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Couriers on shift and which of the shop's ready parcels each has room for
+         * @description A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN must give it.
+         */
+        get: operations["getShopCouriers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/shops/{merchantId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give a shop's ready parcels to one courier, all of them or none */
+        post: operations["assignShopPickup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -452,15 +509,17 @@ export interface components {
          */
         AssignmentStatus: "UNASSIGNED" | "ASSIGNED" | "REASSIGNED" | "IN_TRANSFER" | "FAILED" | "CANCELLED" | "COMPLETED";
         /**
-         * @description FIRST_MILE is managed by the pickup district; a cross-district order moves to LAST_MILE, managed by the drop-off district, when its hub accepts it.
+         * @description FIRST_MILE is managed by the pickup district; a cross-district order moves to LAST_MILE, managed by the drop-off district, when its hub accepts it, and so does an order tried again after a failed attempt. RETURN, back to the sender, is managed by the pickup district.
          * @enum {string}
          */
-        AssignmentLeg: "FIRST_MILE" | "LAST_MILE";
+        AssignmentLeg: "FIRST_MILE" | "LAST_MILE" | "RETURN";
         /**
-         * @description Where a cross-district order is between the legs.
+         * @description Where an order is between the legs, or after a failed delivery.
          * @enum {string}
          */
-        HubStage: "AT_HUB" | "OUTBOUND" | "INCOMING";
+        HubStage: "AT_HUB" | "OUTBOUND" | "INCOMING" | "RETURN_TO_HUB" | "HELD_AT_HUB" | "RETURN_OUTBOUND" | "RETURN_AT_HUB";
+        /** @enum {string} */
+        DeliveryFailureReason: "CUSTOMER_UNAVAILABLE" | "RECIPIENT_UNAVAILABLE" | "WRONG_ADDRESS" | "INCORRECT_ADDRESS" | "REFUSED_BY_CUSTOMER" | "RECIPIENT_REJECTED" | "ACCESS_RESTRICTED" | "PAYMENT_FAILED" | "DAMAGED" | "DAMAGED_IN_TRANSIT" | "LOST" | "WEATHER_DELAY" | "ADVERSE_WEATHER" | "OTHER";
         /** @enum {string} */
         ShiftStatus: "AVAILABLE" | "BUSY" | "ON_BREAK" | "OFFLINE";
         /**
@@ -507,7 +566,6 @@ export interface components {
             courierName: string;
             /** @example +94771234567 */
             phone?: string;
-            initialDistrict: components["schemas"]["SriLankanDistrict"];
         };
         /** @description A courier's own vehicle. */
         CourierVehicleRequest: {
@@ -557,6 +615,27 @@ export interface components {
             courierId: string;
             status: components["schemas"]["ShiftStatus"];
         };
+        ShopCourierSuggestionResponse: {
+            /** Format: uuid */
+            courierId: string;
+            courierName: string;
+            vehicleType: components["schemas"]["VehicleType"];
+            activeParcels: number;
+            maxCapacity: number;
+            fittingOrderIds: string[];
+        };
+        AssignShopPickupRequest: {
+            /** Format: uuid */
+            courierId: string;
+            orderIds: string[];
+        };
+        ApiResponseListShopCourierSuggestionResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ShopCourierSuggestionResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
         DispatchAssignmentResponse: {
             /** Format: uuid */
             assignmentId?: string;
@@ -601,6 +680,24 @@ export interface components {
             heightCm?: number;
             /** @example 2.5 */
             weightKg?: number;
+            /**
+             * Format: uuid
+             * @description The shop, for an order it sent.
+             */
+            merchantId?: string | null;
+            merchantName?: string | null;
+            /** @description Collected together with the shop's other parcels (a standard order still at the shop). */
+            shopPickup?: boolean;
+            /** @description Whether a courier can be sent. A shop's parcel only once the shop said it is packed. */
+            readyForPickup?: boolean;
+            /** Format: date-time */
+            readyAt?: string | null;
+            /** @description Delivery attempts that failed. */
+            deliveryAttempts?: number;
+            /** @description Why the last attempt failed. */
+            lastAttemptReason?: components["schemas"]["DeliveryFailureReason"] | null;
+            /** @description Whether it may still go out for another attempt. */
+            canRetry?: boolean;
         };
         CourierShiftResponse: {
             /** Format: uuid */
@@ -1133,6 +1230,47 @@ export interface operations {
             };
             /** @description A SYSTEM_ADMIN did not give a district */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getReturns: {
+        parameters: {
+            query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description A SYSTEM_ADMIN did not give a district */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1788,6 +1926,91 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
+            };
+        };
+    };
+    getShopCouriers: {
+        parameters: {
+            query?: {
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListShopCourierSuggestionResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    assignShopPickup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignShopPickupRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A parcel is not packed, no longer waiting, or does not fit the courier's vehicle */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

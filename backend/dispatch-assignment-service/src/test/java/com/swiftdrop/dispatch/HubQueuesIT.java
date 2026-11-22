@@ -104,4 +104,28 @@ class HubQueuesIT {
                 .containsExactly(atKandyHub);
         assertThat(service.getAssignments(null, C, PageRequest.of(0, 20)).getContent()).hasSize(4);
     }
+
+    @Test
+    @DisplayName("Returns: held where it failed, then arriving at and handled by the sender's district")
+    void returnQueues() {
+        var C = SriLankanDistrict.COLOMBO;
+        var K = SriLankanDistrict.KANDY;
+        String withCourier = order("SD-BACK-0001", C, K, AssignmentStatus.ASSIGNED, AssignmentLeg.LAST_MILE,
+                InternalQueueStatus.RETURN_TO_HUB);
+        String held = order("SD-HELD-0001", C, K, AssignmentStatus.IN_TRANSFER, AssignmentLeg.LAST_MILE,
+                InternalQueueStatus.HELD_AT_HUB);
+        String localHeld = order("SD-HELD-0002", C, C, AssignmentStatus.IN_TRANSFER, AssignmentLeg.FIRST_MILE,
+                InternalQueueStatus.HELD_AT_HUB);
+        String coming = order("SD-RETN-0001", C, K, AssignmentStatus.IN_TRANSFER, AssignmentLeg.RETURN,
+                InternalQueueStatus.RETURN_OUTBOUND);
+        String toAssign = order("SD-RETN-0002", C, K, AssignmentStatus.UNASSIGNED, AssignmentLeg.RETURN,
+                InternalQueueStatus.RETURN_AT_HUB);
+        order("SD-LOST-0001", C, K, AssignmentStatus.CANCELLED, AssignmentLeg.LAST_MILE, InternalQueueStatus.HELD_AT_HUB);
+
+        assertThat(tracking(service.getReturns(K))).containsExactlyInAnyOrder(withCourier, held);
+        assertThat(tracking(service.getReturns(C))).containsExactlyInAnyOrder(localHeld, coming);
+        assertThat(tracking(service.getUnassignedParcels(C))).containsExactly(toAssign);
+        assertThat(service.getIncoming(K)).isEmpty();
+        assertThat(service.getReadyToSend(C)).isEmpty();
+    }
 }

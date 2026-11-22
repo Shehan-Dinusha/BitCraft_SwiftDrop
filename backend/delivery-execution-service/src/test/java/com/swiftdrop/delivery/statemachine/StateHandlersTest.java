@@ -51,36 +51,39 @@ class StateHandlersTest {
     }
 
     @Test
-    @DisplayName("PickedUpState allows IN_TRANSIT, AT_ORIGIN_HUB and FAILED")
+    @DisplayName("PickedUpState allows IN_TRANSIT, AT_ORIGIN_HUB, a failed attempt and FAILED")
     void testPickedUpState() {
         PickedUpState state = new PickedUpState();
         assertThat(state.state()).isEqualTo(DeliveryState.PICKED_UP);
         assertThat(state.allowedNext()).containsExactlyInAnyOrder(
                 DeliveryState.IN_TRANSIT,
                 DeliveryState.AT_ORIGIN_HUB,
+                DeliveryState.ATTEMPT_FAILED,
                 DeliveryState.FAILED
         );
     }
 
     @Test
-    @DisplayName("InTransitState allows OUT_FOR_DELIVERY, AT_DESTINATION_HUB and FAILED")
+    @DisplayName("InTransitState allows OUT_FOR_DELIVERY, AT_DESTINATION_HUB, a failed attempt and FAILED")
     void testInTransitState() {
         InTransitState state = new InTransitState();
         assertThat(state.state()).isEqualTo(DeliveryState.IN_TRANSIT);
         assertThat(state.allowedNext()).containsExactlyInAnyOrder(
                 DeliveryState.OUT_FOR_DELIVERY,
                 DeliveryState.AT_DESTINATION_HUB,
+                DeliveryState.ATTEMPT_FAILED,
                 DeliveryState.FAILED
         );
     }
 
     @Test
-    @DisplayName("OutForDeliveryState allows only DELIVERED and FAILED")
+    @DisplayName("OutForDeliveryState allows DELIVERED, a failed attempt and FAILED")
     void testOutForDeliveryStateAllowedTransitions() {
         OutForDeliveryState state = new OutForDeliveryState();
         assertThat(state.state()).isEqualTo(DeliveryState.OUT_FOR_DELIVERY);
         assertThat(state.allowedNext()).containsExactlyInAnyOrder(
                 DeliveryState.DELIVERED,
+                DeliveryState.ATTEMPT_FAILED,
                 DeliveryState.FAILED
         );
     }
@@ -102,12 +105,12 @@ class StateHandlersTest {
                 "COURIER"
         );
 
-        when(mockGuard.isSatisfied(deliveryId)).thenReturn(false);
+        when(mockGuard.isSatisfied(deliveryId, null)).thenReturn(false);
         assertThatThrownBy(() -> state.validate(request, session))
                 .isInstanceOf(InvalidStateTransitionException.class)
                 .hasMessageContaining("Proof of delivery must be verified");
 
-        when(mockGuard.isSatisfied(deliveryId)).thenReturn(true);
+        when(mockGuard.isSatisfied(deliveryId, null)).thenReturn(true);
         assertThatCode(() -> state.validate(request, session))
                 .doesNotThrowAnyException();
     }

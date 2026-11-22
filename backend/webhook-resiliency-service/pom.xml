@@ -9,11 +9,10 @@
     </parent>
     <artifactId>webhook-resiliency-service</artifactId>
 
-    <!-- Coverage ratchet: current baseline, below the project target of 70% line / 50% branch.
-         Raise these as tests are added (see jacoco:check in backend/pom.xml). -->
+    <!-- Coverage ratchet: above the project target, so it cannot fall back (see jacoco:check in backend/pom.xml). -->
     <properties>
-        <jacoco.line.minimum>0.08</jacoco.line.minimum>
-        <jacoco.branch.minimum>0.10</jacoco.branch.minimum>
+        <jacoco.line.minimum>0.85</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.68</jacoco.branch.minimum>
     </properties>
     <packaging>jar</packaging>
     <name>SwiftDrop :: WebhookResiliency</name>
@@ -38,11 +37,6 @@
         <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId><artifactId>maven-failsafe-plugin</artifactId>
-            <!-- The module's test sources were removed on purpose for the current development phase
-                 (see IMPLEMENTATION_PLAN.md, "NO AUTOMATED TESTS IN THIS DEVELOPMENT SESSION"), so an empty
-                 integration-test run must not fail `mvn verify`. Set this back to true when *IT classes are
-                 restored, so a misconfiguration can never silently skip them. -->
-            <configuration><failIfNoTests>false</failIfNoTests></configuration>
         </plugin>
     </plugins></build>
 </project>

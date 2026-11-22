@@ -811,7 +811,7 @@ export interface components {
              * @description Template code of the notification; null for older notifications
              * @enum {string|null}
              */
-            notificationType?: "PARCEL_CREATED" | "PARCEL_PICKED_UP" | "PARCEL_OUT_FOR_DELIVERY" | "PARCEL_DELIVERED" | "PARCEL_FAILED" | "COURIER_ASSIGNED" | "MERCHANT_COURIER_ASSIGNED" | "MERCHANT_DELIVERY_FAILED" | "OPS_DELIVERY_FAILED" | "DISPATCH_FAILED" | null;
+            notificationType?: "PARCEL_CREATED" | "PARCEL_PICKED_UP" | "PARCEL_OUT_FOR_DELIVERY" | "PARCEL_DELIVERED" | "PARCEL_FAILED" | "PARCEL_RETURNING" | "PARCEL_RETURNED" | "MERCHANT_RETURN" | "COURIER_ASSIGNED" | "MERCHANT_COURIER_ASSIGNED" | "MERCHANT_DELIVERY_FAILED" | "OPS_DELIVERY_FAILED" | "DISPATCH_FAILED" | null;
             read?: boolean;
             /** Format: date-time */
             createdAt?: string;

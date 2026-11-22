@@ -1,3 +1,4 @@
+import { toE164 } from '@/utils/phone';
 import type {
   CreateOrderRequest,
   FeeEstimateRequest,
@@ -182,17 +183,6 @@ export function placeLabel(city: string | undefined, district: SriLankanDistrict
     ? city.trim()
     : `${city.trim()}, ${label}`;
 }
-
-/** Keeps the 9 subscriber digits; a leading 0 or 94 typed out of habit is dropped. */
-export function normalisePhoneDigits(input: string): string {
-  let digits = input.replace(/\D/g, '');
-  if (digits.startsWith('94') && digits.length > 9) digits = digits.slice(2);
-  if (digits.startsWith('0')) digits = digits.slice(1);
-  return digits.slice(0, 9);
-}
-
-/** Backend format: `+94` followed by 9 digits (`ValidationPatterns.PHONE`). */
-export const toE164 = (digits: string) => `+94${digits}`;
 
 const toNumber = (value: string) => Number(value.trim());
 const optionalText = (value: string) => (value.trim() ? value.trim() : undefined);

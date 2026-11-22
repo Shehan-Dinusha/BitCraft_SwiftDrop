@@ -45,6 +45,7 @@ import org.springframework.stereotype.Service;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -123,7 +124,19 @@ public class OrderPdfGeneratorService {
         });
     }
 
-    /** One A5 page confirming delivery, the fee and any cash collected from the recipient. */
+    /** One A5 page per order: the labels only, to print and attach. */
+    public byte[] generateShippingLabelsPdf(List<CustomerOrder> orders) {
+        return render(orders.size() == 1 ? orders.getFirst().getTrackingNumber() : "Shipping labels", orders.getFirst(), "shipping labels", "Shipping labels", orders.size(), (doc, writer) -> {
+            for (int i = 0; i < orders.size(); i++) {
+                if (i > 0) {
+                    doc.newPage();
+                }
+                buildShippingLabel(doc, writer, orders.get(i));
+            }
+        });
+    }
+
+    /** One A5 page confirming delivery, and the fee. */
     public byte[] generateDeliveryReceiptPdf(CustomerOrder order) {
         return render(order, "delivery receipt", "Delivery receipt", 1,
                 (doc, writer) -> buildDeliveryReceipt(doc, order));
@@ -136,12 +149,11 @@ public class OrderPdfGeneratorService {
     //
     // Print rules (most senders print in black and white on a home printer):
     //  - 100% black only inside the label: no colour, no grey text, no large solid fills.
-    //  - Nothing relies on colour: the service level differs by box fill AND letters, and cash on
-    //    delivery has its own heavy panel.
+    //  - Nothing relies on colour: the service level differs by box fill AND letters.
     //  - Barcodes are vector, at a whole number of printer dots per bar (X = 1.2 pt = 5 dots at
     //    300 dpi), with quiet zones kept clear (10X for Code 128, 4 modules for QR).
     //  - Fixed zones in the order handlers need them: service, sort (district and postcode),
-    //    tracking barcode, recipient, cash, return address.
+    //    tracking barcode, recipient, parcel, return address.
 
     private static final Color BLACK = Color.BLACK;
 
@@ -151,7 +163,6 @@ public class OrderPdfGeneratorService {
     private static final Color STANDARD_COLOR = new Color(29, 78, 216);   // blue-700
     private static final Color EXPRESS_COLOR = new Color(146, 64, 14);    // amber-800: amber-700 printed too light in greyscale
     private static final Color SAME_DAY_COLOR = new Color(109, 40, 217);  // violet-700
-    private static final Color COD_COLOR = new Color(185, 28, 28);        // red-700
     private static final float SERVICE_BAND = 4f;
 
     // Page and label geometry in PDF points (1 mm = 2.8346 pt), A5 = 419.53 x 595.28.
@@ -168,7 +179,7 @@ public class OrderPdfGeneratorService {
     private static final float Z_SORT = 453.5f;
     private static final float Z_BARCODE = 368.5f;
     private static final float Z_RECIPIENT = 243.8f; // 44 mm: the recipient gets the most room
-    private static final float Z_CASH = 192.8f;
+    private static final float Z_PARCEL = 192.8f;
     private static final float Z_RETURN = 164.4f;
 
 
@@ -181,7 +192,7 @@ public class OrderPdfGeneratorService {
         drawSortZone(cb, order);
         drawBarcode(cb, order);
         drawRecipient(cb, order);
-        drawCashAndParcel(cb, order);
+        drawParcel(cb, order);
         drawReturnTo(cb, order);
         drawInfoStrip(cb, order);
         drawInstructions(cb);
@@ -200,7 +211,7 @@ public class OrderPdfGeneratorService {
         rule(cb, Z_SORT, 0.75f);
         rule(cb, Z_BARCODE, 2f); // heavier: separates the sorting half from the delivery half
         rule(cb, Z_RECIPIENT, 0.75f);
-        rule(cb, Z_CASH, 0.75f);
+        rule(cb, Z_PARCEL, 0.75f);
         rule(cb, Z_RETURN, 0.75f);
     }
 
@@ -227,16 +238,6 @@ public class OrderPdfGeneratorService {
 
         float wordRight = iconX - 6;
         text(cb, speedLabel(speed).toUpperCase(Locale.ENGLISH), sansBold, 16, wordRight, top - 22, Element.ALIGN_RIGHT);
-        if (positive(order.getCodAmount())) {
-            float tagW = mm(12);
-            float tagH = mm(6);
-            float tagX = wordRight - tagW;
-            float tagY = top - 42;
-            cb.setColorFill(COD_COLOR);
-            cb.rectangle(tagX, tagY, tagW, tagH);
-            cb.fill();
-            text(cb, "COD", sansBold, 9, tagX + tagW / 2, tagY + 5, Element.ALIGN_CENTER, WHITE);
-        }
     }
 
     /** Standard: outlined "S". Express: solid "E". Same day: solid "SD" with an inset rule. */
@@ -370,56 +371,18 @@ public class OrderPdfGeneratorService {
                 CONTENT_LEFT, Math.max(cityBaseline, addressEnd - 15), Element.ALIGN_LEFT);
     }
 
-    /** Cash panel on the left, only when there is cash to collect (heavy and reversed); weight and piece count beside it, or alone. */
-    private void drawCashAndParcel(PdfContentByte cb, CustomerOrder order) {
+    /** Weight and piece count. The recipient never pays anything, so the label shows no money. */
+    private void drawParcel(PdfContentByte cb, CustomerOrder order) {
         float top = Z_RECIPIENT;
-        float bottom = Z_CASH;
-        float panelRight = CONTENT_LEFT + mm(62);
-        float panelTop = top - 5;
-        float panelBottom = bottom + 5;
-        float panelH = panelTop - panelBottom;
-        if (positive(order.getCodAmount())) {
-            // Light tint for colour prints; it drops to near-white in greyscale, where the heavy border
-            // and the solid square still carry the message.
-            cb.setColorFill(new Color(254, 242, 242)); // red-50
-            cb.rectangle(CONTENT_LEFT, panelBottom, panelRight - CONTENT_LEFT, panelH);
-            cb.fill();
-            cb.setColorStroke(COD_COLOR);
-            cb.setLineWidth(2.5f);
-            cb.rectangle(CONTENT_LEFT, panelBottom, panelRight - CONTENT_LEFT, panelH);
-            cb.stroke();
-            float square = panelH;
-            cb.setColorFill(COD_COLOR);
-            cb.rectangle(CONTENT_LEFT, panelBottom, square, square);
-            cb.fill();
-            text(cb, "COD", sansBold, 12, CONTENT_LEFT + square / 2, panelBottom + square / 2 - 4, Element.ALIGN_CENTER, WHITE);
-            float textX = CONTENT_LEFT + square + 6;
-            text(cb, "COLLECT CASH FROM RECIPIENT", sansBold, 6.5f, textX, panelTop - 10, Element.ALIGN_LEFT, COD_COLOR);
-            String amount = currency(order) + " " + money(order.getCodAmount());
-            float size = fit(amount, sansBold, 17, 12, panelRight - textX - 4);
-            text(cb, amount, sansBold, size, textX, panelBottom + 6, Element.ALIGN_LEFT);
-        }
-
-        // Without cash to collect there is no panel, so the weight and piece count start at the left edge.
-        float factsX = CONTENT_LEFT;
-        if (positive(order.getCodAmount())) {
-            cb.setColorStroke(BLACK);
-            cb.setLineWidth(0.75f);
-            float divider = panelRight + 8;
-            cb.moveTo(divider, bottom);
-            cb.lineTo(divider, top);
-            cb.stroke();
-            factsX = divider + 8;
-        }
-        text(cb, "WEIGHT", sansBold, 6.5f, factsX, top - 12, Element.ALIGN_LEFT);
-        text(cb, kg(order.getActualWeightKg()), sansBold, 12, factsX, top - 24, Element.ALIGN_LEFT);
-        text(cb, "PIECE", sansBold, 6.5f, factsX, top - 35, Element.ALIGN_LEFT);
-        text(cb, "1 of 1", sansBold, 12, factsX, top - 47, Element.ALIGN_LEFT);
+        text(cb, "WEIGHT", sansBold, 6.5f, CONTENT_LEFT, top - 12, Element.ALIGN_LEFT);
+        text(cb, kg(order.getActualWeightKg()), sansBold, 12, CONTENT_LEFT, top - 24, Element.ALIGN_LEFT);
+        text(cb, "PIECE", sansBold, 6.5f, CONTENT_LEFT, top - 35, Element.ALIGN_LEFT);
+        text(cb, "1 of 1", sansBold, 12, CONTENT_LEFT, top - 47, Element.ALIGN_LEFT);
     }
 
     /** Return address on one or two compact lines: the sender's name in bold, then the address. No phone. */
     private void drawReturnTo(PdfContentByte cb, CustomerOrder order) throws IOException, WriterException {
-        float top = Z_CASH;
+        float top = Z_PARCEL;
         text(cb, "IF UNDELIVERED, RETURN TO", sansBold, 6.5f, CONTENT_LEFT, top - 9.5f, Element.ALIGN_LEFT);
         String address = addressLines(order.getPickupAddressLine1(), order.getPickupAddressLine2()) + ", "
                 + placeShort(order.getPickupCity(), order.getPickupDistrict(), order.getPickupPostalCode());
@@ -591,8 +554,7 @@ public class OrderPdfGeneratorService {
             doc.add(instructionsTable(order));
         }
 
-        // Fee table: one line per charge, then the total. Cash on delivery is not a fee, so it sits
-        // below the total as information.
+        // Fee table: one line per charge, then the total.
         PdfPTable fees = table(new float[]{3f, 1.3f});
         fees.setSpacingBefore(14);
         fees.addCell(headerCell("Description", Element.ALIGN_LEFT));
@@ -628,17 +590,11 @@ public class OrderPdfGeneratorService {
         fees.addCell(totalValue);
         doc.add(fees);
 
-        if (positive(order.getCodAmount()) || positive(order.getDeclaredValue())) {
+        if (positive(order.getDeclaredValue())) {
             PdfPTable extras = table(new float[]{3f, 1.3f});
             extras.setSpacingBefore(10);
-            if (positive(order.getCodAmount())) {
-                extras.addCell(lineCell("Cash to collect from the recipient", "Paid to the courier on delivery, not a fee"));
-                extras.addCell(amountCell(currency, order.getCodAmount(), false));
-            }
-            if (positive(order.getDeclaredValue())) {
-                extras.addCell(lineCell("Declared value of the contents", null));
-                extras.addCell(amountCell(currency, order.getDeclaredValue(), false));
-            }
+            extras.addCell(lineCell("Declared value of the contents", null));
+            extras.addCell(amountCell(currency, order.getDeclaredValue(), false));
             doc.add(extras);
         }
 
@@ -697,10 +653,6 @@ public class OrderPdfGeneratorService {
         money.addCell(lineCell("Delivery fee", speedLabel(order.getOrderSpeed()) + " service, billed as "
                 + kg(order.getChargeableWeightKg())));
         money.addCell(amountCell(currency, fee, false));
-        if (positive(order.getCodAmount())) {
-            money.addCell(lineCell("Cash collected from the recipient", "Cash on delivery"));
-            money.addCell(amountCell(currency, order.getCodAmount(), false));
-        }
         doc.add(money);
 
         // Signatures and the QR side by side.
@@ -866,11 +818,15 @@ public class OrderPdfGeneratorService {
     }
 
     private byte[] render(CustomerOrder order, String kind, String title, int pages, PageBuilder builder) {
+        return render(order.getTrackingNumber(), order, kind, title, pages, builder);
+    }
+
+    private byte[] render(String name, CustomerOrder order, String kind, String title, int pages, PageBuilder builder) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A5, MARGIN, MARGIN, MARGIN, MARGIN + FOOTER_SPACE);
             PdfWriter writer = PdfWriter.getInstance(document, out);
-            writer.setPageEvent(new Footer(order.getTrackingNumber(), pages));
-            document.addTitle(title + " " + safe(order.getTrackingNumber()));
+            writer.setPageEvent(new Footer(name, pages));
+            document.addTitle(title + " " + safe(name));
             document.addAuthor("SwiftDrop");
             document.addCreator("SwiftDrop customer-order-service");
             document.open();

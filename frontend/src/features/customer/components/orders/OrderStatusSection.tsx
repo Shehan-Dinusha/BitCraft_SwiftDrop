@@ -113,8 +113,16 @@ function TerminalStatus({ order }: { order: CustomerOrderResponse }) {
   }
   if (status === 'RETURNED_TO_SENDER') {
     return (
-      <Alert tone="warning" title="Returning to you">
-        This parcel could not be delivered and is on its way back to the pickup address.
+      <Alert tone="info" title={`Returned ${formatDate(order.updatedAt, true)}`}>
+        This parcel could not be delivered and was handed back to you.
+      </Alert>
+    );
+  }
+  if (status === 'RETURNING') {
+    return (
+      <Alert tone="warning" title="Coming back to you">
+        This parcel could not be delivered. A courier brings it back to the pickup address. The
+        return is free.
       </Alert>
     );
   }

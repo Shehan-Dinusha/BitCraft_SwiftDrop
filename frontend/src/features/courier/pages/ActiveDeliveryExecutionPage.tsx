@@ -2,12 +2,15 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { deliveryApi } from '@/services/api/deliveryApi';
+import { parseApiError } from '@/services/api/apiError';
 import type {
+  CourierJobResponse,
   DeliverySessionResponse,
   DeliveryState,
   DeliveryFailureReason
 } from '@/services/api/deliveryApi';
-import { courierNextStep, crossesDistricts } from '@/types/fsm';
+import { courierNextStep, crossesDistricts, isFinished } from '@/types/fsm';
+import { failureReasons, failureTarget, failureTitle } from '@/utils/failureReasons';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
@@ -15,18 +18,22 @@ import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBann
 import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBar/ErgonomicActionBar';
 import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 import { cn } from '@/utils/cn';
+import { JobDetailsCard } from '../components/JobDetailsCard';
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
 import { DeliveryFailureReportModal } from '../components/DeliveryFailureReportModal';
-import {
-  ArrowLeft,
-  RefreshCw,
-  MapPin,
-  Package,
-  Phone,
-  Navigation,
-  AlertTriangle
-} from 'lucide-react';
+import { ArrowLeft, RefreshCw, Package, AlertTriangle } from 'lucide-react';
+
+const STEP_SAVED: Partial<Record<DeliveryState, string>> = {
+  ATTEMPT_FAILED: 'Recorded. Bring the parcel to your hub.',
+  HELD_AT_HUB: 'Handed in at the hub.',
+  OUT_FOR_RETURN: 'Collected. Bring it back to the sender.',
+  RETURN_AT_HUB: 'Handed back at the hub.',
+  RETURNED: 'Returned to the sender.',
+  FAILED: 'Recorded.'
+};
+/** Steps that end this courier's part: from then on the parcel is not theirs to read. */
+const HAND_IN: DeliveryState[] = ['AT_ORIGIN_HUB', 'HELD_AT_HUB', 'RETURN_AT_HUB'];
 
 export function ActiveDeliveryExecutionPage() {
   const { id } = useParams<{ id?: string }>();
@@ -40,7 +47,13 @@ export function ActiveDeliveryExecutionPage() {
 
   const [session, setSession] = useState<DeliverySessionResponse | null>(null);
   const [allDeliveries, setAllDeliveries] = useState<DeliverySessionResponse[]>([]);
-  const [isPoDVerified, setIsPoDVerified] = useState(false);
+  const [job, setJob] = useState<CourierJobResponse | null>(null);
+  const [jobError, setJobError] = useState<string | null>(null);
+  // The step the ticked box belongs to, so a tick never carries over to another job or amount.
+  const [confirmedCash, setConfirmedCash] = useState<string | null>(null);
+  // The trip the photo belongs to: one of an earlier attempt proves nothing on the next.
+  const [proofFor, setProofFor] = useState<string | null>(null);
+  const [handedIn, setHandedIn] = useState<string | null>(null);
   const [isPoDModalOpen, setIsPoDModalOpen] = useState(false);
   const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -55,6 +68,9 @@ export function ActiveDeliveryExecutionPage() {
     return next ? [next] : ([] as DeliveryState[]);
   }, [session?.currentState, viaHubs]);
 
+  const proofKey = `${session?.deliveryId}:${session?.proofSince ?? ''}`;
+  const isPoDVerified = proofFor === proofKey;
+
   // Load delivery session
   const loadDelivery = useCallback(async () => {
     try {
@@ -65,7 +81,10 @@ export function ActiveDeliveryExecutionPage() {
       // Always load all today's deliveries to populate the switcher bar
       let myDeliveries: DeliverySessionResponse[] = [];
       try {
-        myDeliveries = (await deliveryApi.getMyDeliveries('today')) || [];
+        // A parcel handed in at the hub is no longer this courier's to open.
+        myDeliveries = ((await deliveryApi.getMyDeliveries('today')) || []).filter(
+          (d) => d.currentState !== 'AT_ORIGIN_HUB'
+        );
         setAllDeliveries(myDeliveries);
       } catch {
         myDeliveries = [];
@@ -78,31 +97,31 @@ export function ActiveDeliveryExecutionPage() {
       } else if (myDeliveries.length > 0) {
         // Prioritize actionable/in-progress delivery so the slide-to-transition bar is immediately available
         activeDelivery =
-          myDeliveries.find(
-            (d) => d.currentState !== 'DELIVERED' && d.currentState !== 'FAILED' && d.currentState !== 'CANCELLED'
-          ) || myDeliveries[0];
+          myDeliveries.find((d) => !isFinished(d.currentState)) || myDeliveries[0];
       } else if (courierId) {
         // Fallback: lookup current courier's active deliveries
         const courierDeliveries = await deliveryApi.getDeliveriesByCourier(courierId);
         setAllDeliveries(courierDeliveries || []);
         if (courierDeliveries && courierDeliveries.length > 0) {
           activeDelivery =
-            courierDeliveries.find(
-              (d) => d.currentState !== 'DELIVERED' && d.currentState !== 'FAILED' && d.currentState !== 'CANCELLED'
-            ) || courierDeliveries[0];
+            courierDeliveries.find((d) => !isFinished(d.currentState)) || courierDeliveries[0];
         }
       }
 
       if (activeDelivery) {
         setSession(activeDelivery);
+        setProofFor(null);
         if (activeDelivery.deliveryId) {
           try {
             const pod = await deliveryApi.getProofOfDelivery(activeDelivery.deliveryId);
-            if (pod && pod.verified) {
-              setIsPoDVerified(true);
+            const since = activeDelivery.proofSince;
+            const counts =
+              !since || Boolean(pod?.verifiedAt && Date.parse(pod.verifiedAt) > Date.parse(since));
+            if (pod?.verified && counts) {
+              setProofFor(`${activeDelivery.deliveryId}:${since ?? ''}`);
             }
           } catch {
-            setIsPoDVerified(false);
+            // No proof yet.
           }
         }
       } else {
@@ -120,6 +139,52 @@ export function ActiveDeliveryExecutionPage() {
     loadDelivery();
   }, [loadDelivery]);
 
+  // Addresses and cash change with each step, so they are read again once the step is saved.
+  const deliveryId = session?.deliveryId;
+  const currentState = session?.currentState;
+  const loadJob = useCallback(
+    async (isCurrent: () => boolean = () => true) => {
+      if (!deliveryId) return;
+      try {
+        const loaded = await deliveryApi.getJob(deliveryId);
+        if (!isCurrent()) return;
+        setJob(loaded);
+        setJobError(null);
+      } catch (err: unknown) {
+        if (!isCurrent()) return;
+        setJob(null);
+        setJobError(parseApiError(err).message ?? 'The addresses could not be loaded. Try again.');
+      }
+    },
+    [deliveryId]
+  );
+
+  useEffect(() => {
+    if (pendingState !== null || handedIn === deliveryId) return;
+    let current = true;
+    void loadJob(() => current);
+    return () => {
+      current = false;
+    };
+  }, [loadJob, currentState, pendingState, handedIn, deliveryId]);
+
+  // Another job's addresses are never shown while this one's load.
+  const shownJob = job?.deliveryId === deliveryId ? job : null;
+  const orderCancelled = Boolean(shownJob?.cancelled);
+
+  // Only a pickup takes money: the delivery fee, from the sender.
+  const atPickup = currentState === 'ASSIGNED';
+  const cashDue = (atPickup && shownJob?.feeToCollect) || 0;
+  const cashKey = `${deliveryId}:${cashDue}`;
+  const cashConfirmed = cashDue > 0 && confirmedCash === cashKey;
+  // Until the job is loaded the amount is unknown, so the step waits for it.
+  const cashBlocked = atPickup && (!shownJob || (cashDue > 0 && !cashConfirmed));
+  const CASH_FIRST = 'Collect the cash and tick the box first.';
+
+  const state = (currentState || 'CREATED') as DeliveryState;
+  const reasons = failureReasons(state, viaHubs);
+  const mine = Boolean(deliveryId) && handedIn !== deliveryId;
+
   // Handle state transition with optimistic update and rollback on 409 Conflict
   const handleTransition = async (
     targetState: DeliveryState,
@@ -127,6 +192,11 @@ export function ActiveDeliveryExecutionPage() {
     notes?: string
   ) => {
     if (!session?.deliveryId) return;
+    const takesCash = targetState === 'PICKED_UP';
+    if (takesCash && cashBlocked) {
+      setErrorMsg(CASH_FIRST);
+      return;
+    }
 
     // Snapshot current session for rollback
     const previousSession = { ...session };
@@ -139,7 +209,7 @@ export function ActiveDeliveryExecutionPage() {
       ...session,
       currentState: targetState,
       ...(targetState === 'DELIVERED' ? { deliveredAt: new Date().toISOString() } : {}),
-      ...(targetState === 'FAILED' && reason ? { failedReason: reason } : {})
+      ...(reason ? { failedReason: reason } : {})
     });
 
     try {
@@ -147,10 +217,14 @@ export function ActiveDeliveryExecutionPage() {
         targetState,
         actorRole: 'COURIER',
         failureReason: reason,
-        notes: notes || `Courier transitioned to ${targetState}`
+        notes: notes || `Courier transitioned to ${targetState}`,
+        cashCollected: takesCash && cashDue > 0 ? cashDue : undefined
       });
       setSession(updated);
-      setSuccessMsg(`Delivery moved to ${targetState.replace(/_/g, ' ')}!`);
+      setHandedIn(HAND_IN.includes(targetState) ? (session.deliveryId ?? null) : null);
+      setSuccessMsg(
+        STEP_SAVED[targetState] ?? `Delivery moved to ${targetState.replace(/_/g, ' ')}!`
+      );
     } catch (err: unknown) {
       // 2. Rollback on 409 Conflict or any server error
       setSession(previousSession);
@@ -160,13 +234,10 @@ export function ActiveDeliveryExecutionPage() {
         const axiosErr = err as {
           response?: { status?: number; data?: { message?: string; error?: string } };
         };
-        const status = axiosErr.response?.status;
         const serverMsg = axiosErr.response?.data?.message || axiosErr.response?.data?.error;
-        if (status === 409) {
-          msg = `State transition rejected (409 Conflict): ${serverMsg || 'Illegal state transition or missing proof of delivery'}`;
-        } else if (serverMsg) {
-          msg = serverMsg;
-        }
+        if (serverMsg) msg = serverMsg;
+        // The amount may have changed since it was shown, so it is read again.
+        void loadJob();
       } else if (err instanceof Error) {
         msg = err.message;
       }
@@ -197,17 +268,20 @@ export function ActiveDeliveryExecutionPage() {
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          {session && (session.currentState !== 'DELIVERED' && session.currentState !== 'FAILED' && session.currentState !== 'CANCELLED') && (
-            <Button
-              variant="outline"
-              onClick={() => setIsFailureModalOpen(true)}
-              disabled={loading || pendingState !== null}
-              className="text-xs text-status-danger-fg hover:border-status-danger-border hover:bg-status-danger-bg min-h-[44px]"
-            >
-              <AlertTriangle className="mr-1.5 h-4 w-4 text-status-danger-fg" />
-              Can't deliver
-            </Button>
-          )}
+          {session &&
+            !orderCancelled &&
+            mine &&
+            !isFinished(session.currentState) && (
+              <Button
+                variant="outline"
+                onClick={() => setIsFailureModalOpen(true)}
+                disabled={loading || pendingState !== null}
+                className="text-xs text-status-danger-fg hover:border-status-danger-border hover:bg-status-danger-bg min-h-[44px]"
+              >
+                <AlertTriangle className="mr-1.5 h-4 w-4 text-status-danger-fg" />
+                {failureTitle(state, viaHubs)}
+              </Button>
+            )}
 
           <Button
             variant="outline"
@@ -241,9 +315,7 @@ export function ActiveDeliveryExecutionPage() {
       ) : !session ? (
         <SurfaceCard className="p-8 text-center">
           <Package className="mx-auto h-12 w-12 text-muted" />
-          <h2 className="mt-3 text-lg font-bold text-primary">
-            No active delivery
-          </h2>
+          <h2 className="mt-3 text-lg font-bold text-primary">No active delivery</h2>
           <p className="mt-1 text-sm text-secondary">
             {orderIdParam
               ? `Nothing found for order ${orderIdParam}.`
@@ -261,8 +333,9 @@ export function ActiveDeliveryExecutionPage() {
           {allDeliveries.length > 1 && (
             <SurfaceCard className="space-y-2.5 p-3.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-primary">Today's Jobs ({allDeliveries.length})</span>
-                <span className="text-secondary text-[11px]">Select job to traverse state</span>
+                <span className="font-semibold text-primary">
+                  Today's Jobs ({allDeliveries.length})
+                </span>
               </div>
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
                 {allDeliveries.map((job) => {
@@ -293,15 +366,9 @@ export function ActiveDeliveryExecutionPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-bold text-brand-primary">
-                  {session.trackingNumber || 'UNTRACKED'}
-                </span>
-                <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-primary">
-                  {session.courierName ? `Courier: ${session.courierName}` : 'SwiftDrop Express'}
+                  {session.trackingNumber}
                 </span>
               </div>
-              <span className="text-xs text-secondary">
-                Order #{session.orderId ? session.orderId.substring(0, 8) : 'N/A'}
-              </span>
             </div>
 
             {/* Stepper with Touch Density */}
@@ -314,72 +381,70 @@ export function ActiveDeliveryExecutionPage() {
             </div>
           </SurfaceCard>
 
+          {orderCancelled && session.currentState !== 'CANCELLED' && (
+            <StatusBanner tone="danger" title="This order was cancelled">
+              Do not pick it up or collect any cash. Ask your dispatcher what to do with it.
+            </StatusBanner>
+          )}
+
+          {atPickup && session.merchantId && !orderCancelled && (
+            <StatusBanner tone="info" title={session.merchantName ?? 'Shop pickup'}>
+              <span className="block">Collect all this shop's parcels with one payment.</span>
+              <Button
+                variant="outline"
+                className="mt-2 min-h-target"
+                onClick={() => navigate(`/courier/shops/${session.merchantId}`)}
+              >
+                Open the shop
+              </Button>
+            </StatusBanner>
+          )}
+
+          {jobError && (
+            <StatusBanner tone="danger" title="Addresses not loaded">
+              <span className="block">{jobError}</span>
+              <Button
+                variant="outline"
+                className="mt-2 min-h-target"
+                onClick={() => void loadJob()}
+              >
+                Try again
+              </Button>
+            </StatusBanner>
+          )}
+
+          {shownJob && !shownJob.cancelled && mine && (
+            <JobDetailsCard
+              job={shownJob}
+              viaHubs={viaHubs}
+              state={session.currentState}
+              pickupDistrict={session.pickupDistrict}
+              deliveryDistrict={session.deliveryDistrict}
+              cashConfirmed={cashConfirmed}
+              onCashConfirmedChange={(checked) => setConfirmedCash(checked ? cashKey : null)}
+            />
+          )}
+
           {/* Primary Action Transition Card */}
-          <OneTapStateTransitionCard
-            session={session}
-            onTransition={handleTransition}
-            onOpenPoD={() => setIsPoDModalOpen(true)}
-            isPoDVerified={isPoDVerified}
-            pendingState={pendingState}
-          />
-
-          {/* Location & Districts Card */}
-          <SurfaceCard className="space-y-4 p-5">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-secondary">
-              Route and contact
-            </h3>
-
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-status-warning-bg text-status-warning-fg">
-                  <MapPin className="h-4 w-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-secondary">Pickup District</span>
-                  <p className="text-sm font-medium text-primary">
-                    {session.pickupDistrict ? `${session.pickupDistrict} District Hub` : 'Merchant Hub, Colombo'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-status-success-bg text-status-success-fg">
-                  <Navigation className="h-4 w-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-secondary">Delivery Destination</span>
-                  <p className="text-sm font-medium text-primary">
-                    {session.deliveryDistrict ? `${session.deliveryDistrict} Recipient Address` : 'Customer Address, Colombo'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 border-t border-border-subtle pt-3 text-xs">
-                <div>
-                  <span className="text-secondary">Attempt Count:</span>
-                  <p className="font-semibold text-primary">
-                    {session.attemptCount ?? 1} of 3
-                  </p>
-                </div>
-                <div>
-                  <span className="text-secondary">Courier Dispatch Hotline:</span>
-                  <p className="flex items-center gap-1 font-semibold text-primary">
-                    <Phone className="h-3.5 w-3.5 text-brand-primary" />
-                    +94 11 234 5678
-                  </p>
-                </div>
-              </div>
-            </div>
-          </SurfaceCard>
-
+          {!orderCancelled && (
+            <OneTapStateTransitionCard
+              session={session}
+              onTransition={handleTransition}
+              onOpenPoD={() => setIsPoDModalOpen(true)}
+              blocked={cashBlocked}
+              handedIn={!mine}
+              isPoDVerified={isPoDVerified}
+              pendingState={pendingState}
+            />
+          )}
 
           {/* Ergonomic Action Bar: thumb-friendly sticky bar for next allowed action */}
-          {allowedNextStates.length > 0 && (
-            <div className="sticky bottom-4 z-20 pt-2">
+          {!orderCancelled && !cashBlocked && mine && allowedNextStates.length > 0 && (
+            <div className="sticky bottom-[76px] z-20 pt-2 md:bottom-4">
               <ErgonomicActionBar
                 next={allowedNextStates}
                 onTransition={(target) => {
-                  if (target === 'DELIVERED' && !isPoDVerified) {
+                  if ((target === 'DELIVERED' || target === 'RETURNED') && !isPoDVerified) {
                     setIsPoDModalOpen(true);
                     return;
                   }
@@ -399,13 +464,15 @@ export function ActiveDeliveryExecutionPage() {
               onClose={() => setIsPoDModalOpen(false)}
               deliveryId={session.deliveryId}
               onVerified={() => {
-                setIsPoDVerified(true);
-                setSuccessMsg('Proof of Delivery recorded and verified!');
+                setProofFor(proofKey);
+                setSuccessMsg('Photo saved.');
               }}
-              onTransitionToDelivered={async () => {
-                setIsPoDVerified(true);
-                await handleTransition('DELIVERED', undefined, 'Completed delivery with verified photo proof');
-              }}
+              returning={state === 'OUT_FOR_RETURN'}
+              onComplete={() =>
+                state === 'OUT_FOR_RETURN'
+                  ? handleTransition('RETURNED', undefined, 'Returned to the sender with a photo')
+                  : handleTransition('DELIVERED', undefined, 'Delivered with a photo')
+              }
             />
           )}
 
@@ -416,10 +483,17 @@ export function ActiveDeliveryExecutionPage() {
               onClose={() => setIsFailureModalOpen(false)}
               deliveryId={session.deliveryId}
               trackingNumber={session.trackingNumber}
-              onSubmitFailure={async (reason, notes) => {
-                await handleTransition('FAILED', reason, notes);
-              }}
-              loading={pendingState === 'FAILED'}
+              title={failureTitle(state, viaHubs)}
+              reasons={reasons}
+              consequence={(reason) =>
+                failureTarget(state, reason) === 'ATTEMPT_FAILED'
+                  ? 'Bring the parcel to your hub afterwards.'
+                  : 'This ends the job. Tell your dispatcher.'
+              }
+              onSubmitFailure={(reason, notes) =>
+                handleTransition(failureTarget(state, reason), reason, notes)
+              }
+              loading={pendingState === 'FAILED' || pendingState === 'ATTEMPT_FAILED'}
             />
           )}
         </div>

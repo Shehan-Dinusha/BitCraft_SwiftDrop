@@ -1,5 +1,6 @@
 package com.swiftdrop.dispatch.dto;
 
+import com.swiftdrop.contracts.enums.DeliveryFailureReason;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
 import com.swiftdrop.contracts.enums.OrderSpeed;
@@ -62,10 +63,10 @@ public record DispatchAssignmentResponse(
         @Schema(description = "Last update timestamp")
         Instant updatedAt,
 
-        @Schema(description = "FIRST_MILE (pickup district) or LAST_MILE (drop-off district, after its hub accepted it)")
+        @Schema(description = "FIRST_MILE (pickup district), LAST_MILE (from the drop-off district's hub) or RETURN (back to the sender)")
         AssignmentLeg leg,
 
-        @Schema(description = "Between the legs of a cross-district order: AT_HUB, OUTBOUND or INCOMING")
+        @Schema(description = "Between the legs: AT_HUB, OUTBOUND or INCOMING; after a failed attempt: RETURN_TO_HUB, HELD_AT_HUB, RETURN_OUTBOUND or RETURN_AT_HUB")
         InternalQueueStatus hubStage,
 
         @Schema(description = "The district whose dispatcher manages the order now")
@@ -84,7 +85,31 @@ public record DispatchAssignmentResponse(
         BigDecimal heightCm,
 
         @Schema(description = "Parcel weight in kg", example = "2.5")
-        BigDecimal weightKg
+        BigDecimal weightKg,
+
+        @Schema(description = "The shop, for an order it sent; null otherwise")
+        UUID merchantId,
+
+        @Schema(description = "The shop's name; null until it first asked for a pickup", example = "Nimal Fashion")
+        String merchantName,
+
+        @Schema(description = "Collected together with the shop's other parcels (a standard order still at the shop)")
+        boolean shopPickup,
+
+        @Schema(description = "Whether a courier can be sent: a shop's parcel only once the shop said it is packed")
+        boolean readyForPickup,
+
+        @Schema(description = "When the shop said the parcel is packed")
+        Instant readyAt,
+
+        @Schema(description = "Delivery attempts that failed", example = "1")
+        int deliveryAttempts,
+
+        @Schema(description = "Why the last attempt failed")
+        DeliveryFailureReason lastAttemptReason,
+
+        @Schema(description = "Whether it may still go out for another attempt")
+        boolean canRetry
 ) {
     public static DispatchAssignmentResponse fromEntity(DispatchAssignment entity) {
         if (entity == null) return null;
@@ -112,7 +137,15 @@ public record DispatchAssignmentResponse(
                 entity.getLengthCm(),
                 entity.getWidthCm(),
                 entity.getHeightCm(),
-                entity.getWeightKg()
+                entity.getWeightKg(),
+                entity.isMerchantOrder() ? entity.getMerchantId() : null,
+                entity.getMerchantName(),
+                entity.isShopPickup(),
+                entity.isReadyForPickup(),
+                entity.getReadyAt(),
+                entity.getDeliveryAttempts(),
+                entity.getLastAttemptReason(),
+                DeliveryFailureReason.canRetry(entity.getDeliveryAttempts(), entity.getLastAttemptReason())
         );
     }
 }

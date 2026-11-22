@@ -6,7 +6,7 @@ export function LoadBar({ used, limit, label }: { used: number; limit: number; l
   return (
     <div className="flex items-center gap-2">
       <div
-        className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-elevated"
+        className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-border-strong"
         aria-hidden="true"
       >
         <div

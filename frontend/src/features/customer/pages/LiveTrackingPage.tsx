@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Button, EmptyState, PageHeader, Skeleton, SurfaceCard } from '@/design-system';
-import { LiveMapCanvas } from '../components/LiveMapCanvas';
 import { TrackingDetails } from '@/features/public-tracking/components/TrackingDetails';
 import { TrackingSearchForm } from '@/features/public-tracking/components/TrackingSearchForm';
 import { useTrackingStream } from '@/hooks/useTrackingStream';
@@ -32,7 +31,7 @@ export function LiveTrackingPage() {
   return (
     <main className="flex w-full flex-col gap-5 p-4 sm:p-6 lg:px-8">
       <PageHeader
-        title="Live tracking"
+        title="Track a parcel"
         className="border-0 bg-transparent p-0"
       />
 
@@ -100,9 +99,6 @@ export function LiveTrackingPage() {
             </Alert>
           ) : null}
           <TrackingDetails view={view} connection={connection} />
-          <SurfaceCard title="Live map">
-            <LiveMapCanvas />
-          </SurfaceCard>
         </>
       )}
     </main>

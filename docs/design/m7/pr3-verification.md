@@ -42,7 +42,7 @@ Use an existing **APPROVED** merchant. Pending/rejected/suspended merchants rece
     "district": "GAMPAHA",
     "postalCode": "11000",
     "contactName": "Test Recipient",
-    "contactPhone": "+94 71 123 4567"
+    "contactPhone": "+94711234567"
   },
   "parcel": {
     "weightGrams": 1500,

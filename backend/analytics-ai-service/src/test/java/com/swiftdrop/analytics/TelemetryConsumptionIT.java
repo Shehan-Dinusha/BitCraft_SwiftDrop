@@ -341,7 +341,7 @@ class TelemetryConsumptionIT {
             statement.executeUpdate("INSERT INTO upgrade_test.operational_sla_snapshots(district, total_parcels) VALUES ('KANDY', 7)");
             var upgrade = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                     .schemas("upgrade_test").defaultSchema("upgrade_test").load();
-            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(3);
+            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(4);
             upgrade.validate();
             try (var result = statement.executeQuery("SELECT total_parcels FROM upgrade_test.operational_sla_snapshots")) {
                 assertThat(result.next()).isTrue();
@@ -366,7 +366,7 @@ class TelemetryConsumptionIT {
                     + "VALUES ('" + UUID.randomUUID() + "','LegacyTool','CUSTOMER','private prompt','private args','private answer')");
             var upgrade = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                     .schemas("audit_upgrade").defaultSchema("audit_upgrade").load();
-            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(2);
             upgrade.validate();
             try (var row = statement.executeQuery("SELECT prompt_or_query,input_parameters,output_result,outcome FROM audit_upgrade.ai_tool_invocation_audit")) {
                 assertThat(row.next()).isTrue();
@@ -416,6 +416,7 @@ class TelemetryConsumptionIT {
         var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://localhost:"
                 + context.getEnvironment().getProperty("local.server.port") + "/api/v1/analytics" + path));
         if (role != null) request.header("X-User-Id", "00000000-0000-0000-0000-000000000001").header("X-User-Role", role);
+        if ("DISPATCHER".equals(role)) request.header("X-District-Id", "COLOMBO");
         return java.net.http.HttpClient.newHttpClient().send(request.build(), java.net.http.HttpResponse.BodyHandlers.ofString());
     }
 
@@ -448,6 +449,77 @@ class TelemetryConsumptionIT {
         assertThat(workload.path("couriers").size()).isEqualTo(2);
         assertThat(reportHttp("/couriers/workload", "CUSTOMER").statusCode()).isEqualTo(403);
         assertThat(reportHttp("/couriers/workload", null).statusCode()).isEqualTo(401);
+    }
+
+    private ObjectNode hubStep(UUID order, String state, String subStatus, String at) {
+        ObjectNode event = changed(order, state, at);
+        event.put("internalSubStatus", subStatus).put("destinationDistrict", "KANDY");
+        return event;
+    }
+
+    /** Colombo to Kandy: Colombo's courier brings it to the hub, Kandy's courier delivers it. */
+    @Test
+    void eachDistrictSeesItsOwnPartOfACrossDistrictParcel() throws Exception {
+        UUID order = UUID.randomUUID(), colomboCourier = UUID.randomUUID(), kandyCourier = UUID.randomUUID();
+        var colombo = com.swiftdrop.contracts.enums.SriLankanDistrict.COLOMBO;
+        var kandy = com.swiftdrop.contracts.enums.SriLankanDistrict.KANDY;
+        apply(CREATED, created(order, CREATED_AT));
+        apply(ASSIGNED, assigned(order, colomboCourier, "2026-11-08T06:10:00Z"));
+        apply(STATUS, hubStep(order, "PICKED_UP", "PICKED_UP", "2026-11-08T06:20:00Z"));
+        assertThat(reports().workload(colombo).getFirst().activeOrders()).isEqualTo(1);
+        apply(STATUS, hubStep(order, "IN_TRANSIT", "AT_HUB", "2026-11-08T06:30:00Z"));
+        // Handed in at the hub: the first courier carries nothing any more.
+        assertThat(reports().workload(colombo).getFirst().activeOrders()).isZero();
+        apply(STATUS, hubStep(order, "IN_TRANSIT", "OUTBOUND", "2026-11-08T06:40:00Z"));
+        apply(STATUS, hubStep(order, "IN_TRANSIT", "INCOMING", "2026-11-08T08:00:00Z"));
+        apply(ASSIGNED, assigned(order, kandyCourier, "2026-11-08T08:10:00Z"));
+        assertThat(reports().workload(kandy)).singleElement().satisfies(row -> {
+            assertThat(row.courierId()).isEqualTo(kandyCourier);
+            assertThat(row.activeOrders()).isEqualTo(1);
+        });
+        apply(STATUS, hubStep(order, "DELIVERED", "DELIVERED", "2026-11-08T09:00:00Z"));
+
+        assertThat(reports().daily(DAY, DAY, colombo).getFirst().created()).isEqualTo(1);
+        assertThat(reports().daily(DAY, DAY, colombo).getFirst().delivered()).isZero();
+        assertThat(reports().daily(DAY, DAY, kandy).getFirst().created()).isZero();
+        assertThat(reports().daily(DAY, DAY, kandy).getFirst().delivered()).isEqualTo(1);
+        assertThat(reports().outcomes(DAY, DAY, null).delivered()).isEqualTo(1);
+        assertThat(reports().couriers(kandy, null)).singleElement()
+                .satisfies(row -> assertThat(row.courierId()).isEqualTo(kandyCourier));
+        assertThat(reports().couriers(kandy, colomboCourier)).isEmpty();
+        // The Colombo dispatcher cannot read Kandy by asking for it; an admin can.
+        String path = "/deliveries/daily?from=2026-11-08&to=2026-11-08&district=KANDY";
+        assertThat(mapper.readTree(reportHttp(path, "DISPATCHER").body()).at("/data/days/0/delivered").asLong()).isZero();
+        assertThat(mapper.readTree(reportHttp(path, "SYSTEM_ADMIN").body()).at("/data/days/0/delivered").asLong()).isEqualTo(1);
+    }
+
+    /** Tried twice in Kandy, then back to Colombo: one failure, Kandy's, and nobody carries it at a hub. */
+    @Test
+    void aReturnedParcelIsOneFailureWhereItCouldNotBeDelivered() throws Exception {
+        UUID order = UUID.randomUUID(), kandyCourier = UUID.randomUUID(), colomboCourier = UUID.randomUUID();
+        var colombo = com.swiftdrop.contracts.enums.SriLankanDistrict.COLOMBO;
+        var kandy = com.swiftdrop.contracts.enums.SriLankanDistrict.KANDY;
+        apply(CREATED, created(order, CREATED_AT));
+        apply(STATUS, hubStep(order, "IN_TRANSIT", "INCOMING", "2026-11-08T08:00:00Z"));
+        apply(ASSIGNED, assigned(order, kandyCourier, "2026-11-08T08:10:00Z"));
+        apply(STATUS, hubStep(order, "DELIVERY_ATTEMPTED", "RETURN_TO_HUB", "2026-11-08T09:00:00Z"));
+        assertThat(reports().workload(kandy).getFirst().activeOrders()).isEqualTo(1);
+        apply(STATUS, hubStep(order, "DELIVERY_ATTEMPTED", "HELD_AT_HUB", "2026-11-08T09:30:00Z"));
+        assertThat(reports().workload(kandy).getFirst().activeOrders()).isZero();
+        assertThat(reports().outcomes(DAY, DAY, null).completed()).isZero();
+
+        apply(STATUS, hubStep(order, "RETURNING", "RETURN_OUTBOUND", "2026-11-08T10:00:00Z"));
+        apply(STATUS, hubStep(order, "RETURNING", "RETURN_AT_HUB", "2026-11-08T11:00:00Z"));
+        apply(ASSIGNED, assigned(order, colomboCourier, "2026-11-08T11:10:00Z"));
+        assertThat(reports().workload(colombo)).singleElement()
+                .satisfies(row -> assertThat(row.courierId()).isEqualTo(colomboCourier));
+        apply(STATUS, hubStep(order, "RETURNED_TO_SENDER", "FAILED_RETURN", "2026-11-08T12:00:00Z"));
+
+        assertThat(reports().daily(DAY, DAY, kandy).getFirst().failed()).isEqualTo(1);
+        assertThat(reports().daily(DAY, DAY, colombo).getFirst().failed()).isZero();
+        assertThat(reports().couriers(kandy, null)).singleElement()
+                .satisfies(row -> assertThat(row.courierId()).isEqualTo(kandyCourier));
+        assertThat(reports().outcomes(DAY, DAY, null).completed()).isEqualTo(1);
     }
 
     @Test
@@ -489,25 +561,25 @@ class TelemetryConsumptionIT {
         apply(STATUS, changed(b,"DELIVERED","2026-11-08T08:00:00Z"));
         apply(STATUS, changed(c,"FAILED","2026-11-08T09:00:00Z"));
         apply(STATUS, changed(d,"IN_TRANSIT","2026-11-08T07:00:00Z"));
-        var day = reports().daily(DAY,DAY).getFirst();
+        var day = reports().daily(DAY,DAY, null).getFirst();
         assertThat(day.created()).isEqualTo(4);
         assertThat(day.delivered()).isEqualTo(2);
         assertThat(day.failed()).isEqualTo(1);
-        assertThat(reports().outcomes(DAY,DAY).successRatePercent()).isEqualByComparingTo("66.67");
-        assertThat(reports().workload().stream().filter(row -> row.courierId().equals(c1)).findFirst().orElseThrow().activeOrders()).isZero();
-        assertThat(reports().workload().stream().filter(row -> row.courierId().equals(c2)).findFirst().orElseThrow().activeOrders()).isEqualTo(1);
+        assertThat(reports().outcomes(DAY,DAY, null).successRatePercent()).isEqualByComparingTo("66.67");
+        assertThat(reports().workload(null).stream().filter(row -> row.courierId().equals(c1)).findFirst().orElseThrow().activeOrders()).isZero();
+        assertThat(reports().workload(null).stream().filter(row -> row.courierId().equals(c2)).findFirst().orElseThrow().activeOrders()).isEqualTo(1);
         assertThat(reports().couriers(null,c1).getFirst().deliveredCount()).isEqualTo(2);
         assertThat(reports().couriers(null,c2).getFirst().failedCount()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT current_status FROM analytics_order_projection WHERE order_id=?",String.class,a)).isEqualTo("DELIVERED");
         apply(STATUS, changed(d,"DELIVERED","2026-11-08T10:00:00Z"));
-        assertThat(reports().workload().stream().mapToLong(row -> row.activeOrders()).sum()).isZero();
+        assertThat(reports().workload(null).stream().mapToLong(row -> row.activeOrders()).sum()).isZero();
     }
 
     @Test
     void delayedAssignmentsReconcileOutcomeCourierWithoutRecountingDelivery() {
         UUID order = UUID.randomUUID(), c1 = UUID.randomUUID(), c2 = UUID.randomUUID(), c3 = UUID.randomUUID();
         apply(STATUS, changed(order,"DELIVERED","2026-11-08T09:00:00Z"));
-        assertThat(reports().workload()).isEmpty();
+        assertThat(reports().workload(null)).isEmpty();
         apply(ASSIGNED, assigned(order,c1,"2026-11-08T06:00:00Z"));
         assertThat(reports().couriers(null,c1).getFirst().deliveredCount()).isEqualTo(1);
         apply(ASSIGNED, assigned(order,c2,"2026-11-08T08:00:00Z"));
@@ -517,8 +589,8 @@ class TelemetryConsumptionIT {
         apply(ASSIGNED, assigned(order,c1,"2026-11-08T07:00:00Z")); // older than reassignment
         assertThat(reports().couriers(null,c2).getFirst().deliveredCount()).isEqualTo(1);
         assertThat(reports().couriers(null,c3).getFirst().deliveredCount()).isZero();
-        assertThat(reports().workload().stream().mapToLong(row -> row.activeOrders()).sum()).isZero();
-        assertThat(reports().daily(DAY,DAY).getFirst().delivered()).isEqualTo(1);
+        assertThat(reports().workload(null).stream().mapToLong(row -> row.activeOrders()).sum()).isZero();
+        assertThat(reports().daily(DAY,DAY, null).getFirst().delivered()).isEqualTo(1);
         assertThat(reports().couriers(null,c1).getFirst().totalAssigned()).isEqualTo(1);
     }
 
@@ -528,7 +600,7 @@ class TelemetryConsumptionIT {
         apply(CREATED, created(before,"2026-11-07T18:29:59.999999999Z"));
         apply(CREATED, created(after,"2026-11-07T18:30:00Z"));
         apply(STATUS, changed(before,"IN_TRANSIT","2026-11-08T06:00:00Z")); // recompute persisted state
-        var days = reports().daily(DAY.minusDays(1),DAY);
+        var days = reports().daily(DAY.minusDays(1),DAY, null);
         assertThat(days.getFirst().created()).isEqualTo(1);
         assertThat(days.getLast().created()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM analytics_order_projection",Integer.class)).isEqualTo(2);
@@ -542,23 +614,23 @@ class TelemetryConsumptionIT {
         apply(STATUS, changed(failed,"FAILED","2026-11-08T07:00:00Z"));
         apply(STATUS, changed(failed,"FAILED","2026-11-08T07:30:00Z"));
         apply(STATUS, changed(failed,"RETURNED_TO_SENDER","2026-11-08T08:00:00Z"));
-        assertThat(reports().outcomes(DAY,DAY).completed()).isEqualTo(1);
-        assertThat(reports().outcomes(DAY,DAY).failed()).isEqualTo(1);
-        assertThat(reports().outcomes(DAY,DAY).successRatePercent()).isEqualByComparingTo("0.00");
+        assertThat(reports().outcomes(DAY,DAY, null).completed()).isEqualTo(1);
+        assertThat(reports().outcomes(DAY,DAY, null).failed()).isEqualTo(1);
+        assertThat(reports().outcomes(DAY,DAY, null).successRatePercent()).isEqualByComparingTo("0.00");
     }
 
     @Test
     void conflictingOutcomesAreVisibleAndExcludedInsteadOfDoubleCounted() {
         UUID order = UUID.randomUUID();
         apply(STATUS, changed(order,"DELIVERED","2026-11-08T07:00:00Z"));
-        assertThat(reports().outcomes(DAY,DAY).delivered()).isEqualTo(1);
+        assertThat(reports().outcomes(DAY,DAY, null).delivered()).isEqualTo(1);
         apply(STATUS, changed(order,"FAILED","2026-11-08T08:00:00Z"));
-        assertThat(reports().outcomes(DAY,DAY).completed()).isZero();
+        assertThat(reports().outcomes(DAY,DAY, null).completed()).isZero();
         assertThat(jdbc.queryForObject("SELECT conflict_reason FROM analytics_order_projection",String.class)).isNotBlank();
         UUID tied = UUID.randomUUID();
         apply(STATUS, changed(tied,"DELIVERED","2026-11-08T09:00:00Z"));
         apply(STATUS, changed(tied,"FAILED","2026-11-08T09:00:00Z"));
-        assertThat(reports().outcomes(DAY,DAY).completed()).isZero();
+        assertThat(reports().outcomes(DAY,DAY, null).completed()).isZero();
     }
 
     @Test
@@ -571,7 +643,7 @@ class TelemetryConsumptionIT {
             }
             for (var task : tasks) task.get(30,TimeUnit.SECONDS);
         }
-        assertThat(reports().daily(DAY,DAY).getFirst().created()).isEqualTo(20);
+        assertThat(reports().daily(DAY,DAY, null).getFirst().created()).isEqualTo(20);
         assertThat(markers()).isEqualTo(20);
     }
 
@@ -586,24 +658,24 @@ class TelemetryConsumptionIT {
             var event = decoder.decode(received(pair.getKey(),pair.getValue())).orElseThrow();
             inbox.register(event,mapper.writeValueAsString(event.payload())); // accepted by Part 2, not yet projected
         }
-        assertThat(reports().daily(DAY,DAY).getFirst().created()).isZero();
+        assertThat(reports().daily(DAY,DAY, null).getFirst().created()).isZero();
         context.close(); startApplication();
-        assertThat(reports().daily(DAY,DAY).getFirst().created()).isEqualTo(1);
-        assertThat(reports().daily(DAY,DAY).getFirst().delivered()).isEqualTo(1);
+        assertThat(reports().daily(DAY,DAY, null).getFirst().created()).isEqualTo(1);
+        assertThat(reports().daily(DAY,DAY, null).getFirst().delivered()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM processed_telemetry_events WHERE NOT projection_applied",Integer.class)).isZero();
         context.close(); startApplication();
-        assertThat(reports().daily(DAY,DAY).getFirst().delivered()).isEqualTo(1);
+        assertThat(reports().daily(DAY,DAY, null).getFirst().delivered()).isEqualTo(1);
     }
 
     @Test
     void emptyReadsNeverSeedTablesOrReuseLegacySamples() {
         jdbc.update("INSERT INTO operational_sla_snapshots(district,total_parcels) VALUES ('COLOMBO',999)");
-        var kpis = context.getBean(com.swiftdrop.analytics.service.SlaMetricsAggregationService.class).getSystemKpiSummary();
+        var kpis = context.getBean(com.swiftdrop.analytics.service.SlaMetricsAggregationService.class).getKpiSummary(null);
         assertThat(kpis.totalParcels()).isZero();
         assertThat(kpis.systemOnTimeRate()).isNull();
         assertThat(kpis.activeCouriers()).isZero();
-        assertThat(reports().daily(DAY,DAY.plusDays(2))).hasSize(3).allMatch(row -> row.created()==0);
-        assertThat(reports().outcomes(DAY,DAY).successRatePercent()).isNull();
+        assertThat(reports().daily(DAY,DAY.plusDays(2), null)).hasSize(3).allMatch(row -> row.created()==0);
+        assertThat(reports().outcomes(DAY,DAY, null).successRatePercent()).isNull();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM daily_delivery_stats",Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM analytics_order_projection",Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM operational_sla_snapshots",Integer.class)).isEqualTo(1);
@@ -613,7 +685,7 @@ class TelemetryConsumptionIT {
     void reassignmentMovesCurrentWorkloadBetweenAssignmentDates() {
         UUID order = UUID.randomUUID(), c1 = UUID.randomUUID(), c2 = UUID.randomUUID();
         apply(ASSIGNED, assigned(order,c1,"2026-11-07T17:00:00Z"));
-        assertThat(reports().workload().getFirst().activeOrders()).isEqualTo(1);
+        assertThat(reports().workload(null).getFirst().activeOrders()).isEqualTo(1);
         apply(ASSIGNED, assigned(order,c2,"2026-11-08T06:00:00Z"));
         assertThat(jdbc.queryForObject("SELECT active FROM courier_daily_stats WHERE courier_id=? AND report_date=?",
                 Long.class,c1,DAY.minusDays(1))).isZero();
@@ -621,7 +693,7 @@ class TelemetryConsumptionIT {
                 Long.class,c2,DAY)).isEqualTo(1);
         // Same effective time but different courier: do not pick either arbitrarily.
         apply(ASSIGNED, assigned(order,c1,"2026-11-08T06:00:00Z"));
-        assertThat(reports().workload().stream().mapToLong(row -> row.activeOrders()).sum()).isZero();
+        assertThat(reports().workload(null).stream().mapToLong(row -> row.activeOrders()).sum()).isZero();
         assertThat(jdbc.queryForObject("SELECT conflict_reason FROM analytics_order_projection",String.class))
                 .isEqualTo("CONFLICTING_ASSIGNMENT_AT_SAME_TIME");
     }
@@ -629,21 +701,21 @@ class TelemetryConsumptionIT {
     @Test
     void rangeRatesUseSummedOutcomesInsteadOfAverageDailyPercentages() {
         jdbc.update("INSERT INTO daily_delivery_stats(report_date,delivered,failed) VALUES (?,1,0),(?,1,8)",DAY,DAY.plusDays(1));
-        assertThat(reports().outcomes(DAY,DAY.plusDays(1)).successRatePercent()).isEqualByComparingTo("20.00");
-        assertThat(reports().daily(DAY,DAY.plusDays(2)).getLast().delivered()).isZero();
-        assertThatThrownBy(() -> reports().daily(DAY,DAY.minusDays(1))).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> reports().daily(DAY,DAY.plusDays(90))).isInstanceOf(IllegalArgumentException.class);
-        assertThat(reports().daily(DAY,DAY.plusDays(89))).hasSize(90);
+        assertThat(reports().outcomes(DAY,DAY.plusDays(1), null).successRatePercent()).isEqualByComparingTo("20.00");
+        assertThat(reports().daily(DAY,DAY.plusDays(2), null).getLast().delivered()).isZero();
+        assertThatThrownBy(() -> reports().daily(DAY,DAY.minusDays(1), null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports().daily(DAY,DAY.plusDays(90), null)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(reports().daily(DAY,DAY.plusDays(89), null)).hasSize(90);
     }
 
     @Test
     void creationAndOutcomeAreIndependentFlowsOnTheirOwnDates() {
         UUID order = UUID.randomUUID();
         apply(STATUS,changed(order,"CREATED","2026-11-07T06:00:00Z"));
-        assertThat(reports().daily(DAY.minusDays(1),DAY).stream().mapToLong(row -> row.created()).sum()).isZero();
+        assertThat(reports().daily(DAY.minusDays(1),DAY, null).stream().mapToLong(row -> row.created()).sum()).isZero();
         apply(STATUS,changed(order,"DELIVERED","2026-11-08T06:00:00Z"));
         apply(CREATED,created(order,"2026-11-07T06:00:00Z"));
-        var days = reports().daily(DAY.minusDays(1),DAY);
+        var days = reports().daily(DAY.minusDays(1),DAY, null);
         assertThat(days.getFirst().created()).isEqualTo(1);
         assertThat(days.getFirst().delivered()).isZero();
         assertThat(days.getLast().created()).isZero();
@@ -666,7 +738,7 @@ class TelemetryConsumptionIT {
             insert.executeUpdate();
             var upgrade = Flyway.configure().dataSource(postgres.getJdbcUrl(),postgres.getUsername(),postgres.getPassword())
                     .schemas("upgrade_v3").defaultSchema("upgrade_v3").load();
-            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(2);
+            assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(3);
             upgrade.validate();
             try (var statement=connection.createStatement();
                  var result=statement.executeQuery("SELECT projection_applied,payload->>'orderId' FROM upgrade_v3.processed_telemetry_events")) {

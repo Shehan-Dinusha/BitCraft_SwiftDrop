@@ -133,7 +133,7 @@ class DeliveryExecutionServiceTest {
         session.setCurrentState(DeliveryState.OUT_FOR_DELIVERY);
 
         when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
-        when(proofOfDeliveryGuard.isSatisfied(deliveryId)).thenReturn(false);
+        when(proofOfDeliveryGuard.isSatisfied(deliveryId, null)).thenReturn(false);
         doReturn(new OutForDeliveryState(proofOfDeliveryGuard))
                 .when(stateMachine).getHandler(DeliveryState.OUT_FOR_DELIVERY);
 
@@ -161,7 +161,7 @@ class DeliveryExecutionServiceTest {
         session.setTrackingNumber("SD-COL-12345");
 
         when(deliverySessionRepository.findByDeliveryId(deliveryId)).thenReturn(Optional.of(session));
-        when(proofOfDeliveryGuard.isSatisfied(deliveryId)).thenReturn(true);
+        when(proofOfDeliveryGuard.isSatisfied(deliveryId, null)).thenReturn(true);
         when(deliverySessionRepository.save(any(DeliverySession.class))).thenAnswer(inv -> inv.getArgument(0));
         // The default test state machine has no guard and therefore rejects DELIVERED (fail closed).
         doReturn(new OutForDeliveryState(proofOfDeliveryGuard))
@@ -253,7 +253,7 @@ class DeliveryExecutionServiceTest {
         session.setTrackingNumber("SD-COL-112233");
         session.setCurrentState(DeliveryState.ASSIGNED);
 
-        when(deliverySessionRepository.findByCourierIdAndDateRange(eq(courierId), any(), any()))
+        when(deliverySessionRepository.findTodayAndOpenByCourierId(eq(courierId), any(), any()))
                 .thenReturn(List.of(session));
 
         CallerContext caller = new CallerContext(courierId, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);

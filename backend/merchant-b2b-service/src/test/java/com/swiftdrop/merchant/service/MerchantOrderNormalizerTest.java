@@ -3,6 +3,7 @@ package com.swiftdrop.merchant.service;
 import com.swiftdrop.merchant.B2bTestData;
 import com.swiftdrop.merchant.dto.*;
 import com.swiftdrop.contracts.enums.*;
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.*;
 import java.math.BigDecimal;
@@ -29,12 +30,17 @@ class MerchantOrderNormalizerTest {
         assertThat(normalized.get("deliveryDistrict")).isEqualTo(SriLankanDistrict.GAMPAHA);
         assertThat(normalized.get("speed")).isEqualTo(OrderSpeed.EXPRESS);
         assertThat(normalizer.district("nuwara eliya")).isEqualTo(SriLankanDistrict.NUWARA_ELIYA);
-        assertThat(normalizer.phone("0094771234567")).isEqualTo("+94771234567");
     }
 
     @Test void rejectsUnknownDistrictAndInvalidPhoneWithoutEchoingPii() {
         assertThatThrownBy(() -> normalizer.district("Not a district")).hasMessage("Invalid Sri Lankan district");
-        assertThatThrownBy(() -> normalizer.phone("123")).hasMessage("Invalid Sri Lankan phone number");
+        var base = B2bTestData.order();
+        for (String phone : new String[]{"123", "077 123 4567", "0094771234567", "07712345678"}) {
+            var delivery = new B2bAddress("25 Kandy Road", "Gampaha", "gampaha", "11000", "Test Recipient", phone);
+            assertThatThrownBy(() -> normalizer.normalize(UUID.randomUUID(), new B2bOrderRequest(
+                    base.externalRef(), base.pickup(), delivery, base.parcel(), base.speed())))
+                    .hasMessage("delivery.contactPhone: " + SriLankanPhone.MESSAGE);
+        }
     }
 
     @Test void requiresEverySideAndASizeThatFitsALorry() {
@@ -44,6 +50,15 @@ class MerchantOrderNormalizerTest {
         rejects(new B2bParcel(BigDecimal.ONE, null, L, W, null, true, null, null, null), "Parcel height is required");
         rejects(new B2bParcel(BigDecimal.ONE, null, new BigDecimal("501"), W, H, true, null, null, null), "Must not exceed 500 cm");
         rejects(new B2bParcel(BigDecimal.ONE, null, max, max, max, true, null, null, null), "must not exceed 15,000 litres");
+    }
+
+    @Test void refusesCashOnDeliveryInsteadOfIgnoringIt() {
+        rejects(new B2bParcel(BigDecimal.ONE, null, L, W, H, true, null, null, new BigDecimal("2500")),
+                "SwiftDrop collects no money from the recipient");
+        var base = B2bTestData.order();
+        var body = normalizer.normalize(UUID.randomUUID(), new B2bOrderRequest(base.externalRef(), base.pickup(),
+                base.delivery(), new B2bParcel(BigDecimal.ONE, null, L, W, H, true, null, null, BigDecimal.ZERO), base.speed()));
+        assertThat(body).doesNotContainKey("codAmount");
     }
 
     private void rejects(B2bParcel parcel, String message) {

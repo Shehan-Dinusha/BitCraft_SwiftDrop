@@ -22,6 +22,9 @@ const actionLabels: Partial<Record<DeliveryState, string>> = {
   AT_ORIGIN_HUB: 'Hand in at hub',
   IN_TRANSIT: 'Start trip',
   DELIVERED: 'Complete delivery',
+  HELD_AT_HUB: 'Hand in at hub',
+  OUT_FOR_RETURN: 'Collected from the hub',
+  RETURNED: 'Complete return',
   FAILED: 'Report failure',
   CANCELLED: 'Cancel delivery'
 };

@@ -1,3 +1,4 @@
+import { phoneProblem } from '@/utils/phone';
 import type { BookingField, BookingForm } from './bookingForm';
 
 /**
@@ -10,8 +11,6 @@ const PATTERNS = {
   name: /^[\p{L}\p{M} .'’-]*$/u,
   city: /^[\p{L}\p{M}\p{N} .'’-]*$/u,
   postalCode: /^\d{5}$/,
-  /** The 9 digits after +94: never starting with 0 (that 0 is the local trunk prefix). */
-  phoneDigits: /^[1-9]\d{8}$/,
   /** At least one letter or digit, so a box cannot hold only punctuation such as "--". */
   meaningful: /[\p{L}\p{N}]/u,
   freeText: /^[^<>]*$/,
@@ -124,13 +123,6 @@ function part(
 function postalCode(value: string) {
   if (!value) return 'Enter the 5-digit postal code';
   return PATTERNS.postalCode.test(value) ? undefined : 'Postal codes have 5 digits, e.g. 00300';
-}
-
-/** A real-looking Sri Lankan number: 9 digits after +94, not starting with 0, not one digit repeated. */
-function phoneProblem(digits: string): string | undefined {
-  if (!PATTERNS.phoneDigits.test(digits)) return 'Enter the 9 digits after +94';
-  if (/^(\d)\1+$/.test(digits)) return 'Enter a real phone number';
-  return undefined;
 }
 
 function phone(digits: string) {

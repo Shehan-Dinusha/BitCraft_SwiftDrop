@@ -39,7 +39,7 @@ class MerchantAccountServiceTest {
         CreateMerchantRequest request = new CreateMerchantRequest(
                 "Lanka Retail Hub",
                 "orders@retail.example",
-                "+94 11 222 3333",
+                "+94112223333",
                 "10 Galle Road, Colombo",
                 SriLankanDistrict.COLOMBO
         );

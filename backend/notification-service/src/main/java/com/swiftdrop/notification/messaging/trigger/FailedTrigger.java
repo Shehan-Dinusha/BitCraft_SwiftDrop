@@ -15,7 +15,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Triggers an EMAIL alert when a delivery attempt fails.
+ * Triggers an EMAIL alert when a delivery attempt fails (DELIVERY_ATTEMPTED: it is tried again or returned)
+ * or the delivery is over (FAILED: lost, damaged or never collected).
  * Template: {@code PARCEL_FAILED}
  */
 @Slf4j
@@ -32,7 +33,7 @@ public class FailedTrigger implements NotificationTrigger {
         }
         boolean isParcelStatusEvent = envelope.routingKey().startsWith("parcel.status.changed")
                 || envelope.routingKey().startsWith("notification.");
-        return isParcelStatusEvent && "FAILED".equalsIgnoreCase(envelope.extractStatus().orElse(""));
+        return isParcelStatusEvent && envelope.statusChanged() && (isAttempt(envelope) || "FAILED".equalsIgnoreCase(envelope.extractStatus().orElse("")));
     }
 
     @Override
@@ -47,14 +48,16 @@ public class FailedTrigger implements NotificationTrigger {
         Map<String, String> params = new HashMap<>();
         params.put("trackingNumber", trackingNumber);
         params.put("failureReason", reason(envelope));
+        params.put("nextStep", isAttempt(envelope)
+                ? "It goes back to our hub, where we try again or return it to you."
+                : "Our operations team has been told.");
         params.put("status", "FAILED");
 
         return NotificationTrigger.email(recipientIdOpt.get(), "PARCEL_FAILED", params, trackingNumber);
     }
 
     /**
-     * A failed delivery is final in dispatch, so someone has to decide what happens next: the operations
-     * team always hears about it, and for a merchant order so does the merchant (the order's customerId is
+     * Someone has to decide what happens next: the operations team always hears about it, and for a merchant order so does the merchant (the order's customerId is
      * the merchant id; the consumer writes a merchant row only for a known merchant company).
      */
     @Override
@@ -64,13 +67,19 @@ public class FailedTrigger implements NotificationTrigger {
         String reason = reason(envelope);
         List<TeamNotification> rows = new ArrayList<>();
         rows.add(new TeamNotification(InboxAudience.OPERATIONS, OPERATIONS_TYPE, "Delivery failed",
-                parcel + " could not be delivered: " + reason + ". Arrange a new attempt or a return to the sender.",
+                parcel + " could not be delivered: " + reason + "."
+                + (isAttempt(envelope) ? " It comes back to the hub: try again or return it to the sender." : ""),
                 trackingNumber));
         envelope.extractRecipientId().map(InboxAudience::merchant).ifPresent(audience ->
                 rows.add(new TeamNotification(audience, MERCHANT_TYPE, "Delivery failed",
-                        parcel + " could not be delivered: " + reason + ". SwiftDrop operations will arrange the next step.",
+                        parcel + " could not be delivered: " + reason + "."
+                        + (isAttempt(envelope) ? " We try again or return it to you." : " SwiftDrop operations have been told."),
                         trackingNumber)));
         return rows;
+    }
+
+    private static boolean isAttempt(EventEnvelope envelope) {
+        return "DELIVERY_ATTEMPTED".equalsIgnoreCase(envelope.extractStatus().orElse(""));
     }
 
     private static String reason(EventEnvelope envelope) {

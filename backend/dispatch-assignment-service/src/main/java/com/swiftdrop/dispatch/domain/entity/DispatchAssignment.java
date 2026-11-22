@@ -1,5 +1,6 @@
 package com.swiftdrop.dispatch.domain.entity;
 
+import com.swiftdrop.contracts.enums.DeliveryFailureReason;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
 import com.swiftdrop.contracts.enums.OrderSpeed;
@@ -81,7 +82,15 @@ public class DispatchAssignment {
     @Column(name = "leg", nullable = false, length = 16)
     private AssignmentLeg leg = AssignmentLeg.FIRST_MILE;
 
-    /** Between the legs: AT_HUB, OUTBOUND or INCOMING. */
+    /** Delivery attempts that failed, and why the last one did. */
+    @Column(name = "delivery_attempts", nullable = false)
+    private Integer deliveryAttempts = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "last_attempt_reason", length = 32)
+    private DeliveryFailureReason lastAttemptReason;
+
+    /** Between the legs: AT_HUB, OUTBOUND or INCOMING. After a failed attempt: RETURN_TO_HUB, HELD_AT_HUB, RETURN_OUTBOUND. */
     @Enumerated(EnumType.STRING)
     @Column(name = "hub_stage", length = 32)
     private InternalQueueStatus hubStage;
@@ -104,6 +113,14 @@ public class DispatchAssignment {
 
     @Column(name = "volume_litres", precision = 12, scale = 2)
     private BigDecimal volumeLitres;
+
+    /** The shop's name, known once it has asked for a pickup. */
+    @Column(name = "merchant_name", length = 150)
+    private String merchantName;
+
+    /** When the shop said the parcel is packed. */
+    @Column(name = "ready_at")
+    private Instant readyAt;
 
     @Column(name = "estimated_pickup_minutes")
     private Integer estimatedPickupMinutes = 30;
@@ -204,10 +221,18 @@ public class DispatchAssignment {
     public InternalQueueStatus getHubStage() { return hubStage; }
     public void setHubStage(InternalQueueStatus hubStage) { this.hubStage = hubStage; }
 
+    public int getDeliveryAttempts() { return deliveryAttempts == null ? 0 : deliveryAttempts; }
+    public DeliveryFailureReason getLastAttemptReason() { return lastAttemptReason; }
+
+    public void recordFailedAttempt(DeliveryFailureReason reason) {
+        deliveryAttempts = getDeliveryAttempts() + 1;
+        lastAttemptReason = reason;
+    }
+
     public UUID getFirstMileCourierId() { return firstMileCourierId; }
     public void setFirstMileCourierId(UUID firstMileCourierId) { this.firstMileCourierId = firstMileCourierId; }
 
-    /** The district whose dispatcher manages the order now: pickup on the first leg, drop-off on the last. */
+    /** The district whose dispatcher manages the order now: pickup on the first leg and on a return, drop-off on the last. */
     public SriLankanDistrict getResponsibleDistrict() {
         return leg == AssignmentLeg.LAST_MILE ? deliveryDistrict : pickupDistrict;
     }
@@ -235,6 +260,30 @@ public class DispatchAssignment {
     /** Null when the size is unknown. */
     public BigDecimal getLongestSideCm() {
         return volumeLitres == null ? null : lengthCm.max(widthCm).max(heightCm);
+    }
+
+    public String getMerchantName() { return merchantName; }
+    public void setMerchantName(String merchantName) { this.merchantName = merchantName; }
+
+    public Instant getReadyAt() { return readyAt; }
+    public void setReadyAt(Instant readyAt) { this.readyAt = readyAt; }
+
+    /** Sent by a shop. Such an order carries the shop's id as its customer too; a customer's order never does. */
+    public boolean isMerchantOrder() {
+        return merchantId != null && merchantId.equals(customerId);
+    }
+
+    /**
+     * Collected together with the shop's other parcels: a standard merchant order that waits at the shop.
+     * Faster services are assigned on their own.
+     */
+    public boolean isShopPickup() {
+        return isMerchantOrder() && leg == AssignmentLeg.FIRST_MILE && orderSpeed == OrderSpeed.STANDARD;
+    }
+
+    /** A courier can be sent for it: a shop's parcel only once the shop said it is packed. */
+    public boolean isReadyForPickup() {
+        return !isShopPickup() || readyAt != null;
     }
 
     public Integer getEstimatedPickupMinutes() { return estimatedPickupMinutes; }

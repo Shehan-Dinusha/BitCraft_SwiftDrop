@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.merchant.domain.entity.BulkBatchItem;
@@ -83,7 +84,7 @@ public class BulkOrderIngestionService {
                                 orDefault(item.pickupCity(), merchant.getPickupCity()),
                                 merchant.getOperatingDistrict().name(),
                                 orDefault(item.pickupPostalCode(), merchant.getPickupPostalCode()),
-                                merchant.getBusinessName(), merchant.getContactPhone()),
+                                merchant.getBusinessName(), SriLankanPhone.storedToE164(merchant.getContactPhone())),
                         new B2bAddress(item.deliveryAddress(), item.deliveryCity(),
                                 item.deliveryDistrict() == null ? null : item.deliveryDistrict().name(), item.deliveryPostalCode(),
                                 item.recipientName(), item.recipientPhone()),

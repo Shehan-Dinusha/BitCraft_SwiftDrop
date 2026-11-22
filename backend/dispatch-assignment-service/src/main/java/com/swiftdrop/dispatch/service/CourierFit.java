@@ -7,6 +7,8 @@ import com.swiftdrop.dispatch.domain.enums.VehicleType;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -59,6 +61,23 @@ public final class CourierFit {
             return Optional.of(CourierBlock.VOLUME_LIMIT);
         }
         return Optional.empty();
+    }
+
+    /**
+     * The parcels the courier can take together, in the order given: each one counts towards the limits of
+     * the next, as if it were already on board.
+     */
+    public static List<DispatchAssignment> fitting(CourierShift courier, CourierLoad load, List<DispatchAssignment> parcels) {
+        List<DispatchAssignment> taken = new ArrayList<>();
+        CourierLoad held = load;
+        for (DispatchAssignment parcel : parcels) {
+            boolean room = courier.getActiveParcelsCount() + taken.size() < courier.getMaxCapacity();
+            if (room && block(courier, held, parcel).isEmpty()) {
+                taken.add(parcel);
+                held = held.plus(parcel);
+            }
+        }
+        return taken;
     }
 
     /** How full the courier is, from 0 to 1: the fullest of parcels, weight and volume. */

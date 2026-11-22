@@ -205,6 +205,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download shipping labels for up to 100 orders, one A5 page each
+         * @description A customer for their own orders, a merchant for their company's, a dispatcher for their district's. 404 if any order is not the caller's.
+         */
+        post: operations["downloadShippingLabels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/{orderId}/shipping-label": {
         parameters: {
             query?: never;
@@ -252,12 +272,12 @@ export interface components {
          * @example CREATED
          * @enum {string}
          */
-        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "FAILED" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
+        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "DELIVERY_ATTEMPTED" | "RETURNING" | "FAILED" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
         /**
          * @example CREATED
          * @enum {string}
          */
-        InternalQueueStatus: "CREATED" | "UNASSIGNED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "AT_HUB" | "OUT_FOR_DELIVERY" | "OUTBOUND" | "INCOMING" | "DELIVERED" | "FAILED_ATTEMPT" | "FAILED_RETURN" | "CANCELLED";
+        InternalQueueStatus: "CREATED" | "UNASSIGNED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "AT_HUB" | "OUT_FOR_DELIVERY" | "OUTBOUND" | "INCOMING" | "DELIVERED" | "RETURN_TO_HUB" | "HELD_AT_HUB" | "RETURN_OUTBOUND" | "RETURN_AT_HUB" | "OUT_FOR_RETURN" | "FAILED_ATTEMPT" | "FAILED_RETURN" | "CANCELLED";
         /**
          * @example APPROVED
          * @enum {string}
@@ -479,11 +499,6 @@ export interface components {
              * @example 5000
              */
             declaredValue?: number;
-            /**
-             * Format: double
-             * @example 0
-             */
-            codAmount?: number;
             /** @example true */
             prohibitedItemsDeclared: boolean;
             /** @example PRICING-2026-V1 */
@@ -537,8 +552,9 @@ export interface components {
             customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
-            /** Format: double */
-            codAmount?: number;
+        };
+        ShippingLabelsRequest: {
+            orderIds: string[];
         };
         CancelOrderRequest: {
             /** @example Sender no longer needs delivery */
@@ -598,8 +614,6 @@ export interface components {
             customerNotes?: string;
             /** Format: double */
             declaredValue?: number;
-            /** Format: double */
-            codAmount?: number;
             prohibitedItemsDeclared?: boolean;
             pricingRuleVersionId?: string;
             /** Format: double */
@@ -1285,6 +1299,37 @@ export interface operations {
                 };
             };
             /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    downloadShippingLabels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingLabelsRequest"];
+            };
+        };
+        responses: {
+            /** @description PDF, sent as an attachment named shipping-labels.pdf with Cache-Control no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Order not found */
             404: {
                 headers: {
                     [name: string]: unknown;

@@ -4,36 +4,34 @@ import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
 import { Field } from '@/design-system/primitives/Field';
 import type { DeliveryFailureReason } from '@/services/api/deliveryApi';
-import { AlertTriangle, FileText } from 'lucide-react';
+import { failureLabel } from '@/utils/failureReasons';
+import { AlertTriangle } from 'lucide-react';
 
 export interface DeliveryFailureReportModalProps {
   open: boolean;
   onClose: () => void;
   deliveryId: string;
   trackingNumber?: string;
+  title: string;
+  reasons: DeliveryFailureReason[];
+  /** What happens to the parcel for a reason. */
+  consequence: (reason: DeliveryFailureReason) => string;
   onSubmitFailure: (reason: DeliveryFailureReason, notes: string) => Promise<void>;
   loading?: boolean;
 }
-
-export const FAILURE_REASONS: { value: DeliveryFailureReason; label: string }[] = [
-  { value: 'RECIPIENT_UNAVAILABLE', label: 'Recipient not home' },
-  { value: 'INCORRECT_ADDRESS', label: 'Wrong or incomplete address' },
-  { value: 'ACCESS_RESTRICTED', label: "Couldn't get access" },
-  { value: 'RECIPIENT_REJECTED', label: 'Recipient refused it' },
-  { value: 'DAMAGED_IN_TRANSIT', label: 'Parcel damaged' },
-  { value: 'ADVERSE_WEATHER', label: 'Weather or road blocked' },
-  { value: 'SYSTEM_CANCELLATION', label: 'Cancelled by dispatch' },
-  { value: 'OTHER', label: 'Other' }
-];
 
 export function DeliveryFailureReportModal({
   open,
   onClose,
   trackingNumber,
+  title,
+  reasons,
+  consequence,
   onSubmitFailure,
   loading = false
 }: DeliveryFailureReportModalProps) {
-  const [reason, setReason] = useState<DeliveryFailureReason>('RECIPIENT_UNAVAILABLE');
+  const [picked, setReason] = useState<DeliveryFailureReason | null>(null);
+  const reason = picked && reasons.includes(picked) ? picked : reasons[0];
   const [notes, setNotes] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -53,7 +51,7 @@ export function DeliveryFailureReportModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Report failed delivery"
+      title={title}
       description={trackingNumber || undefined}
       size="md"
     >
@@ -61,7 +59,7 @@ export function DeliveryFailureReportModal({
         <div className="flex items-start gap-3 rounded-xl border border-status-danger-border bg-status-danger-bg p-3 text-xs text-status-danger-fg">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-danger-fg" />
           <p>
-            This counts as a failed attempt and alerts dispatch.
+            {consequence(reason)}
           </p>
         </div>
 
@@ -77,28 +75,25 @@ export function DeliveryFailureReportModal({
             onChange={(e) => setReason(e.target.value as DeliveryFailureReason)}
             className="w-full rounded-xl border border-border-subtle bg-card p-3 text-sm text-primary shadow-sm focus:border-status-danger focus:outline-none focus:ring-1 focus:ring-status-danger min-h-[48px]"
           >
-            {FAILURE_REASONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
+            {reasons.map((value) => (
+              <option key={value} value={value}>
+                {failureLabel(value)}
               </option>
             ))}
           </select>
         </Field>
 
         <Field label="Note" required>
-          <div className="relative">
-            <Input
-              value={notes}
-              onChange={(e) => {
-                setNotes(e.target.value);
-                if (validationError) setValidationError(null);
-              }}
-              className="min-h-[48px] pl-9 text-sm"
-              required
-              autoFocus
-            />
-            <FileText className="absolute left-3 top-3.5 h-4 w-4 text-muted" />
-          </div>
+          <Input
+            value={notes}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              if (validationError) setValidationError(null);
+            }}
+            className="min-h-[48px] text-sm"
+            required
+            autoFocus
+          />
         </Field>
 
         <div className="flex items-center gap-3 pt-2">

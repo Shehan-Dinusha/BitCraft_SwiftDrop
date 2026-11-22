@@ -183,6 +183,18 @@
       }
     },
     {
+      "name": "delivery.order-cancelled.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+        "x-dead-letter-routing-key": "dlq.delivery.events",
+        "x-message-ttl": 86400000,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
       "name": "dlq.delivery.events.queue",
       "vhost": "/",
       "durable": true,
@@ -383,6 +395,14 @@
       "destination": "delivery.dispatch-assigned.queue",
       "destination_type": "queue",
       "routing_key": "dispatch.courier.assigned",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "delivery.order-cancelled.queue",
+      "destination_type": "queue",
+      "routing_key": "order.cancelled",
       "arguments": {}
     },
     {

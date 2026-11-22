@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Field, StatusBanner } from '@/design-system';
+import { Button, StatusBanner } from '@/design-system';
 import { Modal } from '@/design-system/primitives/Modal';
 import type {
   CourierSuggestionResponse,
@@ -8,7 +8,6 @@ import type {
 import { vehicleLabel } from '@/utils/vehicles';
 import { cn } from '@/utils/cn';
 import { Badge, RouteCell, TableSkeleton, TrackingCell } from './dispatch/DispatchTable';
-import { LoadBar } from './dispatch/LoadBar';
 import { amount, blockedBecause, parcelSize } from './dispatch/courierFit';
 
 interface Props {
@@ -20,7 +19,7 @@ interface Props {
   submitting: boolean;
   /** Why the last attempt was refused. */
   error: string | null;
-  onSubmit: (courierId: string, reason: string) => void;
+  onSubmit: (courierId: string) => void;
 }
 
 /** Choose the courier for an order. Reopening it for another order starts afresh. */
@@ -40,7 +39,6 @@ function AssignForm({
   onSubmit
 }: Props & { order: DispatchAssignmentResponse }) {
   const [chosen, setChosen] = useState<string>();
-  const [reason, setReason] = useState('');
   const reassigning = Boolean(order.courierId);
 
   const eligible = (suggestions ?? []).filter((courier) => courier.eligible);
@@ -64,16 +62,7 @@ function AssignForm({
             density="compact"
             disabled={!selected}
             loading={submitting}
-            onClick={() =>
-              selected &&
-              onSubmit(
-                selected,
-                reason.trim() ||
-                  (reassigning
-                    ? 'Dispatcher console reassignment'
-                    : 'Dispatcher console assignment')
-              )
-            }
+            onClick={() => selected && onSubmit(selected)}
           >
             {reassigning ? 'Reassign' : 'Assign'}
           </Button>
@@ -84,9 +73,7 @@ function AssignForm({
         <div className="space-y-1.5 rounded-lg bg-canvas p-3 text-primary">
           <TrackingCell order={order} />
           <RouteCell order={order} />
-          <p className={cn('tabular-nums', size ? 'font-semibold' : 'text-secondary')}>
-            {size ?? 'No size recorded'}
-          </p>
+          {size ? <p className="font-semibold tabular-nums">{size}</p> : null}
           {reassigning ? (
             <p className="text-secondary">With {order.courierName ?? 'another courier'}</p>
           ) : null}
@@ -117,6 +104,7 @@ function AssignForm({
                 recommended={index === 0}
                 checked={courier.courierId === selected}
                 disabled={submitting}
+                sized={Boolean(size)}
                 onSelect={() => setChosen(courier.courierId)}
               />
             ))}
@@ -143,17 +131,6 @@ function AssignForm({
             </ul>
           </section>
         ) : null}
-
-        {eligible.length ? (
-          <Field
-            label="Reason"
-            hint="Optional"
-            value={reason}
-            maxLength={200}
-            disabled={submitting}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        ) : null}
       </div>
     </Modal>
   );
@@ -164,25 +141,34 @@ function CourierOption({
   recommended,
   checked,
   disabled,
+  sized,
   onSelect
 }: {
   courier: CourierSuggestionResponse;
   recommended: boolean;
   checked: boolean;
   disabled: boolean;
+  /** The order has a recorded size, so weight and volume matter too. */
+  sized: boolean;
   onSelect: () => void;
 }) {
   const loads = [
     { used: courier.activeParcels, limit: courier.maxCapacity, unit: 'parcels' },
-    { used: courier.activeWeightKg, limit: courier.maxWeightKg, unit: 'kg' },
-    { used: courier.activeVolumeLitres, limit: courier.maxVolumeLitres, unit: 'L' }
+    ...(sized
+      ? [
+          { used: courier.activeWeightKg, limit: courier.maxWeightKg, unit: 'kg' },
+          { used: courier.activeVolumeLitres, limit: courier.maxVolumeLitres, unit: 'L' }
+        ]
+      : [])
   ];
   return (
     <label
       className={cn(
         'flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border p-3',
         'has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-border-focus',
-        checked ? 'border-border-selected bg-brand-subtle' : 'border-border-subtle bg-card hover:bg-canvas'
+        checked
+          ? 'border-border-selected bg-brand-subtle'
+          : 'border-border-subtle bg-card hover:bg-canvas'
       )}
     >
       <input
@@ -200,14 +186,12 @@ function CourierOption({
         </span>
         <span className="text-secondary">{vehicleLabel(courier.vehicleType)}</span>
       </span>
-      <span className="space-y-1">
+      <span className="text-right tabular-nums text-secondary">
+        <span className="sr-only">Carrying </span>
         {loads.map(({ used, limit, unit }) => (
-          <LoadBar
-            key={unit}
-            used={used ?? 0}
-            limit={limit ?? 0}
-            label={`${amount(used)} of ${amount(limit)} ${unit}`}
-          />
+          <span key={unit} className="block">
+            {`${amount(used)} of ${amount(limit)} ${unit}`}
+          </span>
         ))}
       </span>
     </label>

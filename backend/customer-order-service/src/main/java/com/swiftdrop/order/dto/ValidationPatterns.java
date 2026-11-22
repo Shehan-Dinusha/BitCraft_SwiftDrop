@@ -1,5 +1,7 @@
 package com.swiftdrop.order.dto;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
+
 /**
  * Shared Jakarta validation patterns and messages for order input. Messages are fixed strings so a
  * rejected value is never echoed back to the caller.
@@ -37,9 +39,9 @@ public final class ValidationPatterns {
     public static final String POSTAL_CODE = "^\\d{5}$";
     public static final String POSTAL_CODE_MESSAGE = "Must be a 5-digit postal code";
 
-    /** Local (0771234567) or international (+94771234567) mobile or landline number. */
-    public static final String PHONE = "^(0\\d{9}|\\+94\\d{9})$";
-    public static final String PHONE_MESSAGE = "Must be a valid Sri Lankan phone number";
+    /** Mobile or landline number; the platform-wide rule. */
+    public static final String PHONE = SriLankanPhone.REGEX;
+    public static final String PHONE_MESSAGE = SriLankanPhone.MESSAGE;
 
     /** Free text such as item description or cancellation reason: anything except angle brackets. */
     public static final String FREE_TEXT = "^[^<>]*$";

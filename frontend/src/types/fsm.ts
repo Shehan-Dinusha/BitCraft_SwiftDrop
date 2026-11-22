@@ -3,17 +3,24 @@ import type { DeliveryState } from './contracts';
 /**
  * Mirrors the delivery service's state machine. A same-district parcel goes PICKED_UP -> IN_TRANSIT ->
  * OUT_FOR_DELIVERY; a cross-district one goes through both hubs: PICKED_UP -> AT_ORIGIN_HUB ->
- * IN_TRANSIT (marked Outbound) -> AT_DESTINATION_HUB (accepted) -> OUT_FOR_DELIVERY.
+ * IN_TRANSIT (marked Outbound) -> AT_DESTINATION_HUB (accepted) -> OUT_FOR_DELIVERY. A failed attempt goes
+ * back to the hub (HELD_AT_HUB) and from there out again, or back to the sender. FAILED is final.
  */
 export const allowedTransitions: Record<DeliveryState, DeliveryState[]> = {
   CREATED: ['ASSIGNED', 'CANCELLED'],
   ASSIGNED: ['PICKED_UP', 'FAILED', 'CANCELLED'],
-  PICKED_UP: ['IN_TRANSIT', 'AT_ORIGIN_HUB', 'FAILED'],
+  PICKED_UP: ['IN_TRANSIT', 'AT_ORIGIN_HUB', 'ATTEMPT_FAILED', 'FAILED'],
   AT_ORIGIN_HUB: ['IN_TRANSIT', 'FAILED'],
-  IN_TRANSIT: ['OUT_FOR_DELIVERY', 'AT_DESTINATION_HUB', 'FAILED'],
+  IN_TRANSIT: ['OUT_FOR_DELIVERY', 'AT_DESTINATION_HUB', 'ATTEMPT_FAILED', 'FAILED'],
   AT_DESTINATION_HUB: ['OUT_FOR_DELIVERY', 'FAILED'],
-  OUT_FOR_DELIVERY: ['DELIVERED', 'FAILED'],
+  OUT_FOR_DELIVERY: ['DELIVERED', 'ATTEMPT_FAILED', 'FAILED'],
   DELIVERED: [],
+  ATTEMPT_FAILED: ['HELD_AT_HUB', 'FAILED'],
+  HELD_AT_HUB: ['AT_DESTINATION_HUB', 'RETURN_IN_TRANSIT', 'RETURN_AT_HUB', 'FAILED'],
+  RETURN_IN_TRANSIT: ['RETURN_AT_HUB', 'FAILED'],
+  RETURN_AT_HUB: ['OUT_FOR_RETURN', 'FAILED'],
+  OUT_FOR_RETURN: ['RETURNED', 'RETURN_AT_HUB', 'FAILED'],
+  RETURNED: [],
   FAILED: [],
   CANCELLED: []
 };
@@ -31,6 +38,14 @@ export function crossesDistricts(route: {
     route.pickupDistrict !== route.deliveryDistrict
   );
 }
+
+/** Nothing more happens to the parcel. */
+export const isFinished = (state: string | null | undefined) =>
+  state === 'DELIVERED' || state === 'RETURNED' || state === 'FAILED' || state === 'CANCELLED';
+
+/** Still work for the courier: not finished, and not handed in at the hub (the end of their leg). */
+export const isOpenForCourier = (state: string | null | undefined) =>
+  !isFinished(state) && state !== 'AT_ORIGIN_HUB';
 
 /**
  * The step a courier takes next, by route. Couriers never take the hub steps between the legs
@@ -51,6 +66,12 @@ export function courierNextStep(
       return 'OUT_FOR_DELIVERY';
     case 'OUT_FOR_DELIVERY':
       return 'DELIVERED';
+    case 'ATTEMPT_FAILED':
+      return 'HELD_AT_HUB';
+    case 'RETURN_AT_HUB':
+      return 'OUT_FOR_RETURN';
+    case 'OUT_FOR_RETURN':
+      return 'RETURNED';
     default:
       return null;
   }

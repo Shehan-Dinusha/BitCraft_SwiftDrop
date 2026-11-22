@@ -20,10 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -39,7 +37,7 @@ public class WebhookSubscriptionService {
 
     private final WebhookEndpointRepository endpointRepository;
     private final WebhookDeliveryAttemptRepository attemptRepository;
-    private final OutboundWebhookDispatcher dispatcher;
+    private final TestPingService testPings;
     private final WebhookUrlPolicy urlPolicy;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -126,21 +124,14 @@ public class WebhookSubscriptionService {
     }
 
     /**
-     * Connectivity check: one signed POST of a fixed test payload, no retry, no dead-letter record. The result
+     * One test message, signed and shaped like a real event; no retry and no delivery job. The result
      * carries the real HTTP status, a sanitised classification and the latency, never the endpoint's reply.
      */
     public WebhookDeliveryAttemptResponse testPing(UUID endpointId, CallerContext caller) {
         WebhookEndpoint endpoint = findAccessibleEndpoint(endpointId, caller);
         log.info("Initiating test ping for endpoint {}", endpointId);
 
-        Map<String, Object> testPayload = Map.of(
-                "event", "webhook.test.ping",
-                "endpointId", endpoint.getEndpointId().toString(),
-                "timestamp", Instant.now().toString(),
-                "message", "SwiftDrop Webhook Resiliency ping verification."
-        );
-
-        return dispatcher.ping(endpoint, "webhook.test.ping", testPayload);
+        return testPings.ping(endpoint);
     }
 
     @Transactional(readOnly = true)

@@ -19,7 +19,7 @@ export interface HighDensityDataGridProps<T extends { id: string | number }> {
   emptyMessage?: string;
   density?: DensityMode;
   className?: string;
-  /** Shows the filter box and the row count. Defaults to true. */
+  /** Shows the search box and the row count. Defaults to true. */
   searchable?: boolean;
 }
 
@@ -27,8 +27,8 @@ export function HighDensityDataGrid<T extends { id: string | number }>({
   rows,
   columns,
   label = 'Records',
-  filterPlaceholder = 'Filter records',
-  emptyMessage = 'No records match this filter.',
+  filterPlaceholder = 'Search',
+  emptyMessage = 'No results',
   density,
   className,
   searchable = true
