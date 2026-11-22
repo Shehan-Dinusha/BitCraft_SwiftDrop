@@ -26,7 +26,12 @@ public class CourierJobService {
 
     private static final Set<DeliveryState> BEFORE_PICKUP = EnumSet.of(DeliveryState.CREATED, DeliveryState.ASSIGNED);
     private static final Set<DeliveryState> FINISHED =
-            EnumSet.of(DeliveryState.DELIVERED, DeliveryState.FAILED, DeliveryState.CANCELLED);
+            EnumSet.of(DeliveryState.DELIVERED, DeliveryState.RETURNED, DeliveryState.FAILED, DeliveryState.CANCELLED);
+    /** From a failed attempt on, the recipient is nobody's business; only the returning courier meets someone. */
+    private static final Set<DeliveryState> RETURNING = EnumSet.of(DeliveryState.ATTEMPT_FAILED, DeliveryState.HELD_AT_HUB,
+            DeliveryState.RETURN_IN_TRANSIT, DeliveryState.RETURN_AT_HUB, DeliveryState.OUT_FOR_RETURN);
+    private static final Set<DeliveryState> BACK_TO_SENDER =
+            EnumSet.of(DeliveryState.RETURN_AT_HUB, DeliveryState.OUT_FOR_RETURN);
     private static final Set<DeliveryState> LAST_MILE =
             EnumSet.of(DeliveryState.AT_DESTINATION_HUB, DeliveryState.OUT_FOR_DELIVERY);
 
@@ -50,7 +55,8 @@ public class CourierJobService {
         boolean cancelled = order.cancelled() || state == DeliveryState.CANCELLED;
         boolean active = !cancelled && !FINISHED.contains(state);
         boolean beforePickup = active && BEFORE_PICKUP.contains(state);
-        boolean deliversIt = active && (!HubRoute.crossesDistricts(session) || LAST_MILE.contains(state));
+        boolean deliversIt = active && !RETURNING.contains(state)
+                && (!HubRoute.crossesDistricts(session) || LAST_MILE.contains(state));
 
         return new CourierJobResponse(
                 session.getDeliveryId(),
@@ -58,7 +64,8 @@ public class CourierJobService {
                 order.speed(),
                 beforePickup ? order.pickup() : null,
                 deliversIt ? order.dropOff() : null,
-                active ? order.notes() : null,
+                active && BACK_TO_SENDER.contains(state) ? order.pickup() : null,
+                active && !RETURNING.contains(state) ? order.notes() : null,
                 order.itemDescription(),
                 order.lengthCm(),
                 order.widthCm(),

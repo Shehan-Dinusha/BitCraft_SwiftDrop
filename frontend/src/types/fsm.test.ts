@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canTransition, courierNextStep, crossesDistricts } from './fsm';
+import { canTransition, courierNextStep, crossesDistricts, isOpenForCourier } from './fsm';
 
 describe('delivery routes', () => {
   it('tells a cross-district parcel from a same-district one', () => {
@@ -20,6 +20,16 @@ describe('delivery routes', () => {
     expect(courierNextStep('AT_ORIGIN_HUB', true)).toBeNull();
     expect(courierNextStep('IN_TRANSIT', true)).toBeNull();
     expect(courierNextStep('AT_DESTINATION_HUB', true)).toBe('OUT_FOR_DELIVERY');
+  });
+
+  it('brings a failed parcel to the hub, and a return to the sender', () => {
+    expect(courierNextStep('ATTEMPT_FAILED', true)).toBe('HELD_AT_HUB');
+    expect(courierNextStep('HELD_AT_HUB', true)).toBeNull();
+    expect(courierNextStep('RETURN_AT_HUB', false)).toBe('OUT_FOR_RETURN');
+    expect(courierNextStep('OUT_FOR_RETURN', false)).toBe('RETURNED');
+    expect(canTransition('HELD_AT_HUB', 'OUT_FOR_DELIVERY')).toBe(false);
+    expect(isOpenForCourier('ATTEMPT_FAILED')).toBe(true);
+    expect(isOpenForCourier('RETURNED')).toBe(false);
   });
 
   it('mirrors the delivery service transitions', () => {

@@ -15,6 +15,10 @@ public enum PublicOrderStatus {
     PICKED_UP,
     IN_TRANSIT,
     OUT_FOR_DELIVERY,
+    /** A delivery attempt failed; it is tried again or returned. */
+    DELIVERY_ATTEMPTED,
+    /** On its way back to the sender. */
+    RETURNING,
     FAILED,
     DELIVERED,
     CANCELLED,
@@ -36,6 +40,9 @@ public enum PublicOrderStatus {
             case AT_ORIGIN_HUB, IN_TRANSIT, AT_DESTINATION_HUB -> IN_TRANSIT;
             case OUT_FOR_DELIVERY -> OUT_FOR_DELIVERY;
             case DELIVERED -> DELIVERED;
+            case ATTEMPT_FAILED, HELD_AT_HUB -> DELIVERY_ATTEMPTED;
+            case RETURN_IN_TRANSIT, RETURN_AT_HUB, OUT_FOR_RETURN -> RETURNING;
+            case RETURNED -> RETURNED_TO_SENDER;
             case FAILED -> FAILED;
             case CANCELLED -> CANCELLED;
         };

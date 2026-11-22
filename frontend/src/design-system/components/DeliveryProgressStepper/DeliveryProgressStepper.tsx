@@ -20,6 +20,25 @@ const hubSteps: DeliveryState[] = [
   'DELIVERED'
 ];
 
+/** After a failed attempt: back to the hub, then back to the sender. */
+const returnSteps: DeliveryState[] = [
+  'ATTEMPT_FAILED',
+  'HELD_AT_HUB',
+  'RETURN_IN_TRANSIT',
+  'RETURN_AT_HUB',
+  'OUT_FOR_RETURN',
+  'RETURNED'
+];
+/** Several of these steps share one public status, so they need their own words. */
+const returnLabels: Partial<Record<DeliveryState, string>> = {
+  ATTEMPT_FAILED: 'Not delivered',
+  HELD_AT_HUB: 'At the hub',
+  RETURN_IN_TRANSIT: 'On the way back',
+  RETURN_AT_HUB: "At the sender's hub",
+  OUT_FOR_RETURN: 'To the sender',
+  RETURNED: 'Returned'
+};
+
 export interface DeliveryProgressStepperProps {
   current: DeliveryState;
   /** The parcel goes to another district (through both hubs). A hub state implies it. */
@@ -46,8 +65,11 @@ export function DeliveryProgressStepper({
   const contextDensity = useDensityMode();
   const resolvedSize = size ?? densitySizes[density ?? contextDensity];
 
-  const steps =
-    viaHubs || current === 'AT_ORIGIN_HUB' || current === 'AT_DESTINATION_HUB' ? hubSteps : directSteps;
+  const steps = returnSteps.includes(current)
+    ? returnSteps.filter((step) => step !== 'RETURN_IN_TRANSIT' || viaHubs || step === current)
+    : viaHubs || current === 'AT_ORIGIN_HUB' || current === 'AT_DESTINATION_HUB'
+      ? hubSteps
+      : directSteps;
   const activeIndex = steps.indexOf(current);
   const isTerminal = activeIndex === -1;
   const items: DeliveryState[] = isTerminal ? [...steps, current] : steps;
@@ -81,6 +103,7 @@ export function DeliveryProgressStepper({
             ) : null}
             <FsmStatusBadge
               state={state}
+              label={returnLabels[state]}
               size={resolvedSize}
               tone={isUpcoming ? 'muted' : 'solid'}
             />

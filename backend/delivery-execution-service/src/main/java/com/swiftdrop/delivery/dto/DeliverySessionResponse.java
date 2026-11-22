@@ -37,10 +37,10 @@ public record DeliverySessionResponse(
         @Schema(description = "Previous FSM delivery state")
         DeliveryState previousState,
 
-        @Schema(description = "Failure reason if FAILED")
+        @Schema(description = "Why the last attempt or the delivery failed")
         String failedReason,
 
-        @Schema(description = "Delivery attempt count")
+        @Schema(description = "Delivery attempts that failed")
         Integer attemptCount,
 
         @Schema(description = "Timestamp when package was picked up")
@@ -59,7 +59,13 @@ public record DeliverySessionResponse(
         UUID merchantId,
 
         @Schema(description = "Shop name; null when not known", example = "Nimal Fashion")
-        String merchantName
+        String merchantName,
+
+        @Schema(description = "Proof from before this moment belongs to an earlier attempt and does not count; null on a first attempt")
+        Instant proofSince,
+
+        @Schema(description = "When the sender got the parcel back")
+        Instant returnedAt
 ) {
     /** For callers without a shop. */
     public DeliverySessionResponse(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, String courierName,
@@ -68,7 +74,7 @@ public record DeliverySessionResponse(
                                    Integer attemptCount, Instant pickupAt, Instant deliveredAt, Instant createdAt,
                                    Instant updatedAt) {
         this(deliveryId, orderId, trackingNumber, courierId, courierName, pickupDistrict, deliveryDistrict, currentState,
-                previousState, failedReason, attemptCount, pickupAt, deliveredAt, createdAt, updatedAt, null, null);
+                previousState, failedReason, attemptCount, pickupAt, deliveredAt, createdAt, updatedAt, null, null, null, null);
     }
 
     /**
@@ -101,7 +107,9 @@ public record DeliverySessionResponse(
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getMerchantId(),
-                entity.getMerchantName()
+                entity.getMerchantName(),
+                entity.getProofSince(),
+                entity.getReturnedAt()
         );
     }
 }

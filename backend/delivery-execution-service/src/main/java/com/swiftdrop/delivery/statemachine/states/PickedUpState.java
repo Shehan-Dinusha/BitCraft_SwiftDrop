@@ -20,7 +20,8 @@ public class PickedUpState implements DeliveryStateHandler {
 
     @Override
     public Set<DeliveryState> allowedNext() {
-        return EnumSet.of(DeliveryState.IN_TRANSIT, DeliveryState.AT_ORIGIN_HUB, DeliveryState.FAILED);
+        return EnumSet.of(DeliveryState.IN_TRANSIT, DeliveryState.AT_ORIGIN_HUB, DeliveryState.ATTEMPT_FAILED,
+                DeliveryState.FAILED);
     }
 
     @Override

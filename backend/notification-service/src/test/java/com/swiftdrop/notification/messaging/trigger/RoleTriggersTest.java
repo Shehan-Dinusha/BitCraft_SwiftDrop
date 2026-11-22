@@ -127,9 +127,46 @@ class RoleTriggersTest {
         assertThat(rows).extracting(TeamNotification::audience)
                 .containsExactly("OPERATIONS", "MERCHANT:" + customerId); // the consumer keeps the merchant row only for a merchant company
         assertThat(rows.get(0).notificationType()).isEqualTo("OPS_DELIVERY_FAILED");
-        assertThat(rows.get(0).body()).isEqualTo("Parcel SD-EEEE-FFFF could not be delivered: the recipient was not available."
-                + " Arrange a new attempt or a return to the sender.");
+        assertThat(rows.get(0).body()).isEqualTo("Parcel SD-EEEE-FFFF could not be delivered: the recipient was not available.");
         assertThat(rows.get(1).notificationType()).isEqualTo("MERCHANT_DELIVERY_FAILED");
+    }
+
+    @Test
+    @DisplayName("A failed attempt is told once and says what happens next; the hand-in at the hub is no news")
+    void attemptFailed() {
+        EventEnvelope attempt = statusEvent("OUT_FOR_DELIVERY", "DELIVERY_ATTEMPTED");
+        FailedTrigger trigger = new FailedTrigger();
+
+        assertThat(trigger.matches(attempt)).isTrue();
+        assertThat(trigger.matches(statusEvent("DELIVERY_ATTEMPTED", "DELIVERY_ATTEMPTED"))).isFalse();
+        assertThat(trigger.build(attempt)).singleElement().satisfies(r ->
+                assertThat(r.templateParams().get("nextStep")).contains("try again or return it to you"));
+        assertThat(trigger.teamNotifications(attempt).get(0).body())
+                .endsWith("It comes back to the hub: try again or return it to the sender.");
+    }
+
+    @Test
+    @DisplayName("A return is told when it starts and when the sender has the parcel back")
+    void returned() {
+        ReturnTrigger trigger = new ReturnTrigger();
+        EventEnvelope starts = statusEvent("DELIVERY_ATTEMPTED", "RETURNING");
+        EventEnvelope done = statusEvent("RETURNING", "RETURNED_TO_SENDER");
+
+        assertThat(trigger.matches(starts)).isTrue();
+        assertThat(trigger.matches(statusEvent("RETURNING", "RETURNING"))).isFalse();
+        assertThat(trigger.matches(statusEvent("OUT_FOR_DELIVERY", "DELIVERED"))).isFalse();
+        assertThat(trigger.build(starts).get(0).templateCode()).isEqualTo("PARCEL_RETURNING");
+        assertThat(trigger.build(done).get(0).templateCode()).isEqualTo("PARCEL_RETURNED");
+        assertThat(trigger.build(done).get(0).templateParams()).containsKey("returnedAt");
+        assertThat(trigger.teamNotifications(starts).get(0).notificationType()).isEqualTo("MERCHANT_RETURN");
+        assertThat(trigger.teamNotifications(done).get(0).title()).isEqualTo("Parcel returned");
+    }
+
+    private EventEnvelope statusEvent(String from, String to) {
+        return envelope("parcel.status.changed", """
+                {"customerId":"%s","trackingNumber":"SD-EEEE-FFFF","previousPublicStatus":"%s","newPublicStatus":"%s",
+                 "failureReason":"RECIPIENT_UNAVAILABLE","timestamp":"2026-11-22T10:00:00Z"}
+                """.formatted(UUID.randomUUID(), from, to));
     }
 
     @Test

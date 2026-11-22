@@ -83,9 +83,17 @@ public class EmailHtmlRenderer {
                     "Thank you for shipping with SwiftDrop.",
                     "#065f46", "#d1fae5", "#a7f3d0", 4, false)),
             Map.entry("PARCEL_FAILED", new Style("Delivery attempt failed", "We could not deliver your parcel",
-                    "Our courier tried to deliver your parcel but was not able to complete the delivery.",
-                    "Our team will contact you to arrange another attempt. You can check the latest status in the SwiftDrop app.",
+                    "We were not able to complete the delivery of your parcel.",
+                    "You can check the latest status in the SwiftDrop app.",
                     "#991b1b", "#fee2e2", "#fecaca", 4, true)),
+            Map.entry("PARCEL_RETURNING", new Style("Coming back", "Your parcel is coming back to you",
+                    "We could not deliver your parcel, so it is on its way back to you. The return is free.",
+                    "A courier will bring it to your pickup address.",
+                    "#92400e", "#fef3c7", "#fde68a", 0, false)),
+            Map.entry("PARCEL_RETURNED", new Style("Returned", "Your parcel has been returned",
+                    "Your parcel was handed back to you.",
+                    "If you did not receive it, contact SwiftDrop.",
+                    "#334155", "#f1f5f9", "#cbd5e1", 0, false)),
             Map.entry(SensitiveTemplates.EMAIL_VERIFICATION, new Style("Verify your email", "Confirm your email address",
                     "Use this code to verify the email address for your SwiftDrop account.",
                     "If you did not create a SwiftDrop account, you can ignore this email.",
@@ -355,6 +363,12 @@ public class EmailHtmlRenderer {
                 String reason = clean(p.get("reason"));
                 if ("MERCHANT_REJECTED".equals(code) && reason != null) {
                     rows.add(new String[]{"Reason", reason, null});
+                }
+            }
+            case "PARCEL_RETURNED" -> {
+                String when = clean(p.get("returnedAt"));
+                if (when != null) {
+                    rows.add(new String[]{"Returned", when, null});
                 }
             }
             case "PARCEL_FAILED" -> {

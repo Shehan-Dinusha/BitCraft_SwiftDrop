@@ -33,9 +33,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * The hub's side of the cash. A dispatcher counts and banks only their own district's cash; a SYSTEM_ADMIN
@@ -46,11 +48,9 @@ public class CashDeskService {
 
     private static final PageRequest RECENT = PageRequest.of(0, 50);
 
-    /** The only reasons a sender gets the fee back: SwiftDrop damaged the parcel, or (OTHER) lost it. */
-    private static final Set<String> REFUNDABLE = Set.of(
-            DeliveryFailureReason.DAMAGED.name(),
-            DeliveryFailureReason.DAMAGED_IN_TRANSIT.name(),
-            DeliveryFailureReason.OTHER.name());
+    /** The only reasons a sender gets the fee back: SwiftDrop lost or damaged the parcel. */
+    private static final Set<String> REFUNDABLE = Arrays.stream(DeliveryFailureReason.values())
+            .filter(DeliveryFailureReason::isLoss).map(Enum::name).collect(Collectors.toUnmodifiableSet());
 
     private final CashEntryRepository entryRepository;
     private final CashHandoverRepository handoverRepository;

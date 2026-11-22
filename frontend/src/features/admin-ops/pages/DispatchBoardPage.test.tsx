@@ -71,6 +71,25 @@ describe('DispatchBoardPage', () => {
       order('H', { hubStage: 'OUTBOUND', pickupDistrict: 'GALLE', deliveryDistrict: 'COLOMBO' }),
       order('I', { pickupDistrict: 'MATARA', deliveryDistrict: 'COLOMBO' })
     ]);
+    vi.spyOn(dispatchApi, 'getReturns').mockResolvedValue([
+      order('J', {
+        hubStage: 'HELD_AT_HUB',
+        pickupDistrict: 'KANDY',
+        deliveryDistrict: 'COLOMBO',
+        deliveryAttempts: 1,
+        lastAttemptReason: 'RECIPIENT_UNAVAILABLE',
+        canRetry: true
+      }),
+      order('K', {
+        hubStage: 'HELD_AT_HUB',
+        pickupDistrict: 'COLOMBO',
+        deliveryDistrict: 'COLOMBO',
+        deliveryAttempts: 2,
+        lastAttemptReason: 'RECIPIENT_REJECTED',
+        canRetry: false
+      }),
+      order('L', { hubStage: 'RETURN_OUTBOUND', leg: 'RETURN', deliveryDistrict: 'GALLE' })
+    ]);
     vi.spyOn(dispatchApi, 'getCouriers').mockResolvedValue([]);
   });
 
@@ -152,6 +171,54 @@ describe('DispatchBoardPage', () => {
     expect(await screen.findByRole('checkbox', { name: 'Select SD-H' })).toBeInTheDocument();
     expect(screen.getByText('Not sent yet (1)')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: 'Select SD-I' })).not.toBeInTheDocument();
+  });
+
+  it('decides on failed deliveries, and accepts returns arriving at the hub', async () => {
+    vi.spyOn(deliveryApi, 'getDeliveryByOrderId').mockImplementation(async (orderId) => ({
+      deliveryId: `d-${orderId}`
+    }));
+    const transition = vi.spyOn(deliveryApi, 'transitionDelivery').mockResolvedValue({});
+    renderPage('/ops/dispatch?tab=returns');
+
+    // Refused twice over: no second attempt, only the return.
+    expect(await screen.findByText('Recipient refused it')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try SD-K again' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Return SD-J to the sender' })).toHaveTextContent(
+      'Send back to Kandy'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try SD-J again' }));
+    expect(await screen.findByText('1 parcel ready to go out again')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('SD-J')).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Return SD-K to the sender' }));
+    expect(await screen.findByText('1 parcel ready to return')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select SD-L' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept at hub (1)' }));
+    await waitFor(() => expect(screen.queryByText('SD-L')).not.toBeInTheDocument());
+
+    expect(transition.mock.calls.map(([id, body]) => [id, body.targetState])).toEqual([
+      ['d-J', 'AT_DESTINATION_HUB'],
+      ['d-K', 'RETURN_AT_HUB'],
+      ['d-L', 'RETURN_AT_HUB']
+    ]);
+  });
+
+  it('records a lost parcel, so its fee can be refunded', async () => {
+    vi.spyOn(deliveryApi, 'getDeliveryByOrderId').mockResolvedValue({ deliveryId: 'd-J' });
+    const transition = vi.spyOn(deliveryApi, 'transitionDelivery').mockResolvedValue({});
+    renderPage('/ops/dispatch?tab=returns');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'SD-J is lost or damaged' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Parcel lost' }));
+
+    await waitFor(() =>
+      expect(transition).toHaveBeenCalledWith(
+        'd-J',
+        expect.objectContaining({ targetState: 'FAILED', failureReason: 'LOST' })
+      )
+    );
   });
 
   it('hides the hub tabs until an admin picks a district', async () => {

@@ -9,7 +9,7 @@ const PAGE_SIZE = 100;
 const ROOT = 'dispatch-console';
 
 /**
- * The five dispatch lists. `scope` is the district an admin looks at (the server decides for a
+ * The dispatch lists. `scope` is the district an admin looks at (the server decides for a
  * dispatcher). `hubLists` is off for an admin viewing every district: a hub belongs to one district.
  */
 export function useDispatchData(
@@ -62,6 +62,12 @@ export function useDispatchData(
     enabled: hubLists,
     ...options
   });
+  const returns = useQuery({
+    queryKey: key('returns'),
+    queryFn: () => dispatchApi.getReturns(scope),
+    enabled: hubLists,
+    ...options
+  });
   const couriers = useQuery({
     queryKey: key('couriers'),
     queryFn: () => dispatchApi.getCouriers({ district: scope }),
@@ -69,5 +75,5 @@ export function useDispatchData(
   });
 
   const refresh = useCallback(() => client.invalidateQueries({ queryKey: [ROOT] }), [client]);
-  return { unassigned, assigned, ready, incoming, couriers, refresh };
+  return { unassigned, assigned, ready, incoming, returns, couriers, refresh };
 }

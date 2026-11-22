@@ -671,6 +671,11 @@ components:
         hubs: PICKED_UP -> AT_ORIGIN_HUB (the first courier hands it in) -> IN_TRANSIT (the pickup
         district's dispatcher marks it Outbound) -> AT_DESTINATION_HUB (the drop-off district's
         dispatcher accepts it) -> OUT_FOR_DELIVERY (a courier of the drop-off district collects it).
+        A failed attempt: ATTEMPT_FAILED (the courier brings it to their hub) -> HELD_AT_HUB (its
+        dispatcher decides) -> AT_DESTINATION_HUB (tried again: two attempts, none after a refusal) or
+        back: RETURN_IN_TRANSIT (different districts only) -> RETURN_AT_HUB (the sender's hub) ->
+        OUT_FOR_RETURN -> RETURNED (with a photo). FAILED is final: the pickup failed, or the parcel was
+        lost or damaged. A FAILED request with another reason counts as ATTEMPT_FAILED.
       enum:
         - CREATED
         - ASSIGNED
@@ -680,6 +685,12 @@ components:
         - AT_DESTINATION_HUB
         - OUT_FOR_DELIVERY
         - DELIVERED
+        - ATTEMPT_FAILED
+        - HELD_AT_HUB
+        - RETURN_IN_TRANSIT
+        - RETURN_AT_HUB
+        - OUT_FOR_RETURN
+        - RETURNED
         - FAILED
         - CANCELLED
 
@@ -691,6 +702,7 @@ components:
         - ACCESS_RESTRICTED
         - RECIPIENT_REJECTED
         - DAMAGED_IN_TRANSIT
+        - LOST
         - ADVERSE_WEATHER
         - PAYMENT_FAILED
         - OTHER
@@ -818,6 +830,14 @@ components:
           description: The shop that sent it, so its parcels are collected together.
         merchantName:
           type: [string, "null"]
+        proofSince:
+          type: [string, "null"]
+          format: date-time
+          description: Proof from before this moment belongs to an earlier attempt and does not count.
+        returnedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the sender got the parcel back.
 
     CourierJobStop:
       type: object
@@ -864,6 +884,11 @@ components:
             - $ref: "#/components/schemas/CourierJobStop"
             - type: "null"
         dropOff:
+          oneOf:
+            - $ref: "#/components/schemas/CourierJobStop"
+            - type: "null"
+        returnTo:
+          description: The sender, for the courier bringing the parcel back.
           oneOf:
             - $ref: "#/components/schemas/CourierJobStop"
             - type: "null"

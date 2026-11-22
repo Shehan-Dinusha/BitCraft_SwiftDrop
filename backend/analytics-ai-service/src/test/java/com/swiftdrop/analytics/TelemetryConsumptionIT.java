@@ -493,6 +493,35 @@ class TelemetryConsumptionIT {
         assertThat(mapper.readTree(reportHttp(path, "SYSTEM_ADMIN").body()).at("/data/days/0/delivered").asLong()).isEqualTo(1);
     }
 
+    /** Tried twice in Kandy, then back to Colombo: one failure, Kandy's, and nobody carries it at a hub. */
+    @Test
+    void aReturnedParcelIsOneFailureWhereItCouldNotBeDelivered() throws Exception {
+        UUID order = UUID.randomUUID(), kandyCourier = UUID.randomUUID(), colomboCourier = UUID.randomUUID();
+        var colombo = com.swiftdrop.contracts.enums.SriLankanDistrict.COLOMBO;
+        var kandy = com.swiftdrop.contracts.enums.SriLankanDistrict.KANDY;
+        apply(CREATED, created(order, CREATED_AT));
+        apply(STATUS, hubStep(order, "IN_TRANSIT", "INCOMING", "2026-11-08T08:00:00Z"));
+        apply(ASSIGNED, assigned(order, kandyCourier, "2026-11-08T08:10:00Z"));
+        apply(STATUS, hubStep(order, "DELIVERY_ATTEMPTED", "RETURN_TO_HUB", "2026-11-08T09:00:00Z"));
+        assertThat(reports().workload(kandy).getFirst().activeOrders()).isEqualTo(1);
+        apply(STATUS, hubStep(order, "DELIVERY_ATTEMPTED", "HELD_AT_HUB", "2026-11-08T09:30:00Z"));
+        assertThat(reports().workload(kandy).getFirst().activeOrders()).isZero();
+        assertThat(reports().outcomes(DAY, DAY, null).completed()).isZero();
+
+        apply(STATUS, hubStep(order, "RETURNING", "RETURN_OUTBOUND", "2026-11-08T10:00:00Z"));
+        apply(STATUS, hubStep(order, "RETURNING", "RETURN_AT_HUB", "2026-11-08T11:00:00Z"));
+        apply(ASSIGNED, assigned(order, colomboCourier, "2026-11-08T11:10:00Z"));
+        assertThat(reports().workload(colombo)).singleElement()
+                .satisfies(row -> assertThat(row.courierId()).isEqualTo(colomboCourier));
+        apply(STATUS, hubStep(order, "RETURNED_TO_SENDER", "FAILED_RETURN", "2026-11-08T12:00:00Z"));
+
+        assertThat(reports().daily(DAY, DAY, kandy).getFirst().failed()).isEqualTo(1);
+        assertThat(reports().daily(DAY, DAY, colombo).getFirst().failed()).isZero();
+        assertThat(reports().couriers(kandy, null)).singleElement()
+                .satisfies(row -> assertThat(row.courierId()).isEqualTo(kandyCourier));
+        assertThat(reports().outcomes(DAY, DAY, null).completed()).isEqualTo(1);
+    }
+
     @Test
     void emptyReportingHttpAndLiveOpenApiMatchPublicContract() throws Exception {
         var response = reportHttp("/success-rate?from=2026-11-08&to=2026-11-08", "DISPATCHER");

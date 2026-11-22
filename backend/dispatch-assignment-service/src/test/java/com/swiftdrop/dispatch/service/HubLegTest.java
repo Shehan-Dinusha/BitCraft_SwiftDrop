@@ -1,5 +1,6 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.contracts.enums.DeliveryFailureReason;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
@@ -156,6 +157,90 @@ class HubLegTest {
         assertThatThrownBy(() -> overrideService.manualAssign(
                 new ManualAssignRequest(orderId, UUID.randomUUID(), "ADMIN", null), null, admin))
                 .isInstanceOf(AssignmentConflictException.class).hasMessageContaining("between district hubs");
+    }
+
+    private ParcelStatusChangedEvent returnEvent(InternalQueueStatus stage, DeliveryFailureReason reason) {
+        return new ParcelStatusChangedEvent(UUID.randomUUID(), UUID.randomUUID(), "SD-7K2P-Q9XM", orderId, null,
+                PublicOrderStatus.OUT_FOR_DELIVERY, stage.toPublicStatus(), stage,
+                SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, reason, Instant.now());
+    }
+
+    @Test
+    @DisplayName("A failed delivery: back to the Kandy hub, out again once, then back to Colombo and the sender")
+    void failedDeliveryAndReturn() {
+        CourierShift kandyCourier = courierIn(colomboCourier, SriLankanDistrict.KANDY);
+        kandyCourier.setActiveParcelsCount(3);
+        when(couriers.findByCourierId(colomboCourier)).thenReturn(Optional.of(kandyCourier));
+        order.setLeg(AssignmentLeg.LAST_MILE);
+
+        var failed = returnEvent(InternalQueueStatus.RETURN_TO_HUB, DeliveryFailureReason.RECIPIENT_UNAVAILABLE);
+        dispatchService.handleParcelStatusChanged(failed);
+        dispatchService.handleParcelStatusChanged(failed);
+        assertThat(order.getDeliveryAttempts()).isEqualTo(1);
+        assertThat(order.getCourierId()).isEqualTo(colomboCourier);
+
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.HELD_AT_HUB, null));
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.HELD_AT_HUB, null));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.IN_TRANSFER);
+        assertThat(order.getLastAttemptReason()).isEqualTo(DeliveryFailureReason.RECIPIENT_UNAVAILABLE);
+        assertThat(kandyCourier.getActiveParcelsCount()).isEqualTo(2);
+        assertThatThrownBy(() -> overrideService.manualAssign(
+                new ManualAssignRequest(orderId, UUID.randomUUID(), "ADMIN", null)))
+                .isInstanceOf(AssignmentConflictException.class).hasMessageContaining("failed delivery");
+
+        dispatchService.handleParcelStatusChanged(hubEvent(InternalQueueStatus.INCOMING));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(order.getLeg()).isEqualTo(AssignmentLeg.LAST_MILE);
+        assertThat(order.getDeliveryAttempts()).isEqualTo(1);
+
+        order.setStatus(AssignmentStatus.ASSIGNED);
+        order.setCourierId(colomboCourier);
+        order.setPickedUpAt(Instant.now());
+        dispatchService.handleParcelStatusChanged(
+                returnEvent(InternalQueueStatus.RETURN_TO_HUB, DeliveryFailureReason.WRONG_ADDRESS));
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.HELD_AT_HUB, null));
+        assertThat(order.getDeliveryAttempts()).isEqualTo(2);
+
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.RETURN_OUTBOUND, null));
+        assertThat(order.getResponsibleDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.RETURN_AT_HUB, null));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(order.getLeg()).isEqualTo(AssignmentLeg.RETURN);
+        assertThat(order.getPickedUpAt()).isNull();
+
+        // Out to the sender, who is not home: back at the hub, waiting again.
+        order.setStatus(AssignmentStatus.ASSIGNED);
+        order.setCourierId(colomboCourier);
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.RETURN_AT_HUB, null));
+        assertThat(order.getStatus()).as("a late event before the courier has it").isEqualTo(AssignmentStatus.ASSIGNED);
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.OUT_FOR_RETURN, null));
+        assertThat(order.getPickedUpAt()).isNotNull();
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.RETURN_AT_HUB, null));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(order.getCourierId()).isNull();
+
+        order.setStatus(AssignmentStatus.ASSIGNED);
+        order.setCourierId(colomboCourier);
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.FAILED_RETURN, null));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.CANCELLED);
+        assertThat(order.getFailureReason()).isEqualTo("Returned to the sender");
+    }
+
+    @Test
+    @DisplayName("One district: a failed parcel goes out again from the hub as its last-mile order")
+    void sameDistrictTriedAgain() {
+        when(couriers.findByCourierId(colomboCourier))
+                .thenReturn(Optional.of(courierIn(colomboCourier, SriLankanDistrict.COLOMBO)));
+        order.setDeliveryDistrict(SriLankanDistrict.COLOMBO);
+
+        dispatchService.handleParcelStatusChanged(
+                returnEvent(InternalQueueStatus.RETURN_TO_HUB, DeliveryFailureReason.RECIPIENT_UNAVAILABLE));
+        dispatchService.handleParcelStatusChanged(returnEvent(InternalQueueStatus.HELD_AT_HUB, null));
+        dispatchService.handleParcelStatusChanged(hubEvent(InternalQueueStatus.INCOMING));
+
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(order.getLeg()).isEqualTo(AssignmentLeg.LAST_MILE);
+        assertThat(order.getResponsibleDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
     }
 
     @Test

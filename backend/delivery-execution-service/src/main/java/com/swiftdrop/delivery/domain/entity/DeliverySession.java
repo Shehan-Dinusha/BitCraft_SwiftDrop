@@ -67,6 +67,13 @@ public class DeliverySession {
     @Column(name = "attempt_count", nullable = false)
     private Integer attemptCount = 0;
 
+    /** Proof from before this moment belongs to an earlier attempt and does not count. */
+    @Column(name = "proof_since")
+    private Instant proofSince;
+
+    @Column(name = "returned_at")
+    private Instant returnedAt;
+
     /** The shop that sent the parcel; null for a customer's parcel. */
     @Column(name = "merchant_id")
     private UUID merchantId;
@@ -151,6 +158,12 @@ public class DeliverySession {
 
     public Integer getAttemptCount() { return attemptCount; }
     public void setAttemptCount(Integer attemptCount) { this.attemptCount = attemptCount; }
+
+    public Instant getProofSince() { return proofSince; }
+    public void setProofSince(Instant proofSince) { this.proofSince = proofSince; }
+
+    public Instant getReturnedAt() { return returnedAt; }
+    public void setReturnedAt(Instant returnedAt) { this.returnedAt = returnedAt; }
 
     public UUID getMerchantId() { return merchantId; }
     public void setMerchantId(UUID merchantId) { this.merchantId = merchantId; }

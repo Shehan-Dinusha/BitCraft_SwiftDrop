@@ -9,6 +9,7 @@ import {
   formatAge,
   groupByShop,
   isAtHub,
+  isReturn,
   orderKey,
   orderLabel,
   sortQueue,
@@ -96,8 +97,8 @@ export function ToAssignTab({
                 </td>
               ) : null}
               <td className={CELL}>
-                <Badge tone={isAtHub(order) ? 'info' : 'neutral'}>
-                  {isAtHub(order) ? 'At the hub' : 'To pick up'}
+                <Badge tone={isReturn(order) ? 'warning' : isAtHub(order) ? 'info' : 'neutral'}>
+                  {isReturn(order) ? 'Return' : isAtHub(order) ? 'At the hub' : 'To pick up'}
                 </Badge>
               </td>
               <td className={`${CELL} whitespace-nowrap text-secondary`}>

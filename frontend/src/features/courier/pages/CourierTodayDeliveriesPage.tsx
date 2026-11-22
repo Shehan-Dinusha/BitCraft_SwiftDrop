@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isOpenForCourier } from '@/types/fsm';
+import { failureLabel } from '@/utils/failureReasons';
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
@@ -19,7 +20,9 @@ import {
 } from 'lucide-react';
 
 const isDone = (item: DeliverySessionResponse) =>
-  item.currentState === 'DELIVERED' || item.currentState === 'AT_ORIGIN_HUB';
+  item.currentState === 'DELIVERED' ||
+  item.currentState === 'RETURNED' ||
+  item.currentState === 'AT_ORIGIN_HUB';
 
 type FilterTab = 'all' | 'active' | 'delivered' | 'failed';
 
@@ -325,7 +328,8 @@ export function CourierTodayDeliveriesPage() {
                       <FsmStatusBadge state={delivery.currentState || 'ASSIGNED'} size="sm" />
                       {delivery.attemptCount && delivery.attemptCount > 0 ? (
                         <span className="rounded bg-brand-subtle px-2 py-0.5 text-[10px] font-semibold text-brand-primary">
-                          Attempt #{delivery.attemptCount}
+                          {delivery.attemptCount} failed{' '}
+                          {delivery.attemptCount === 1 ? 'attempt' : 'attempts'}
                         </span>
                       ) : null}
                     </div>
@@ -361,7 +365,7 @@ export function CourierTodayDeliveriesPage() {
                       )}
                       {delivery.failedReason && (
                         <span className="text-status-danger-fg font-medium">
-                          Reason: {delivery.failedReason}
+                          {failureLabel(delivery.failedReason)}
                         </span>
                       )}
                     </div>

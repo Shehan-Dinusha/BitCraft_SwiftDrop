@@ -272,12 +272,12 @@ export interface components {
          * @example CREATED
          * @enum {string}
          */
-        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "FAILED" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
+        PublicOrderStatus: "CREATED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "DELIVERY_ATTEMPTED" | "RETURNING" | "FAILED" | "DELIVERED" | "CANCELLED" | "RETURNED_TO_SENDER";
         /**
          * @example CREATED
          * @enum {string}
          */
-        InternalQueueStatus: "CREATED" | "UNASSIGNED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "AT_HUB" | "OUT_FOR_DELIVERY" | "OUTBOUND" | "INCOMING" | "DELIVERED" | "FAILED_ATTEMPT" | "FAILED_RETURN" | "CANCELLED";
+        InternalQueueStatus: "CREATED" | "UNASSIGNED" | "PICKUP_ASSIGNED" | "PICKED_UP" | "AT_HUB" | "OUT_FOR_DELIVERY" | "OUTBOUND" | "INCOMING" | "DELIVERED" | "RETURN_TO_HUB" | "HELD_AT_HUB" | "RETURN_OUTBOUND" | "RETURN_AT_HUB" | "OUT_FOR_RETURN" | "FAILED_ATTEMPT" | "FAILED_RETURN" | "CANCELLED";
         /**
          * @example APPROVED
          * @enum {string}

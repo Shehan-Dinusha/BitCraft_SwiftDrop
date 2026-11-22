@@ -12,7 +12,10 @@ export interface ProofOfDeliveryCaptureModalProps {
   onClose: () => void;
   deliveryId: string;
   onVerified: () => void;
-  onTransitionToDelivered?: () => Promise<void>;
+  /** Saves the step the photo proves: delivered, or returned to the sender. */
+  onComplete: () => Promise<void>;
+  /** Bringing it back to the sender instead of delivering it. */
+  returning?: boolean;
 }
 
 export function ProofOfDeliveryCaptureModal({
@@ -20,7 +23,8 @@ export function ProofOfDeliveryCaptureModal({
   onClose,
   deliveryId,
   onVerified,
-  onTransitionToDelivered
+  onComplete,
+  returning = false
 }: ProofOfDeliveryCaptureModalProps) {
   const [recipientName, setRecipientName] = useState('');
   const [recipientSignature, setRecipientSignature] = useState('');
@@ -91,7 +95,7 @@ export function ProofOfDeliveryCaptureModal({
     }
 
     if (!photoFile) {
-      setErrorMsg('Please capture or choose a photo of the delivered package.');
+      setErrorMsg('Take or choose a photo of the parcel.');
       return;
     }
 
@@ -107,19 +111,11 @@ export function ProofOfDeliveryCaptureModal({
         recipientSignature.trim() || undefined
       );
 
-      setSuccessMsg('Photo uploaded and verified! Transitioning to DELIVERED...');
+      setSuccessMsg('Photo saved.');
       onVerified();
 
-      // 2. Transition to DELIVERED
-      if (onTransitionToDelivered) {
-        await onTransitionToDelivered();
-      } else {
-        await deliveryApi.transitionDelivery(deliveryId, {
-          targetState: 'DELIVERED',
-          actorRole: 'COURIER',
-          notes: `Delivered to ${recipientName.trim()} with photo PoD`
-        });
-      }
+      // 2. The step itself
+      await onComplete();
 
       setTimeout(() => {
         onClose();
@@ -139,7 +135,7 @@ export function ProofOfDeliveryCaptureModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Proof of delivery"
+      title={returning ? 'Proof of return' : 'Proof of delivery'}
       description="Photo of the parcel and who received it."
       size="md"
     >
@@ -159,7 +155,7 @@ export function ProofOfDeliveryCaptureModal({
         )}
 
         <form onSubmit={handleSubmitPhotoAndComplete} className="space-y-4 py-1">
-          <Field label="Received by" required>
+          <Field label={returning ? 'Handed back to' : 'Received by'} required>
             <Input
               value={recipientName}
               onChange={(e) => setRecipientName(e.target.value)}
@@ -241,7 +237,7 @@ export function ProofOfDeliveryCaptureModal({
             disabled={loading || !recipientName.trim() || !photoFile}
           >
             <CheckCircle2 className="mr-2 h-5 w-5" />
-            Complete delivery
+            {returning ? 'Complete return' : 'Complete delivery'}
           </Button>
         </form>
       </div>

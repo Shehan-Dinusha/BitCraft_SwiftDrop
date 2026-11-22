@@ -20,7 +20,8 @@ public class InTransitState implements DeliveryStateHandler {
 
     @Override
     public Set<DeliveryState> allowedNext() {
-        return EnumSet.of(DeliveryState.OUT_FOR_DELIVERY, DeliveryState.AT_DESTINATION_HUB, DeliveryState.FAILED);
+        return EnumSet.of(DeliveryState.OUT_FOR_DELIVERY, DeliveryState.AT_DESTINATION_HUB, DeliveryState.ATTEMPT_FAILED,
+                DeliveryState.FAILED);
     }
 
     @Override

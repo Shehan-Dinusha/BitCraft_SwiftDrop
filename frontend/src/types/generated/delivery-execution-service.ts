@@ -434,12 +434,12 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * @description Same district: PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY. Different districts go through both hubs: PICKED_UP -> AT_ORIGIN_HUB (the first courier hands it in) -> IN_TRANSIT (the pickup district's dispatcher marks it Outbound) -> AT_DESTINATION_HUB (the drop-off district's dispatcher accepts it) -> OUT_FOR_DELIVERY (a courier of the drop-off district collects it).
+         * @description Same district: PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY. Different districts go through both hubs: PICKED_UP -> AT_ORIGIN_HUB (the first courier hands it in) -> IN_TRANSIT (the pickup district's dispatcher marks it Outbound) -> AT_DESTINATION_HUB (the drop-off district's dispatcher accepts it) -> OUT_FOR_DELIVERY (a courier of the drop-off district collects it). A failed attempt: ATTEMPT_FAILED (the courier brings it to their hub) -> HELD_AT_HUB (its dispatcher decides) -> AT_DESTINATION_HUB (tried again: two attempts, none after a refusal) or back: RETURN_IN_TRANSIT (different districts only) -> RETURN_AT_HUB (the sender's hub) -> OUT_FOR_RETURN -> RETURNED (with a photo). FAILED is final: the pickup failed, or the parcel was lost or damaged. A FAILED request with another reason counts as ATTEMPT_FAILED.
          * @enum {string}
          */
-        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "AT_ORIGIN_HUB" | "IN_TRANSIT" | "AT_DESTINATION_HUB" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED" | "CANCELLED";
+        DeliveryState: "CREATED" | "ASSIGNED" | "PICKED_UP" | "AT_ORIGIN_HUB" | "IN_TRANSIT" | "AT_DESTINATION_HUB" | "OUT_FOR_DELIVERY" | "DELIVERED" | "ATTEMPT_FAILED" | "HELD_AT_HUB" | "RETURN_IN_TRANSIT" | "RETURN_AT_HUB" | "OUT_FOR_RETURN" | "RETURNED" | "FAILED" | "CANCELLED";
         /** @enum {string} */
-        DeliveryFailureReason: "RECIPIENT_UNAVAILABLE" | "INCORRECT_ADDRESS" | "ACCESS_RESTRICTED" | "RECIPIENT_REJECTED" | "DAMAGED_IN_TRANSIT" | "ADVERSE_WEATHER" | "PAYMENT_FAILED" | "OTHER";
+        DeliveryFailureReason: "RECIPIENT_UNAVAILABLE" | "INCORRECT_ADDRESS" | "ACCESS_RESTRICTED" | "RECIPIENT_REJECTED" | "DAMAGED_IN_TRANSIT" | "LOST" | "ADVERSE_WEATHER" | "PAYMENT_FAILED" | "OTHER";
         /** @enum {string} */
         SriLankanDistrict: "COLOMBO" | "GAMPAHA" | "KALUTARA" | "KANDY" | "MATALE" | "NUWARA_ELIYA" | "GALLE" | "MATARA" | "HAMBANTOTA" | "JAFFNA" | "KILINOCHCHI" | "MANNAR" | "VAVUNIYA" | "MULLAITIVU" | "BATTICALOA" | "AMPARA" | "TRINCOMALEE" | "KURUNEGALA" | "PUTTALAM" | "ANURADHAPURA" | "POLONNARUWA" | "BADULLA" | "MONARAGALA" | "RATNAPURA" | "KEGALLE";
         TransitionDeliveryRequest: {
@@ -496,6 +496,16 @@ export interface components {
              */
             merchantId?: string | null;
             merchantName?: string | null;
+            /**
+             * Format: date-time
+             * @description Proof from before this moment belongs to an earlier attempt and does not count.
+             */
+            proofSince?: string | null;
+            /**
+             * Format: date-time
+             * @description When the sender got the parcel back.
+             */
+            returnedAt?: string | null;
         };
         /** @description A contact and address the courier visits. */
         CourierJobStop: {
@@ -519,6 +529,8 @@ export interface components {
             speed?: "STANDARD" | "EXPRESS" | "SAME_DAY";
             pickup?: components["schemas"]["CourierJobStop"] | null;
             dropOff?: components["schemas"]["CourierJobStop"] | null;
+            /** @description The sender, for the courier bringing the parcel back. */
+            returnTo?: components["schemas"]["CourierJobStop"] | null;
             notes?: string | null;
             itemDescription?: string | null;
             lengthCm?: number | null;

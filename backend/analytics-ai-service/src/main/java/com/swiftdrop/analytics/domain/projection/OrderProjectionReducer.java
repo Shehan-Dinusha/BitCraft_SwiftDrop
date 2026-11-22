@@ -61,10 +61,13 @@ public class OrderProjectionReducer {
             current = next;
             statusAt = entry.getKey();
             district = responsibleDistrict(events, entry.getKey(), status.district());
-            if (terminal == null && next.isTerminal()) {
-                terminal = next;
-                if (next == PublicOrderStatus.DELIVERED || next == PublicOrderStatus.FAILED) {
-                    outcome = next;
+            // Not delivered: the moment it starts going back to the sender, or is lost. A failed attempt alone
+            // decides nothing, it may go out again.
+            boolean notDelivered = next == PublicOrderStatus.RETURNING;
+            if (terminal == null && (next.isTerminal() || notDelivered)) {
+                if (!notDelivered) terminal = next;
+                if (outcome == null && (next == PublicOrderStatus.DELIVERED || next == PublicOrderStatus.FAILED || notDelivered)) {
+                    outcome = notDelivered ? PublicOrderStatus.FAILED : next;
                     outcomeAt = entry.getKey();
                     outcomeDistrict = district;
                 }
@@ -86,26 +89,31 @@ public class OrderProjectionReducer {
         }
         // Never choose between conflicting couriers by list order or UUID order.
         if (assignedAt != null && byAssignmentTime.get(assignedAt).size() > 1) courier = null;
-        // Handed in at the origin hub: nobody carries it until the drop-off district assigns a courier.
+        // Handed in at a hub: nobody carries it until a courier is assigned there.
         if (assignedAt != null && handedInAt(events).filter(at -> !at.isBefore(assignedAt)).isPresent()) courier = null;
         return new OrderProjection(orderId, createdAt, pickup, current, statusAt, district,
                 courier, assignedAt, outcome, outcomeAt, outcomeDistrict, outcomeCourier, conflict);
     }
 
     /**
-     * The district handling the order at a moment: the pickup district, or the drop-off district once its
-     * hub has accepted the parcel. Status events always carry the pickup district.
+     * The district handling the order at a moment: the pickup district, the drop-off district once its hub
+     * has accepted the parcel, and the pickup district again once a return reached its hub. Status events
+     * always carry the pickup district.
      */
     public static SriLankanDistrict responsibleDistrict(List<TelemetryEvent> events, Instant at, SriLankanDistrict pickup) {
         return statuses(events)
                 .filter(status -> status.internalSubStatus() == InternalQueueStatus.INCOMING
-                        && status.destinationDistrict() != null && !time(status.timestamp()).isAfter(time(at)))
-                .min(Comparator.comparing(ParcelStatusChangedEvent::timestamp))
+                        || status.internalSubStatus() == InternalQueueStatus.RETURN_AT_HUB)
+                .filter(status -> status.destinationDistrict() != null && !time(status.timestamp()).isAfter(time(at)))
+                .max(Comparator.comparing(ParcelStatusChangedEvent::timestamp))
+                .filter(status -> status.internalSubStatus() == InternalQueueStatus.INCOMING)
                 .map(ParcelStatusChangedEvent::destinationDistrict).orElse(pickup);
     }
 
     private static Optional<Instant> handedInAt(List<TelemetryEvent> events) {
-        return statuses(events).filter(status -> status.internalSubStatus() == InternalQueueStatus.AT_HUB)
+        return statuses(events).filter(status -> status.internalSubStatus() == InternalQueueStatus.AT_HUB
+                        || status.internalSubStatus() == InternalQueueStatus.HELD_AT_HUB
+                        || status.internalSubStatus() == InternalQueueStatus.RETURN_AT_HUB)
                 .map(status -> time(status.timestamp())).max(Comparator.naturalOrder());
     }
 
