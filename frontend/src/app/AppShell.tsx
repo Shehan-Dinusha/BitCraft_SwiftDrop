@@ -21,6 +21,7 @@ import { NOTIFICATIONS_PATH } from '@/features/notifications/notificationTypes';
 import { PROFILE_PATH, displayName } from '@/features/profile/profileFormat';
 import { useMyAvatarUrl, useSyncCurrentUser } from '@/features/profile/avatar';
 import { useUnreadNotificationCount } from '@/features/notifications/useNotificationInbox';
+import { useCourierTodayStats } from '@/features/courier/hooks/useCourierTodayStats';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
 import { logoutUser } from '@/services/api/authApi';
@@ -67,7 +68,8 @@ const routedNav: Record<ShellRole, NavGroup[]> = {
         { id: 'shift', label: 'Shift', icon: 'home', to: '/courier' },
         { id: 'delivery', label: 'Active delivery', icon: 'truck', to: '/courier/delivery' },
         { id: 'vehicle', label: 'My vehicle', icon: 'truck', to: '/courier/vehicle' },
-        { id: 'today-deliveries', label: "Today's deliveries", icon: 'package', to: '/courier/today-deliveries' }
+        { id: 'today-deliveries', label: "Today's deliveries", icon: 'package', to: '/courier/today-deliveries' },
+        { id: 'today-earnings', label: "Today's earnings", icon: 'wallet', to: '/courier/today-earnings' }
       ]
     }
   ],
@@ -148,6 +150,7 @@ export function AppShell() {
   const hasTabs = shellRole === 'customer' || shellRole === 'courier';
 
   const unreadCount = useUnreadNotificationCount();
+  const courierStats = useCourierTodayStats();
   useSyncCurrentUser();
   const avatarUrl = useMyAvatarUrl();
   // Every workspace has a Notifications page in its own "Updates" section, with the unread count.
@@ -163,12 +166,24 @@ export function AppShell() {
   );
 
   const groups = useMemo<NavGroup[]>(() => {
-    const withUpdates = [...routedNav[shellRole], { label: 'Updates', items: [notificationsEntry] }];
+    let baseNav = routedNav[shellRole];
+    if (shellRole === 'courier' && courierStats.deliveredCount > 0) {
+      baseNav = baseNav.map((group) => ({
+        ...group,
+        items: group.items.map((item) => {
+          if (item.id === 'today-earnings') {
+            return { ...item, count: courierStats.deliveredCount };
+          }
+          return item;
+        })
+      }));
+    }
+    const withUpdates = [...baseNav, { label: 'Updates', items: [notificationsEntry] }];
     // The design catalog is a developer tool, so real users never see it in their menu.
     return import.meta.env.DEV && isDevSession
       ? [...withUpdates, { label: 'Design system', items: [catalogEntry] }]
       : withUpdates;
-  }, [shellRole, isDevSession, notificationsEntry]);
+  }, [shellRole, isDevSession, notificationsEntry, courierStats.deliveredCount]);
   const entries = groups.flatMap((group) => group.items);
   const activeEntry = entries
     .filter((entry) => entry.to && (pathname === entry.to || pathname.startsWith(`${entry.to}/`)))
