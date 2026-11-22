@@ -32,6 +32,7 @@ import { districtLabel } from '@/features/profile/profileFormat';
 import { useAuthStore } from '@/store/useAuthStore';
 import { colomboToday } from '@/utils/colomboDate';
 import { ALL_DISTRICTS, DISTRICT_OPTIONS } from '../components/dispatch/districtOptions';
+import { RevenueReport } from '../components/RevenueReport';
 
 const series = [
   { key: 'created', label: 'Created', color: 'var(--color-fsm-created-fg)' },
@@ -590,6 +591,7 @@ export function AnalyticsDashboardPage() {
           </div>
         </>
       )}
+      <RevenueReport from={range.from} to={range.to} district={scope} showDistricts={isAdmin} />
     </div>
   );
 }

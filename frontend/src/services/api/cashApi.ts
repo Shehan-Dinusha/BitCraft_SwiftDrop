@@ -8,6 +8,7 @@ export type CashHandoverResponse = Schemas['CashHandoverResponse'];
 export type CashDepositResponse = Schemas['CashDepositResponse'];
 export type CashHoldingResponse = Schemas['CashHoldingResponse'];
 export type CashDeskResponse = Schemas['CashDeskResponse'];
+export type CashReportResponse = Schemas['CashReportResponse'];
 export type SriLankanDistrict = Schemas['SriLankanDistrict'];
 
 type Envelope<T> = { success: boolean; data: T };
@@ -24,6 +25,8 @@ export const cashApi = {
     get<CashDeskResponse>('/v1/cash/desk', district ? { district } : undefined),
   handoverEntries: (handoverId: string) =>
     get<CashEntryResponse[]>(`/v1/cash/handovers/${handoverId}/entries`),
+  report: (from: string, to: string, district?: SriLankanDistrict) =>
+    get<CashReportResponse>('/v1/cash/report', district ? { from, to, district } : { from, to }),
   count: (handoverId: string, body: Schemas['CountHandoverRequest']) =>
     post<CashHandoverResponse>(`/v1/cash/handovers/${handoverId}/count`, body),
   deposit: (body: Schemas['CreateDepositRequest']) =>
