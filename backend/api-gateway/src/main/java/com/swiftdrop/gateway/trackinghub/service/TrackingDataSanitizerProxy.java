@@ -50,11 +50,15 @@ public class TrackingDataSanitizerProxy {
 
         PublicOrderStatus status = resolveStatus(event);
         List<PublicTrackingTimelineEntry> timeline = new ArrayList<>(current.statusTimeline());
-        timeline.add(new PublicTrackingTimelineEntry(
-                status,
-                event.district(),
-                timestamp(event.timestamp())
-        ));
+        // Several internal steps share one public status (a failed attempt and its hand-in at the hub, every
+        // hub step); the public sees one line, from the first of them.
+        if (timeline.isEmpty() || timeline.getLast().status() != status) {
+            timeline.add(new PublicTrackingTimelineEntry(
+                    status,
+                    event.district(),
+                    timestamp(event.timestamp())
+            ));
+        }
 
         return new PublicTrackingViewDto(
                 current.trackingNumber(),
