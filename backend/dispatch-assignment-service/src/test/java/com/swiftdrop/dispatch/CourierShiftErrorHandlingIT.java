@@ -147,7 +147,7 @@ class CourierShiftErrorHandlingIT {
                                 post("/api/v1/dispatch/couriers/shifts/start").with(TestCallers.courier(courierId))
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(new StartShiftRequest(courierId,
-                                                "Registered second", null, SriLankanDistrict.COLOMBO))))
+                                                "Registered second", null))))
                         .andReturn());
                 awaitBlocked("insert into courier_shifts%", 1);
                 return request;

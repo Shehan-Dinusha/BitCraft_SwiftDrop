@@ -253,7 +253,7 @@ class DeliveryExecutionServiceTest {
         session.setTrackingNumber("SD-COL-112233");
         session.setCurrentState(DeliveryState.ASSIGNED);
 
-        when(deliverySessionRepository.findByCourierIdAndDateRange(eq(courierId), any(), any()))
+        when(deliverySessionRepository.findTodayAndOpenByCourierId(eq(courierId), any(), any()))
                 .thenReturn(List.of(session));
 
         CallerContext caller = new CallerContext(courierId, UserRole.COURIER, null, SriLankanDistrict.COLOMBO);

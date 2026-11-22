@@ -5,6 +5,7 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.InternalCreateOrderRequest;
 import com.swiftdrop.order.exception.PricingUnavailableException;
+import com.swiftdrop.order.service.InternalCourierJobService;
 import com.swiftdrop.order.service.InternalOrderService;
 import com.swiftdrop.order.service.InternalTrackingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +48,9 @@ class InternalMerchantOrderControllerTest {
 
     @MockitoBean
     private InternalOrderService internalOrderService;
+
+    @MockitoBean
+    private InternalCourierJobService internalCourierJobService;
 
     @MockitoBean
     private InternalTrackingService internalTrackingService;

@@ -2,6 +2,8 @@ package com.swiftdrop.dispatch.service;
 
 import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.enums.UserRole;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
@@ -13,6 +15,7 @@ import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import com.swiftdrop.dispatch.exception.ShiftEndNotAllowedException;
+import com.swiftdrop.dispatch.security.DistrictScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -40,15 +43,23 @@ public class CourierShiftService {
         this.assignmentRepository = assignmentRepository;
     }
 
+    /**
+     * Starts the courier's shift in their home district, never one named in the request: the parcels they
+     * carry and the cash they collect belong to that district's dispatcher.
+     */
     @Transactional
-    public CourierShiftResponse startShift(StartShiftRequest request) {
-        log.info("Starting shift for courier: {} ({}) in district: {}",
-                request.courierName(), request.courierId(), request.initialDistrict());
-
+    public CourierShiftResponse startShift(StartShiftRequest request, CallerContext caller) {
         // Couriers use their own registered vehicle; without one there is nothing to dispatch with.
         CourierProfile profile = courierProfileRepository.findByCourierId(request.courierId())
                 .orElseThrow(() -> new CourierNotAvailableException(
                         "Add your vehicle details before starting a shift"));
+        // Their account decides the district; the profile keeps a copy, refreshed when an admin moved them.
+        if (caller.role() == UserRole.COURIER && caller.districtId() != null
+                && caller.districtId() != profile.getDistrict()) {
+            profile.setDistrict(caller.districtId());
+        }
+        DistrictScope.requireCourier(caller, profile.getDistrict());
+        log.info("Starting shift for courier: {} in district: {}", request.courierId(), profile.getDistrict());
 
         CourierShift shift = courierShiftRepository.findByCourierId(request.courierId())
                 .orElseGet(() -> {
@@ -62,7 +73,7 @@ public class CourierShiftService {
         if (request.phone() != null) shift.setPhone(SriLankanPhone.toE164OrNull(request.phone()));
         shift.setVehicleType(profile.getVehicleType());
         shift.setMaxCapacity(profile.getMaxCapacity());
-        shift.setCurrentDistrict(request.initialDistrict());
+        shift.setCurrentDistrict(profile.getDistrict());
         shift.setShiftStatus(ShiftStatus.AVAILABLE);
         shift.setShiftStartedAt(Instant.now());
         shift.setShiftEndedAt(null);
