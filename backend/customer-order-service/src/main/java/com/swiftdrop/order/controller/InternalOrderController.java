@@ -3,9 +3,11 @@ package com.swiftdrop.order.controller;
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
+import com.swiftdrop.order.dto.InternalCourierJobView;
 import com.swiftdrop.order.dto.InternalCreateOrderRequest;
 import com.swiftdrop.order.dto.InternalTrackingView;
 import com.swiftdrop.order.dto.ValidationPatterns;
+import com.swiftdrop.order.service.InternalCourierJobService;
 import com.swiftdrop.order.service.InternalOrderService;
 import com.swiftdrop.order.service.InternalTrackingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +25,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 
 /**
  * Service-to-service endpoints. They carry no user context (no {@code X-User-Id}) and are not routed
@@ -37,6 +41,7 @@ public class InternalOrderController {
 
     private final InternalTrackingService internalTrackingService;
     private final InternalOrderService internalOrderService;
+    private final InternalCourierJobService internalCourierJobService;
 
     @GetMapping("/tracking/{trackingNumber}")
     @Operation(summary = "Public-safe tracking view by tracking number",
@@ -47,6 +52,14 @@ public class InternalOrderController {
             @Pattern(regexp = ValidationPatterns.TRACKING_NUMBER, message = ValidationPatterns.TRACKING_NUMBER_MESSAGE)
             String trackingNumber) {
         return ApiResponse.success(internalTrackingService.getTrackingView(trackingNumber), "Tracking retrieved successfully");
+    }
+
+    @GetMapping("/{orderId}/courier-job")
+    @Operation(summary = "Addresses, contacts, parcel and cash amounts of an order",
+            description = "For the delivery service, which checks the caller and passes on only the courier's own leg. "
+                    + "Carries full contact details. Internal, no user context: must never be exposed through the API gateway.")
+    public ApiResponse<InternalCourierJobView> getCourierJob(@PathVariable("orderId") UUID orderId) {
+        return ApiResponse.success(internalCourierJobService.getCourierJob(orderId), "Courier job retrieved successfully");
     }
 
     @PostMapping

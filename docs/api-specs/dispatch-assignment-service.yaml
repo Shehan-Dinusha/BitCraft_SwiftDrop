@@ -771,9 +771,10 @@ paths:
         - CourierAvailability
       summary: Start or register courier shift
       description: >-
-        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
-        The vehicle type and parcel capacity come from the courier's registered vehicle; without one the
-        answer is 409 Courier Not Available.
+        A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their
+        district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and
+        parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier
+        Not Available.
       operationId: startShift
       requestBody:
         required: true
@@ -1029,7 +1030,6 @@ components:
       required:
         - courierId
         - courierName
-        - initialDistrict
       properties:
         courierId:
           type: string
@@ -1041,8 +1041,6 @@ components:
           type: string
           pattern: '^$|^(?:\+94|0)?[1-9][0-9]{8}$'
           example: "+94771234567"
-        initialDistrict:
-          $ref: "#/components/schemas/SriLankanDistrict"
 
     CourierVehicleRequest:
       type: object

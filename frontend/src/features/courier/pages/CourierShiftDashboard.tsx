@@ -6,14 +6,13 @@ import {
   dispatchApi,
   type CourierProfileResponse,
   type CourierShiftResponse,
-  type DispatchAssignmentResponse,
-  type ShiftStatus,
-  type SriLankanDistrict
+  type ShiftStatus
 } from '@/services/api/dispatchApi';
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
-import { SRI_LANKAN_DISTRICTS, fetchCurrentUser } from '@/services/api/authApi';
+import { fetchCurrentUser } from '@/services/api/authApi';
 import { parseApiError } from '@/services/api/apiError';
 import { vehicleLabel } from '@/utils/vehicles';
+import { districtLabel } from '@/features/profile/profileFormat';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
@@ -25,11 +24,12 @@ import {
   Package,
   Power,
   RefreshCw,
-  ShieldCheck,
   CheckCircle2,
   Clock,
   ChevronRight
 } from 'lucide-react';
+
+const FINISHED_STATES = new Set(['DELIVERED', 'FAILED', 'CANCELLED']);
 
 export function CourierShiftDashboard() {
   const navigate = useNavigate();
@@ -38,7 +38,6 @@ export function CourierShiftDashboard() {
   const courierId = user?.id;
 
   const [shift, setShift] = useState<CourierShiftResponse | null>(null);
-  const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
   const [todayDeliveries, setTodayDeliveries] = useState<DeliverySessionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -48,11 +47,6 @@ export function CourierShiftDashboard() {
   );
   // undefined while loading; null when the courier has not registered a vehicle yet.
   const [vehicle, setVehicle] = useState<CourierProfileResponse | null | undefined>(undefined);
-
-  // Start shift form state
-  const [selectedDistrict, setSelectedDistrict] = useState<SriLankanDistrict>(
-    (user?.district as SriLankanDistrict) || 'COLOMBO'
-  );
 
   const fetchShiftData = useCallback(async () => {
     if (!courierId) return;
@@ -71,7 +65,6 @@ export function CourierShiftDashboard() {
       try {
         const shiftData = await dispatchApi.getCourier(courierId);
         setShift(shiftData);
-        if (shiftData?.currentDistrict) setSelectedDistrict(shiftData.currentDistrict as SriLankanDistrict);
       } catch {
         setShift(null);
       }
@@ -80,25 +73,8 @@ export function CourierShiftDashboard() {
       try {
         const myDeliveries = await deliveryApi.getMyDeliveries('today');
         setTodayDeliveries(myDeliveries || []);
-      } catch (err) {
-        console.warn('Could not load deliveries from /deliveries/me:', err);
-      }
-
-      // Fetch active dispatch assignments: an order moved to this courier by a dispatcher
-      // has status REASSIGNED, so both statuses are requested and merged, one entry each.
-      try {
-        const [assignedOrders, reassignedOrders] = await Promise.all([
-          dispatchApi.getCourierAssignments(courierId, 'ASSIGNED'),
-          dispatchApi.getCourierAssignments(courierId, 'REASSIGNED')
-        ]);
-        const activeOrders = new Map<string, DispatchAssignmentResponse>();
-        for (const item of [...(assignedOrders || []), ...(reassignedOrders || [])]) {
-          const key = item.assignmentId ?? item.orderId;
-          if (key && !activeOrders.has(key)) activeOrders.set(key, item);
-        }
-        setAssignments([...activeOrders.values()]);
       } catch {
-        setAssignments([]);
+        setErrorMsg('Your jobs could not be loaded. Tap Sync to try again.');
       }
     } finally {
       setLoading(false);
@@ -123,11 +99,10 @@ export function CourierShiftDashboard() {
         courierId,
         courierName: fullName || shift?.courierName || user?.username || 'Courier',
         // An account phone saved before today's rule is left out rather than blocking the shift.
-        phone: phone && !phoneProblem(phone) ? toE164(phone) : undefined,
-        initialDistrict: selectedDistrict
+        phone: phone && !phoneProblem(phone) ? toE164(phone) : undefined
       });
       setShift(res);
-      setSuccessMsg('Shift started! You are now AVAILABLE for delivery dispatches.');
+      setSuccessMsg('Shift started! You can now get jobs.');
       await fetchShiftData();
     } catch (err: unknown) {
       setErrorMsg(parseApiError(err).message ?? 'Failed to start shift');
@@ -171,6 +146,7 @@ export function CourierShiftDashboard() {
     }
   };
 
+  const openJobs = todayDeliveries.filter((job) => !FINISHED_STATES.has(job.currentState ?? ''));
   const isOnline = shift && shift.shiftStatus !== 'OFFLINE';
   const capacityUsed = shift ? (shift.activeParcelsCount ?? 0) : 0;
   const maxCap = shift?.maxCapacity || 5;
@@ -257,7 +233,7 @@ export function CourierShiftDashboard() {
               </div>
               <p className="flex items-center gap-1.5 text-xs text-secondary">
                 <MapPin className="h-3.5 w-3.5 text-brand-primary" />
-                Operating District: <strong>{shift?.currentDistrict || selectedDistrict}</strong>
+                {districtLabel(user?.district ?? shift?.currentDistrict)}
               </p>
             </div>
           </div>
@@ -274,28 +250,15 @@ export function CourierShiftDashboard() {
                 Add your vehicle to start
               </Button>
             ) : !isOnline ? (
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <select
-                  value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value as SriLankanDistrict)}
-                  className="rounded-lg border border-border-subtle bg-card px-3 py-2 text-sm"
-                >
-                  {SRI_LANKAN_DISTRICTS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  variant="primary"
-                  onClick={handleStartShift}
-                  disabled={updating}
-                  className="min-h-[48px] px-6 font-semibold shadow-md"
-                >
-                  <Power className="mr-2 h-5 w-5" />
-                  Start shift
-                </Button>
-              </div>
+              <Button
+                variant="primary"
+                onClick={handleStartShift}
+                disabled={updating}
+                className="min-h-target w-full px-6 font-semibold shadow-md sm:w-auto"
+              >
+                <Power className="mr-2 h-5 w-5" />
+                Start shift
+              </Button>
             ) : (
               <>
                 <Button
@@ -382,7 +345,6 @@ export function CourierShiftDashboard() {
                   })
                 : 'Not started'}
             </div>
-            <p className="mt-1 text-xs text-secondary">Last Ping: Just now</p>
           </SurfaceCard>
         </div>
       )}
@@ -392,25 +354,24 @@ export function CourierShiftDashboard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-primary">
-              Today's Deliveries
+              Jobs to do
             </h2>
             <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
-              {todayDeliveries.length}
+              {openJobs.length}
             </span>
           </div>
-          <span className="text-xs text-secondary">Live from /deliveries/me &bull; Touch density</span>
         </div>
 
-        {todayDeliveries.length === 0 ? (
+        {openJobs.length === 0 ? (
           <SurfaceCard className="p-6 text-center">
             <Package className="mx-auto h-8 w-8 text-muted" />
             <p className="mt-2 text-sm font-medium text-primary">
-              No deliveries today
+              {isOnline ? 'New jobs appear here' : 'Start your shift to get jobs'}
             </p>
           </SurfaceCard>
         ) : (
           <div className="space-y-2">
-            {todayDeliveries.map((delivery) => (
+            {openJobs.map((delivery) => (
               <div
                 key={delivery.deliveryId}
                 role="button"
@@ -436,9 +397,9 @@ export function CourierShiftDashboard() {
                       <FsmStatusBadge state={delivery.currentState || 'ASSIGNED'} density="touch" size="sm" />
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-secondary truncate">
-                      <span>{delivery.pickupDistrict}</span>
+                      <span>{districtLabel(delivery.pickupDistrict)}</span>
                       <span>&rarr;</span>
-                      <span className="font-medium text-primary">{delivery.deliveryDistrict}</span>
+                      <span className="font-medium text-primary">{districtLabel(delivery.deliveryDistrict)}</span>
                     </div>
                   </div>
                 </div>
@@ -455,79 +416,6 @@ export function CourierShiftDashboard() {
         )}
       </section>
 
-      {/* Active Dispatched Assignments Queue */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-primary">
-            Active Assigned Orders ({assignments.length})
-          </h2>
-          <span className="text-xs text-secondary">Auto-assigned by Dispatch Engine</span>
-        </div>
-
-        {assignments.length === 0 ? (
-          <SurfaceCard className="p-8 text-center">
-            <ShieldCheck className="mx-auto h-10 w-10 text-status-success-fg" />
-            <h3 className="mt-3 font-semibold text-primary">
-              No pickups yet
-            </h3>
-            <p className="mt-1 text-sm text-secondary">
-              {isOnline
-                ? 'New pickups in your district appear here.'
-                : 'Start your shift to get pickups.'}
-            </p>
-          </SurfaceCard>
-        ) : (
-          <div className="space-y-3">
-            {assignments.map((item) => (
-              <SurfaceCard
-                key={item.assignmentId}
-                className="flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-center"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-brand-primary">
-                      {item.trackingNumber || 'UNTRACKED'}
-                    </span>
-                    <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-primary">
-                      {item.orderSpeed}
-                    </span>
-                    <span className="rounded bg-status-success-bg px-2 py-0.5 text-xs font-semibold text-status-success-fg">
-                      {item.status}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
-                    <span>
-                      Pickup: <strong>{item.pickupDistrict}</strong>
-                    </span>
-                    <span>?</span>
-                    <span>
-                      Delivery: <strong>{item.deliveryDistrict}</strong>
-                    </span>
-                    <span>
-                      ? Est. pickup:{' '}
-                      <strong className="text-primary">
-                        {item.estimatedPickupMinutes ?? 25} mins
-                      </strong>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="primary"
-                    className="min-h-[44px] min-w-[120px]"
-                    onClick={() => {
-                      window.location.href = `/courier/deliveries?orderId=${item.orderId}`;
-                    }}
-                  >
-                    Start pickup
-                  </Button>
-                </div>
-              </SurfaceCard>
-            ))}
-          </div>
-        )}
-      </section>
     </main>
   );
 }

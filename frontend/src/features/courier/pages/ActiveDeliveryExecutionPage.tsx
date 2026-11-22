@@ -2,7 +2,9 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { deliveryApi } from '@/services/api/deliveryApi';
+import { parseApiError } from '@/services/api/apiError';
 import type {
+  CourierJobResponse,
   DeliverySessionResponse,
   DeliveryState,
   DeliveryFailureReason
@@ -15,18 +17,11 @@ import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBann
 import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBar/ErgonomicActionBar';
 import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 import { cn } from '@/utils/cn';
+import { JobDetailsCard } from '../components/JobDetailsCard';
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
 import { DeliveryFailureReportModal } from '../components/DeliveryFailureReportModal';
-import {
-  ArrowLeft,
-  RefreshCw,
-  MapPin,
-  Package,
-  Phone,
-  Navigation,
-  AlertTriangle
-} from 'lucide-react';
+import { ArrowLeft, RefreshCw, Package, AlertTriangle } from 'lucide-react';
 
 export function ActiveDeliveryExecutionPage() {
   const { id } = useParams<{ id?: string }>();
@@ -40,6 +35,8 @@ export function ActiveDeliveryExecutionPage() {
 
   const [session, setSession] = useState<DeliverySessionResponse | null>(null);
   const [allDeliveries, setAllDeliveries] = useState<DeliverySessionResponse[]>([]);
+  const [job, setJob] = useState<CourierJobResponse | null>(null);
+  const [jobError, setJobError] = useState<string | null>(null);
   const [isPoDVerified, setIsPoDVerified] = useState(false);
   const [isPoDModalOpen, setIsPoDModalOpen] = useState(false);
   const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
@@ -79,7 +76,10 @@ export function ActiveDeliveryExecutionPage() {
         // Prioritize actionable/in-progress delivery so the slide-to-transition bar is immediately available
         activeDelivery =
           myDeliveries.find(
-            (d) => d.currentState !== 'DELIVERED' && d.currentState !== 'FAILED' && d.currentState !== 'CANCELLED'
+            (d) =>
+              d.currentState !== 'DELIVERED' &&
+              d.currentState !== 'FAILED' &&
+              d.currentState !== 'CANCELLED'
           ) || myDeliveries[0];
       } else if (courierId) {
         // Fallback: lookup current courier's active deliveries
@@ -88,7 +88,10 @@ export function ActiveDeliveryExecutionPage() {
         if (courierDeliveries && courierDeliveries.length > 0) {
           activeDelivery =
             courierDeliveries.find(
-              (d) => d.currentState !== 'DELIVERED' && d.currentState !== 'FAILED' && d.currentState !== 'CANCELLED'
+              (d) =>
+                d.currentState !== 'DELIVERED' &&
+                d.currentState !== 'FAILED' &&
+                d.currentState !== 'CANCELLED'
             ) || courierDeliveries[0];
         }
       }
@@ -119,6 +122,39 @@ export function ActiveDeliveryExecutionPage() {
   useEffect(() => {
     loadDelivery();
   }, [loadDelivery]);
+
+  // Addresses and cash change with each step, so they are read again once the step is saved.
+  const deliveryId = session?.deliveryId;
+  const currentState = session?.currentState;
+  const loadJob = useCallback(
+    async (isCurrent: () => boolean = () => true) => {
+      if (!deliveryId) return;
+      try {
+        const loaded = await deliveryApi.getJob(deliveryId);
+        if (!isCurrent()) return;
+        setJob(loaded);
+        setJobError(null);
+      } catch (err: unknown) {
+        if (!isCurrent()) return;
+        setJob(null);
+        setJobError(parseApiError(err).message ?? 'The addresses could not be loaded. Try again.');
+      }
+    },
+    [deliveryId]
+  );
+
+  useEffect(() => {
+    if (pendingState !== null) return;
+    let current = true;
+    void loadJob(() => current);
+    return () => {
+      current = false;
+    };
+  }, [loadJob, currentState, pendingState]);
+
+  // Another job's addresses are never shown while this one's load.
+  const shownJob = job?.deliveryId === deliveryId ? job : null;
+  const orderCancelled = Boolean(shownJob?.cancelled);
 
   // Handle state transition with optimistic update and rollback on 409 Conflict
   const handleTransition = async (
@@ -197,17 +233,21 @@ export function ActiveDeliveryExecutionPage() {
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          {session && (session.currentState !== 'DELIVERED' && session.currentState !== 'FAILED' && session.currentState !== 'CANCELLED') && (
-            <Button
-              variant="outline"
-              onClick={() => setIsFailureModalOpen(true)}
-              disabled={loading || pendingState !== null}
-              className="text-xs text-status-danger-fg hover:border-status-danger-border hover:bg-status-danger-bg min-h-[44px]"
-            >
-              <AlertTriangle className="mr-1.5 h-4 w-4 text-status-danger-fg" />
-              Can't deliver
-            </Button>
-          )}
+          {session &&
+            !orderCancelled &&
+            session.currentState !== 'DELIVERED' &&
+            session.currentState !== 'FAILED' &&
+            session.currentState !== 'CANCELLED' && (
+              <Button
+                variant="outline"
+                onClick={() => setIsFailureModalOpen(true)}
+                disabled={loading || pendingState !== null}
+                className="text-xs text-status-danger-fg hover:border-status-danger-border hover:bg-status-danger-bg min-h-[44px]"
+              >
+                <AlertTriangle className="mr-1.5 h-4 w-4 text-status-danger-fg" />
+                Can't deliver
+              </Button>
+            )}
 
           <Button
             variant="outline"
@@ -241,9 +281,7 @@ export function ActiveDeliveryExecutionPage() {
       ) : !session ? (
         <SurfaceCard className="p-8 text-center">
           <Package className="mx-auto h-12 w-12 text-muted" />
-          <h2 className="mt-3 text-lg font-bold text-primary">
-            No active delivery
-          </h2>
+          <h2 className="mt-3 text-lg font-bold text-primary">No active delivery</h2>
           <p className="mt-1 text-sm text-secondary">
             {orderIdParam
               ? `Nothing found for order ${orderIdParam}.`
@@ -261,8 +299,9 @@ export function ActiveDeliveryExecutionPage() {
           {allDeliveries.length > 1 && (
             <SurfaceCard className="space-y-2.5 p-3.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-primary">Today's Jobs ({allDeliveries.length})</span>
-                <span className="text-secondary text-[11px]">Select job to traverse state</span>
+                <span className="font-semibold text-primary">
+                  Today's Jobs ({allDeliveries.length})
+                </span>
               </div>
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
                 {allDeliveries.map((job) => {
@@ -293,15 +332,9 @@ export function ActiveDeliveryExecutionPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-bold text-brand-primary">
-                  {session.trackingNumber || 'UNTRACKED'}
-                </span>
-                <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-primary">
-                  {session.courierName ? `Courier: ${session.courierName}` : 'SwiftDrop Express'}
+                  {session.trackingNumber}
                 </span>
               </div>
-              <span className="text-xs text-secondary">
-                Order #{session.orderId ? session.orderId.substring(0, 8) : 'N/A'}
-              </span>
             </div>
 
             {/* Stepper with Touch Density */}
@@ -314,68 +347,48 @@ export function ActiveDeliveryExecutionPage() {
             </div>
           </SurfaceCard>
 
+          {orderCancelled && session.currentState !== 'CANCELLED' && (
+            <StatusBanner tone="danger" title="This order was cancelled">
+              Do not pick it up or collect any cash. Ask your dispatcher what to do with it.
+            </StatusBanner>
+          )}
+
+          {jobError && (
+            <StatusBanner tone="danger" title="Addresses not loaded">
+              <span className="block">{jobError}</span>
+              <Button
+                variant="outline"
+                className="mt-2 min-h-target"
+                onClick={() => void loadJob()}
+              >
+                Try again
+              </Button>
+            </StatusBanner>
+          )}
+
+          {shownJob && !shownJob.cancelled && (
+            <JobDetailsCard
+              job={shownJob}
+              viaHubs={viaHubs}
+              pickupDistrict={session.pickupDistrict}
+              deliveryDistrict={session.deliveryDistrict}
+            />
+          )}
+
           {/* Primary Action Transition Card */}
-          <OneTapStateTransitionCard
-            session={session}
-            onTransition={handleTransition}
-            onOpenPoD={() => setIsPoDModalOpen(true)}
-            isPoDVerified={isPoDVerified}
-            pendingState={pendingState}
-          />
-
-          {/* Location & Districts Card */}
-          <SurfaceCard className="space-y-4 p-5">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-secondary">
-              Route and contact
-            </h3>
-
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-status-warning-bg text-status-warning-fg">
-                  <MapPin className="h-4 w-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-secondary">Pickup District</span>
-                  <p className="text-sm font-medium text-primary">
-                    {session.pickupDistrict ? `${session.pickupDistrict} District Hub` : 'Merchant Hub, Colombo'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-status-success-bg text-status-success-fg">
-                  <Navigation className="h-4 w-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-secondary">Delivery Destination</span>
-                  <p className="text-sm font-medium text-primary">
-                    {session.deliveryDistrict ? `${session.deliveryDistrict} Recipient Address` : 'Customer Address, Colombo'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 border-t border-border-subtle pt-3 text-xs">
-                <div>
-                  <span className="text-secondary">Attempt Count:</span>
-                  <p className="font-semibold text-primary">
-                    {session.attemptCount ?? 1} of 3
-                  </p>
-                </div>
-                <div>
-                  <span className="text-secondary">Courier Dispatch Hotline:</span>
-                  <p className="flex items-center gap-1 font-semibold text-primary">
-                    <Phone className="h-3.5 w-3.5 text-brand-primary" />
-                    +94 11 234 5678
-                  </p>
-                </div>
-              </div>
-            </div>
-          </SurfaceCard>
-
+          {!orderCancelled && (
+            <OneTapStateTransitionCard
+              session={session}
+              onTransition={handleTransition}
+              onOpenPoD={() => setIsPoDModalOpen(true)}
+              isPoDVerified={isPoDVerified}
+              pendingState={pendingState}
+            />
+          )}
 
           {/* Ergonomic Action Bar: thumb-friendly sticky bar for next allowed action */}
-          {allowedNextStates.length > 0 && (
-            <div className="sticky bottom-4 z-20 pt-2">
+          {!orderCancelled && allowedNextStates.length > 0 && (
+            <div className="sticky bottom-[76px] z-20 pt-2 md:bottom-4">
               <ErgonomicActionBar
                 next={allowedNextStates}
                 onTransition={(target) => {
@@ -404,7 +417,11 @@ export function ActiveDeliveryExecutionPage() {
               }}
               onTransitionToDelivered={async () => {
                 setIsPoDVerified(true);
-                await handleTransition('DELIVERED', undefined, 'Completed delivery with verified photo proof');
+                await handleTransition(
+                  'DELIVERED',
+                  undefined,
+                  'Completed delivery with verified photo proof'
+                );
               }}
             />
           )}

@@ -331,8 +331,10 @@ public class DeliveryExecutionService {
     @Transactional(readOnly = true)
     public List<DeliverySessionResponse> getMyDeliveries(UUID courierId, String dateStr) {
         LocalDate targetDate;
+        boolean today = false;
         if (dateStr == null || dateStr.isBlank() || "today".equalsIgnoreCase(dateStr.trim())) {
             targetDate = LocalDate.now(ZoneId.of("Asia/Colombo"));
+            today = true;
         } else if ("all".equalsIgnoreCase(dateStr.trim())) {
             return deliverySessionRepository.findByCourierIdOrderByCreatedAtAsc(courierId)
                     .stream()
@@ -349,7 +351,9 @@ public class DeliveryExecutionService {
         Instant startOfDay = targetDate.atStartOfDay(ZoneId.of("Asia/Colombo")).toInstant();
         Instant endOfDay = targetDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Colombo")).toInstant();
 
-        List<DeliverySession> sessions = deliverySessionRepository.findByCourierIdAndDateRange(courierId, startOfDay, endOfDay);
+        List<DeliverySession> sessions = today
+                ? deliverySessionRepository.findTodayAndOpenByCourierId(courierId, startOfDay, endOfDay)
+                : deliverySessionRepository.findByCourierIdAndDateRange(courierId, startOfDay, endOfDay);
         return sessions.stream().map(DeliverySessionResponse::fromEntity).toList();
     }
 

@@ -30,7 +30,7 @@ export interface paths {
         };
         /**
          * List deliveries assigned to the authenticated courier
-         * @description Returns today's deliveries (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
+         * @description Returns today's deliveries and every unfinished one (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
          */
         get: operations["getMyDeliveries"];
         put?: never;
@@ -101,6 +101,26 @@ export interface paths {
         };
         /** List delivery sessions for a courier */
         get: operations["getDeliveriesByCourier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/{deliveryId}/job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the addresses, contacts and cash for a delivery
+         * @description For the assigned courier, a DISPATCHER of either district, or a SYSTEM_ADMIN. Shows only what the current leg needs: the sender and the fee until pickup, and the recipient for the courier who delivers. A finished or cancelled delivery gives no contacts and no amounts. Never cached.
+         */
+        get: operations["getCourierJob"];
         put?: never;
         post?: never;
         delete?: never;
@@ -203,6 +223,51 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        /** @description A contact and address the courier visits. */
+        CourierJobStop: {
+            name?: string;
+            /** @example +94771234567 */
+            phone?: string;
+            alternatePhone?: string | null;
+            addressLine1?: string;
+            addressLine2?: string | null;
+            city?: string;
+            postalCode?: string;
+            district?: components["schemas"]["SriLankanDistrict"];
+        };
+        /** @description What the courier needs on the leg they are carrying. Stops and amounts that belong to another leg, or to a finished or cancelled delivery, are null. */
+        CourierJobResponse: {
+            /** Format: uuid */
+            deliveryId: string;
+            /** @description The order was cancelled, so nothing is to be picked up or collected. */
+            cancelled: boolean;
+            /** @enum {string} */
+            speed?: "STANDARD" | "EXPRESS" | "SAME_DAY";
+            pickup?: components["schemas"]["CourierJobStop"] | null;
+            dropOff?: components["schemas"]["CourierJobStop"] | null;
+            notes?: string | null;
+            itemDescription?: string | null;
+            lengthCm?: number | null;
+            widthCm?: number | null;
+            heightCm?: number | null;
+            weightKg?: number | null;
+            /**
+             * @description Delivery fee to collect in cash from the sender, until the parcel is picked up.
+             * @example 670
+             */
+            feeToCollect?: number | null;
+            /** @description Cash to collect from the recipient for the merchant; null when there is none. */
+            codToCollect?: number | null;
+            /** @example LKR */
+            currency?: string;
+        };
+        ApiResponseCourierJobResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CourierJobResponse"];
+            /** Format: date-time */
+            timestamp?: string;
         };
         ApiResponseString: {
             success?: boolean;
@@ -392,6 +457,56 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseListDeliverySessionResponse"];
                 };
+            };
+        };
+    };
+    getCourierJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery job retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierJobResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller does not carry this delivery, or works in another district */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Delivery or order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The order service did not answer; try again */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

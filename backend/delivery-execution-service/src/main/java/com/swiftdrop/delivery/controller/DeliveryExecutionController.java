@@ -41,7 +41,7 @@ public class DeliveryExecutionController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "List deliveries assigned to the authenticated courier", description = "Returns today's deliveries (or for a given date) assigned to the logged-in courier, ordered by assignment time.")
+    @Operation(summary = "List deliveries assigned to the authenticated courier", description = "Returns today's deliveries and every unfinished one (or those for a given date) assigned to the logged-in courier, ordered by assignment time.")
     public ApiResponse<List<DeliverySessionResponse>> getMyDeliveries(
             @RequestParam(required = false) String date,
             HttpServletRequest request) {

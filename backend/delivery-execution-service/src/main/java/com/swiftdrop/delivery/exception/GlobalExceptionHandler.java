@@ -35,6 +35,13 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(409, "Invalid State Transition", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(OrderDetailsUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleOrderDetailsUnavailable(OrderDetailsUnavailableException ex, HttpServletRequest request) {
+        log.warn("Order details unavailable on {}", LogSanitizer.clean(request.getRequestURI()));
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiErrorResponse.of(503, "Service Unavailable", ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(CallerContextException.class)
     public ResponseEntity<ApiErrorResponse> handleCallerContext(CallerContextException ex, HttpServletRequest request) {
         log.warn("Security authorisation exception on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));

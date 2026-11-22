@@ -86,13 +86,14 @@ public class CourierAvailabilityController {
 
     @PostMapping("/shifts/start")
     @Operation(summary = "Start or register courier shift",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+            description = "A COURIER may use only their own courier ID, a DISPATCHER the couriers of their district, "
+                    + "a SYSTEM_ADMIN any. The shift starts in the courier's home district.")
     public ApiResponse<CourierShiftResponse> startShift(
             @Valid @RequestBody StartShiftRequest request,
             HttpServletRequest httpRequest) {
-        DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
+        CallerContext caller = DispatchAccess.requireCourierSelfOrOperations(httpRequest, request.courierId());
         return ApiResponse.success(
-                courierShiftService.startShift(request),
+                courierShiftService.startShift(request, caller),
                 "Courier shift started successfully"
         );
     }

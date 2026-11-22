@@ -296,6 +296,8 @@ services:
       AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
       AZURE_STORAGE_CONTAINER_NAME: ${AZURE_STORAGE_CONTAINER_NAME:-pod-images}
       POD_STORAGE_DIR: /var/lib/swiftdrop/pod
+      # Addresses and fee for the courier carrying a parcel.
+      ORDER_SERVICE_URL: http://customer-order-service:8082
     volumes:
       - pod_photos:/var/lib/swiftdrop/pod
     depends_on:

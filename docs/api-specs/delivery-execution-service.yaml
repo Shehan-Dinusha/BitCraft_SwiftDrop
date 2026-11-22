@@ -28,7 +28,7 @@ paths:
       tags:
         - DeliveryExecution
       summary: List deliveries assigned to the authenticated courier
-      description: Returns today's deliveries (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
+      description: Returns today's deliveries and every unfinished one (or those for the given date) assigned to the logged-in courier, ordered by assignment time.
       operationId: getMyDeliveries
       parameters:
         - name: date
@@ -139,6 +139,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDeliverySessionResponse"
+
+  /api/v1/deliveries/{deliveryId}/job:
+    get:
+      tags:
+        - CourierJob
+      summary: Get the addresses, contacts and cash for a delivery
+      description: >-
+        For the assigned courier, a DISPATCHER of either district, or a SYSTEM_ADMIN. Shows only what the
+        current leg needs: the sender and the fee until pickup, and the recipient for the courier who
+        delivers. A finished or cancelled delivery gives no contacts and no amounts. Never cached.
+      operationId: getCourierJob
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Delivery job retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCourierJobResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller does not carry this delivery, or works in another district
+        "404":
+          description: Delivery or order not found
+        "503":
+          description: The order service did not answer; try again
 
   /api/v1/deliveries/{deliveryId}/transition:
     post:
@@ -366,6 +399,90 @@ components:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+
+    CourierJobStop:
+      type: object
+      description: A contact and address the courier visits.
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+          example: "+94771234567"
+        alternatePhone:
+          type: [string, "null"]
+        addressLine1:
+          type: string
+        addressLine2:
+          type: [string, "null"]
+        city:
+          type: string
+        postalCode:
+          type: string
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+
+    CourierJobResponse:
+      type: object
+      description: >-
+        What the courier needs on the leg they are carrying. Stops and amounts that belong to another leg,
+        or to a finished or cancelled delivery, are null.
+      required:
+        - deliveryId
+        - cancelled
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+        cancelled:
+          type: boolean
+          description: The order was cancelled, so nothing is to be picked up or collected.
+        speed:
+          type: string
+          enum: [STANDARD, EXPRESS, SAME_DAY]
+        pickup:
+          oneOf:
+            - $ref: "#/components/schemas/CourierJobStop"
+            - type: "null"
+        dropOff:
+          oneOf:
+            - $ref: "#/components/schemas/CourierJobStop"
+            - type: "null"
+        notes:
+          type: [string, "null"]
+        itemDescription:
+          type: [string, "null"]
+        lengthCm:
+          type: [number, "null"]
+        widthCm:
+          type: [number, "null"]
+        heightCm:
+          type: [number, "null"]
+        weightKg:
+          type: [number, "null"]
+        feeToCollect:
+          type: [number, "null"]
+          description: Delivery fee to collect in cash from the sender, until the parcel is picked up.
+          example: 670.00
+        codToCollect:
+          type: [number, "null"]
+          description: Cash to collect from the recipient for the merchant; null when there is none.
+        currency:
+          type: string
+          example: LKR
+
+    ApiResponseCourierJobResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CourierJobResponse"
+        timestamp:
           type: string
           format: date-time
 

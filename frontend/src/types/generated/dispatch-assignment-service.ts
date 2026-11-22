@@ -393,7 +393,7 @@ export interface paths {
         put?: never;
         /**
          * Start or register courier shift
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available.
+         * @description A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available.
          */
         post: operations["startShift"];
         delete?: never;
@@ -507,7 +507,6 @@ export interface components {
             courierName: string;
             /** @example +94771234567 */
             phone?: string;
-            initialDistrict: components["schemas"]["SriLankanDistrict"];
         };
         /** @description A courier's own vehicle. */
         CourierVehicleRequest: {

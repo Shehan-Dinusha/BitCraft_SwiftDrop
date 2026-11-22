@@ -2,6 +2,8 @@ import { apiClient } from './apiClient';
 import type { components } from '@/types/generated/delivery-execution-service';
 
 export type DeliverySessionResponse = components['schemas']['DeliverySessionResponse'];
+export type CourierJobResponse = components['schemas']['CourierJobResponse'];
+export type CourierJobStop = components['schemas']['CourierJobStop'];
 export type TransitionDeliveryRequest = components['schemas']['TransitionDeliveryRequest'];
 export type ProofOfDeliveryUploadRequest = components['schemas']['ProofOfDeliveryUploadRequest'];
 export type ProofOfDeliveryResponse = components['schemas']['ProofOfDeliveryResponse'];
@@ -12,6 +14,14 @@ export const deliveryApi = {
   getDeliveryById: async (deliveryId: string) => {
     const { data } = await apiClient.get<{ success: boolean; data: DeliverySessionResponse }>(
       `/v1/deliveries/${deliveryId}`
+    );
+    return data.data;
+  },
+
+  /** Addresses, contacts and cash for the leg this courier carries. */
+  getJob: async (deliveryId: string) => {
+    const { data } = await apiClient.get<{ success: boolean; data: CourierJobResponse }>(
+      `/v1/deliveries/${deliveryId}/job`
     );
     return data.data;
   },
