@@ -68,7 +68,10 @@ public record DispatchAssignmentResponse(
         InternalQueueStatus hubStage,
 
         @Schema(description = "The district whose dispatcher manages the order now")
-        SriLankanDistrict responsibleDistrict
+        SriLankanDistrict responsibleDistrict,
+
+        @Schema(description = "When the courier of the current leg collected the parcel; reassignment is blocked once set")
+        Instant pickedUpAt
 ) {
     public static DispatchAssignmentResponse fromEntity(DispatchAssignment entity) {
         if (entity == null) return null;
@@ -91,7 +94,8 @@ public record DispatchAssignmentResponse(
                 entity.getUpdatedAt(),
                 entity.getLeg(),
                 entity.getHubStage(),
-                entity.getResponsibleDistrict()
+                entity.getResponsibleDistrict(),
+                entity.getPickedUpAt()
         );
     }
 }

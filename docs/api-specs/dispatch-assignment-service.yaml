@@ -1175,6 +1175,10 @@ components:
           description: The district whose dispatcher manages the order now.
           allOf:
             - $ref: "#/components/schemas/SriLankanDistrict"
+        pickedUpAt:
+          description: When the courier of the current leg collected the parcel; reassignment is blocked once set.
+          type: string
+          format: date-time
 
     CourierShiftResponse:
       type: object
