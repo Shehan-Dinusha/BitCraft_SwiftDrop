@@ -31,15 +31,33 @@ public interface DispatchAssignmentRepository extends JpaRepository<DispatchAssi
 
     Page<DispatchAssignment> findByCourierId(UUID courierId, Pageable pageable);
 
-    Page<DispatchAssignment> findByPickupDistrict(SriLankanDistrict pickupDistrict, Pageable pageable);
+    /** The district's own orders: picked up there (first leg) or taken over at its hub (last leg). */
+    String HANDLED_BY = "((a.leg = com.swiftdrop.dispatch.domain.enums.AssignmentLeg.FIRST_MILE AND a.pickupDistrict = :district) "
+            + "OR (a.leg = com.swiftdrop.dispatch.domain.enums.AssignmentLeg.LAST_MILE AND a.deliveryDistrict = :district))";
 
-    Page<DispatchAssignment> findByPickupDistrictAndStatus(SriLankanDistrict pickupDistrict, AssignmentStatus status,
-                                                           Pageable pageable);
+    @Query("SELECT a FROM DispatchAssignment a WHERE " + HANDLED_BY)
+    Page<DispatchAssignment> findHandledBy(@Param("district") SriLankanDistrict district, Pageable pageable);
 
-    List<DispatchAssignment> findByStatusAndPickupDistrict(AssignmentStatus status, SriLankanDistrict pickupDistrict);
+    @Query("SELECT a FROM DispatchAssignment a WHERE a.status = :status AND " + HANDLED_BY)
+    Page<DispatchAssignment> findHandledByAndStatus(@Param("district") SriLankanDistrict district,
+                                                    @Param("status") AssignmentStatus status, Pageable pageable);
 
-    /** Open orders coming into a district from another one: its dispatcher follows them read-only. */
+    @Query("SELECT a FROM DispatchAssignment a WHERE a.status = :status AND " + HANDLED_BY + " ORDER BY a.createdAt")
+    List<DispatchAssignment> findHandledByWithStatus(@Param("district") SriLankanDistrict district,
+                                                     @Param("status") AssignmentStatus status);
+
+    /** Handed in at the pickup district's hub and not yet marked Outbound: ready to send. */
+    @Query("SELECT a FROM DispatchAssignment a WHERE a.pickupDistrict = :district "
+            + "AND a.status = com.swiftdrop.dispatch.domain.enums.AssignmentStatus.IN_TRANSFER "
+            + "AND a.hubStage = com.swiftdrop.contracts.enums.InternalQueueStatus.AT_HUB ORDER BY a.updatedAt")
+    List<DispatchAssignment> findReadyToSend(@Param("district") SriLankanDistrict district);
+
+    /**
+     * Orders coming into a district from another one, until its hub accepts them (they then become the
+     * district's own last-mile orders). Those marked Outbound (hubStage OUTBOUND) can be accepted.
+     */
     @Query("SELECT a FROM DispatchAssignment a WHERE a.deliveryDistrict = :district AND a.pickupDistrict <> :district "
+            + "AND a.leg = com.swiftdrop.dispatch.domain.enums.AssignmentLeg.FIRST_MILE "
             + "AND a.status NOT IN (com.swiftdrop.dispatch.domain.enums.AssignmentStatus.COMPLETED, "
             + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.CANCELLED) ORDER BY a.createdAt DESC")
     List<DispatchAssignment> findIncoming(@Param("district") SriLankanDistrict district);

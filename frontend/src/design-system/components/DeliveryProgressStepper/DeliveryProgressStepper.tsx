@@ -7,10 +7,23 @@ import {
   type FsmStatusBadgeSize
 } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 
-const steps: DeliveryState[] = ['CREATED', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+const directSteps: DeliveryState[] = ['CREATED', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+/** A parcel going to another district passes both districts' hubs. */
+const hubSteps: DeliveryState[] = [
+  'CREATED',
+  'ASSIGNED',
+  'PICKED_UP',
+  'AT_ORIGIN_HUB',
+  'IN_TRANSIT',
+  'AT_DESTINATION_HUB',
+  'OUT_FOR_DELIVERY',
+  'DELIVERED'
+];
 
 export interface DeliveryProgressStepperProps {
   current: DeliveryState;
+  /** The parcel goes to another district (through both hubs). A hub state implies it. */
+  viaHubs?: boolean;
   size?: FsmStatusBadgeSize;
   density?: DensityMode;
   className?: string;
@@ -25,6 +38,7 @@ const densitySizes: Record<DensityMode, FsmStatusBadgeSize> = {
 
 export function DeliveryProgressStepper({
   current,
+  viaHubs = false,
   size,
   density,
   className
@@ -32,6 +46,8 @@ export function DeliveryProgressStepper({
   const contextDensity = useDensityMode();
   const resolvedSize = size ?? densitySizes[density ?? contextDensity];
 
+  const steps =
+    viaHubs || current === 'AT_ORIGIN_HUB' || current === 'AT_DESTINATION_HUB' ? hubSteps : directSteps;
   const activeIndex = steps.indexOf(current);
   const isTerminal = activeIndex === -1;
   const items: DeliveryState[] = isTerminal ? [...steps, current] : steps;

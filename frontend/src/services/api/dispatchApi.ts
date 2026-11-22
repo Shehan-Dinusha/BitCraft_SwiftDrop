@@ -64,6 +64,15 @@ export const dispatchApi = {
     return data.data;
   },
 
+  /** Parcels handed in at the district's hub and waiting to be marked Outbound. */
+  getReadyToSend: async (district?: SriLankanDistrict) => {
+    const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
+      '/v1/dispatch/ready-to-send',
+      { params: { district } }
+    );
+    return data.data;
+  },
+
   /** Open orders delivered into the district from elsewhere; read-only for its dispatcher. */
   getIncoming: async (district?: SriLankanDistrict) => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(

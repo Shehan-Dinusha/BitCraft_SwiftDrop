@@ -12,7 +12,15 @@ public enum DeliveryState {
     CREATED,
     ASSIGNED,
     PICKED_UP,
+    /** Different districts only: the first courier handed the parcel in at the pickup district's hub. */
+    AT_ORIGIN_HUB,
+    /**
+     * Same district: the courier is on the way to the recipient. Different districts: the parcel is on its
+     * way from the pickup district's hub to the drop-off district's hub (marked Outbound by its dispatcher).
+     */
     IN_TRANSIT,
+    /** Different districts only: the drop-off district's dispatcher accepted it at their hub. */
+    AT_DESTINATION_HUB,
     OUT_FOR_DELIVERY,
     DELIVERED,
     FAILED,

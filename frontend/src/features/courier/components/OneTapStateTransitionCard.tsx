@@ -5,6 +5,8 @@ import { Button } from '@/design-system/primitives/Button';
 import { SlideToTransitionBar } from '@/design-system/components/SlideToTransitionBar/SlideToTransitionBar';
 import { FAILURE_REASONS } from './DeliveryFailureReportModal';
 import type { DeliverySessionResponse, DeliveryState, DeliveryFailureReason } from '@/services/api/deliveryApi';
+import { crossesDistricts } from '@/types/fsm';
+import { districtLabel } from '@/features/profile/profileFormat';
 import {
   PackageCheck,
   Truck,
@@ -13,7 +15,8 @@ import {
   FileCheck,
   ChevronDown,
   ChevronUp,
-  MapPin
+  MapPin,
+  Warehouse
 } from 'lucide-react';
 
 export interface OneTapStateTransitionCardProps {
@@ -37,6 +40,8 @@ export function OneTapStateTransitionCard({
 
   const currentState = session.currentState as DeliveryState;
   const isPending = pendingState !== null;
+  // Going to another district: the courier hands it in at their district's hub instead of delivering it.
+  const viaHubs = crossesDistricts(session);
 
   const handleReportFailure = async () => {
     await onTransition('FAILED', failureReason, failureNotes || 'Reported by courier via mobile app');
@@ -78,7 +83,49 @@ export function OneTapStateTransitionCard({
           </div>
         )}
 
-        {currentState === 'PICKED_UP' && (
+        {currentState === 'PICKED_UP' && viaHubs && (
+          <div className="space-y-3">
+            <p className="text-sm text-secondary">
+              This parcel goes to {districtLabel(session.deliveryDistrict)}. Take it to the{' '}
+              {districtLabel(session.pickupDistrict)} hub.
+            </p>
+            <Button
+              variant="primary"
+              className="w-full min-h-[48px] text-sm"
+              onClick={() =>
+                onTransition('AT_ORIGIN_HUB', undefined, 'Courier handed the parcel in at the hub')
+              }
+              loading={pendingState === 'AT_ORIGIN_HUB'}
+              disabled={isPending}
+            >
+              <Warehouse className="mr-2 h-4 w-4" />
+              Handed in at the {districtLabel(session.pickupDistrict)} hub
+            </Button>
+          </div>
+        )}
+
+        {currentState === 'AT_DESTINATION_HUB' && (
+          <div className="space-y-3">
+            <p className="text-sm text-secondary">
+              Collect the parcel from the {districtLabel(session.deliveryDistrict)} hub, then take
+              it to the recipient.
+            </p>
+            <Button
+              variant="primary"
+              className="w-full min-h-[48px] text-sm"
+              onClick={() =>
+                onTransition('OUT_FOR_DELIVERY', undefined, 'Courier collected the parcel from the hub')
+              }
+              loading={pendingState === 'OUT_FOR_DELIVERY'}
+              disabled={isPending}
+            >
+              <PackageCheck className="mr-2 h-4 w-4" />
+              Collected from the hub
+            </Button>
+          </div>
+        )}
+
+        {currentState === 'PICKED_UP' && !viaHubs && (
           <div className="space-y-3">
             <p className="text-sm text-secondary">
               Head to the delivery address.

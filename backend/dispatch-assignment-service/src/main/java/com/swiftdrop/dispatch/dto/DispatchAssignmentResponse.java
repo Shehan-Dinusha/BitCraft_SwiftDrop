@@ -1,5 +1,7 @@
 package com.swiftdrop.dispatch.dto;
 
+import com.swiftdrop.contracts.enums.InternalQueueStatus;
+import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
@@ -57,7 +59,16 @@ public record DispatchAssignmentResponse(
         Instant createdAt,
 
         @Schema(description = "Last update timestamp")
-        Instant updatedAt
+        Instant updatedAt,
+
+        @Schema(description = "FIRST_MILE (pickup district) or LAST_MILE (drop-off district, after its hub accepted it)")
+        AssignmentLeg leg,
+
+        @Schema(description = "Between the legs of a cross-district order: AT_HUB, OUTBOUND or INCOMING")
+        InternalQueueStatus hubStage,
+
+        @Schema(description = "The district whose dispatcher manages the order now")
+        SriLankanDistrict responsibleDistrict
 ) {
     public static DispatchAssignmentResponse fromEntity(DispatchAssignment entity) {
         if (entity == null) return null;
@@ -77,7 +88,10 @@ public record DispatchAssignmentResponse(
                 entity.getFailureReason(),
                 entity.getRetryCount(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                entity.getLeg(),
+                entity.getHubStage(),
+                entity.getResponsibleDistrict()
         );
     }
 }

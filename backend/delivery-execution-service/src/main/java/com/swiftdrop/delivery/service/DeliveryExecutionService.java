@@ -1,5 +1,8 @@
 package com.swiftdrop.delivery.service;
 
+import com.swiftdrop.contracts.security.ForbiddenException;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
@@ -72,6 +75,9 @@ public class DeliveryExecutionService {
                 });
 
         DeliveryState prevState = session.getCurrentState();
+        if (prevState == DeliveryState.AT_DESTINATION_HUB) {
+            return assignLastMileCourier(session, event);
+        }
         session.setCourierId(event.courierId());
         session.setCourierName(event.courierName());
         if (event.customerId() != null) {
@@ -119,6 +125,50 @@ public class DeliveryExecutionService {
         return session;
     }
 
+    /**
+     * The drop-off district's dispatcher assigned (or changed) the courier who collects the parcel from
+     * their hub. The parcel stays AT_DESTINATION_HUB until that courier collects it; customers see no
+     * change, so no status event is published.
+     */
+    private DeliverySession assignLastMileCourier(DeliverySession session, CourierAssignedEvent event) {
+        session.setCourierId(event.courierId());
+        session.setCourierName(event.courierName());
+        session = deliverySessionRepository.save(session);
+        auditTransitionAction.execute(session.getDeliveryId(), session.getOrderId(),
+                DeliveryState.AT_DESTINATION_HUB, DeliveryState.AT_DESTINATION_HUB,
+                "DISPATCH_ASSIGNMENT_EVENT", "SYSTEM", "Last-mile courier assigned at the drop-off hub");
+        return session;
+    }
+
+    /**
+     * Who may take a hub step. The pickup district's dispatcher marks a parcel Outbound; the drop-off
+     * district's dispatcher accepts it at their hub; a courier never does either. Handing in at the
+     * origin hub is the first courier's step (their dispatcher may record it too). A system admin may
+     * take any step. Internal callers (no caller) are not checked.
+     */
+    private static void requireHubActor(DeliveryState from, DeliveryState to, DeliverySession session,
+                                        CallerContext caller) {
+        if (caller == null || caller.role() == UserRole.SYSTEM_ADMIN) {
+            return;
+        }
+        boolean outbound = from == DeliveryState.AT_ORIGIN_HUB && to == DeliveryState.IN_TRANSIT;
+        boolean accept = from == DeliveryState.IN_TRANSIT && to == DeliveryState.AT_DESTINATION_HUB;
+        boolean handIn = from == DeliveryState.PICKED_UP && to == DeliveryState.AT_ORIGIN_HUB;
+        if (outbound && !isDispatcherOf(caller, session.getPickupDistrict())) {
+            throw new ForbiddenException("Only the pickup district's dispatcher can mark this parcel Outbound");
+        }
+        if (accept && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
+            throw new ForbiddenException("Only the drop-off district's dispatcher can accept this parcel");
+        }
+        if (handIn && caller.role() == UserRole.DISPATCHER && !isDispatcherOf(caller, session.getPickupDistrict())) {
+            throw new ForbiddenException("Only the pickup district's hub can receive this parcel");
+        }
+    }
+
+    private static boolean isDispatcherOf(CallerContext caller, SriLankanDistrict district) {
+        return caller.role() == UserRole.DISPATCHER && district != null && caller.districtId() == district;
+    }
+
     @Transactional
     public DeliverySession transition(UUID deliveryId, TransitionDeliveryRequest request) {
         return transition(deliveryId, request, null);
@@ -146,6 +196,7 @@ public class DeliveryExecutionService {
 
         // Delegate state-specific guard and precondition validation to the handler
         stateMachine.getHandler(fromState).validate(request, session);
+        requireHubActor(fromState, toState, session, caller);
 
         // Enforce Proof of Delivery Guard before transitioning to DELIVERED
         if (toState == DeliveryState.DELIVERED) {
@@ -165,6 +216,10 @@ public class DeliveryExecutionService {
             session.setStatus("FAILED");
         } else if (toState == DeliveryState.CANCELLED) {
             session.setStatus("CANCELLED");
+        } else if (toState == DeliveryState.AT_ORIGIN_HUB) {
+            // The first courier's part ends at the hub: the parcel leaves their list and workload.
+            session.setCourierId(null);
+            session.setCourierName(null);
         }
 
         session.setPreviousState(fromState);
@@ -176,8 +231,9 @@ public class DeliveryExecutionService {
                 session.getOrderId(),
                 fromState,
                 toState,
-                "COURIER_APP",
-                request.actorRole() != null ? request.actorRole() : "COURIER",
+                caller != null && caller.role() != UserRole.COURIER ? "OPERATIONS_CONSOLE" : "COURIER_APP",
+                caller != null ? caller.role().name()
+                        : (request.actorRole() != null ? request.actorRole() : "COURIER"),
                 request.notes()
         );
 

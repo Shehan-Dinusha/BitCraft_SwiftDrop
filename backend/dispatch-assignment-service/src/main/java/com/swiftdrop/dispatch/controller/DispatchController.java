@@ -171,6 +171,21 @@ public class DispatchController {
         );
     }
 
+    @GetMapping("/ready-to-send")
+    @Operation(summary = "List parcels handed in at the district's hub and waiting to be marked Outbound",
+            description = "A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district. Mark one "
+                    + "Outbound with the delivery transition AT_ORIGIN_HUB -> IN_TRANSIT.")
+    public ApiResponse<List<DispatchAssignmentResponse>> getReadyToSend(
+            @RequestParam(required = false) SriLankanDistrict district,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = DispatchAccess.requireOperations(httpRequest);
+        SriLankanDistrict scope = DistrictScope.listDistrict(caller, district);
+        if (scope == null) {
+            throw new IllegalArgumentException("Choose a district");
+        }
+        return ApiResponse.success(dispatchAssignmentService.getReadyToSend(scope), "Parcels ready to send retrieved");
+    }
+
     @GetMapping("/incoming")
     @Operation(summary = "List open orders coming into a district from another one",
             description = "Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own "
@@ -211,7 +226,7 @@ public class DispatchController {
             @PathVariable UUID orderId,
             HttpServletRequest httpRequest) {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
-        DistrictScope.requireManage(caller, dispatchAssignmentService.getAssignmentByOrderId(orderId).pickupDistrict());
+        DistrictScope.requireManage(caller, dispatchAssignmentService.getAssignmentByOrderId(orderId).responsibleDistrict());
         return ApiResponse.success(
                 dispatchAssignmentService.getSuggestions(orderId),
                 "Courier suggestions retrieved"

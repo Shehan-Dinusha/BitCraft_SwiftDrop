@@ -141,6 +141,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/ready-to-send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List parcels handed in at the district's hub and waiting to be marked Outbound
+         * @description A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise). Mark one Outbound with the delivery transition AT_ORIGIN_HUB -> IN_TRANSIT.
+         */
+        get: operations["getReadyToSend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatch/incoming": {
         parameters: {
             query?: never;
@@ -426,8 +446,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @enum {string} */
-        AssignmentStatus: "UNASSIGNED" | "ASSIGNED" | "REASSIGNED" | "FAILED" | "CANCELLED" | "COMPLETED";
+        /**
+         * @description IN_TRANSFER is between the two legs of a cross-district order; no courier holds it.
+         * @enum {string}
+         */
+        AssignmentStatus: "UNASSIGNED" | "ASSIGNED" | "REASSIGNED" | "IN_TRANSFER" | "FAILED" | "CANCELLED" | "COMPLETED";
+        /**
+         * @description FIRST_MILE is managed by the pickup district; a cross-district order moves to LAST_MILE, managed by the drop-off district, when its hub accepts it.
+         * @enum {string}
+         */
+        AssignmentLeg: "FIRST_MILE" | "LAST_MILE";
+        /**
+         * @description Where a cross-district order is between the legs.
+         * @enum {string}
+         */
+        HubStage: "AT_HUB" | "OUTBOUND" | "INCOMING";
         /** @enum {string} */
         ShiftStatus: "AVAILABLE" | "BUSY" | "ON_BREAK" | "OFFLINE";
         /**
@@ -543,6 +576,10 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            leg?: components["schemas"]["AssignmentLeg"];
+            hubStage?: components["schemas"]["HubStage"];
+            /** @description The district whose dispatcher manages the order now. */
+            responsibleDistrict?: components["schemas"]["SriLankanDistrict"];
         };
         CourierShiftResponse: {
             /** Format: uuid */
@@ -1025,6 +1062,38 @@ export interface operations {
             };
             /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getReadyToSend: {
+        parameters: {
+            query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Parcels ready to send */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description A SYSTEM_ADMIN did not give a district */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

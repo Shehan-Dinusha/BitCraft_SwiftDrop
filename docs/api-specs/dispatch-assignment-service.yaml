@@ -307,6 +307,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
 
+  /api/v1/dispatch/ready-to-send:
+    get:
+      tags:
+        - Dispatch
+      summary: List parcels handed in at the district's hub and waiting to be marked Outbound
+      description: >-
+        A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+        Mark one Outbound with the delivery transition AT_ORIGIN_HUB -> IN_TRANSIT.
+      operationId: getReadyToSend
+      parameters:
+        - name: district
+          in: query
+          required: false
+          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Parcels ready to send
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
+        "400":
+          description: A SYSTEM_ADMIN did not give a district
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
   /api/v1/dispatch/incoming:
     get:
       tags:
@@ -885,7 +915,20 @@ components:
   schemas:
     AssignmentStatus:
       type: string
-      enum: [UNASSIGNED, ASSIGNED, REASSIGNED, FAILED, CANCELLED, COMPLETED]
+      description: IN_TRANSFER is between the two legs of a cross-district order; no courier holds it.
+      enum: [UNASSIGNED, ASSIGNED, REASSIGNED, IN_TRANSFER, FAILED, CANCELLED, COMPLETED]
+
+    AssignmentLeg:
+      type: string
+      description: >-
+        FIRST_MILE is managed by the pickup district; a cross-district order moves to LAST_MILE, managed
+        by the drop-off district, when its hub accepts it.
+      enum: [FIRST_MILE, LAST_MILE]
+
+    HubStage:
+      type: string
+      description: Where a cross-district order is between the legs.
+      enum: [AT_HUB, OUTBOUND, INCOMING]
 
     ShiftStatus:
       type: string
@@ -1124,6 +1167,14 @@ components:
         updatedAt:
           type: string
           format: date-time
+        leg:
+          $ref: "#/components/schemas/AssignmentLeg"
+        hubStage:
+          $ref: "#/components/schemas/HubStage"
+        responsibleDistrict:
+          description: The district whose dispatcher manages the order now.
+          allOf:
+            - $ref: "#/components/schemas/SriLankanDistrict"
 
     CourierShiftResponse:
       type: object

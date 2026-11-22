@@ -7,8 +7,11 @@ import {
   Package,
   RefreshCw,
   Search,
-  UserCheck
+  Send,
+  UserCheck,
+  Warehouse
 } from 'lucide-react';
+import { deliveryApi } from '@/services/api/deliveryApi';
 import { Button, EmptyState, SelectDropdown, StatusBanner, SurfaceCard } from '@/design-system';
 import { useAuthStore } from '@/store/useAuthStore';
 import { SRI_LANKAN_DISTRICTS } from '@/services/api/authApi';
@@ -92,6 +95,8 @@ export function DispatchBoardPage() {
     isAdmin && adminDistrict !== ALL_DISTRICTS ? (adminDistrict as SriLankanDistrict) : undefined;
   const showIncoming = !isAdmin || scope !== undefined;
   const [incoming, setIncoming] = useState<DispatchAssignmentResponse[]>([]);
+  const [readyToSend, setReadyToSend] = useState<DispatchAssignmentResponse[]>([]);
+  const [hubBusy, setHubBusy] = useState<string | null>(null);
   const [unassigned, setUnassigned] = useState<DispatchAssignmentResponse[]>([]);
   const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
   const [couriers, setCouriers] = useState<CourierShiftResponse[]>([]);
@@ -128,17 +133,20 @@ export function DispatchBoardPage() {
         workloadList,
         assignedPage,
         reassignedPage,
-        incomingOrders
+        incomingOrders,
+        readyOrders
       ] = await Promise.all([
         dispatchApi.getUnassignedParcels(scope),
         dispatchApi.getCouriers({ district: scope }),
         dispatchApi.getCourierWorkloads(),
         dispatchApi.getAssignments({ status: 'ASSIGNED', page: 0, size: 100, district: scope }),
         dispatchApi.getAssignments({ status: 'REASSIGNED', page: 0, size: 100, district: scope }),
-        showIncoming ? dispatchApi.getIncoming(scope) : Promise.resolve([])
+        showIncoming ? dispatchApi.getIncoming(scope) : Promise.resolve([]),
+        showIncoming ? dispatchApi.getReadyToSend(scope) : Promise.resolve([])
       ]);
       setUnassigned(unassignedOrders);
       setIncoming(incomingOrders);
+      setReadyToSend(readyOrders);
       setCouriers(courierList);
       if (sequence === workloadSequence.current) {
         setWorkloads(workloadList);
@@ -241,6 +249,38 @@ export function DispatchBoardPage() {
       setErrorMessage(getDispatchActionErrorMessage(error, Boolean(currentCourierId)));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * Marks a parcel Outbound from this district's hub (AT_ORIGIN_HUB -> IN_TRANSIT), or accepts one
+   * arriving at it (IN_TRANSIT -> AT_DESTINATION_HUB). An accepted parcel joins the unassigned queue
+   * for a courier of this district.
+   */
+  const runHubStep = async (
+    order: DispatchAssignmentResponse,
+    target: 'IN_TRANSIT' | 'AT_DESTINATION_HUB'
+  ) => {
+    if (!order.orderId || hubBusy) return;
+    setHubBusy(order.orderId);
+    setErrorMessage(null);
+    try {
+      const delivery = await deliveryApi.getDeliveryByOrderId(order.orderId);
+      if (!delivery.deliveryId) throw new Error('This parcel has no delivery record yet.');
+      await deliveryApi.transitionDelivery(delivery.deliveryId, {
+        targetState: target,
+        notes: target === 'IN_TRANSIT' ? 'Marked Outbound at the hub' : 'Accepted at the hub'
+      });
+      setSuccessMessage(
+        target === 'IN_TRANSIT'
+          ? `${order.trackingNumber ?? 'Parcel'} is on its way to ${districtLabel(order.deliveryDistrict)}.`
+          : `${order.trackingNumber ?? 'Parcel'} is at your hub. Assign a courier to deliver it.`
+      );
+      await loadData();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, 'The hub step could not be saved.'));
+    } finally {
+      setHubBusy(null);
     }
   };
 
@@ -374,7 +414,9 @@ export function DispatchBoardPage() {
                           {order.trackingNumber ?? order.orderId}
                         </p>
                         <p className="text-muted">
-                          {order.orderSpeed ?? 'STANDARD'} · retry {order.retryCount ?? 0}
+                          {order.leg === 'LAST_MILE'
+                            ? `At your hub · from ${districtLabel(order.pickupDistrict)}`
+                            : `${order.orderSpeed ?? 'STANDARD'} · retry ${order.retryCount ?? 0}`}
                         </p>
                       </td>
                       <td className="px-2 py-3 text-secondary">
@@ -512,13 +554,57 @@ export function DispatchBoardPage() {
       {showIncoming ? (
         <SurfaceCard className="p-4">
           <div className="flex items-center gap-2">
+            <Warehouse className="size-4 text-brand-primary" />
+            <h2 className="text-label font-semibold text-primary">
+              Ready to send from {districtLabel(scope ?? ownDistrict)} ({readyToSend.length})
+            </h2>
+          </div>
+          {readyToSend.length === 0 ? (
+            <p className="py-6 text-center text-caption text-muted">
+              No parcels waiting at the hub.
+            </p>
+          ) : (
+            <ul className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {readyToSend.map((order) => (
+                <li
+                  key={order.assignmentId ?? order.orderId}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-mono text-caption font-semibold text-primary">
+                      {order.trackingNumber ?? order.orderId}
+                    </p>
+                    <p className="text-caption text-secondary">
+                      To {districtLabel(order.deliveryDistrict)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    loading={hubBusy === order.orderId}
+                    loadingLabel="Sending"
+                    disabled={hubBusy !== null}
+                    onClick={() => void runHubStep(order, 'IN_TRANSIT')}
+                  >
+                    <Send className="mr-1.5 size-4" />
+                    Mark outbound
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SurfaceCard>
+      ) : null}
+
+      {showIncoming ? (
+        <SurfaceCard className="p-4">
+          <div className="flex items-center gap-2">
             <ArrowDownToLine className="size-4 text-status-info-fg" />
             <h2 className="text-label font-semibold text-primary">
               Incoming to {districtLabel(scope ?? ownDistrict)} ({incoming.length})
             </h2>
           </div>
           <p className="mt-1 text-caption text-secondary">
-            Picked up in another district. That district's dispatcher assigns the courier.
+            Accept a parcel when it reaches your hub, then assign a courier from the queue.
           </p>
           {incoming.length === 0 ? (
             <p className="py-6 text-center text-caption text-muted">Nothing on the way.</p>
@@ -539,8 +625,25 @@ export function DispatchBoardPage() {
                   </div>
                   <p className="mt-1 text-caption text-secondary">
                     From {districtLabel(order.pickupDistrict)} ·{' '}
-                    {order.courierName ?? 'Courier not assigned yet'}
+                    {order.hubStage === 'OUTBOUND'
+                      ? 'On the way to your hub'
+                      : order.hubStage === 'AT_HUB'
+                        ? `At the ${districtLabel(order.pickupDistrict)} hub`
+                        : 'Not handed in yet'}
                   </p>
+                  {order.hubStage === 'OUTBOUND' ? (
+                    <Button
+                      variant="primary"
+                      className="mt-2"
+                      loading={hubBusy === order.orderId}
+                      loadingLabel="Accepting"
+                      disabled={hubBusy !== null}
+                      onClick={() => void runHubStep(order, 'AT_DESTINATION_HUB')}
+                    >
+                      <Warehouse className="mr-1.5 size-4" />
+                      Accept at hub
+                    </Button>
+                  ) : null}
                 </li>
               ))}
             </ul>

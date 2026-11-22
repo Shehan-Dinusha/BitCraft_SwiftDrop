@@ -446,6 +446,12 @@ These templates cannot be triggered through `POST /api/v1/notifications/logs/dis
 | `notes` | `String` | Yes | Operator or courier note | Free text; do not expose publicly |
 | `timestamp` | `Instant` | No | Transition timestamp | Safe |
 
+A cross-district parcel adds two states: `AT_ORIGIN_HUB` (handed in at the pickup district's hub) and
+`AT_DESTINATION_HUB` (accepted at the drop-off district's hub). On `parcel.status.changed` they and the
+line-haul `IN_TRANSIT` all appear as public `IN_TRANSIT`, told apart by `internalSubStatus` `AT_HUB`,
+`OUTBOUND` and `INCOMING`. When the last-mile courier is assigned at the drop-off hub, the state stays
+`AT_DESTINATION_HUB` and no status event is published.
+
 #### Example JSON Payload
 ```json
 {

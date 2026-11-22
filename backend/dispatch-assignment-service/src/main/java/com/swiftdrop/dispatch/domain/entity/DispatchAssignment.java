@@ -1,5 +1,7 @@
 package com.swiftdrop.dispatch.domain.entity;
 
+import com.swiftdrop.contracts.enums.InternalQueueStatus;
+import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
@@ -72,6 +74,18 @@ public class DispatchAssignment {
     /** When delivery-execution reported the parcel past pickup; reassignment is blocked once set. */
     @Column(name = "picked_up_at")
     private Instant pickedUpAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "leg", nullable = false, length = 16)
+    private AssignmentLeg leg = AssignmentLeg.FIRST_MILE;
+
+    /** Between the legs: AT_HUB, OUTBOUND or INCOMING. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hub_stage", length = 32)
+    private InternalQueueStatus hubStage;
+
+    @Column(name = "first_mile_courier_id")
+    private UUID firstMileCourierId;
 
     @Column(name = "estimated_pickup_minutes")
     private Integer estimatedPickupMinutes = 30;
@@ -165,6 +179,25 @@ public class DispatchAssignment {
 
     public Instant getPickedUpAt() { return pickedUpAt; }
     public void setPickedUpAt(Instant pickedUpAt) { this.pickedUpAt = pickedUpAt; }
+
+    public AssignmentLeg getLeg() { return leg; }
+    public void setLeg(AssignmentLeg leg) { this.leg = leg; }
+
+    public InternalQueueStatus getHubStage() { return hubStage; }
+    public void setHubStage(InternalQueueStatus hubStage) { this.hubStage = hubStage; }
+
+    public UUID getFirstMileCourierId() { return firstMileCourierId; }
+    public void setFirstMileCourierId(UUID firstMileCourierId) { this.firstMileCourierId = firstMileCourierId; }
+
+    /** The district whose dispatcher manages the order now: pickup on the first leg, drop-off on the last. */
+    public SriLankanDistrict getResponsibleDistrict() {
+        return leg == AssignmentLeg.LAST_MILE ? deliveryDistrict : pickupDistrict;
+    }
+
+    /** Picked up in one district and delivered in another, so it goes through both hubs. */
+    public boolean crossesDistricts() {
+        return pickupDistrict != null && deliveryDistrict != null && pickupDistrict != deliveryDistrict;
+    }
 
     public Integer getEstimatedPickupMinutes() { return estimatedPickupMinutes; }
     public void setEstimatedPickupMinutes(Integer estimatedPickupMinutes) { this.estimatedPickupMinutes = estimatedPickupMinutes; }
