@@ -1,6 +1,6 @@
 import { Navigate, RouteObject } from 'react-router-dom';
 import { AppShell } from '@/app/AppShell';
-import { RoleGuard } from '@/app/RoleGuard';
+import { AdminOnly, RoleGuard } from '@/app/RoleGuard';
 import { catalogRoutes } from '@/features/design-system-catalog/catalogRoutes';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { SignUpPage } from '@/features/auth/pages/SignUpPage';
@@ -221,7 +221,7 @@ export const routes: RouteObject[] = [
       {
         path: '/merchant/webhooks',
         element: (
-          <RoleGuard roles={['MERCHANT', 'ADMIN_OPS']}>
+          <RoleGuard roles={['MERCHANT']}>
             <WebhookResiliencyConsolePage />
           </RoleGuard>
         )
@@ -246,7 +246,9 @@ export const routes: RouteObject[] = [
         path: '/ops/webhooks',
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
-            <WebhookResiliencyConsolePage />
+            <AdminOnly>
+              <WebhookResiliencyConsolePage />
+            </AdminOnly>
           </RoleGuard>
         )
       },

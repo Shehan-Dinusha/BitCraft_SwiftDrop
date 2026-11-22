@@ -99,8 +99,7 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
     { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
     { id: 'merchants', label: 'Merchant applications', icon: 'store', to: '/ops/merchants' },
     { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
-    { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' },
-    { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
+    { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' }
   ],
   'system-admin': [
     { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },

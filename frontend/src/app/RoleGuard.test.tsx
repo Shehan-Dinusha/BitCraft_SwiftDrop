@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { RoleGuard } from './RoleGuard';
+import { AdminOnly, RoleGuard } from './RoleGuard';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { PersonaRole } from '@/types/contracts';
 
@@ -16,6 +16,16 @@ function renderAt(path: string) {
           element={
             <RoleGuard roles={['ADMIN_OPS']}>
               <p>ops console</p>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/ops/admin"
+          element={
+            <RoleGuard roles={['ADMIN_OPS']}>
+              <AdminOnly>
+                <p>admin page</p>
+              </AdminOnly>
             </RoleGuard>
           }
         />
@@ -40,6 +50,18 @@ describe('RoleGuard', () => {
     signInAs('ADMIN_OPS');
     renderAt('/ops');
     expect(screen.getByText('ops console')).toBeInTheDocument();
+  });
+
+  it('keeps a dispatcher out of an admin page', () => {
+    useAuthStore.setState({ token: 'access-token', role: 'ADMIN_OPS', user: { role: 'DISPATCHER' } });
+    renderAt('/ops/admin');
+    expect(screen.getByText('ops console')).toBeInTheDocument();
+  });
+
+  it('lets a system admin into an admin page', () => {
+    useAuthStore.setState({ token: 'access-token', role: 'ADMIN_OPS', user: { role: 'SYSTEM_ADMIN' } });
+    renderAt('/ops/admin');
+    expect(screen.getByText('admin page')).toBeInTheDocument();
   });
 
   it('sends a signed-in user with another persona to their own home, not to login', () => {

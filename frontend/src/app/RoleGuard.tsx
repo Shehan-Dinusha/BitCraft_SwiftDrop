@@ -28,5 +28,11 @@ export function RoleGuard({ roles, children }: { roles: PersonaRole[]; children:
   return roles.includes(role) ? <>{children}</> : <Navigate to={roleHome[role]} replace />;
 }
 
+/** Inside a RoleGuard: keeps dispatchers, who share the ADMIN_OPS persona, out of an admin page. */
+export function AdminOnly({ children }: { children: ReactNode }) {
+  const { user, role } = useAuthStore();
+  return user?.role === 'SYSTEM_ADMIN' ? <>{children}</> : <Navigate to={roleHome[role]} replace />;
+}
+
 export default RoleGuard;
 
