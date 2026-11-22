@@ -98,8 +98,7 @@ public class ManualOverrideService {
         }
         PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
 
-        CourierShift courier = findAcceptingCourier(request.courierId());
-        requireCourierInPickupDistrict(courier, assignment);
+        CourierShift courier = findAcceptingCourier(request.courierId(), assignment);
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.ASSIGNED);
         incrementWorkload(courier);
 
@@ -172,8 +171,7 @@ public class ManualOverrideService {
             throw new IllegalArgumentException("The new courier must differ from the currently assigned courier");
         }
 
-        CourierShift newCourier = findAcceptingCourier(request.newCourierId());
-        requireCourierInPickupDistrict(newCourier, assignment);
+        CourierShift newCourier = findAcceptingCourier(request.newCourierId(), assignment);
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.REASSIGNED);
         courierShiftRepository.findByCourierId(currentCourierId).ifPresent(this::decrementWorkload);
         incrementWorkload(newCourier);
@@ -210,17 +208,17 @@ public class ManualOverrideService {
         return assignment;
     }
 
-    private CourierShift findAcceptingCourier(UUID courierId) {
+    /** The courier, if they work in the right district, are free and their vehicle has room for the parcel. */
+    private CourierShift findAcceptingCourier(UUID courierId, DispatchAssignment assignment) {
         CourierShift courier = courierShiftRepository.findByCourierId(courierId)
                 .orElseThrow(() -> new CourierNotAvailableException("Courier not found with ID: " + courierId));
-        if (courier.getShiftStatus() == ShiftStatus.OFFLINE) {
-            throw new CourierNotAvailableException(
-                    "Courier " + courier.getCourierName() + " is currently OFFLINE");
-        }
-        if (!courier.canAcceptParcel()) {
-            throw new CourierNotAvailableException(
-                    "Courier " + courier.getCourierName() + " is not available or has reached capacity");
-        }
+        requireCourierInPickupDistrict(courier, assignment);
+        // The courier row is versioned and every assignment updates it, so two assignments that both saw the
+        // same load cannot both commit.
+        CourierLoad load = CourierLoad.of(assignmentRepository, courierId);
+        CourierFit.block(courier, load, assignment).ifPresent(block -> {
+            throw new CourierNotAvailableException(CourierFit.message(block, courier, load, assignment));
+        });
         return courier;
     }
 

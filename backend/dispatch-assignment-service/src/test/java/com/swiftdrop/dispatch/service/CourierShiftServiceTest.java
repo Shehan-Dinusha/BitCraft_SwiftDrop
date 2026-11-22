@@ -38,6 +38,9 @@ class CourierShiftServiceTest {
     @Mock
     private CourierProfileRepository courierProfileRepository;
 
+    @Mock
+    private com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository assignmentRepository;
+
     @InjectMocks
     private CourierShiftService courierShiftService;
 

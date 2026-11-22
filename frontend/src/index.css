@@ -15,12 +15,14 @@ html {
   --color-surface-canvas: #f8fafc;
   --color-surface-card: #ffffff;
   --color-surface-elevated: #f1f5f9;
+  --color-surface-nav: #e8eef7;
 
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
   --color-text-muted: #64748b;
 
   --color-border-subtle: #e2e8f0;
+  --color-border-strong: #cbd5e1;
   --color-border-focus: #2563eb;
   --color-border-selected: #2563eb;
 
@@ -61,6 +63,7 @@ html {
 
   --color-shadow-ambient: rgba(15, 23, 42, 0.094);
   --color-shadow-overlay: rgba(15, 23, 42, 0.08);
+  --color-shadow-raised: rgba(15, 23, 42, 0.1);
 
   --color-scrim: rgba(15, 23, 42, 0.5);
   --color-scrim-soft: rgba(15, 23, 42, 0.3);
@@ -123,6 +126,66 @@ html {
 
 * {
   box-sizing: border-box;
+  /* No scrollbars anywhere: they took space on tall pages only, so the layout shifted. */
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Without a scrollbar, a faded edge shows that a table or list continues. The scroll timeline is
+ * inactive when nothing overflows, so content that fits is never faded.
+ */
+@property --fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-fade {
+  0% {
+    --fade-start: 0px;
+    --fade-end: 28px;
+  }
+  10% {
+    --fade-start: 28px;
+  }
+  90% {
+    --fade-end: 28px;
+  }
+  100% {
+    --fade-start: 28px;
+    --fade-end: 0px;
+  }
+}
+@supports (animation-timeline: scroll(self inline)) {
+  .overflow-x-auto {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
+      transparent
+    );
+    animation: scroll-fade linear both;
+    animation-timeline: scroll(self inline);
+  }
+  .overflow-y-auto {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
+      transparent
+    );
+    animation: scroll-fade linear both;
+    animation-timeline: scroll(self block);
+  }
 }
 body {
   margin: 0;

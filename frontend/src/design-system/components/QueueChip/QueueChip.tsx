@@ -18,7 +18,7 @@ export const QueueChip = forwardRef<HTMLButtonElement, QueueChipProps>(
       type="button"
       aria-pressed={selected}
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-label transition-colors',
+        'inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-label transition-colors',
         selected
           ? 'border-border-selected bg-brand-subtle text-brand-pressed shadow-[inset_0_0_0_0.5px_var(--color-border-selected)]'
           : 'border-border-subtle bg-card text-primary hover:bg-elevated',

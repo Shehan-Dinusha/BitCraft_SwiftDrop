@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser, fetchMyAvatar } from '@/services/api/authApi';
 import { useAuthStore } from '@/store/useAuthStore';
-import { cn } from '@/utils/cn';
 
-/** Side of the stored picture in pixels. Shown at most at 64px, so 256 stays sharp on high-DPI screens. */
+/** Side of the stored picture in pixels. Shown at most at 80px, so 256 stays sharp on high-DPI screens. */
 export const AVATAR_SIZE = 256;
 /** Photos straight from a phone can be large; anything bigger than this is refused before decoding. */
 export const MAX_SOURCE_BYTES = 15 * 1024 * 1024;
@@ -98,37 +97,4 @@ export function useMyAvatarUrl(): string | null {
     return () => URL.revokeObjectURL(next);
   }, [data, updatedAt]);
   return url;
-}
-
-export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (
-    ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() ||
-    '?'
-  );
-}
-
-/** Round profile picture, or the person's initials when there is none. */
-export function UserAvatar({
-  name,
-  src,
-  className
-}: {
-  name: string;
-  src?: string | null;
-  className?: string;
-}) {
-  return src ? (
-    <img src={src} alt="" className={cn('shrink-0 rounded-full object-cover', className)} />
-  ) : (
-    <span
-      aria-hidden="true"
-      className={cn(
-        'flex shrink-0 items-center justify-center rounded-full bg-brand-primary font-semibold text-brand-on',
-        className
-      )}
-    >
-      {initials(name)}
-    </span>
-  );
 }

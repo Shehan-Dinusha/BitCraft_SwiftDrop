@@ -18,8 +18,8 @@ class BulkCsvOrderProcessorTest {
     @Test
     void retainsInvalidRowsForReportingAndParsesForwardingMetadata() {
         String csv = """
-                recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,prohibited_items_declared
-                Test Recipient,0771234567,COLOMBO,10 Galle Road,1,STANDARD,CSV-001,Colombo,00300,Gampaha,11000,true
+                recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,prohibited_items_declared,package_length_cm,package_width_cm,package_height_cm
+                Test Recipient,0771234567,COLOMBO,10 Galle Road,1,STANDARD,CSV-001,Colombo,00300,Gampaha,11000,true,30,20.5,wide
                 Test Recipient,0771234567,INVALID,10 Galle Road,bad,STANDARD,CSV-002,Colombo,00300,Gampaha,11000,true
                 malformed
                 """;
@@ -27,6 +27,10 @@ class BulkCsvOrderProcessorTest {
         assertEquals(3, rows.size());
         assertEquals("CSV-001", rows.get(0).externalRef());
         assertEquals(Boolean.TRUE, rows.get(0).prohibitedItemsDeclared());
+        assertEquals(new BigDecimal("30"), rows.get(0).packageLengthCm());
+        assertEquals(new BigDecimal("20.5"), rows.get(0).packageWidthCm());
+        assertNull(rows.get(0).packageHeightCm());
+        assertNull(rows.get(1).packageLengthCm());
         assertNull(rows.get(1).deliveryDistrict());
         assertNull(rows.get(1).packageWeightKg());
         assertNull(rows.get(2).recipientName());

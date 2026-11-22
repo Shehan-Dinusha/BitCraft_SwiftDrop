@@ -6,8 +6,7 @@ export function LiveFleetHeatmap({ couriers = [] }: { couriers?: CourierShiftRes
     <div className="rounded-xl border border-border-subtle bg-card p-3">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h2 className="text-label font-semibold text-primary">Island-wide fleet view</h2>
-          <p className="text-caption text-secondary">Current courier distribution by district</p>
+          <h2 className="text-label font-semibold text-primary">Couriers by district</h2>
         </div>
         <MapPin aria-hidden="true" className="size-4 text-brand-primary" />
       </div>

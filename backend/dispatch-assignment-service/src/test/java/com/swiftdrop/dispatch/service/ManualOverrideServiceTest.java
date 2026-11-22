@@ -66,6 +66,39 @@ class ManualOverrideServiceTest {
     }
 
     @Test
+    @DisplayName("Assign and reassign are refused when the parcel does not fit the courier's vehicle, and change nothing")
+    void parcelTooBigForVehicleIsRefused() {
+        CourierShift motorcycle = new CourierShift();
+        motorcycle.setCourierId(newCourierId);
+        motorcycle.setCourierName("New Courier");
+        motorcycle.setCurrentDistrict(SriLankanDistrict.KANDY);
+        motorcycle.setShiftStatus(ShiftStatus.AVAILABLE);
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(orderId);
+        assignment.setPickupDistrict(SriLankanDistrict.KANDY);
+        assignment.setParcel(new java.math.BigDecimal("120"), new java.math.BigDecimal("10"),
+                new java.math.BigDecimal("10"), new java.math.BigDecimal("2"));
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(motorcycle));
+
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(
+                new ManualAssignRequest(orderId, newCourierId, "DISPATCHER", "test")))
+                .isInstanceOf(CourierNotAvailableException.class)
+                .hasMessage("The parcel is 120 cm long; a motorcycle takes up to 50 cm");
+
+        assignment.setStatus(AssignmentStatus.ASSIGNED);
+        assignment.setCourierId(oldCourierId);
+        assertThatThrownBy(() -> manualOverrideService.reassign(
+                new ReassignCourierRequest(orderId, oldCourierId, newCourierId, "DISPATCHER", "test")))
+                .isInstanceOf(CourierNotAvailableException.class);
+
+        assertThat(assignment.getCourierId()).isEqualTo(oldCourierId);
+        assertThat(motorcycle.getActiveParcelsCount()).isZero();
+        verify(assignmentRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
     @DisplayName("Manual assign: the published events name the order's customer, so delivery can notify them")
     void testManualAssign_PropagatesCustomerId() {
         UUID customerId = UUID.randomUUID();

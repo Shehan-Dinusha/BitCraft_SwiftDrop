@@ -3,6 +3,8 @@ package com.swiftdrop.dispatch;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.events.order.OrderCreatedEvent;
+import com.swiftdrop.contracts.events.order.OrderUpdatedEvent;
+import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import com.swiftdrop.dispatch.config.RabbitMQConfig;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
@@ -16,6 +18,7 @@ import com.swiftdrop.dispatch.service.DispatchAssignmentService;
 import com.swiftdrop.dispatch.service.ManualOverrideService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
@@ -39,12 +42,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static java.util.stream.Collectors.toMap;
 
@@ -317,6 +322,34 @@ class OrderCreatedConsumerIT {
                 .collect(toMap(CourierShift::getCourierId, CourierShift::getActiveParcelsCount));
     }
 
+    @Test
+    @DisplayName("order.created records the parcel size; order.updated replaces it, and the assignment check uses it")
+    void orderUpdatedChangesWhatFits() {
+        OrderCreatedEvent created = newEvent();
+        startListeners();
+        publish(created);
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
+            assertThat(recordsFor(created.orderId())).hasSize(1);
+            assertThat(recordsFor(created.orderId()).get(0).getVolumeLitres()).isEqualByComparingTo("6");
+        });
+
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY_ORDER_UPDATED,
+                new OrderUpdatedEvent(UUID.randomUUID(), UUID.randomUUID(), created.orderId(), created.trackingNumber(),
+                        SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, OrderSpeed.EXPRESS,
+                        new BigDecimal("150"), new BigDecimal("40"), new BigDecimal("40"), new BigDecimal("30"), null));
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
+            DispatchAssignment record = recordsFor(created.orderId()).get(0);
+            assertThat(record.getDeliveryDistrict()).isEqualTo(SriLankanDistrict.KANDY);
+            assertThat(record.getLongestSideCm()).isEqualByComparingTo("150");
+        });
+
+        // The test courier rides a motorcycle (the default vehicle).
+        assertThatThrownBy(() -> manualOverrideService.manualAssign(
+                new ManualAssignRequest(created.orderId(), pickupDistrictCourierId, "DISPATCHER", "IT")))
+                .isInstanceOf(CourierNotAvailableException.class)
+                .hasMessageContaining("150 cm long");
+    }
+
     private void declareInfrastructureDeadLetterTopology() {
         rabbitAdmin.declareExchange(new TopicExchange(RabbitMQConfig.DEAD_LETTER_EXCHANGE_NAME, true, false));
         Queue deadLetterQueue = QueueBuilder.durable(DISPATCH_DLQ)
@@ -348,7 +381,11 @@ class OrderCreatedConsumerIT {
                 null,
                 null,
                 "LKR",
-                null
+                null,
+                new BigDecimal("30"),
+                new BigDecimal("20"),
+                new BigDecimal("10"),
+                new BigDecimal("2.5")
         );
     }
 

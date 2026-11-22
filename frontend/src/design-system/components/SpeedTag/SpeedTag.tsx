@@ -25,7 +25,7 @@ export function SpeedTag({ speed, className }: SpeedTagProps) {
     <span
       data-speed={speed}
       className={cn(
-        'inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-semibold leading-4 tracking-[0.04em]',
+        'inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-[3px] text-[11px] font-semibold leading-4 tracking-[0.04em]',
         tone,
         className
       )}

@@ -21,6 +21,8 @@ Use the primitives and components under [src/design-system](src/design-system), 
 
 Use only the design-token colours from [tailwind.config.ts](tailwind.config.ts) (`text-primary`, `bg-card`, `bg-canvas`, `border-border-subtle`, `brand-*`, `status-{success,warning,danger,info}-*`). Never use raw palette classes such as `text-slate-500`, `bg-rose-50` or `bg-white` in feature code: they ignore dark mode and drift from the Figma theme. The token colours are CSS variables, so opacity modifiers like `bg-status-danger/10` do not work; use the `-bg` token instead. The design-system catalog is the only exception.
 
+Scrollbars are hidden everywhere in `src/index.css`. Use `overflow-x-auto` / `overflow-y-auto` for scrolling areas, so they get the edge fade that shows there is more; do not style scrollbars per component.
+
 Keep copy short. Use a title and the controls; add text only when it changes what the user does next (an irreversible consequence, a real limit, an error with a next step). No page subtitles that restate the title, no hints that repeat the label, no explanations of system internals.
 
 Placeholders never show an example answer (a name, phone, address, postal code, plate, "e.g. ..."): an example in the box looks already filled in. Put a format or example in the field's hint instead. Placeholders may only give an instruction, such as "Search orders", "Choose a district" or, on the sign-in screens whose labels are visually hidden, the field name.
@@ -40,6 +42,8 @@ Use `tabular-nums` for tracking IDs, ETAs, prices, and currency. Use the semanti
 - The product name is "SwiftDrop" in every visible string. The logo is the `BrandMark` component (`src/design-system/components/BrandMark`), used in the side nav, top bar, mobile header, auth screens, public header, landing page and catalog. Never use a generic icon tile (such as `Package`) as the logo; `Package` and similar icons are fine as parcel icons inside pages.
 - Favicons, the iPhone touch icon and the PWA icons (including maskable ones with a safe zone) are in `public/`. The full-size transparent logo is `docs/brand/swiftdrop-logo.png`.
 - Public routes (no sign-in): `/` landing page (`features/landing`), `/track` public tracking, the auth pages, and `/catalog`. The public header (`PublicHeader` in `Shell/TopBar.tsx`) shows only the brand, quick track and sign-in. Do not add links to pages that do not exist.
+
+- Navigation menus are one flat list per role: no section headings ("Shipping", "Updates") and no two items with the same icon. The shell is documented in [COMPONENTS.md](COMPONENTS.md).
 
 ## PWA rules
 

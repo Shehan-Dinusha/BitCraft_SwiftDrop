@@ -80,7 +80,11 @@ class CourierAvailabilityControllerTest {
                 5,
                 Instant.now(),
                 null,
-                Instant.now()
+                Instant.now(),
+                java.math.BigDecimal.ZERO,
+                25,
+                java.math.BigDecimal.ZERO,
+                100
         );
 
         when(courierShiftService.startShift(any(StartShiftRequest.class))).thenReturn(response);
@@ -111,7 +115,11 @@ class CourierAvailabilityControllerTest {
                 5,
                 Instant.now(),
                 null,
-                Instant.now()
+                Instant.now(),
+                java.math.BigDecimal.ZERO,
+                25,
+                java.math.BigDecimal.ZERO,
+                100
         );
 
         when(courierShiftService.updateStatus(eq(courierId), eq(ShiftStatus.ON_BREAK))).thenReturn(response);

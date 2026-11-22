@@ -20,7 +20,9 @@ public class BulkCsvOrderProcessor {
 
     /**
      * Parses a CSV file with expected headers:
-     * recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed
+     * recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,
+     * external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,
+     * prohibited_items_declared,package_length_cm,package_width_cm,package_height_cm
      */
     public List<BulkOrderIngestItem> parseCsv(InputStream inputStream) {
         List<BulkOrderIngestItem> items = new ArrayList<>();
@@ -51,14 +53,7 @@ public class BulkCsvOrderProcessor {
                 String districtStr = stripQuotes(tokens[2]).toUpperCase();
                 String deliveryAddress = stripQuotes(tokens[3]);
 
-                BigDecimal weight = null;
-                if (tokens.length > 4 && !tokens[4].trim().isEmpty()) {
-                    try {
-                        weight = new BigDecimal(stripQuotes(tokens[4]));
-                    } catch (NumberFormatException e) {
-                        weight = null;
-                    }
-                }
+                BigDecimal weight = number(column(tokens, 4));
 
                 String speed = "STANDARD";
                 if (tokens.length > 5 && !tokens[5].trim().isEmpty()) {
@@ -80,7 +75,8 @@ public class BulkCsvOrderProcessor {
                         weight,
                         speed,
                         column(tokens, 6), column(tokens, 7), column(tokens, 8), column(tokens, 9), column(tokens, 10),
-                        column(tokens, 11) == null ? null : declaration(column(tokens, 11))
+                        column(tokens, 11) == null ? null : declaration(column(tokens, 11)),
+                        number(column(tokens, 12)), number(column(tokens, 13)), number(column(tokens, 14))
                 ));
             }
         } catch (IOException e) {
@@ -101,6 +97,16 @@ public class BulkCsvOrderProcessor {
 
     private String column(String[] values, int index) {
         return values.length > index && !stripQuotes(values[index]).isBlank() ? stripQuotes(values[index]) : null;
+    }
+
+    /** A missing or unreadable number is left null; validation then reports the row. */
+    private BigDecimal number(String value) {
+        if (value == null) return null;
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private Boolean declaration(String value) {

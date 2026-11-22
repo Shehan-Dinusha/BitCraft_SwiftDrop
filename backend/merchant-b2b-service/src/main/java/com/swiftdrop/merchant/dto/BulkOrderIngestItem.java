@@ -37,11 +37,14 @@ public record BulkOrderIngestItem(
         @Schema(description = "Five-digit delivery postal code") String deliveryPostalCode,
         @Schema(description = "Pickup city") String pickupCity,
         @Schema(description = "Five-digit pickup postal code") String pickupPostalCode,
-        @Schema(description = "Explicit prohibited-items declaration") Boolean prohibitedItemsDeclared
+        @Schema(description = "Explicit prohibited-items declaration") Boolean prohibitedItemsDeclared,
+        @Schema(description = "Package length in cm, required for forwarding", example = "30") BigDecimal packageLengthCm,
+        @Schema(description = "Package width in cm, required for forwarding", example = "20") BigDecimal packageWidthCm,
+        @Schema(description = "Package height in cm, required for forwarding", example = "10") BigDecimal packageHeightCm
 ) {
     public BulkOrderIngestItem(String recipientName, String recipientPhone, SriLankanDistrict deliveryDistrict,
                               String deliveryAddress, BigDecimal packageWeightKg, String deliverySpeed) {
         this(recipientName, recipientPhone, deliveryDistrict, deliveryAddress, packageWeightKg, deliverySpeed,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 }

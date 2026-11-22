@@ -190,7 +190,7 @@ export interface paths {
         };
         /**
          * Suggest available couriers for an order
-         * @description Returns up to three AVAILABLE couriers below capacity working in the order's pickup district (a DISPATCHER only for orders of their district), then lower active workload, then the most recent heartbeat (couriers without one last), then courier ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or REASSIGNED order they are reassignment suggestions and leave out the courier currently holding the order. An empty list means no courier is eligible. Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description Returns the couriers on shift in the district handling the order (a DISPATCHER only for orders of their district). Those who can take it come first (eligible true): the smallest vehicle the parcel fits, then the emptiest by parcels, weight or volume, then the most recent heartbeat, then courier ID. The rest carry an ineligibleReason. For an ASSIGNED or REASSIGNED order the courier currently holding it is left out. An order without a recorded size is limited by the parcel count only. Requires the DISPATCHER or SYSTEM_ADMIN role.
          */
         get: operations["getCourierSuggestions"];
         put?: never;
@@ -464,10 +464,15 @@ export interface components {
         /** @enum {string} */
         ShiftStatus: "AVAILABLE" | "BUSY" | "ON_BREAK" | "OFFLINE";
         /**
-         * @description Courier's own vehicle. Default parcel capacity: MOTORCYCLE 5, THREE_WHEELER 10, VAN 25, LORRY 50.
+         * @description Courier's own vehicle. Default parcel capacity: MOTORCYCLE 5, THREE_WHEELER 10, VAN 25, LORRY 50. Total weight, total volume and longest side: MOTORCYCLE 25 kg / 100 l / 50 cm, THREE_WHEELER 150 kg / 600 l / 100 cm, VAN 600 kg / 4000 l / 200 cm, LORRY 2000 kg / 15000 l / 500 cm.
          * @enum {string}
          */
         VehicleType: "MOTORCYCLE" | "THREE_WHEELER" | "VAN" | "LORRY";
+        /**
+         * @description Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all. PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds.
+         * @enum {string}
+         */
+        CourierBlock: "OFF_SHIFT" | "ON_BREAK" | "BUSY" | "TOO_LONG" | "TOO_HEAVY" | "TOO_BIG" | "PARCEL_LIMIT" | "WEIGHT_LIMIT" | "VOLUME_LIMIT";
         /** @enum {string} */
         OrderSpeed: "STANDARD" | "EXPRESS" | "SAME_DAY";
         /** @enum {string} */
@@ -580,6 +585,22 @@ export interface components {
             hubStage?: components["schemas"]["HubStage"];
             /** @description The district whose dispatcher manages the order now. */
             responsibleDistrict?: components["schemas"]["SriLankanDistrict"];
+            /**
+             * Format: date-time
+             * @description When the courier of the current leg collected the parcel; reassignment is blocked once set.
+             */
+            pickedUpAt?: string;
+            /**
+             * @description Parcel length in cm; absent for orders booked before sizes were recorded.
+             * @example 30
+             */
+            lengthCm?: number;
+            /** @example 20 */
+            widthCm?: number;
+            /** @example 10 */
+            heightCm?: number;
+            /** @example 2.5 */
+            weightKg?: number;
         };
         CourierShiftResponse: {
             /** Format: uuid */
@@ -597,6 +618,12 @@ export interface components {
             shiftEndedAt?: string;
             /** Format: date-time */
             lastHeartbeatAt?: string;
+            /** @description Weight of the parcels held. */
+            activeWeightKg?: number;
+            maxWeightKg?: number;
+            /** @description Volume of the parcels held. */
+            activeVolumeLitres?: number;
+            maxVolumeLitres?: number;
         };
         CourierWorkloadResponse: {
             /** Format: uuid */
@@ -616,6 +643,18 @@ export interface components {
             activeParcels?: number;
             maxCapacity?: number;
             shiftStatus?: components["schemas"]["ShiftStatus"];
+            vehicleType?: components["schemas"]["VehicleType"];
+            /** @description Weight of the parcels held. */
+            activeWeightKg?: number;
+            maxWeightKg?: number;
+            /** @description Volume of the parcels held. */
+            activeVolumeLitres?: number;
+            maxVolumeLitres?: number;
+            /** @description Longest side of a parcel the vehicle takes. */
+            maxSideCm?: number;
+            /** @description Whether the order can be assigned to this courier now. */
+            eligible?: boolean;
+            ineligibleReason?: components["schemas"]["CourierBlock"];
         };
         /** @description Error body returned by the global exception handler (com.swiftdrop.contracts.dto.ApiErrorResponse). Null fields are omitted. */
         ApiErrorResponse: {

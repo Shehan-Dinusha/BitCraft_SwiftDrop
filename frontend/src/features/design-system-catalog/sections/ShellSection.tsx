@@ -1,4 +1,4 @@
-import { BottomNav, NavItem, PublicHeader, roleShellSpec } from '@/design-system';
+import { Avatar, BottomNav, NavItem, PublicHeader, roleShellSpec } from '@/design-system';
 import { CatalogRow } from '../components/catalog-kit';
 
 /** The small navigation parts. The full role shells are on the Role shells gallery above. */
@@ -10,6 +10,13 @@ export function ShellSection() {
           <NavItem href="#" icon="list" label="Orders" count={12} />
           <NavItem href="#" icon="list" label="Orders" count={12} active />
           <NavItem href="#" icon="bell" label="Rail" rail />
+        </div>
+      </CatalogRow>
+
+      <CatalogRow label="Avatar" hint="Picture or initials; the ring keeps a white photo round">
+        <div className="flex items-center gap-4">
+          <Avatar name="Nimali Perera" />
+          <Avatar name="Nimali Perera" size="lg" />
         </div>
       </CatalogRow>
 

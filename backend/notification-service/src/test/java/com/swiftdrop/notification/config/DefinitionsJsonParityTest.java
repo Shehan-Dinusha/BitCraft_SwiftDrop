@@ -37,6 +37,7 @@ class DefinitionsJsonParityTest {
             "dispatch.events.queue",
             "dispatch.order-created.queue",
             "dispatch.order-cancelled.queue",
+            "dispatch.order-updated.queue",
             "dispatch.parcel-status.queue",
             "dlq.dispatch.events.queue",
             // Delivery
@@ -67,6 +68,7 @@ class DefinitionsJsonParityTest {
             new String[]{"dispatch.events.queue", "dispatch.#"},
             new String[]{"dispatch.order-created.queue", "order.created"},
             new String[]{"dispatch.order-cancelled.queue", "order.cancelled"},
+            new String[]{"dispatch.order-updated.queue", "order.updated"},
             new String[]{"dispatch.parcel-status.queue", "parcel.status.changed.#"},
             new String[]{"delivery.events.queue", "delivery.#"},
             new String[]{"delivery.dispatch-assigned.queue", "dispatch.courier.assigned"},

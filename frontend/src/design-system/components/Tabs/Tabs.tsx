@@ -22,7 +22,7 @@ export const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
       aria-selected={selected}
       tabIndex={selected ? 0 : -1}
       className={cn(
-        '-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-label transition-colors',
+        '-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-label transition-colors',
         selected
           ? 'border-brand-primary font-semibold text-brand-primary'
           : 'border-transparent text-secondary hover:border-border-subtle hover:text-primary',

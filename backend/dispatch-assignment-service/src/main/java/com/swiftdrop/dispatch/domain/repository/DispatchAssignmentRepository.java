@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,6 +46,13 @@ public interface DispatchAssignmentRepository extends JpaRepository<DispatchAssi
     @Query("SELECT a FROM DispatchAssignment a WHERE a.status = :status AND " + HANDLED_BY + " ORDER BY a.createdAt")
     List<DispatchAssignment> findHandledByWithStatus(@Param("district") SriLankanDistrict district,
                                                      @Param("status") AssignmentStatus status);
+
+    /** Weight and volume held by each of these couriers; a courier who holds nothing has no row. */
+    @Query("SELECT a.courierId AS courierId, SUM(a.weightKg) AS weightKg, SUM(a.volumeLitres) AS volumeLitres "
+            + "FROM DispatchAssignment a WHERE a.courierId IN :courierIds "
+            + "AND a.status IN (com.swiftdrop.dispatch.domain.enums.AssignmentStatus.ASSIGNED, "
+            + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.REASSIGNED) GROUP BY a.courierId")
+    List<CourierLoadRow> sumActiveLoads(@Param("courierIds") Collection<UUID> courierIds);
 
     /** Handed in at the pickup district's hub and not yet marked Outbound: ready to send. */
     @Query("SELECT a FROM DispatchAssignment a WHERE a.pickupDistrict = :district "

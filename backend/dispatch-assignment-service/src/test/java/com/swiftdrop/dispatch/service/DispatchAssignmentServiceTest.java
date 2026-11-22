@@ -1,5 +1,10 @@
 package com.swiftdrop.dispatch.service;
 
+import java.math.BigDecimal;
+import com.swiftdrop.dispatch.domain.enums.VehicleType;
+import com.swiftdrop.dispatch.domain.enums.CourierBlock;
+import com.swiftdrop.contracts.events.order.OrderUpdatedEvent;
+import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
@@ -222,14 +227,14 @@ class DispatchAssignmentServiceTest {
         CourierShift sameDistrict = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 3);
 
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
-        when(courierShiftRepository.findAvailableCandidates(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE))
+        when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(SriLankanDistrict.COLOMBO, ShiftStatus.OFFLINE))
                 .thenReturn(List.of(sameDistrict));
 
         var suggestions = dispatchAssignmentService.getSuggestions(orderId);
 
         assertThat(suggestions).extracting(s -> s.courierId()).containsExactly(sameDistrict.getCourierId());
         assertThat(suggestions.get(0).samePickupDistrict()).isTrue();
-        verify(courierShiftRepository).findAvailableCandidates(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE);
+        verify(courierShiftRepository).findByCurrentDistrictAndShiftStatusNot(SriLankanDistrict.COLOMBO, ShiftStatus.OFFLINE);
     }
 
     @Test
@@ -366,7 +371,7 @@ class DispatchAssignmentServiceTest {
     void testSuggestions_UnassignedOrder() {
         CourierShift candidate = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1);
         stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
-        when(courierShiftRepository.findAvailableCandidates(any(), eq(ShiftStatus.AVAILABLE))).thenReturn(List.of(candidate));
+        when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(any(), eq(ShiftStatus.OFFLINE))).thenReturn(List.of(candidate));
 
         assertThat(dispatchAssignmentService.getSuggestions(orderId))
                 .extracting(s -> s.courierId())
@@ -381,7 +386,7 @@ class DispatchAssignmentServiceTest {
             CourierShift currentCourier = courier(current, SriLankanDistrict.COLOMBO, 0);
             CourierShift other = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 3);
             stubSuggestionOrder(status, current, SriLankanDistrict.COLOMBO);
-            when(courierShiftRepository.findAvailableCandidates(any(), eq(ShiftStatus.AVAILABLE)))
+            when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(any(), eq(ShiftStatus.OFFLINE)))
                     .thenReturn(List.of(currentCourier, other));
 
             assertThat(dispatchAssignmentService.getSuggestions(orderId))
@@ -401,7 +406,7 @@ class DispatchAssignmentServiceTest {
                     .isInstanceOf(InvalidAssignmentTransitionException.class)
                     .hasMessageContaining(status.name());
         }
-        verify(courierShiftRepository, never()).findAvailableCandidates(any(), any());
+        verify(courierShiftRepository, never()).findByCurrentDistrictAndShiftStatusNot(any(), any());
     }
 
     @Test
@@ -418,7 +423,7 @@ class DispatchAssignmentServiceTest {
     @DisplayName("Suggestions: no eligible courier gives an empty list")
     void testSuggestions_NoEligibleCourier() {
         stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
-        when(courierShiftRepository.findAvailableCandidates(any(), eq(ShiftStatus.AVAILABLE))).thenReturn(List.of());
+        when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(any(), eq(ShiftStatus.OFFLINE))).thenReturn(List.of());
 
         assertThat(dispatchAssignmentService.getSuggestions(orderId)).isEmpty();
     }
@@ -428,7 +433,7 @@ class DispatchAssignmentServiceTest {
     void testSuggestions_OnlyCurrentCourierEligible() {
         UUID current = UUID.randomUUID();
         stubSuggestionOrder(AssignmentStatus.ASSIGNED, current, SriLankanDistrict.COLOMBO);
-        when(courierShiftRepository.findAvailableCandidates(any(), eq(ShiftStatus.AVAILABLE)))
+        when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(any(), eq(ShiftStatus.OFFLINE)))
                 .thenReturn(List.of(courier(current, SriLankanDistrict.COLOMBO, 0)));
 
         assertThat(dispatchAssignmentService.getSuggestions(orderId)).isEmpty();
@@ -441,7 +446,7 @@ class DispatchAssignmentServiceTest {
         CourierShift lighter = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1);
         CourierShift middle = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 2);
         stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
-        when(courierShiftRepository.findAvailableCandidates(any(), eq(ShiftStatus.AVAILABLE)))
+        when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(any(), eq(ShiftStatus.OFFLINE)))
                 .thenReturn(List.of(busier, lighter, middle));
 
         assertThat(dispatchAssignmentService.getSuggestions(orderId))
@@ -459,7 +464,7 @@ class DispatchAssignmentServiceTest {
         recent.setLastHeartbeatAt(now.minusSeconds(10));
         CourierShift never = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1);
         stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
-        when(courierShiftRepository.findAvailableCandidates(any(), eq(ShiftStatus.AVAILABLE)))
+        when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(any(), eq(ShiftStatus.OFFLINE)))
                 .thenReturn(List.of(never, older, recent));
 
         assertThat(dispatchAssignmentService.getSuggestions(orderId))
@@ -480,7 +485,7 @@ class DispatchAssignmentServiceTest {
         stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
 
         for (List<CourierShift> input : List.of(List.of(high, low), List.of(low, high))) {
-            when(courierShiftRepository.findAvailableCandidates(any(), eq(ShiftStatus.AVAILABLE))).thenReturn(input);
+            when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(any(), eq(ShiftStatus.OFFLINE))).thenReturn(input);
             assertThat(dispatchAssignmentService.getSuggestions(orderId))
                     .extracting(s -> s.courierId())
                     .containsExactly(lowId, highId);
@@ -488,20 +493,63 @@ class DispatchAssignmentServiceTest {
     }
 
     @Test
-    @DisplayName("Suggestions: at most three couriers are returned")
-    void testSuggestions_LimitedToThree() {
-        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
-        List<CourierShift> five = List.of(
-                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 4),
-                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 0),
-                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 3),
-                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 1),
-                courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 2));
-        when(courierShiftRepository.findAvailableCandidates(any(), eq(ShiftStatus.AVAILABLE))).thenReturn(five);
+    @DisplayName("Suggestions: the smallest vehicle the parcel fits comes first, and those it does not fit say why")
+    void testSuggestions_SmallestFittingVehicleFirst() {
+        CourierShift motorcycle = courier(UUID.randomUUID(), VehicleType.MOTORCYCLE, 0);
+        CourierShift van = courier(UUID.randomUUID(), VehicleType.VAN, 0);
+        CourierShift busyThreeWheeler = courier(UUID.randomUUID(), VehicleType.THREE_WHEELER, 4);
+        CourierShift idleThreeWheeler = courier(UUID.randomUUID(), VehicleType.THREE_WHEELER, 1);
+        stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO)
+                .setParcel(cm(80), cm(40), cm(30), cm(12));
+        when(courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(any(), eq(ShiftStatus.OFFLINE)))
+                .thenReturn(List.of(motorcycle, van, busyThreeWheeler, idleThreeWheeler));
 
-        assertThat(dispatchAssignmentService.getSuggestions(orderId))
-                .extracting(s -> s.activeParcels())
-                .containsExactly(0, 1, 2);
+        var suggestions = dispatchAssignmentService.getSuggestions(orderId);
+
+        assertThat(suggestions).extracting(s -> s.courierId()).containsExactly(idleThreeWheeler.getCourierId(),
+                busyThreeWheeler.getCourierId(), van.getCourierId(), motorcycle.getCourierId());
+        assertThat(suggestions).extracting(s -> s.eligible()).containsExactly(true, true, true, false);
+        assertThat(suggestions.get(3).ineligibleReason()).isEqualTo(CourierBlock.TOO_LONG);
+    }
+
+    @Test
+    @DisplayName("Order edited while waiting: size, districts, speed and pickup estimate all follow")
+    void testOrderUpdated_Unassigned() {
+        DispatchAssignment assignment = stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
+
+        dispatchAssignmentService.handleOrderUpdated(orderUpdated());
+
+        assertThat(assignment.getPickupDistrict()).isEqualTo(SriLankanDistrict.GALLE);
+        assertThat(assignment.getDeliveryDistrict()).isEqualTo(SriLankanDistrict.MATARA);
+        assertThat(assignment.getOrderSpeed()).isEqualTo(OrderSpeed.EXPRESS);
+        assertThat(assignment.getEstimatedPickupMinutes()).isEqualTo(15);
+        assertThat(assignment.getWeightKg()).isEqualByComparingTo("12");
+        assertThat(assignment.getVolumeLitres()).isEqualByComparingTo("96");
+        verify(assignmentRepository).save(assignment);
+    }
+
+    @Test
+    @DisplayName("Order edited once a courier is on the way: the size follows, the route stays")
+    void testOrderUpdated_Assigned() {
+        DispatchAssignment assignment = stubSuggestionOrder(AssignmentStatus.ASSIGNED, courierId, SriLankanDistrict.COLOMBO);
+
+        dispatchAssignmentService.handleOrderUpdated(orderUpdated());
+
+        assertThat(assignment.getPickupDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+        assertThat(assignment.getVolumeLitres()).isEqualByComparingTo("96");
+    }
+
+    @Test
+    @DisplayName("Order update: ignored for a finished order, retried when the order is not registered yet")
+    void testOrderUpdated_FinishedOrUnknown() {
+        DispatchAssignment done = stubSuggestionOrder(AssignmentStatus.COMPLETED, courierId, SriLankanDistrict.COLOMBO);
+        dispatchAssignmentService.handleOrderUpdated(orderUpdated());
+        assertThat(done.getWeightKg()).isNull();
+        verify(assignmentRepository, never()).save(any());
+
+        when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> dispatchAssignmentService.handleOrderUpdated(orderUpdated()))
+                .isInstanceOf(AssignmentNotFoundException.class);
     }
 
     @Test
@@ -510,7 +558,7 @@ class DispatchAssignmentServiceTest {
         CourierShift kandy = courier(UUID.randomUUID(), SriLankanDistrict.KANDY, 0);
         CourierShift colombo = courier(UUID.randomUUID(), SriLankanDistrict.COLOMBO, 2);
         stubSuggestionOrder(AssignmentStatus.UNASSIGNED, null, null);
-        when(courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE)).thenReturn(List.of(colombo, kandy));
+        when(courierShiftRepository.findByShiftStatusNot(ShiftStatus.OFFLINE)).thenReturn(List.of(colombo, kandy));
 
         var suggestions = dispatchAssignmentService.getSuggestions(orderId);
 
@@ -519,13 +567,30 @@ class DispatchAssignmentServiceTest {
         assertThat(suggestions).allSatisfy(s -> assertThat(s.samePickupDistrict()).isFalse());
     }
 
-    private void stubSuggestionOrder(AssignmentStatus status, UUID currentCourier, SriLankanDistrict pickupDistrict) {
+    private DispatchAssignment stubSuggestionOrder(AssignmentStatus status, UUID currentCourier, SriLankanDistrict pickupDistrict) {
         DispatchAssignment assignment = new DispatchAssignment();
         assignment.setOrderId(orderId);
         assignment.setStatus(status);
         assignment.setCourierId(currentCourier);
         assignment.setPickupDistrict(pickupDistrict);
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(assignment));
+        return assignment;
+    }
+
+    private static BigDecimal cm(int value) {
+        return BigDecimal.valueOf(value);
+    }
+
+    private OrderUpdatedEvent orderUpdated() {
+        return new OrderUpdatedEvent(UUID.randomUUID(), UUID.randomUUID(), orderId, "SD-COL-55555",
+                SriLankanDistrict.GALLE, SriLankanDistrict.MATARA, OrderSpeed.EXPRESS,
+                cm(80), cm(40), cm(30), cm(12), Instant.now());
+    }
+
+    private CourierShift courier(UUID id, VehicleType vehicle, int active) {
+        CourierShift courier = courier(id, SriLankanDistrict.COLOMBO, active);
+        courier.setVehicleType(vehicle);
+        return courier;
     }
 
     private DispatchAssignment assignedAssignment() {

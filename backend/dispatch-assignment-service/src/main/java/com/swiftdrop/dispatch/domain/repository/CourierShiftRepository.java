@@ -4,8 +4,6 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,9 +19,8 @@ public interface CourierShiftRepository extends JpaRepository<CourierShift, Long
 
     List<CourierShift> findByCurrentDistrict(SriLankanDistrict district);
 
-    @Query("SELECT c FROM CourierShift c WHERE c.currentDistrict = :district AND c.shiftStatus = :status AND c.activeParcelsCount < c.maxCapacity ORDER BY c.activeParcelsCount ASC, c.lastHeartbeatAt DESC")
-    List<CourierShift> findAvailableCandidates(@Param("district") SriLankanDistrict district, @Param("status") ShiftStatus status);
+    /** Couriers of a district on shift, whatever their load. */
+    List<CourierShift> findByCurrentDistrictAndShiftStatusNot(SriLankanDistrict district, ShiftStatus status);
 
-    @Query("SELECT c FROM CourierShift c WHERE c.shiftStatus = :status AND c.activeParcelsCount < c.maxCapacity ORDER BY c.activeParcelsCount ASC, c.lastHeartbeatAt DESC")
-    List<CourierShift> findAvailableCandidates(@Param("status") ShiftStatus status);
+    List<CourierShift> findByShiftStatusNot(ShiftStatus status);
 }

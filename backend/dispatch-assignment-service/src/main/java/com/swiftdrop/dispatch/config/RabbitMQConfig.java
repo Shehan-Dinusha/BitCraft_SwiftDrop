@@ -25,10 +25,12 @@ public class RabbitMQConfig {
 
     public static final String ORDER_CREATED_QUEUE = "dispatch.order-created.queue";
     public static final String ORDER_CANCELLED_QUEUE = "dispatch.order-cancelled.queue";
+    public static final String ORDER_UPDATED_QUEUE = "dispatch.order-updated.queue";
     public static final String PARCEL_STATUS_QUEUE = "dispatch.parcel-status.queue";
 
     public static final String ROUTING_KEY_ORDER_CREATED = "order.created";
     public static final String ROUTING_KEY_ORDER_CANCELLED = "order.cancelled";
+    public static final String ROUTING_KEY_ORDER_UPDATED = "order.updated";
     public static final String ROUTING_KEY_PARCEL_STATUS_CHANGED = "parcel.status.changed.#";
 
     public static final String ROUTING_KEY_COURIER_ASSIGNED = "dispatch.courier.assigned";
@@ -71,6 +73,20 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(orderCancelledQueue)
                 .to(eventsExchange)
                 .with(ROUTING_KEY_ORDER_CANCELLED);
+    }
+
+    @Bean
+    public Queue orderUpdatedQueue() {
+        return dispatchQueue(ORDER_UPDATED_QUEUE);
+    }
+
+    @Bean
+    public Binding orderUpdatedBinding(
+            Queue orderUpdatedQueue,
+            @Qualifier("eventsExchange") TopicExchange eventsExchange) {
+        return BindingBuilder.bind(orderUpdatedQueue)
+                .to(eventsExchange)
+                .with(ROUTING_KEY_ORDER_UPDATED);
     }
 
     @Bean

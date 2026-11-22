@@ -1,24 +1,22 @@
 import { useMemo, useState } from 'react';
-import { LogOut, UserRound } from 'lucide-react';
+import { UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AccountMenu,
   BottomNav,
   BrandMark,
-  IconButton,
   NavItem,
   SideNav,
   TopBar,
   roleShellSpec,
   useMediaQuery,
   type NavEntry,
-  type NavGroup,
   type ShellRole
 } from '@/design-system';
 import { SignOutDialog } from '@/features/auth/components/SignOutDialog';
 import { leaveToLogin } from '@/features/auth/leaveToLogin';
 import { NOTIFICATIONS_PATH } from '@/features/notifications/notificationTypes';
-import { PROFILE_PATH, displayName } from '@/features/profile/profileFormat';
+import { PROFILE_PATH, displayName, districtLabel } from '@/features/profile/profileFormat';
 import { useMyAvatarUrl, useSyncCurrentUser } from '@/features/profile/avatar';
 import { useUnreadNotificationCount } from '@/features/notifications/useNotificationInbox';
 import { useCourierTodayStats } from '@/features/courier/hooks/useCourierTodayStats';
@@ -47,71 +45,80 @@ function shellRoleFor(persona: PersonaRole, backendRole?: string): ShellRole {
 }
 
 /**
- * Menu items that have a route today, placed in the Figma groups. The full Figma menus live in
- * `roleShellSpec`; pages missing from the router are left out until they exist.
+ * Menu items that have a route today, as one flat list per role: the menus are short enough to scan
+ * without headings. The full Figma menus live in `roleShellSpec`.
  */
-const routedNav: Record<ShellRole, NavGroup[]> = {
+const routedNav: Record<ShellRole, NavEntry[]> = {
   customer: [
+    { id: 'book', label: 'Book a parcel', shortLabel: 'Book', icon: 'plus', to: '/customer' },
     {
-      label: 'Send & track',
-      items: [
-        { id: 'book', label: 'Book a parcel', icon: 'plus', to: '/customer' },
-        { id: 'parcels', label: 'My parcels', icon: 'package', to: '/customer/orders' },
-        { id: 'track', label: 'Track a parcel', icon: 'route', to: '/customer/tracking' }
-      ]
+      id: 'parcels',
+      label: 'My parcels',
+      shortLabel: 'Parcels',
+      icon: 'package',
+      to: '/customer/orders'
+    },
+    {
+      id: 'track',
+      label: 'Track a parcel',
+      shortLabel: 'Track',
+      icon: 'route',
+      to: '/customer/tracking'
     }
   ],
   courier: [
+    { id: 'shift', label: 'Shift', icon: 'home', to: '/courier' },
     {
-      label: 'Today',
-      items: [
-        { id: 'shift', label: 'Shift', icon: 'home', to: '/courier' },
-        { id: 'delivery', label: 'Active delivery', icon: 'truck', to: '/courier/delivery' },
-        { id: 'vehicle', label: 'My vehicle', icon: 'truck', to: '/courier/vehicle' },
-        { id: 'today-deliveries', label: "Today's deliveries", icon: 'package', to: '/courier/today-deliveries' },
-        { id: 'today-earnings', label: "Today's earnings", icon: 'wallet', to: '/courier/today-earnings' }
-      ]
+      id: 'delivery',
+      label: 'Active delivery',
+      shortLabel: 'Active',
+      icon: 'route',
+      to: '/courier/delivery'
+    },
+    {
+      id: 'vehicle',
+      label: 'My vehicle',
+      shortLabel: 'Vehicle',
+      icon: 'truck',
+      to: '/courier/vehicle'
+    },
+    {
+      id: 'today-deliveries',
+      label: "Today's deliveries",
+      shortLabel: 'Today',
+      icon: 'package',
+      to: '/courier/today-deliveries'
+    },
+    {
+      id: 'today-earnings',
+      label: "Today's earnings",
+      shortLabel: 'Earnings',
+      icon: 'wallet',
+      to: '/courier/today-earnings'
     }
   ],
   merchant: [
-    {
-      label: 'Shipping',
-      items: [{ id: 'portal', label: 'Dashboard', icon: 'grid', to: '/merchant' }]
-    },
-    {
-      label: 'Developers',
-      items: [{ id: 'webhooks', label: 'Webhook logs', icon: 'webhook', to: '/merchant/webhooks' }]
-    }
+    { id: 'portal', label: 'Dashboard', icon: 'grid', to: '/merchant' },
+    { id: 'webhooks', label: 'Webhook logs', icon: 'webhook', to: '/merchant/webhooks' }
   ],
   dispatcher: [
-    {
-      label: 'Operations',
-      items: [
-        { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
-        { id: 'couriers', label: 'Couriers', icon: 'users', to: '/ops/couriers' },
-        { id: 'merchants', label: 'Merchant applications', icon: 'grid', to: '/ops/merchants' },
-        { id: 'analytics', label: 'Analytics', icon: 'grid', to: '/ops/analytics' },
-        { id: 'zones', label: 'Zone pricing', icon: 'map', to: '/ops/zones' }
-      ]
-    },
-    {
-      label: 'Platform',
-      items: [{ id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }]
-    }
+    { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
+    { id: 'dispatch', label: 'Dispatch', icon: 'inbox', to: '/ops/dispatch' },
+    { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
+    { id: 'merchants', label: 'Merchant applications', icon: 'store', to: '/ops/merchants' },
+    { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
+    { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' },
+    { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
   ],
   'system-admin': [
-    {
-      label: 'Platform',
-      items: [
-        { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
-        { id: 'analytics', label: 'Analytics', icon: 'grid', to: '/ops/analytics' },
-        { id: 'zones', label: 'Zone pricing', icon: 'map', to: '/ops/zones' },
-        { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
-        { id: 'merchants', label: 'Merchants', icon: 'grid', to: '/ops/merchants' },
-        { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
-        { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
-      ]
-    }
+    { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
+    { id: 'dispatch', label: 'Dispatch', icon: 'inbox', to: '/ops/dispatch' },
+    { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
+    { id: 'merchants', label: 'Merchants', icon: 'store', to: '/ops/merchants' },
+    { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
+    { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
+    { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' },
+    { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
   ]
 };
 
@@ -128,10 +135,9 @@ function MobileBrand({ to }: { to: string }) {
     <Link
       to={to}
       aria-label="SwiftDrop home"
-      className="mr-1 flex shrink-0 items-center gap-2 md:hidden"
+      className="mr-1 flex shrink-0 items-center md:hidden"
     >
       <BrandMark size={32} />
-      <span className="text-body-strong text-primary">SwiftDrop</span>
     </Link>
   );
 }
@@ -153,11 +159,12 @@ export function AppShell() {
   const courierStats = useCourierTodayStats();
   useSyncCurrentUser();
   const avatarUrl = useMyAvatarUrl();
-  // Every workspace has a Notifications page in its own "Updates" section, with the unread count.
+  // Every workspace ends with its Notifications page, with the unread count.
   const notificationsEntry = useMemo<NavEntry>(
     () => ({
       id: 'notifications',
       label: 'Notifications',
+      shortLabel: 'Alerts',
       icon: 'bell',
       to: NOTIFICATIONS_PATH[role],
       count: unreadCount > 0 ? unreadCount : undefined
@@ -165,26 +172,17 @@ export function AppShell() {
     [role, unreadCount]
   );
 
-  const groups = useMemo<NavGroup[]>(() => {
-    let baseNav = routedNav[shellRole];
+  const tabs = useMemo<NavEntry[]>(() => {
+    let list = routedNav[shellRole];
     if (shellRole === 'courier' && courierStats.deliveredCount > 0) {
-      baseNav = baseNav.map((group) => ({
-        ...group,
-        items: group.items.map((item) => {
-          if (item.id === 'today-earnings') {
-            return { ...item, count: courierStats.deliveredCount };
-          }
-          return item;
-        })
-      }));
+      list = list.map((item) =>
+        item.id === 'today-earnings' ? { ...item, count: courierStats.deliveredCount } : item
+      );
     }
-    const withUpdates = [...baseNav, { label: 'Updates', items: [notificationsEntry] }];
-    // The design catalog is a developer tool, so real users never see it in their menu.
-    return import.meta.env.DEV && isDevSession
-      ? [...withUpdates, { label: 'Design system', items: [catalogEntry] }]
-      : withUpdates;
-  }, [shellRole, isDevSession, notificationsEntry, courierStats.deliveredCount]);
-  const entries = groups.flatMap((group) => group.items);
+    return [...list, notificationsEntry];
+  }, [shellRole, notificationsEntry, courierStats.deliveredCount]);
+  // The design catalog is a developer tool, so real users never see it in their menu.
+  const entries = import.meta.env.DEV && isDevSession ? [...tabs, catalogEntry] : tabs;
   const activeEntry = entries
     .filter((entry) => entry.to && (pathname === entry.to || pathname.startsWith(`${entry.to}/`)))
     .sort((left, right) => (right.to?.length ?? 0) - (left.to?.length ?? 0))[0];
@@ -220,7 +218,7 @@ export function AppShell() {
       <div className={hasTabs ? 'hidden md:block' : undefined}>
         <SideNav
           role={shellRole}
-          groups={groups}
+          items={entries}
           workspace={spec.label}
           activeId={onProfile ? undefined : activeEntry?.id}
           rail={!isWide}
@@ -241,11 +239,7 @@ export function AppShell() {
               count={entry.count}
               active={active}
               rail={rail}
-              className={
-                role === 'ADMIN_OPS'
-                  ? `h-11 rounded-xl text-sm ${active ? 'bg-brand-primary text-brand-on shadow-sm hover:bg-brand-hover' : 'text-secondary hover:bg-brand-subtle hover:text-brand-primary'}`
-                  : undefined
-              }
+              className={shellRole === 'courier' ? 'min-h-target' : undefined}
             />
           )}
         />
@@ -262,13 +256,18 @@ export function AppShell() {
           showSearch={false}
           showLanguage={false}
           showAssistant={false}
-          district={shellRole === 'dispatcher' ? user?.district : undefined}
+          district={
+            shellRole === 'dispatcher' && user?.district ? districtLabel(user.district) : undefined
+          }
           // Notifications live in the left navigation; an empty slot hides the top bar's default bell.
           notificationSlot={<></>}
           leading={hasTabs ? <MobileBrand to={roleHome[role]} /> : undefined}
           trailing={
-            shellRole === 'customer' ? (
+            // Phones hide the sidebar and its account card, so the menu carries profile and sign-out.
+            hasTabs ? (
               <AccountMenu
+                className={shellRole === 'courier' ? 'md:hidden' : undefined}
+                avatarUrl={avatarUrl}
                 name={user ? displayName(user) : 'Account'}
                 email={user?.email}
                 onSignOut={handleSignOut}
@@ -293,30 +292,6 @@ export function AppShell() {
             ) : undefined
           }
         >
-          {shellRole === 'courier' ? (
-            // Phones hide the sidebar (and its account footer), so the profile and sign-out live in the
-            // top bar there. Customers have the account menu instead.
-            <IconButton
-              variant="ghost"
-              density="compact"
-              aria-label="Your profile"
-              title="Your profile"
-              icon={<UserRound aria-hidden="true" />}
-              onClick={() => navigate(profilePath)}
-              className="size-9 text-secondary md:hidden"
-            />
-          ) : null}
-          {shellRole === 'courier' ? (
-            <IconButton
-              variant="ghost"
-              density="compact"
-              aria-label="Sign out"
-              title="Sign out"
-              icon={<LogOut aria-hidden="true" />}
-              onClick={handleSignOut}
-              className="size-9 text-secondary md:hidden"
-            />
-          ) : null}
           {/* The customer assistant lives in the header; it renders nothing for other roles. */}
           <AiAssistantSlot />
         </TopBar>
@@ -328,7 +303,7 @@ export function AppShell() {
       {hasTabs ? (
         <BottomNav
           role={shellRole}
-          tabs={[...groups[0].items, notificationsEntry]}
+          tabs={tabs}
           activeId={onProfile ? undefined : activeEntry?.id}
           renderTab={(entry, active, content, tabClassName) => (
             <Link
