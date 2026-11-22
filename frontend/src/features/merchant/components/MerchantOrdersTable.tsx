@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { merchantApi, type MerchantOrderReceiptResponse } from '@/services/api/merchantApi';
 import { getTrackingView, type PublicOrderStatus } from '@/services/api/trackingHubApi';
+import { lkr } from '@/features/cash/cashDisplay';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { HighDensityDataGrid } from '@/design-system/components/HighDensityDataGrid/HighDensityDataGrid';
@@ -115,6 +116,12 @@ export function MerchantOrdersTable({
               ) : (
                 <span className="text-secondary">Status unavailable</span>
               )
+          },
+          {
+            key: 'fee',
+            label: 'Delivery fee',
+            align: 'right',
+            render: (r) => (r.fee == null ? '—' : lkr(r.fee))
           },
           {
             key: 'createdAt',

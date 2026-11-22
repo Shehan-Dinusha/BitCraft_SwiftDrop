@@ -12,6 +12,7 @@ import { RegistrationSuccessPage } from '@/features/auth/pages/RegistrationSucce
 import { InviteAcceptPage } from '@/features/auth/pages/InviteAcceptPage';
 import { CourierVehicleSetupPage } from '@/features/courier/pages/CourierVehicleSetupPage';
 import { CourierTodayDeliveriesPage } from '@/features/courier/pages/CourierTodayDeliveriesPage';
+import { CourierShopStopPage } from '@/features/courier/pages/CourierShopStopPage';
 import { CourierCashPage } from '@/features/courier/pages/CourierCashPage';
 import { CourierManagementPage } from '@/features/admin-ops/pages/CourierManagementPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
@@ -194,6 +195,14 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['COURIER']}>
             <CourierTodayDeliveriesPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/courier/shops/:merchantId',
+        element: (
+          <RoleGuard roles={['COURIER']}>
+            <CourierShopStopPage />
           </RoleGuard>
         )
       },

@@ -1,5 +1,6 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.repository.CourierLoadRow;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 
@@ -30,6 +31,12 @@ public record CourierLoad(BigDecimal weightKg, BigDecimal volumeLitres) {
         return repository.sumActiveLoads(courierIds).stream()
                 .collect(Collectors.toMap(CourierLoadRow::getCourierId, row ->
                         new CourierLoad(zeroIfNull(row.getWeightKg()), zeroIfNull(row.getVolumeLitres()))));
+    }
+
+    /** This load with one more parcel on board. */
+    public CourierLoad plus(DispatchAssignment parcel) {
+        return new CourierLoad(weightKg.add(zeroIfNull(parcel.getWeightKg())),
+                volumeLitres.add(zeroIfNull(parcel.getVolumeLitres())));
     }
 
     private static BigDecimal zeroIfNull(BigDecimal value) {

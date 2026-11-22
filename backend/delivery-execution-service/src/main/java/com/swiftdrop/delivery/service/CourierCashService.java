@@ -7,9 +7,11 @@ import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.delivery.domain.entity.CashEntry;
 import com.swiftdrop.delivery.domain.entity.CashHandover;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
+import com.swiftdrop.delivery.domain.entity.MerchantPayment;
 import com.swiftdrop.delivery.domain.enums.CashEntryType;
 import com.swiftdrop.delivery.domain.repository.CashEntryRepository;
 import com.swiftdrop.delivery.domain.repository.CashHandoverRepository;
+import com.swiftdrop.delivery.domain.repository.MerchantPaymentRepository;
 import com.swiftdrop.delivery.dto.CashEntryResponse;
 import com.swiftdrop.delivery.dto.CashHandoverResponse;
 import com.swiftdrop.delivery.dto.CourierCashResponse;
@@ -30,10 +32,13 @@ public class CourierCashService {
 
     private final CashEntryRepository entryRepository;
     private final CashHandoverRepository handoverRepository;
+    private final MerchantPaymentRepository paymentRepository;
 
-    public CourierCashService(CashEntryRepository entryRepository, CashHandoverRepository handoverRepository) {
+    public CourierCashService(CashEntryRepository entryRepository, CashHandoverRepository handoverRepository,
+                              MerchantPaymentRepository paymentRepository) {
         this.entryRepository = entryRepository;
         this.handoverRepository = handoverRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     /** Joins the delivery step's transaction. The courier on the delivery holds the cash, whoever took the step. */
@@ -43,9 +48,14 @@ public class CourierCashService {
         if (district == null && caller != null) {
             district = caller.districtId(); // sessions from before districts were recorded
         }
+        UUID paymentId = due.paymentId();
+        if (paymentId == null && session.getMerchantId() != null) {
+            paymentId = paymentRepository.saveAndFlush(
+                    new MerchantPayment(session, due.amount(), due.currency(), 1)).getPaymentId();
+        }
         entryRepository.save(new CashEntry(CashEntryType.COLLECTION, session, session.getCourierId(),
                 session.getCourierName(), district, due.amount(), due.currency(), null,
-                caller != null ? caller.userId() : null));
+                caller != null ? caller.userId() : null, paymentId));
     }
 
     @Transactional(readOnly = true)

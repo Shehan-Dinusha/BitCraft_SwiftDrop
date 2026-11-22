@@ -189,6 +189,7 @@ Fields: `eventId`, `correlationId`, `orderId`, `trackingNumber`, `pickupDistrict
 | `customerId` | `UUID` | Yes | Customer who owns the parcel, so later status events can notify them | Safe |
 | `pickupDistrict` | `SriLankanDistrict` | Yes | Pickup district | Safe |
 | `deliveryDistrict` | `SriLankanDistrict` | Yes | Delivery district | Safe |
+| `merchantName` | `String` | Yes | Shop name, for a merchant order collected with the shop's other parcels | Business name |
 
 #### Example JSON Payload
 ```json

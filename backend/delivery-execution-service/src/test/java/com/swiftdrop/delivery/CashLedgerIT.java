@@ -401,7 +401,7 @@ class CashLedgerIT {
     }
 
     private void order(DeliverySession session, boolean cancelled, String fee) {
-        when(orderJobClient.get(session.getOrderId())).thenReturn(new OrderJobClient.OrderJob(cancelled,
+        when(orderJobClient.get(session.getOrderId())).thenReturn(new OrderJobClient.OrderJob(session.getOrderId(), cancelled,
                 OrderSpeed.STANDARD, null, null, null, null, null, null, null, null,
                 new BigDecimal(fee), "LKR"));
     }

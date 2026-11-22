@@ -16,7 +16,11 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Reads an order's addresses, contacts and cash amounts from the order service, which owns them. Nothing
@@ -41,6 +45,7 @@ public class OrderJobClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record OrderJob(
+            UUID orderId,
             boolean cancelled,
             OrderSpeed speed,
             CourierJobStop pickup,
@@ -68,6 +73,26 @@ public class OrderJobClient {
             return body.data();
         } catch (HttpClientErrorException.NotFound ex) {
             throw new DeliveryNotFoundException("Order not found for this delivery");
+        } catch (RestClientException ex) {
+            throw new OrderDetailsUnavailableException();
+        }
+    }
+
+    /** Up to 200 orders in one call; an order the order service does not know has no entry. */
+    public Map<UUID, OrderJob> getAll(List<UUID> orderIds) {
+        if (orderIds.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            ApiResponse<List<OrderJob>> body = client.post()
+                    .uri("/internal/v1/orders/courier-jobs")
+                    .body(Map.of("orderIds", orderIds))
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<ApiResponse<List<OrderJob>>>() { });
+            if (body == null || !body.success() || body.data() == null) {
+                throw new OrderDetailsUnavailableException();
+            }
+            return body.data().stream().collect(Collectors.toMap(OrderJob::orderId, Function.identity()));
         } catch (RestClientException ex) {
             throw new OrderDetailsUnavailableException();
         }

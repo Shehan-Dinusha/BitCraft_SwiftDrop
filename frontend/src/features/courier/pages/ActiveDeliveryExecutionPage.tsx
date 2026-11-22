@@ -370,6 +370,19 @@ export function ActiveDeliveryExecutionPage() {
             </StatusBanner>
           )}
 
+          {atPickup && session.merchantId && !orderCancelled && (
+            <StatusBanner tone="info" title={session.merchantName ?? 'Shop pickup'}>
+              <span className="block">Collect all this shop's parcels with one payment.</span>
+              <Button
+                variant="outline"
+                className="mt-2 min-h-target"
+                onClick={() => navigate(`/courier/shops/${session.merchantId}`)}
+              >
+                Open the shop
+              </Button>
+            </StatusBanner>
+          )}
+
           {jobError && (
             <StatusBanner tone="danger" title="Addresses not loaded">
               <span className="block">{jobError}</span>

@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.InternalCourierJobView;
+import com.swiftdrop.order.dto.InternalCourierJobsRequest;
 import com.swiftdrop.order.dto.InternalCreateOrderRequest;
 import com.swiftdrop.order.dto.InternalTrackingView;
 import com.swiftdrop.order.dto.ValidationPatterns;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 
@@ -60,6 +62,13 @@ public class InternalOrderController {
                     + "Carries full contact details. Internal, no user context: must never be exposed through the API gateway.")
     public ApiResponse<InternalCourierJobView> getCourierJob(@PathVariable("orderId") UUID orderId) {
         return ApiResponse.success(internalCourierJobService.getCourierJob(orderId), "Courier job retrieved successfully");
+    }
+
+    @PostMapping("/courier-jobs")
+    @Operation(summary = "The same for up to 200 orders collected at one stop",
+            description = "Unknown orders are left out. Internal, no user context: must never be exposed through the API gateway.")
+    public ApiResponse<List<InternalCourierJobView>> getCourierJobs(@Valid @RequestBody InternalCourierJobsRequest request) {
+        return ApiResponse.success(internalCourierJobService.getCourierJobs(request.orderIds()), "Courier jobs retrieved successfully");
     }
 
     @PostMapping

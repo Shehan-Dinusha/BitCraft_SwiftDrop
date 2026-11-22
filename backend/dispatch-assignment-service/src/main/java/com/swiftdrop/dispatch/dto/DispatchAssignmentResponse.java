@@ -84,7 +84,22 @@ public record DispatchAssignmentResponse(
         BigDecimal heightCm,
 
         @Schema(description = "Parcel weight in kg", example = "2.5")
-        BigDecimal weightKg
+        BigDecimal weightKg,
+
+        @Schema(description = "The shop, for an order it sent; null otherwise")
+        UUID merchantId,
+
+        @Schema(description = "The shop's name; null until it first asked for a pickup", example = "Nimal Fashion")
+        String merchantName,
+
+        @Schema(description = "Collected together with the shop's other parcels (a standard order still at the shop)")
+        boolean shopPickup,
+
+        @Schema(description = "Whether a courier can be sent: a shop's parcel only once the shop said it is packed")
+        boolean readyForPickup,
+
+        @Schema(description = "When the shop said the parcel is packed")
+        Instant readyAt
 ) {
     public static DispatchAssignmentResponse fromEntity(DispatchAssignment entity) {
         if (entity == null) return null;
@@ -112,7 +127,12 @@ public record DispatchAssignmentResponse(
                 entity.getLengthCm(),
                 entity.getWidthCm(),
                 entity.getHeightCm(),
-                entity.getWeightKg()
+                entity.getWeightKg(),
+                entity.isMerchantOrder() ? entity.getMerchantId() : null,
+                entity.getMerchantName(),
+                entity.isShopPickup(),
+                entity.isReadyForPickup(),
+                entity.getReadyAt()
         );
     }
 }

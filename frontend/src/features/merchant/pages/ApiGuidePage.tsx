@@ -12,6 +12,8 @@ import {
   VERIFY_CODE,
   orderCurl,
   ordersUrl,
+  pickupReadyCurl,
+  pickupReadyUrl,
   pretty
 } from '../apiGuide';
 
@@ -110,6 +112,7 @@ const ERRORS: [string, string, string][] = [
   ['400', 'Something in the order is wrong', 'Read message, fix it and send again'],
   ['401', 'The API key is missing, wrong, revoked or expired', 'Check the X-API-Key header'],
   ['403', 'Your business is not approved', 'Wait for approval or contact SwiftDrop'],
+  ['409', 'A pickup was asked for, but there are no parcels', 'Create an order first'],
   ['502, 503', 'We could not take the order just now', 'Send again with the same externalRef']
 ];
 
@@ -160,6 +163,23 @@ function Orders() {
           that is wrong does not stop the others.
         </p>
         <Code label="Reply">{pretty(BULK_RESPONSE)}</Code>
+      </Section>
+
+      <Section title="Ask for a pickup">
+        <p>
+          <Mono>POST</Mono> <Mono>{pickupReadyUrl()}</Mono> once your parcels are packed and labelled.
+          It covers every order placed so far, and is safe to repeat. No courier comes for a standard
+          order before this; an express one is collected without it.
+        </p>
+        <Code label="cURL">{pickupReadyCurl('YOUR_API_KEY')}</Code>
+        <p>
+          Pay the courier in cash: one total, the <Mono>fee</Mono> of each parcel they take. Print the
+          labels on your{' '}
+          <Link to="/merchant" className="text-brand-primary underline">
+            dashboard
+          </Link>
+          .
+        </p>
       </Section>
 
       <Section title="Errors">

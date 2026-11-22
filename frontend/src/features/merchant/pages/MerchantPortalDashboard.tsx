@@ -7,6 +7,8 @@ import { Modal } from '@/design-system/primitives/Modal';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
 import { BulkCsvDropzone } from '../components/BulkCsvDropzone';
 import { ApiKeyManagerCard } from '../components/ApiKeyManagerCard';
+import { MerchantPaymentsCard } from '../components/MerchantPaymentsCard';
+import { MerchantPickupCard } from '../components/MerchantPickupCard';
 import { MerchantOrdersTable } from '../components/MerchantOrdersTable';
 import { MerchantApplicationStatus } from '../components/MerchantApplicationStatus';
 import {
@@ -264,6 +266,10 @@ export function MerchantPortalDashboard() {
         </SurfaceCard>
       </div>
 
+      {merchantId && profile?.status === 'APPROVED' && (
+        <MerchantPickupCard merchantId={merchantId} refreshToken={ordersRevision} />
+      )}
+
       {/* Two Column Ingestion & Key Management Strip */}
       <div className="grid gap-4 lg:grid-cols-2">
         {merchantId && profile?.status === 'APPROVED' ? (
@@ -285,6 +291,8 @@ export function MerchantPortalDashboard() {
           refreshToken={ordersRevision}
         />
       )}
+
+      {merchantId && <MerchantPaymentsCard refreshToken={ordersRevision} />}
 
       {/* Ingestion Batches Table */}
       <SurfaceCard className="space-y-3 p-4" data-density="compact">

@@ -29,7 +29,7 @@ public class OrderServiceClient {
     OrderServiceClient(RestClient client) { this.client = client; }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record OrderIdentity(UUID orderId, String trackingNumber) {}
+    public record OrderIdentity(UUID orderId, String trackingNumber, java.math.BigDecimal finalFee, String currency) {}
 
     public B2bOrderResult create(Map<String, Object> body, UUID correlationId) {
         try {
@@ -43,7 +43,8 @@ public class OrderServiceClient {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Invalid order-service response");
             }
             return new B2bOrderResult((String) body.get("externalRef"), envelope.data().orderId(),
-                    envelope.data().trackingNumber(), response.getStatusCode().value() == 201, null);
+                    envelope.data().trackingNumber(), response.getStatusCode().value() == 201, null,
+                    envelope.data().finalFee(), envelope.data().currency());
         } catch (RestClientResponseException ex) {
             if (ex.getStatusCode().value() == 400 || ex.getStatusCode().value() == 422) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order service rejected the order details");

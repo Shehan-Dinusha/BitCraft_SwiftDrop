@@ -907,6 +907,71 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
 
+  /api/v1/dispatch/shops/{merchantId}/couriers:
+    get:
+      tags:
+        - ShopPickup
+      summary: Couriers on shift and which of the shop's ready parcels each has room for
+      description: >-
+        A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN must give it.
+      operationId: getShopCouriers
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: district
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListShopCourierSuggestionResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+
+  /api/v1/dispatch/shops/{merchantId}/assign:
+    post:
+      tags:
+        - ShopPickup
+      summary: Give a shop's ready parcels to one courier, all of them or none
+      operationId: assignShopPickup
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignShopPickupRequest"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+        "409":
+          description: A parcel is not packed, no longer waiting, or does not fit the courier's vehicle
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1134,6 +1199,63 @@ components:
         status:
           $ref: "#/components/schemas/ShiftStatus"
 
+    ShopCourierSuggestionResponse:
+      type: object
+      required:
+        - courierId
+        - courierName
+        - vehicleType
+        - activeParcels
+        - maxCapacity
+        - fittingOrderIds
+      properties:
+        courierId:
+          type: string
+          format: uuid
+        courierName:
+          type: string
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        activeParcels:
+          type: integer
+        maxCapacity:
+          type: integer
+        fittingOrderIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    AssignShopPickupRequest:
+      type: object
+      required:
+        - courierId
+        - orderIds
+      properties:
+        courierId:
+          type: string
+          format: uuid
+        orderIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    ApiResponseListShopCourierSuggestionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopCourierSuggestionResponse"
+        timestamp:
+          type: string
+          format: date-time
+
     DispatchAssignmentResponse:
       type: object
       properties:
@@ -1201,6 +1323,21 @@ components:
         weightKg:
           type: number
           example: 2.5
+        merchantId:
+          type: [string, "null"]
+          format: uuid
+          description: The shop, for an order it sent.
+        merchantName:
+          type: [string, "null"]
+        shopPickup:
+          type: boolean
+          description: Collected together with the shop's other parcels (a standard order still at the shop).
+        readyForPickup:
+          type: boolean
+          description: Whether a courier can be sent. A shop's parcel only once the shop said it is packed.
+        readyAt:
+          type: [string, "null"]
+          format: date-time
 
     CourierShiftResponse:
       type: object

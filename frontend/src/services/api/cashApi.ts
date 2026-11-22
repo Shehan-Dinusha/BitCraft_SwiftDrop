@@ -9,6 +9,7 @@ export type CashDepositResponse = Schemas['CashDepositResponse'];
 export type CashHoldingResponse = Schemas['CashHoldingResponse'];
 export type CashDeskResponse = Schemas['CashDeskResponse'];
 export type CashReportResponse = Schemas['CashReportResponse'];
+export type MerchantPaymentResponse = Schemas['MerchantPaymentResponse'];
 export type SriLankanDistrict = Schemas['SriLankanDistrict'];
 
 type Envelope<T> = { success: boolean; data: T };
@@ -35,6 +36,11 @@ export const cashApi = {
     post<CashDepositResponse>(`/v1/cash/deposits/${depositId}/confirm`),
   rejectDeposit: (depositId: string, reason: string) =>
     post<CashDepositResponse>(`/v1/cash/deposits/${depositId}/reject`, { reason }),
+  /** The signed-in merchant's own payments, newest first, 20 a page. */
+  merchantPayments: (page: number) =>
+    get<MerchantPaymentResponse[]>('/v1/cash/payments', { page: String(page) }),
+  merchantPaymentEntries: (paymentId: string) =>
+    get<CashEntryResponse[]>(`/v1/cash/payments/${paymentId}/entries`),
   refund: (trackingNumber: string, reason: string) =>
     post<CashEntryResponse>('/v1/cash/refunds', { trackingNumber, reason })
 };

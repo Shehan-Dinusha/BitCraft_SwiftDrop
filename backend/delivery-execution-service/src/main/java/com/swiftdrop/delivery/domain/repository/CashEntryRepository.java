@@ -30,6 +30,8 @@ public interface CashEntryRepository extends JpaRepository<CashEntry, Long> {
 
     List<CashEntry> findByHandoverIdOrderByRecordedAtDesc(UUID handoverId);
 
+    List<CashEntry> findByPaymentIdOrderByTrackingNumber(UUID paymentId);
+
     Optional<CashEntry> findByDeliveryIdAndEntryType(UUID deliveryId, CashEntryType entryType);
 
     /**

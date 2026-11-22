@@ -25,12 +25,35 @@ import {
   Coffee,
   MapPin,
   Package,
+  Store,
   Power,
   RefreshCw,
   CheckCircle2,
   Clock,
   ChevronRight
 } from 'lucide-react';
+
+/** A merchant's parcel still at the shop: collected with the shop's others. */
+const isShopStop = (job: DeliverySessionResponse) =>
+  job.currentState === 'ASSIGNED' && Boolean(job.merchantId);
+
+function groupShops(jobs: DeliverySessionResponse[]) {
+  const shops = new Map<string, { merchantId: string; name: string; count: number }>();
+  for (const job of jobs) {
+    if (!job.merchantId || !isShopStop(job)) continue;
+    const shop = shops.get(job.merchantId) ?? {
+      merchantId: job.merchantId,
+      name: 'Shop pickup',
+      count: 0
+    };
+    shops.set(job.merchantId, {
+      ...shop,
+      name: job.merchantName ?? shop.name,
+      count: shop.count + 1
+    });
+  }
+  return [...shops.values()];
+}
 
 export function CourierShiftDashboard() {
   const navigate = useNavigate();
@@ -155,6 +178,9 @@ export function CourierShiftDashboard() {
   };
 
   const openJobs = todayDeliveries.filter((job) => isOpenForCourier(job.currentState));
+  // A shop's parcels still to collect are one stop; everything else is a job of its own.
+  const shops = groupShops(openJobs);
+  const jobs = openJobs.filter((job) => !isShopStop(job));
   const isOnline = shift && shift.shiftStatus !== 'OFFLINE';
   const capacityUsed = shift ? (shift.activeParcelsCount ?? 0) : 0;
   const maxCap = shift?.maxCapacity || 5;
@@ -164,9 +190,7 @@ export function CourierShiftDashboard() {
     <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-6" data-density="touch">
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            My shift
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">My shift</h1>
         </div>
         <Button
           variant="outline"
@@ -180,20 +204,12 @@ export function CourierShiftDashboard() {
       </header>
 
       {errorMsg && (
-        <StatusBanner
-          tone="danger"
-          title="Dispatch Notice"
-          onDismiss={() => setErrorMsg(null)}
-        >
+        <StatusBanner tone="danger" title="Dispatch Notice" onDismiss={() => setErrorMsg(null)}>
           {errorMsg}
         </StatusBanner>
       )}
       {successMsg && (
-        <StatusBanner
-          tone="success"
-          title="Success"
-          onDismiss={() => setSuccessMsg(null)}
-        >
+        <StatusBanner tone="success" title="Success" onDismiss={() => setSuccessMsg(null)}>
           {successMsg}
         </StatusBanner>
       )}
@@ -331,9 +347,7 @@ export function CourierShiftDashboard() {
               <Package className="h-4 w-4 text-brand-primary" />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-primary">
-                {capacityUsed}
-              </span>
+              <span className="text-2xl font-bold text-primary">{capacityUsed}</span>
               <span className="text-xs text-secondary">/ {maxCap} max</span>
             </div>
             <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-canvas">
@@ -380,11 +394,9 @@ export function CourierShiftDashboard() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-primary">
-              Jobs to do
-            </h2>
+            <h2 className="text-lg font-bold text-primary">Jobs to do</h2>
             <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
-              {openJobs.length}
+              {shops.length + jobs.length}
             </span>
           </div>
         </div>
@@ -398,7 +410,30 @@ export function CourierShiftDashboard() {
           </SurfaceCard>
         ) : (
           <div className="space-y-2">
-            {openJobs.map((delivery) => (
+            {shops.map((shop) => (
+              <button
+                key={shop.merchantId}
+                type="button"
+                onClick={() => navigate(`/courier/shops/${shop.merchantId}`)}
+                className="flex min-h-target w-full items-center justify-between gap-3 rounded-xl border border-border-subtle bg-card px-4 py-2 text-left hover:border-brand-primary hover:bg-canvas"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-subtle text-brand-primary">
+                    <Store aria-hidden="true" className="size-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-body-strong text-primary">
+                      {shop.name}
+                    </span>
+                    <span className="block text-caption text-secondary">
+                      Pick up {shop.count} {shop.count === 1 ? 'parcel' : 'parcels'}
+                    </span>
+                  </span>
+                </span>
+                <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted" />
+              </button>
+            ))}
+            {jobs.map((delivery) => (
               <div
                 key={delivery.deliveryId}
                 role="button"
@@ -421,12 +456,18 @@ export function CourierShiftDashboard() {
                       <span className="font-mono text-sm font-bold text-primary truncate">
                         {delivery.trackingNumber}
                       </span>
-                      <FsmStatusBadge state={delivery.currentState || 'ASSIGNED'} density="touch" size="sm" />
+                      <FsmStatusBadge
+                        state={delivery.currentState || 'ASSIGNED'}
+                        density="touch"
+                        size="sm"
+                      />
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-secondary truncate">
                       <span>{districtLabel(delivery.pickupDistrict)}</span>
                       <span>&rarr;</span>
-                      <span className="font-medium text-primary">{districtLabel(delivery.deliveryDistrict)}</span>
+                      <span className="font-medium text-primary">
+                        {districtLabel(delivery.deliveryDistrict)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -442,7 +483,6 @@ export function CourierShiftDashboard() {
           </div>
         )}
       </section>
-
     </main>
   );
 }

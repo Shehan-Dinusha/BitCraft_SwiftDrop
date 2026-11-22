@@ -183,7 +183,7 @@ public class CashDeskService {
         }
         return CashEntryResponse.of(entryRepository.saveAndFlush(new CashEntry(CashEntryType.REFUND,
                 session, fee.getCourierId(), fee.getCourierName(), district, fee.getAmount(), fee.getCurrency(),
-                request.reason().trim(), caller.userId())));
+                request.reason().trim(), caller.userId(), null)));
     }
 
     private CashHandover handover(UUID handoverId) {

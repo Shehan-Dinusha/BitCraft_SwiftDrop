@@ -96,6 +96,10 @@ public class ManualOverrideService {
             throw new AssignmentConflictException("Order " + request.orderId()
                     + " is already assigned to a courier. Refresh the queue, or use reassignment to change the courier.");
         }
+        if (!assignment.isReadyForPickup()) {
+            throw new AssignmentConflictException("Order " + request.orderId()
+                    + " is not packed yet. The shop says when it is ready for pickup.");
+        }
         PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
 
         CourierShift courier = findAcceptingCourier(request.courierId(), assignment);
@@ -314,7 +318,8 @@ public class ManualOverrideService {
                 // notifications and analytics rejects status events without a district.
                 assignment.getCustomerId(),
                 assignment.getPickupDistrict(),
-                assignment.getDeliveryDistrict()
+                assignment.getDeliveryDistrict(),
+                assignment.getMerchantName()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
     }

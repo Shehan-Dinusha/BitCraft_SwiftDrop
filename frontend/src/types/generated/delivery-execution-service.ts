@@ -355,6 +355,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deliveries/shops/{merchantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The shop's parcels this courier collects, with the address, contact and fees */
+        get: operations["getShopStop"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/shops/{merchantId}/collect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pick up the chosen parcels and confirm one payment for them
+         * @description All of them, or none. The amount must be exactly their fees; parcels left out stay for later.
+         */
+        post: operations["collectShop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in merchant's payments, newest first, 20 a page */
+        get: operations["getMerchantPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash/payments/{paymentId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The parcels a payment was for
+         * @description Only the merchant who paid it.
+         */
+        get: operations["getMerchantPaymentEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -416,6 +490,12 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /**
+             * Format: uuid
+             * @description The shop that sent it, so its parcels are collected together.
+             */
+            merchantId?: string | null;
+            merchantName?: string | null;
         };
         /** @description A contact and address the courier visits. */
         CourierJobStop: {
@@ -659,6 +739,71 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["CashEntryResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ShopParcel: {
+            /** Format: uuid */
+            deliveryId: string;
+            trackingNumber: string;
+            itemDescription?: string | null;
+            weightKg?: number | null;
+            deliveryDistrict: components["schemas"]["SriLankanDistrict"];
+            viaHub: boolean;
+            fee: number;
+        };
+        ShopStopAddress: {
+            pickup: components["schemas"]["CourierJobStop"];
+            parcels: components["schemas"]["ShopParcel"][];
+            total: number;
+        };
+        /** @description A shop the courier visits, grouped by pickup address. */
+        ShopStopResponse: {
+            /** Format: uuid */
+            merchantId: string;
+            merchantName?: string | null;
+            currency: string;
+            addresses: components["schemas"]["ShopStopAddress"][];
+        };
+        CollectShopRequest: {
+            deliveryIds: string[];
+            cashCollected: number;
+        };
+        /** @description What a shop paid at one pickup visit. */
+        MerchantPaymentResponse: {
+            /** Format: uuid */
+            paymentId: string;
+            merchantName?: string | null;
+            courierName?: string | null;
+            district: components["schemas"]["SriLankanDistrict"];
+            amount: number;
+            currency: string;
+            parcels: number;
+            /** Format: date-time */
+            paidAt: string;
+        };
+        CollectShopResponse: {
+            parcels: number;
+            payment?: components["schemas"]["MerchantPaymentResponse"] | null;
+        };
+        ApiResponseShopStopResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ShopStopResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseCollectShopResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CollectShopResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListMerchantPaymentResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["MerchantPaymentResponse"][];
             /** Format: date-time */
             timestamp?: string;
         };
@@ -1438,6 +1583,168 @@ export interface operations {
             };
             /** @description Not refundable, already refunded, or not enough cash at the hub */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getShopStop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseShopStopResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    collectShop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                merchantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectShopRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCollectShopResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A different amount, a cancelled parcel, or one that is no longer the courier's */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMerchantPayments: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListMerchantPaymentResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMerchantPaymentEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListCashEntryResponse"];
+                };
+            };
+            /** @description Missing or invalid gateway identity headers */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's role does not allow this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

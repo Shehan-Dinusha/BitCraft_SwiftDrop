@@ -11,6 +11,7 @@ import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
+import com.swiftdrop.order.domain.entity.OrderSource;
 import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
@@ -122,6 +123,48 @@ class OrderOwnershipTest {
 
     private void orderExists() {
         when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(orderOfA));
+    }
+
+    private static void callerMerchant(UUID merchantId) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Merchant-Id", merchantId.toString());
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    }
+
+    @Test
+    @DisplayName("A merchant prints labels of their own company's orders, and only labels")
+    void merchantPrintsOwnLabels() {
+        UUID shop = UUID.randomUUID();
+        orderOfA.setSource(OrderSource.MERCHANT);
+        orderOfA.setMerchantId(shop);
+        orderExists();
+        when(orderPdfGeneratorService.generateShippingLabelsPdf(List.of(orderOfA))).thenReturn(new byte[] {1});
+        UUID user = UUID.randomUUID();
+
+        callerMerchant(shop);
+        assertThat(customerOrderService.getShippingLabelsPdf(List.of(orderId, orderId), user, "MERCHANT")).hasSize(1);
+        // Being the shop opens nothing else on the order.
+        assertThatThrownBy(() -> customerOrderService.getOrderById(orderId, user, "MERCHANT"))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        callerMerchant(UUID.randomUUID());
+        assertThatThrownBy(() -> customerOrderService.getShippingLabelsPdf(List.of(orderId), user, "MERCHANT"))
+                .isInstanceOf(OrderNotFoundException.class);
+        callerMerchant(shop);
+        assertThatThrownBy(() -> customerOrderService.getShippingLabelsPdf(List.of(orderId), user, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("A shop's id on a customer's own order gives the shop no label")
+    void merchantIdOnACustomerOrderGivesNoLabel() {
+        UUID shop = UUID.randomUUID();
+        orderOfA.setMerchantId(shop);
+        orderExists();
+        callerMerchant(shop);
+
+        assertThatThrownBy(() -> customerOrderService.getShippingLabelsPdf(List.of(orderId), UUID.randomUUID(), "MERCHANT"))
+                .isInstanceOf(OrderNotFoundException.class);
     }
 
     @Test

@@ -11,11 +11,13 @@ import com.swiftdrop.delivery.dto.CashReportResponse;
 import com.swiftdrop.delivery.dto.CountHandoverRequest;
 import com.swiftdrop.delivery.dto.CourierCashResponse;
 import com.swiftdrop.delivery.dto.CreateDepositRequest;
+import com.swiftdrop.delivery.dto.MerchantPaymentResponse;
 import com.swiftdrop.delivery.dto.RefundFeeRequest;
 import com.swiftdrop.delivery.dto.RejectDepositRequest;
 import com.swiftdrop.delivery.service.CashDeskService;
 import com.swiftdrop.delivery.service.CashReportService;
 import com.swiftdrop.delivery.service.CourierCashService;
+import com.swiftdrop.delivery.service.MerchantPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,12 +45,14 @@ public class CashController {
     private final CourierCashService courierCashService;
     private final CashDeskService cashDeskService;
     private final CashReportService cashReportService;
+    private final MerchantPaymentService merchantPaymentService;
 
     public CashController(CourierCashService courierCashService, CashDeskService cashDeskService,
-                          CashReportService cashReportService) {
+                          CashReportService cashReportService, MerchantPaymentService merchantPaymentService) {
         this.courierCashService = courierCashService;
         this.cashDeskService = cashDeskService;
         this.cashReportService = cashReportService;
+        this.merchantPaymentService = merchantPaymentService;
     }
 
     @GetMapping("/me")
@@ -130,6 +134,19 @@ public class CashController {
                     + "DISPATCHER of the district that collected the fee.")
     public ApiResponse<CashEntryResponse> refund(@Valid @RequestBody RefundFeeRequest request, HttpServletRequest http) {
         return ApiResponse.success(cashDeskService.refund(caller(http), request), "Fee refunded");
+    }
+
+    @GetMapping("/payments")
+    @Operation(summary = "The signed-in merchant's payments, newest first, 20 a page")
+    public ApiResponse<List<MerchantPaymentResponse>> payments(@RequestParam(defaultValue = "0") int page,
+                                                               HttpServletRequest http) {
+        return ApiResponse.success(merchantPaymentService.list(caller(http), page), "Payments retrieved");
+    }
+
+    @GetMapping("/payments/{paymentId}/entries")
+    @Operation(summary = "The parcels a payment was for", description = "Only the merchant who paid it.")
+    public ApiResponse<List<CashEntryResponse>> paymentEntries(@PathVariable UUID paymentId, HttpServletRequest http) {
+        return ApiResponse.success(merchantPaymentService.entries(caller(http), paymentId), "Payment entries retrieved");
     }
 
     private static CallerContext caller(HttpServletRequest http) {

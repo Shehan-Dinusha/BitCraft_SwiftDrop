@@ -544,6 +544,119 @@ paths:
         "409":
           description: Not refundable, already refunded, or not enough cash at the hub
 
+  /api/v1/deliveries/shops/{merchantId}:
+    get:
+      tags:
+        - ShopStop
+      summary: The shop's parcels this courier collects, with the address, contact and fees
+      operationId: getShopStop
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseShopStopResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+
+  /api/v1/deliveries/shops/{merchantId}/collect:
+    post:
+      tags:
+        - ShopStop
+      summary: Pick up the chosen parcels and confirm one payment for them
+      description: >-
+        All of them, or none. The amount must be exactly their fees; parcels left out stay for later.
+      operationId: collectShop
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectShopRequest"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCollectShopResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+        "409":
+          description: A different amount, a cancelled parcel, or one that is no longer the courier's
+
+  /api/v1/cash/payments:
+    get:
+      tags:
+        - Cash
+      summary: The signed-in merchant's payments, newest first, 20 a page
+      operationId: getMerchantPayments
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListMerchantPaymentResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+
+  /api/v1/cash/payments/{paymentId}/entries:
+    get:
+      tags:
+        - Cash
+      summary: The parcels a payment was for
+      description: >-
+        Only the merchant who paid it.
+      operationId: getMerchantPaymentEntries
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListCashEntryResponse"
+        "401":
+          description: Missing or invalid gateway identity headers
+        "403":
+          description: The caller's role does not allow this
+        "404":
+          description: Payment not found
+
 components:
   securitySchemes:
     bearerAuth:
@@ -699,6 +812,12 @@ components:
         updatedAt:
           type: string
           format: date-time
+        merchantId:
+          type: [string, "null"]
+          format: uuid
+          description: The shop that sent it, so its parcels are collected together.
+        merchantName:
+          type: [string, "null"]
 
     CourierJobStop:
       type: object
@@ -1221,6 +1340,164 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CashEntryResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ShopParcel:
+      type: object
+      required:
+        - deliveryId
+        - trackingNumber
+        - deliveryDistrict
+        - viaHub
+        - fee
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+        trackingNumber:
+          type: string
+        itemDescription:
+          type: [string, "null"]
+        weightKg:
+          type: [number, "null"]
+        deliveryDistrict:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        viaHub:
+          type: boolean
+        fee:
+          type: number
+
+    ShopStopAddress:
+      type: object
+      required:
+        - pickup
+        - parcels
+        - total
+      properties:
+        pickup:
+          $ref: "#/components/schemas/CourierJobStop"
+        parcels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopParcel"
+        total:
+          type: number
+
+    ShopStopResponse:
+      type: object
+      description: A shop the courier visits, grouped by pickup address.
+      required:
+        - merchantId
+        - currency
+        - addresses
+      properties:
+        merchantId:
+          type: string
+          format: uuid
+        merchantName:
+          type: [string, "null"]
+        currency:
+          type: string
+        addresses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopStopAddress"
+
+    CollectShopRequest:
+      type: object
+      required:
+        - deliveryIds
+        - cashCollected
+      properties:
+        deliveryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        cashCollected:
+          type: number
+
+    MerchantPaymentResponse:
+      type: object
+      description: What a shop paid at one pickup visit.
+      required:
+        - paymentId
+        - district
+        - amount
+        - currency
+        - parcels
+        - paidAt
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+        merchantName:
+          type: [string, "null"]
+        courierName:
+          type: [string, "null"]
+        district:
+          $ref: "#/components/schemas/SriLankanDistrict"
+        amount:
+          type: number
+        currency:
+          type: string
+        parcels:
+          type: integer
+        paidAt:
+          type: string
+          format: date-time
+
+    CollectShopResponse:
+      type: object
+      required:
+        - parcels
+      properties:
+        parcels:
+          type: integer
+        payment:
+          oneOf:
+            - $ref: "#/components/schemas/MerchantPaymentResponse"
+            - type: "null"
+
+    ApiResponseShopStopResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/ShopStopResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseCollectShopResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/CollectShopResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListMerchantPaymentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MerchantPaymentResponse"
         timestamp:
           type: string
           format: date-time

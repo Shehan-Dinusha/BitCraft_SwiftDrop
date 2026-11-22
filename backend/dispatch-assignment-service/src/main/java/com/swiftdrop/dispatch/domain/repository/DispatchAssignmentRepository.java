@@ -26,6 +26,14 @@ public interface DispatchAssignmentRepository extends JpaRepository<DispatchAssi
 
     List<DispatchAssignment> findByCourierIdAndStatus(UUID courierId, AssignmentStatus status);
 
+    /** The shop's parcels that no courier has collected yet. */
+    @Query("SELECT a FROM DispatchAssignment a WHERE a.merchantId = :merchantId AND a.customerId = :merchantId "
+            + "AND a.leg = com.swiftdrop.dispatch.domain.enums.AssignmentLeg.FIRST_MILE AND a.pickedUpAt IS NULL "
+            + "AND a.status IN (com.swiftdrop.dispatch.domain.enums.AssignmentStatus.UNASSIGNED, "
+            + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.ASSIGNED, "
+            + "com.swiftdrop.dispatch.domain.enums.AssignmentStatus.REASSIGNED) ORDER BY a.createdAt")
+    List<DispatchAssignment> findAtShop(@Param("merchantId") UUID merchantId);
+
     List<DispatchAssignment> findByStatus(AssignmentStatus status);
 
     Page<DispatchAssignment> findByStatus(AssignmentStatus status, Pageable pageable);
