@@ -71,7 +71,7 @@ function toRequest(form: TariffForm): TariffRuleRequest {
 }
 
 interface TariffEditorProps {
-  /** When true the tariff is shown for viewing only (no version id field, no publish button). */
+  /** Shows the tariff as plain values, for people who cannot change it. */
   readOnly?: boolean;
 }
 
@@ -158,52 +158,64 @@ export function TariffEditor({ readOnly = false }: TariffEditorProps) {
                 : 'No tariff has been published yet.'}
             </p>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field
-                label="Base price (LKR)"
-                required
-                value={form.basePrice}
-                onChange={setField('basePrice')}
-                error={errors.basePrice}
-                inputMode="decimal"
-                readOnly={readOnly}
-              />
-              <Field
-                label="Weight step (kg)"
-                required
-                value={form.weightStepKg}
-                onChange={setField('weightStepKg')}
-                error={errors.weightStepKg}
-                inputMode="decimal"
-                readOnly={readOnly}
-              />
-              <Field
-                label="Price per step (LKR)"
-                required
-                value={form.pricePerStep}
-                onChange={setField('pricePerStep')}
-                error={errors.pricePerStep}
-                inputMode="decimal"
-                readOnly={readOnly}
-              />
-              <Field
-                label="Volumetric divisor"
-                required
-                value={form.volumetricDivisor}
-                onChange={setField('volumetricDivisor')}
-                error={errors.volumetricDivisor}
-                inputMode="decimal"
-                readOnly={readOnly}
-              />
-              {!readOnly ? (
+            {readOnly ? (
+              active ? (
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
+                  {[
+                    ['Base price', `LKR ${active.basePrice ?? '—'}`],
+                    ['Weight step', `${active.weightStepKg ?? '—'} kg`],
+                    ['Price per step', `LKR ${active.pricePerStep ?? '—'}`],
+                    ['Volumetric divisor', active.volumetricDivisor ?? '—']
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-caption text-secondary">{label}</dt>
+                      <dd className="text-body-strong tabular-nums text-primary">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null
+            ) : (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <Field
+                  label="Base price (LKR)"
+                  required
+                  value={form.basePrice}
+                  onChange={setField('basePrice')}
+                  error={errors.basePrice}
+                  inputMode="decimal"
+                />
+                <Field
+                  label="Weight step (kg)"
+                  required
+                  value={form.weightStepKg}
+                  onChange={setField('weightStepKg')}
+                  error={errors.weightStepKg}
+                  inputMode="decimal"
+                />
+                <Field
+                  label="Price per step (LKR)"
+                  required
+                  value={form.pricePerStep}
+                  onChange={setField('pricePerStep')}
+                  error={errors.pricePerStep}
+                  inputMode="decimal"
+                />
+                <Field
+                  label="Volumetric divisor"
+                  required
+                  value={form.volumetricDivisor}
+                  onChange={setField('volumetricDivisor')}
+                  error={errors.volumetricDivisor}
+                  inputMode="decimal"
+                />
                 <Field
                   label="Version ID"
                   value={form.ruleVersionId}
                   onChange={setField('ruleVersionId')}
                   hint="Optional. Generated automatically when left blank."
                 />
-              ) : null}
-            </div>
+              </div>
+            )}
 
             {!readOnly ? (
               <div className="flex justify-end">
@@ -232,9 +244,7 @@ export function TariffEditor({ readOnly = false }: TariffEditorProps) {
           </span>
         }
       >
-        <p className="text-body text-secondary">
-          Existing orders keep their quoted price.
-        </p>
+        <p className="text-body text-secondary">Existing orders keep their quoted price.</p>
       </Modal>
     </SurfaceCard>
   );

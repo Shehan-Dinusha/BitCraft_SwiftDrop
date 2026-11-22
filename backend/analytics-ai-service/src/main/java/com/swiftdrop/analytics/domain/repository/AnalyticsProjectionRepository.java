@@ -1,6 +1,7 @@
 package com.swiftdrop.analytics.domain.repository;
 
 import com.swiftdrop.analytics.domain.projection.OrderProjection;
+import com.swiftdrop.analytics.domain.projection.OrderProjectionReducer;
 import com.swiftdrop.analytics.messaging.TelemetryEvent;
 import com.swiftdrop.analytics.messaging.TelemetryEventDecoder;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
@@ -92,11 +93,14 @@ public class AnalyticsProjectionRepository {
         for (var envelope : events) {
             if (envelope.payload() instanceof CourierAssignedEvent assignment) {
                 jdbc.update("""
-                        INSERT INTO analytics_couriers(courier_id, courier_name, last_assignment_at) VALUES (?, ?, ?)
+                        INSERT INTO analytics_couriers(courier_id, courier_name, last_assignment_at, district) VALUES (?, ?, ?, ?)
                         ON CONFLICT (courier_id) DO UPDATE SET courier_name=EXCLUDED.courier_name,
-                            last_assignment_at=EXCLUDED.last_assignment_at
-                        WHERE EXCLUDED.last_assignment_at > analytics_couriers.last_assignment_at
-                        """, assignment.courierId(), assignment.courierName(), timestamp(assignment.assignedAt()));
+                            last_assignment_at=EXCLUDED.last_assignment_at,
+                            district=coalesce(EXCLUDED.district, analytics_couriers.district)
+                        WHERE EXCLUDED.last_assignment_at >= analytics_couriers.last_assignment_at
+                        """, assignment.courierId(), assignment.courierName(), timestamp(assignment.assignedAt()),
+                        name(OrderProjectionReducer.responsibleDistrict(events, assignment.assignedAt(),
+                                assignment.pickupDistrict() != null ? assignment.pickupDistrict() : next.pickupDistrict())));
                 jdbc.update("INSERT INTO analytics_order_couriers(order_id, courier_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
                         next.orderId(), assignment.courierId());
             }

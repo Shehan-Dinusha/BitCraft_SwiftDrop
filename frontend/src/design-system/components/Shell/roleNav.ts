@@ -61,8 +61,7 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
       { id: 'labels', label: 'Labels', icon: 'tag' },
       { id: 'keys', label: 'API keys', icon: 'key' },
       { id: 'webhooks', label: 'Webhook logs', icon: 'webhook', count: 2 },
-      { id: 'reports', label: 'Reports', icon: 'chart' },
-      { id: 'help', label: 'Help & assistant', icon: 'sparkles' }
+      { id: 'reports', label: 'Reports', icon: 'chart' }
     ]
   },
   courier: {
@@ -92,8 +91,7 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
       { id: 'handoffs', label: 'Hand-offs', icon: 'swap', count: 5 },
       { id: 'couriers', label: 'Couriers', icon: 'truck' },
       { id: 'cash', label: 'Cash', icon: 'wallet' },
-      { id: 'reports', label: 'Reports', icon: 'chart' },
-      { id: 'help', label: 'Help & assistant', icon: 'sparkles' }
+      { id: 'reports', label: 'Reports', icon: 'chart' }
     ]
   },
   'system-admin': {
@@ -107,8 +105,7 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
       { id: 'districts', label: 'Districts & dispatchers', icon: 'mapPin' },
       { id: 'pricing', label: 'Pricing rules', icon: 'calc' },
       { id: 'settings', label: 'Settings', icon: 'settings' },
-      { id: 'reports', label: 'Reports', icon: 'chart' },
-      { id: 'help', label: 'Help & assistant', icon: 'sparkles' }
+      { id: 'reports', label: 'Reports', icon: 'chart' }
     ]
   }
 };

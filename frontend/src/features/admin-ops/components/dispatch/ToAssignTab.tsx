@@ -35,6 +35,8 @@ export function ToAssignTab({
     { id: 'pickup', label: 'To pick up', list: pickups },
     { id: 'hub', label: 'At the hub', list: atHub }
   ];
+  // Orders booked before sizes were recorded have none; without any, the column has nothing to say.
+  const sized = orders.some((order) => parcelSize(order));
   const shown = sortQueue(chips.find((chip) => chip.id === filter)?.list ?? orders);
 
   return (
@@ -55,7 +57,14 @@ export function ToAssignTab({
       ) : (
         <DispatchTable
           label="Orders to assign"
-          headers={['Order', 'Route', 'Parcel', 'Stage', 'Waiting', 'Action']}
+          headers={[
+            'Order',
+            'Route',
+            ...(sized ? ['Size and weight'] : []),
+            'Stage',
+            'Waiting',
+            'Action'
+          ]}
         >
           {shown.map((order) => (
             <tr key={orderKey(order)} className="hover:bg-canvas">
@@ -65,9 +74,11 @@ export function ToAssignTab({
               <td className={CELL}>
                 <RouteCell order={order} />
               </td>
-              <td className={`${CELL} whitespace-nowrap text-secondary`}>
-                {parcelSize(order) ?? '—'}
-              </td>
+              {sized ? (
+                <td className={`${CELL} whitespace-nowrap text-secondary`}>
+                  {parcelSize(order) ?? 'Not recorded'}
+                </td>
+              ) : null}
               <td className={CELL}>
                 <Badge tone={isAtHub(order) ? 'info' : 'neutral'}>
                   {isAtHub(order) ? 'At the hub' : 'To pick up'}

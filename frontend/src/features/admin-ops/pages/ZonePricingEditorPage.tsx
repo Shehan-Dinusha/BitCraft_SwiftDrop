@@ -277,6 +277,10 @@ export function ZonePricingEditorPage() {
         ) : (
           <HighDensityDataGrid<ZoneRow>
             rows={zoneRows}
+            label="Zones"
+            // A handful of zones needs no search.
+            searchable={zoneRows.length > 10}
+            filterPlaceholder="Search zones"
             columns={[
               { key: 'zoneCode', label: 'Code' },
               { key: 'zoneName', label: 'Name' },
@@ -316,7 +320,9 @@ export function ZonePricingEditorPage() {
         ) : (
           <HighDensityDataGrid<MappingRow>
             rows={mappingRows}
+            label="District mapping"
             searchable={!scopeToOwnDistrict}
+            filterPlaceholder="Search districts or zones"
             columns={[
               { key: 'district', label: 'District' },
               canEdit

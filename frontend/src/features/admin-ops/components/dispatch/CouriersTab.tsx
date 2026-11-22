@@ -6,7 +6,7 @@ import { LoadBar } from './LoadBar';
 import { amount } from './courierFit';
 import { sortCouriers } from './dispatchQueues';
 
-const SHIFT: Record<string, { label: string; tone: BadgeTone }> = {
+export const SHIFT: Record<string, { label: string; tone: BadgeTone }> = {
   AVAILABLE: { label: 'Available', tone: 'success' },
   BUSY: { label: 'Busy', tone: 'warning' },
   ON_BREAK: { label: 'On break', tone: 'info' },

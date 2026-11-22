@@ -1,6 +1,7 @@
 package com.swiftdrop.analytics.controller;
 
 import com.swiftdrop.analytics.service.*;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -26,18 +27,19 @@ class AnalyticsReportControllerTest {
     private static final LocalDate DATE = LocalDate.of(2026, 11, 8);
 
     private MockHttpServletRequestBuilder as(MockHttpServletRequestBuilder request, String role) {
-        return request.header("X-User-Id", "00000000-0000-0000-0000-000000000001").header("X-User-Role", role);
+        request.header("X-User-Id", "00000000-0000-0000-0000-000000000001").header("X-User-Role", role);
+        return "DISPATCHER".equals(role) ? request.header("X-District-Id", "KANDY") : request;
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"DISPATCHER", "SYSTEM_ADMIN"})
     void operationalRolesCanReadExactCounts(String role) throws Exception {
-        when(reports.daily(DATE, DATE)).thenReturn(List.of(new AnalyticsReportService.DailyStats(DATE, 4, 2, 1)));
+        when(reports.daily(eq(DATE), eq(DATE), any())).thenReturn(List.of(new AnalyticsReportService.DailyStats(DATE, 4, 2, 1)));
         mvc.perform(as(get("/api/v1/analytics/deliveries/daily?from=2026-11-08&to=2026-11-08"), role))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.timezone").value("Asia/Colombo"))
                 .andExpect(jsonPath("$.data.days[0].created").value(4))
                 .andExpect(jsonPath("$.data.days[0].delivered").value(2));
-        when(reports.outcomes(DATE, DATE)).thenReturn(new AnalyticsReportService.OutcomeTotals(2, 1));
+        when(reports.outcomes(eq(DATE), eq(DATE), any())).thenReturn(new AnalyticsReportService.OutcomeTotals(2, 1));
         mvc.perform(as(get("/api/v1/analytics/success-rate?from=2026-11-08&to=2026-11-08"), role))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.completed").value(3))
                 .andExpect(jsonPath("$.data.successRatePercent").value(66.67))
@@ -45,7 +47,7 @@ class AnalyticsReportControllerTest {
     }
 
     @Test void emptyRatesAreExplicitNullsAndWorkloadIsEmpty() throws Exception {
-        when(reports.outcomes(DATE, DATE)).thenReturn(new AnalyticsReportService.OutcomeTotals(0, 0));
+        when(reports.outcomes(eq(DATE), eq(DATE), any())).thenReturn(new AnalyticsReportService.OutcomeTotals(0, 0));
         mvc.perform(as(get("/api/v1/analytics/success-rate?from=2026-11-08&to=2026-11-08"), "DISPATCHER"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.completed").value(0))
                 .andExpect(jsonPath("$.data.successRatePercent").value(nullValue()))
@@ -56,7 +58,7 @@ class AnalyticsReportControllerTest {
     }
 
     @Test void staticWorkloadRouteIncludesIdleCouriersAndTotals() throws Exception {
-        when(reports.workload()).thenReturn(List.of(new AnalyticsReportService.CourierWorkload(UUID.randomUUID(), 0),
+        when(reports.workload(any())).thenReturn(List.of(new AnalyticsReportService.CourierWorkload(UUID.randomUUID(), 0),
                 new AnalyticsReportService.CourierWorkload(UUID.randomUUID(), 1)));
         mvc.perform(as(get("/api/v1/analytics/couriers/workload"), "SYSTEM_ADMIN"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalActiveOrders").value(1))
@@ -77,10 +79,41 @@ class AnalyticsReportControllerTest {
         verifyNoInteractions(reports);
     }
 
+    private static final String RANGE = "from=2026-11-08&to=2026-11-08";
+
+    @Test void aDispatcherAlwaysGetsTheirOwnDistrictWhateverTheyAskFor() throws Exception {
+        for (String path : List.of("/deliveries/daily?" + RANGE + "&district=COLOMBO", "/success-rate?" + RANGE + "&district=COLOMBO",
+                "/couriers/workload?district=COLOMBO", "/couriers?district=COLOMBO", "/kpis?district=COLOMBO")) {
+            mvc.perform(as(get("/api/v1/analytics" + path), "DISPATCHER"));
+        }
+        mvc.perform(as(get("/api/v1/analytics/couriers/00000000-0000-0000-0000-000000000009"), "DISPATCHER"))
+                .andExpect(status().isNotFound());
+        verify(reports).daily(DATE, DATE, SriLankanDistrict.KANDY);
+        verify(reports).outcomes(DATE, DATE, SriLankanDistrict.KANDY);
+        verify(reports).workload(SriLankanDistrict.KANDY);
+        verify(metrics).listCourierPerformances(SriLankanDistrict.KANDY);
+        verify(metrics).getKpiSummary(SriLankanDistrict.KANDY);
+        verify(metrics).getCourierPerformance(UUID.fromString("00000000-0000-0000-0000-000000000009"), SriLankanDistrict.KANDY);
+        verifyNoMoreInteractions(reports, metrics);
+    }
+
+    @Test void anAdminGetsTheWholeIslandOrTheChosenDistrict() throws Exception {
+        mvc.perform(as(get("/api/v1/analytics/couriers/workload"), "SYSTEM_ADMIN")).andExpect(status().isOk());
+        verify(reports).workload(null);
+        mvc.perform(as(get("/api/v1/analytics/couriers/workload?district=GALLE"), "SYSTEM_ADMIN")).andExpect(status().isOk());
+        verify(reports).workload(SriLankanDistrict.GALLE);
+    }
+
+    @Test void aDispatcherWithoutADistrictSeesNothing() throws Exception {
+        mvc.perform(get("/api/v1/analytics/couriers/workload").header("X-User-Id", UUID.randomUUID())
+                .header("X-User-Role", "DISPATCHER")).andExpect(status().isForbidden());
+        verifyNoInteractions(reports);
+    }
+
     @Test void exactlyNinetyInclusiveDaysIsAllowed() throws Exception {
         mvc.perform(as(get("/api/v1/analytics/deliveries/daily?from=2026-01-01&to=2026-03-31"), "DISPATCHER"))
                 .andExpect(status().isOk());
-        verify(reports).daily(LocalDate.of(2026,1,1), LocalDate.of(2026,3,31));
+        verify(reports).daily(LocalDate.of(2026,1,1), LocalDate.of(2026,3,31), SriLankanDistrict.KANDY);
     }
 
     @ParameterizedTest
@@ -111,7 +144,7 @@ class AnalyticsReportControllerTest {
     }
 
     @Test void unexpectedDatabaseErrorsAreSafe500s() throws Exception {
-        when(reports.workload()).thenThrow(new IllegalStateException("SQL secret"));
+        when(reports.workload(any())).thenThrow(new IllegalStateException("SQL secret"));
         mvc.perform(as(get("/api/v1/analytics/couriers/workload").header("X-Correlation-Id", "report-test"), "SYSTEM_ADMIN"))
                 .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.message").value("Unable to process request"))
                 .andExpect(jsonPath("$.path").value("/api/v1/analytics/couriers/workload"))

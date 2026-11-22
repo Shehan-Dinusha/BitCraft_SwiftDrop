@@ -18,10 +18,10 @@ class SlaMetricsAggregationServiceTest {
 
     @Test
     void emptySummaryHasZeroRealCountsAndUnavailableMeasurements() {
-        when(reports.daily(today, today)).thenReturn(List.of(new AnalyticsReportService.DailyStats(today, 0, 0, 0)));
-        when(reports.workload()).thenReturn(List.of());
+        when(reports.daily(today, today, null)).thenReturn(List.of(new AnalyticsReportService.DailyStats(today, 0, 0, 0)));
+        when(reports.workload(null)).thenReturn(List.of());
         when(reports.districts(today)).thenReturn(List.of());
-        var summary = service.getSystemKpiSummary();
+        var summary = service.getKpiSummary(null);
         assertThat(summary.totalParcels()).isZero();
         assertThat(summary.activeCouriers()).isZero();
         assertThat(summary.failedDeliveries()).isZero();
@@ -34,11 +34,11 @@ class SlaMetricsAggregationServiceTest {
 
     @Test
     void summaryUsesColomboDayAndCountsOnlyCouriersWithWork() {
-        when(reports.daily(today, today)).thenReturn(List.of(new AnalyticsReportService.DailyStats(today, 4, 2, 1)));
-        when(reports.workload()).thenReturn(List.of(new AnalyticsReportService.CourierWorkload(UUID.randomUUID(), 0),
+        when(reports.daily(today, today, null)).thenReturn(List.of(new AnalyticsReportService.DailyStats(today, 4, 2, 1)));
+        when(reports.workload(null)).thenReturn(List.of(new AnalyticsReportService.CourierWorkload(UUID.randomUUID(), 0),
                 new AnalyticsReportService.CourierWorkload(UUID.randomUUID(), 1)));
         when(reports.districts(today)).thenReturn(List.of());
-        var summary = service.getSystemKpiSummary();
+        var summary = service.getKpiSummary(null);
         assertThat(summary.totalParcels()).isEqualTo(4);
         assertThat(summary.failedDeliveries()).isEqualTo(1);
         assertThat(summary.activeCouriers()).isEqualTo(1);
@@ -48,7 +48,7 @@ class SlaMetricsAggregationServiceTest {
     void unknownCourierRemainsMissing() {
         UUID id = UUID.randomUUID();
         when(reports.couriers(null, id)).thenReturn(List.of());
-        assertThat(service.getCourierPerformance(id)).isEmpty();
+        assertThat(service.getCourierPerformance(id, null)).isEmpty();
     }
 
     @Test

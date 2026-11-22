@@ -66,13 +66,21 @@ describe('ManualDispatchOverrideModal', () => {
     expect(screen.getAllByRole('radio')).toHaveLength(2);
   });
 
+  it('shows only the parcel count for an order without a recorded size, and asks for no reason', () => {
+    renderModal({ order: { orderId: 'o2', trackingNumber: 'SD-2' } });
+
+    expect(screen.getAllByText('1 of 10 parcels')).toHaveLength(2);
+    expect(screen.queryByText(/kg$/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
   it('preselects the best match and submits the one chosen', () => {
     const { onSubmit } = renderModal();
 
     expect(screen.getByRole('radio', { name: /Nimal/ })).toBeChecked();
     fireEvent.click(screen.getByRole('radio', { name: /Saman/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }));
-    expect(onSubmit).toHaveBeenCalledWith('Saman', 'Dispatcher console assignment');
+    expect(onSubmit).toHaveBeenCalledWith('Saman');
   });
 
   it('never submits a courier who stopped being eligible after being chosen', () => {
@@ -83,7 +91,7 @@ describe('ManualDispatchOverrideModal', () => {
       suggestions: [list[0], { ...list[1], eligible: false, ineligibleReason: 'WEIGHT_LIMIT' }]
     });
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }));
-    expect(onSubmit).toHaveBeenCalledWith('Nimal', expect.any(String));
+    expect(onSubmit).toHaveBeenCalledWith('Nimal');
   });
 
   it('cannot be submitted when nobody can take the parcel', () => {

@@ -291,6 +291,7 @@ export function ShellPreviewPage() {
           environment={shellRole === 'system-admin' ? 'Production' : undefined}
           district={shellRole === 'dispatcher' ? 'Colombo' : undefined}
           hasUnread
+          showAssistant={shellRole === 'customer'}
         />
         <main className={hasTabs ? 'flex-1 pb-[68px] md:pb-0' : 'flex-1'}>
           <SampleContent role={shellRole} />
