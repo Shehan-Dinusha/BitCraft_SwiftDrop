@@ -1,10 +1,12 @@
 package com.swiftdrop.merchant.dto;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 @Schema(description = "Merchant profile creation request")
 public record CreateMerchantRequest(
@@ -18,7 +20,8 @@ public record CreateMerchantRequest(
         String contactEmail,
 
         @NotBlank(message = "Contact phone is required")
-        @Schema(description = "Contact phone", example = "+94 11 234 5678")
+        @Pattern(regexp = SriLankanPhone.REGEX, message = SriLankanPhone.MESSAGE)
+        @Schema(description = "Contact phone", example = "+94112345678")
         String contactPhone,
 
         @NotBlank(message = "Pickup address is required")

@@ -60,7 +60,7 @@ class MerchantOrderIngestControllerTest {
     void testIngestBulkOrders() throws Exception {
         BulkOrderIngestItem item = new BulkOrderIngestItem(
                 "Saman Perera",
-                "+94 77 123 4567",
+                "+94771234567",
                 SriLankanDistrict.COLOMBO,
                 "123 Baseline Rd",
                 BigDecimal.valueOf(1.0),

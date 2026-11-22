@@ -1,3 +1,4 @@
+import { phoneProblem, toE164 } from '@/utils/phone';
 import type { AuthUserProfile, UpdateProfileInput } from '@/services/api/authApi';
 import type { PersonaRole } from '@/types/contracts';
 
@@ -37,15 +38,9 @@ export function districtLabel(value?: string | null): string {
     .join(' ');
 }
 
-/** Spaces, dashes and brackets people type in phone numbers are dropped: "077 123-4567" -> "0771234567". */
-export function normalizePhone(value: string): string {
-  return value.replace(/[\s\-()]/g, '');
-}
-
+/** `phone` is the 9 digits after +94, or empty. */
 export type ProfileForm = { firstName: string; lastName: string; phone: string; district: string };
 export type ProfileErrors = Partial<Record<keyof ProfileForm, string>>;
-
-const PHONE = /^\+?[0-9]{7,15}$/;
 
 /** Same rules as the server (UpdateProfileRequest), so most mistakes are caught before saving. */
 export function validateProfile(form: ProfileForm): ProfileErrors {
@@ -54,8 +49,8 @@ export function validateProfile(form: ProfileForm): ProfileErrors {
   else if (form.firstName.trim().length > 100) errors.firstName = 'Use 100 characters or fewer';
   if (!form.lastName.trim()) errors.lastName = 'Enter your last name';
   else if (form.lastName.trim().length > 100) errors.lastName = 'Use 100 characters or fewer';
-  const phone = normalizePhone(form.phone);
-  if (phone && !PHONE.test(phone)) errors.phone = 'Enter 7 to 15 digits, optionally starting with +';
+  const phone = form.phone ? phoneProblem(form.phone) : undefined;
+  if (phone) errors.phone = phone;
   return errors;
 }
 
@@ -63,7 +58,7 @@ export function toUpdateRequest(form: ProfileForm): UpdateProfileInput {
   return {
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
-    phone: normalizePhone(form.phone),
+    phone: form.phone ? toE164(form.phone) : '',
     // Customers and merchants have no district; staff send their assigned one back unchanged.
     district: (form.district || undefined) as UpdateProfileInput['district']
   };

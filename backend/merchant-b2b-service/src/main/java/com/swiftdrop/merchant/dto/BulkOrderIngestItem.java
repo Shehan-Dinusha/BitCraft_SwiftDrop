@@ -15,7 +15,7 @@ public record BulkOrderIngestItem(
         String recipientName,
 
         @NotBlank(message = "Recipient phone is required")
-        @Schema(description = "Recipient phone number", example = "+94 77 987 6543")
+        @Schema(description = "Recipient phone number", example = "+94779876543")
         String recipientPhone,
 
         @NotNull(message = "Delivery district is required")

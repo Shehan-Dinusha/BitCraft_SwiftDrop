@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.merchant.domain.entity.MerchantAccount;
 import com.swiftdrop.merchant.domain.entity.MerchantStatus;
@@ -30,7 +31,7 @@ public class MerchantAccountService {
         MerchantAccount account = MerchantAccount.builder()
                 .businessName(request.businessName())
                 .contactEmail(request.contactEmail())
-                .contactPhone(request.contactPhone())
+                .contactPhone(SriLankanPhone.toE164(request.contactPhone()))
                 .pickupAddress(request.pickupAddress())
                 .operatingDistrict(request.operatingDistrict())
                 .status(MerchantStatus.PENDING_APPROVAL)
@@ -50,7 +51,7 @@ public class MerchantAccountService {
                             .merchantId(merchantId)
                             .businessName(fallbackName != null ? fallbackName : "SwiftDrop Merchant Hub")
                             .contactEmail("merchant-" + merchantId.toString().substring(0, 8) + "@swiftdrop.lk")
-                            .contactPhone("+94 11 234 5678")
+                            .contactPhone("+94112345678")
                             .pickupAddress("No. 128 Galle Road, Colombo 03")
                             .operatingDistrict(SriLankanDistrict.COLOMBO)
                             .status(MerchantStatus.PENDING_APPROVAL)

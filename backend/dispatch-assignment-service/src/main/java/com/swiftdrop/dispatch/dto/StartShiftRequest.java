@@ -1,9 +1,11 @@
 package com.swiftdrop.dispatch.dto;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
 
 @Schema(description = "Request to start or register a courier shift. The vehicle type and parcel capacity come "
@@ -17,6 +19,7 @@ public record StartShiftRequest(
         @Schema(description = "Full name of the courier", example = "Sunil Perera")
         String courierName,
 
+        @Pattern(regexp = SriLankanPhone.OPTIONAL_REGEX, message = SriLankanPhone.MESSAGE)
         @Schema(description = "Contact phone number", example = "+94771234567")
         String phone,
 

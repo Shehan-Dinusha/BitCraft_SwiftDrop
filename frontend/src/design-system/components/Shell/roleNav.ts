@@ -89,7 +89,6 @@ export const roleShellSpec: Record<ShellRole, RoleShellSpec> = {
     cta: { label: 'Assign parcels' },
     items: [
       { id: 'queues', label: 'Queues', icon: 'inbox', count: 14 },
-      { id: 'map', label: 'Live map', icon: 'map' },
       { id: 'handoffs', label: 'Hand-offs', icon: 'swap', count: 5 },
       { id: 'couriers', label: 'Couriers', icon: 'truck' },
       { id: 'cash', label: 'Cash', icon: 'wallet' },

@@ -76,7 +76,7 @@ class BulkOrderIngestionServiceTest {
 
         BulkOrderIngestItem item1 = new BulkOrderIngestItem(
                 "Kamal Fernando",
-                "+94 77 111 2222",
+                "+94771112222",
                 SriLankanDistrict.GAMPAHA,
                 "12 Negombo Road",
                 BigDecimal.valueOf(1.5),
@@ -84,7 +84,7 @@ class BulkOrderIngestionServiceTest {
         );
         BulkOrderIngestItem item2 = new BulkOrderIngestItem(
                 "Nayani Dias",
-                "+94 71 333 4444",
+                "+94713334444",
                 SriLankanDistrict.KALUTARA,
                 "50 Galle Road",
                 BigDecimal.valueOf(3.0),

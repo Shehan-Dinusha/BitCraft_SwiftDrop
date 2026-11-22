@@ -1,5 +1,6 @@
 package com.swiftdrop.order.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.order.domain.entity.CustomerAddress;
 import com.swiftdrop.order.domain.repository.CustomerAddressRepository;
 import com.swiftdrop.order.dto.SavedAddressRequest;
@@ -62,8 +63,8 @@ public class CustomerAddressService {
     private static void apply(CustomerAddress address, SavedAddressRequest r) {
         address.setLabel(r.label().trim());
         address.setContactName(r.contactName().trim());
-        address.setContactPhone(phone(r.contactPhone()));
-        address.setAlternatePhone(blankToNull(r.alternatePhone()) == null ? null : phone(r.alternatePhone()));
+        address.setContactPhone(SriLankanPhone.toE164(r.contactPhone()));
+        address.setAlternatePhone(SriLankanPhone.toE164OrNull(r.alternatePhone()));
         address.setHouse(r.house().trim());
         address.setStreet(r.street().trim());
         address.setArea(blankToNull(r.area()));
@@ -71,12 +72,6 @@ public class CustomerAddressService {
         address.setCity(r.city().trim());
         address.setDistrict(r.district());
         address.setPostalCode(r.postalCode().trim());
-    }
-
-    /** "0771234567" -> "+94771234567", the format orders store. The request pattern has checked the shape. */
-    static String phone(String value) {
-        String number = value.trim();
-        return number.startsWith("0") ? "+94" + number.substring(1) : number;
     }
 
     private static String blankToNull(String value) {

@@ -20,7 +20,7 @@ A real order created through the gateway delivered an order-confirmation email t
 | SMS removed | Removed from triggers, dispatcher, preferences (`smsEnabled`, `phoneNumber`), contact lookup, API spec and frontend. `POST /logs/dispatch` rejects `SMS` with 400. Migration `V5__remove_sms_channel.sql` drops the two preference columns and moves the seeded templates to EMAIL; old dispatch-log rows keep `SMS` as history |
 | In-app inbox | One inbox row per recipient per event |
 | Email design | `EmailHtmlRenderer` builds one layout with copy, accent colour and details chosen per type: a short message, a four-step progress bar (with a red final step when delivery fails) and a details table that shows the tracking number once plus only what matters for that step (route and service, courier, delivery time, or failure reason). No tracking button or link. Code emails show the code once, in a code box. A plain-text copy is always included. Table layout, inline styles, no images; all text is HTML-escaped |
-| Frontend | The notification bell shows a distinct icon per type, an All/Unread filter and a menu with **Mark all as read** and **Notification settings** (opens the settings in a drawer). The customer Notifications tab shows the same settings and a list of recent emails. The old test-email button was removed |
+| Frontend | The inbox shows a distinct icon per type, an All/Unread filter and a **Mark all as read** button. Its Settings tab holds the email and lock-screen switches. The old test-email button was removed |
 | Access rules (2026-11-16) | Preferences and logs are scoped to the caller; DISPATCHER/SYSTEM_ADMIN can view all logs. `POST /logs/dispatch` lets non-staff send only a test to themselves at their own address, and nobody can send OTP templates through it. One-time codes go only to the registered IAM address |
 | Configuration | `NOTIFICATION_EMAIL_PROVIDER`, `ACS_EMAIL_ENDPOINT`, `ACS_EMAIL_ACCESS_KEY`, `ACS_EMAIL_SENDER_ADDRESS` added to `application.yml`, `.env.example`, `docker-compose.yml` and Helm (`values.yaml`; the key is an optional Secret `notification-acs-email`) |
 
@@ -130,8 +130,6 @@ docker exec swiftdrop-notify-postgres psql -U swiftdrop -d swiftdrop_notify -c `
 
 Expect exactly one row: `EMAIL | PARCEL_CREATED | SENT`.
 
-The customer **Notifications** tab also lists recent emails with their status, so you can check
-there instead of querying the database.
 
 **Step 4. Check the service log** for `Azure accepted email for n***@... (operation <id>)`.
 Only the masked address appears.

@@ -1,5 +1,6 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
@@ -58,7 +59,7 @@ public class CourierShiftService {
                 });
 
         shift.setCourierName(request.courierName());
-        if (request.phone() != null) shift.setPhone(request.phone());
+        if (request.phone() != null) shift.setPhone(SriLankanPhone.toE164OrNull(request.phone()));
         shift.setVehicleType(profile.getVehicleType());
         shift.setMaxCapacity(profile.getMaxCapacity());
         shift.setCurrentDistrict(request.initialDistrict());

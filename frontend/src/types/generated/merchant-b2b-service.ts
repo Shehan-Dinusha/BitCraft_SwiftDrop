@@ -1405,7 +1405,7 @@ export interface components {
             district: string;
             postalCode: string;
             contactName: string;
-            /** @description Local or international Sri Lankan number, normalized to +94 */
+            /** @description 9 digits, with or without 0 or +94 in front; stored as +94 and 9 digits. */
             contactPhone: string;
         };
         /** @description Supply exactly one of actualWeightKg and weightGrams. Length x width x height must not exceed 15,000 litres. */

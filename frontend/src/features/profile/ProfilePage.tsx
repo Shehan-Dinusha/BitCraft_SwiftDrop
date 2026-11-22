@@ -52,6 +52,7 @@ import {
   type ProfileErrors,
   type ProfileForm
 } from './profileFormat';
+import { phoneDigits } from '@/utils/phone';
 import { sourceProblem, toAvatarImage, useMyAvatarUrl } from './avatar';
 import { DeleteAccountCard } from '@/features/customer/components/profile/DeleteAccountCard';
 import { SavedAddressesCard } from '@/features/customer/components/profile/SavedAddressesCard';
@@ -60,7 +61,7 @@ function formFrom(user: AuthUserProfile | null | undefined): ProfileForm {
   return {
     firstName: user?.firstName ?? '',
     lastName: user?.lastName ?? '',
-    phone: user?.phone ?? '',
+    phone: phoneDigits(user?.phone ?? ''),
     district: user?.district ?? ''
   };
 }
@@ -351,13 +352,13 @@ function PersonalDetails({
           />
           <Field
             label="Phone number"
-            inputMode="tel"
-            autoComplete="tel"
-            maxLength={32}
+            variant="phone"
+            inputMode="numeric"
+            autoComplete="tel-national"
             value={form.phone}
             error={errors.phone}
             hint="Optional"
-            onChange={(e) => set('phone')(e.target.value)}
+            onChange={(e) => set('phone')(phoneDigits(e.target.value))}
           />
           {/* Only staff have a district: it decides who manages them and is assigned by operations.
               A customer's orders follow each order's pickup district, so customers are not asked. */}
@@ -382,7 +383,10 @@ function PersonalDetails({
           </StatusBanner>
         ) : null}
 
-        <div className="flex flex-col-reverse gap-3 border-t border-border-subtle pt-4 sm:flex-row sm:justify-end">
+        <div
+          data-assistant-avoid
+          className="flex flex-col-reverse gap-3 border-t border-border-subtle pt-4 sm:flex-row sm:justify-end"
+        >
           <Button
             type="button"
             variant="ghost"
@@ -478,7 +482,10 @@ function ChangePassword() {
             {problem ?? error}
           </StatusBanner>
         ) : null}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          data-assistant-avoid
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
           <p className="text-caption text-muted">Signs you out on all devices.</p>
           <Button
             type="submit"

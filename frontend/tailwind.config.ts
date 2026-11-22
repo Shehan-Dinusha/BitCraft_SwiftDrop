@@ -173,6 +173,7 @@ export default {
       boxShadow: {
         ambient: '0 8px 24px var(--color-shadow-ambient)',
         overlay: '0 10px 28px var(--color-shadow-overlay)',
+        panel: '0 16px 48px var(--color-shadow-panel)',
         raised: '0 2px 8px var(--color-shadow-raised)',
         nav: '2px 0 10px var(--color-shadow-overlay)',
         bar: '0 2px 10px var(--color-shadow-overlay)',

@@ -252,7 +252,7 @@ export function AppShell() {
             // Phones hide the sidebar and its account card, so the menu carries profile and sign-out.
             hasTabs ? (
               <AccountMenu
-                className={shellRole === 'courier' ? 'md:hidden' : undefined}
+                className="md:hidden"
                 avatarUrl={avatarUrl}
                 name={user ? displayName(user) : 'Account'}
                 email={user?.email}

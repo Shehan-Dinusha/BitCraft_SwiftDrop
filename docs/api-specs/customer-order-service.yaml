@@ -768,8 +768,8 @@ components:
       properties:
         label: { type: string, minLength: 2, maxLength: 40, description: "The customer's name for it, such as Home" }
         contactName: { type: string, minLength: 2, maxLength: 100 }
-        contactPhone: { type: string, pattern: "^(0\\d{9}|\\+94\\d{9})$", description: Stored as +94 and 9 digits }
-        alternatePhone: { type: string, pattern: "^(0\\d{9}|\\+94\\d{9})$" }
+        contactPhone: { type: string, pattern: "^(?:\\+94|0)?[1-9][0-9]{8}$", description: Stored as +94 and 9 digits }
+        alternatePhone: { type: string, pattern: "^(?:\\+94|0)?[1-9][0-9]{8}$" }
         house: { type: string, maxLength: 40, description: Must contain a letter or digit }
         street: { type: string, minLength: 2, maxLength: 150 }
         area: { type: string, maxLength: 98 }
@@ -875,12 +875,12 @@ components:
           example: Sunil Perera
         pickupContactPhone:
           type: string
-          pattern: '^(0\d{9}|\+94\d{9})$'
+          pattern: '^(?:\+94|0)?[1-9][0-9]{8}$'
           example: "+94771234567"
         pickupContactAlternatePhone:
           type: string
           description: Optional second phone number for the sender
-          pattern: '^(0\d{9}|\+94\d{9})$'
+          pattern: '^(?:\+94|0)?[1-9][0-9]{8}$'
           example: "+94715550101"
         deliveryAddressLine1:
           type: string
@@ -911,12 +911,12 @@ components:
           example: Anura Fernando
         recipientPhone:
           type: string
-          pattern: '^(0\d{9}|\+94\d{9})$'
+          pattern: '^(?:\+94|0)?[1-9][0-9]{8}$'
           example: "+94719876543"
         recipientAlternatePhone:
           type: string
           description: Optional second phone number for the recipient
-          pattern: '^(0\d{9}|\+94\d{9})$'
+          pattern: '^(?:\+94|0)?[1-9][0-9]{8}$'
           example: "+94112345678"
         recipientEmail:
           type: string
@@ -1002,11 +1002,11 @@ components:
           maxLength: 100
         pickupContactPhone:
           type: string
-          pattern: '^(0\d{9}|\+94\d{9})$'
+          pattern: '^(?:\+94|0)?[1-9][0-9]{8}$'
         pickupContactAlternatePhone:
           type: string
           description: Optional second phone number for the sender
-          pattern: '^(0\d{9}|\+94\d{9})$'
+          pattern: '^(?:\+94|0)?[1-9][0-9]{8}$'
           example: "+94715550101"
         deliveryAddressLine1:
           type: string
@@ -1032,11 +1032,11 @@ components:
           maxLength: 100
         recipientPhone:
           type: string
-          pattern: '^(0\d{9}|\+94\d{9})$'
+          pattern: '^(?:\+94|0)?[1-9][0-9]{8}$'
         recipientAlternatePhone:
           type: string
           description: Optional second phone number for the recipient
-          pattern: '^(0\d{9}|\+94\d{9})$'
+          pattern: '^(?:\+94|0)?[1-9][0-9]{8}$'
           example: "+94112345678"
         recipientEmail:
           type: string

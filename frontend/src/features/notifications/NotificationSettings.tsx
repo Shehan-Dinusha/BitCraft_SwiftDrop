@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle2, Inbox, Mail } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Mail } from 'lucide-react';
 import { Toggle } from '@/design-system/components/Toggle/Toggle';
 import {
   notificationApi,
@@ -100,10 +100,7 @@ export function NotificationSettings({ className }: { className?: string }) {
 
   return (
     <section className={cn('flex flex-col gap-3', className)} aria-label="Notification settings">
-      <div>
-        <h3 className="text-body-strong text-primary">How you get notified</h3>
-        <p className="text-caption text-secondary">Changes are saved straight away.</p>
-      </div>
+      <h2 className="text-body-strong text-primary">How you get notified</h2>
 
       {isError ? (
         <p className="flex items-center gap-2 rounded-xl border border-status-warning-border bg-status-warning-bg px-3 py-2 text-caption text-status-warning-fg">
@@ -151,16 +148,6 @@ export function NotificationSettings({ className }: { className?: string }) {
           />
         ) : null}
 
-        <div className={cn('flex items-center gap-3 px-4 py-3.5', large && 'min-h-target')}>
-          <RowIcon>
-            <Inbox />
-          </RowIcon>
-          <div className="min-w-0 flex-1">
-            <p className="text-body-strong text-primary">Notifications page</p>
-            <p className="text-caption text-secondary">Every update is always kept here</p>
-          </div>
-          <span className="text-caption font-semibold text-status-success-fg">Always on</span>
-        </div>
       </div>
 
       {status ? (

@@ -667,7 +667,7 @@ components:
         contactEmail: { type: string, format: email, maxLength: 100 }
         contactPhone:
           type: string
-          pattern: "^(0\\d{9}|\\+94\\d{9})$"
+          pattern: "^(?:\\+94|0)?[1-9][0-9]{8}$"
           description: Sri Lankan number; stored as +94 followed by 9 digits.
         pickupAddress: { type: string, minLength: 5, maxLength: 255 }
         pickupCity: { type: string, minLength: 2, maxLength: 100 }
@@ -778,7 +778,8 @@ components:
           maxLength: 100
         contactPhone:
           type: string
-          description: Local or international Sri Lankan number, normalized to +94
+          pattern: "^(?:\\+94|0)?[1-9][0-9]{8}$"
+          description: 9 digits, with or without 0 or +94 in front; stored as +94 and 9 digits.
     B2bParcel:
       type: object
       required: [lengthCm, widthCm, heightCm, prohibitedItemsDeclared]
@@ -944,6 +945,7 @@ components:
           type: string
         contactPhone:
           type: string
+          pattern: "^(?:\\+94|0)?[1-9][0-9]{8}$"
         pickupAddress:
           type: string
         operatingDistrict:

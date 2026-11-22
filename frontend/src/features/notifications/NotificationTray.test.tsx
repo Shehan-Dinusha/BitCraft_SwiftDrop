@@ -30,7 +30,6 @@ function renderTray(overrides: Partial<Parameters<typeof NotificationTray>[0]> =
     unreadCount: 1,
     onItemClick: vi.fn(),
     onMarkAllRead: vi.fn(),
-    onOpenSettings: vi.fn(),
     ...overrides
   };
   render(<NotificationTray {...props} />);
@@ -44,7 +43,7 @@ describe('NotificationTray', () => {
     expect(screen.getByText('Order confirmed')).toBeInTheDocument();
     expect(screen.getByText('Delivered')).toBeInTheDocument();
     expect(screen.getAllByText(/SD-WA9Q-25CC/)).toHaveLength(1);
-    expect(screen.getByText('1 new')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Unread (1)' })).toBeInTheDocument();
   });
 
   it('groups items into Today and Earlier', () => {
@@ -54,23 +53,17 @@ describe('NotificationTray', () => {
     expect(screen.getByText('Earlier')).toBeInTheDocument();
   });
 
-  it('offers Mark all as read and Notification settings in the options menu', () => {
+  it('marks all as read', () => {
     const props = renderTray();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notification options' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Mark all as read/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all as read' }));
     expect(props.onMarkAllRead).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Notification options' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Notification settings/ }));
-    expect(props.onOpenSettings).toHaveBeenCalledTimes(1);
   });
 
-  it('disables Mark all as read when nothing is unread', () => {
+  it('hides Mark all as read when nothing is unread', () => {
     renderTray({ unreadCount: 0 });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notification options' }));
-    expect(screen.getByRole('menuitem', { name: /Mark all as read/ })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Mark all as read' })).not.toBeInTheDocument();
   });
 
   it('filters to unread notifications', () => {

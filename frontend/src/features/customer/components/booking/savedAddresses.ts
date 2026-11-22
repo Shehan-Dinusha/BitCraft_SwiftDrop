@@ -1,11 +1,10 @@
 import type { SavedAddress, SavedAddressRequest } from '@/services/api/orderApi';
 import {
-  normalisePhoneDigits,
   provinceOf,
-  toE164,
   type BookingField,
   type BookingForm
 } from './bookingForm';
+import { phoneDigits, toE164 } from '@/utils/phone';
 
 export type AddressSide = 'pickup' | 'delivery';
 
@@ -38,13 +37,13 @@ export function applySavedAddress(
     side === 'pickup'
       ? {
           pickupContactName: a.contactName ?? '',
-          pickupContactPhone: normalisePhoneDigits(a.contactPhone ?? ''),
-          pickupContactAlternatePhone: normalisePhoneDigits(a.alternatePhone ?? '')
+          pickupContactPhone: phoneDigits(a.contactPhone ?? ''),
+          pickupContactAlternatePhone: phoneDigits(a.alternatePhone ?? '')
         }
       : {
           recipientName: a.contactName ?? '',
-          recipientPhone: normalisePhoneDigits(a.contactPhone ?? ''),
-          recipientAlternatePhone: normalisePhoneDigits(a.alternatePhone ?? '')
+          recipientPhone: phoneDigits(a.contactPhone ?? ''),
+          recipientAlternatePhone: phoneDigits(a.alternatePhone ?? '')
         };
   return {
     ...form,

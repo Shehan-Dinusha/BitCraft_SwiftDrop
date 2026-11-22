@@ -1,3 +1,4 @@
+import { phoneDigits } from '@/utils/phone';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,7 +15,6 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   initialBookingForm,
-  normalisePhoneDigits,
   toCreateOrderRequest,
   toFeeEstimateRequest,
   type BookingField,
@@ -148,7 +148,7 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
     setForm((previous) => ({
       ...previous,
       pickupContactName: previous.pickupContactName || name,
-      pickupContactPhone: previous.pickupContactPhone || normalisePhoneDigits(phone ?? '')
+      pickupContactPhone: previous.pickupContactPhone || phoneDigits(phone ?? '')
     }));
   }, [profile.data]);
 
@@ -497,7 +497,10 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
           </Alert>
         ) : null}
 
-        <div className="flex flex-col-reverse gap-3 border-t border-border-subtle pt-5 sm:flex-row sm:justify-between">
+        <div
+          data-assistant-avoid
+          className="flex flex-col-reverse gap-3 border-t border-border-subtle pt-5 sm:flex-row sm:justify-between"
+        >
           {isFirst ? (
             <span />
           ) : (
