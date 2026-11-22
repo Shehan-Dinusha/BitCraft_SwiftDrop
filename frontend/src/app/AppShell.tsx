@@ -19,6 +19,7 @@ import { NOTIFICATIONS_PATH } from '@/features/notifications/notificationTypes';
 import { PROFILE_PATH, displayName, districtLabel } from '@/features/profile/profileFormat';
 import { useMyAvatarUrl, useSyncCurrentUser } from '@/features/profile/avatar';
 import { useUnreadNotificationCount } from '@/features/notifications/useNotificationInbox';
+import { useCourierTodayStats } from '@/features/courier/hooks/useCourierTodayStats';
 import { AiAssistantSlot } from '@/design-system/components/AiAssistantDock/AiAssistantSlot';
 import { useAuthStore } from '@/store/useAuthStore';
 import { logoutUser } from '@/services/api/authApi';
@@ -87,6 +88,13 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
       shortLabel: 'Today',
       icon: 'package',
       to: '/courier/today-deliveries'
+    },
+    {
+      id: 'today-earnings',
+      label: "Today's earnings",
+      shortLabel: 'Earnings',
+      icon: 'wallet',
+      to: '/courier/today-earnings'
     }
   ],
   merchant: [
@@ -147,6 +155,7 @@ export function AppShell() {
   const hasTabs = shellRole === 'customer' || shellRole === 'courier';
 
   const unreadCount = useUnreadNotificationCount();
+  const courierStats = useCourierTodayStats();
   useSyncCurrentUser();
   const avatarUrl = useMyAvatarUrl();
   // Every workspace ends with its Notifications page, with the unread count.
@@ -162,10 +171,15 @@ export function AppShell() {
     [role, unreadCount]
   );
 
-  const tabs = useMemo<NavEntry[]>(
-    () => [...routedNav[shellRole], notificationsEntry],
-    [shellRole, notificationsEntry]
-  );
+  const tabs = useMemo<NavEntry[]>(() => {
+    let list = routedNav[shellRole];
+    if (shellRole === 'courier' && courierStats.deliveredCount > 0) {
+      list = list.map((item) =>
+        item.id === 'today-earnings' ? { ...item, count: courierStats.deliveredCount } : item
+      );
+    }
+    return [...list, notificationsEntry];
+  }, [shellRole, notificationsEntry, courierStats.deliveredCount]);
   // The design catalog is a developer tool, so real users never see it in their menu.
   const entries = import.meta.env.DEV && isDevSession ? [...tabs, catalogEntry] : tabs;
   const activeEntry = entries
