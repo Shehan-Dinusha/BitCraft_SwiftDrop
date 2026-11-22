@@ -9,6 +9,7 @@ export default {
         canvas: 'var(--color-surface-canvas)',
         card: 'var(--color-surface-card)',
         elevated: 'var(--color-surface-elevated)',
+        nav: 'var(--color-surface-nav)',
         primary: 'var(--color-text-primary)',
         secondary: 'var(--color-text-secondary)',
         muted: 'var(--color-text-muted)',
@@ -21,6 +22,7 @@ export default {
         },
         border: {
           subtle: 'var(--color-border-subtle)',
+          strong: 'var(--color-border-strong)',
           focus: 'var(--color-border-focus)',
           selected: 'var(--color-border-selected)'
         },
@@ -171,6 +173,10 @@ export default {
       boxShadow: {
         ambient: '0 8px 24px var(--color-shadow-ambient)',
         overlay: '0 10px 28px var(--color-shadow-overlay)',
+        raised: '0 2px 8px var(--color-shadow-raised)',
+        nav: '2px 0 10px var(--color-shadow-overlay)',
+        bar: '0 2px 10px var(--color-shadow-overlay)',
+        'bar-up': '0 -2px 10px var(--color-shadow-overlay)',
         danger: '0 0 16px var(--color-danger-glow)'
       }
     }

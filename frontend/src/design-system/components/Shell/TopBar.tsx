@@ -90,7 +90,7 @@ export function TopBar({
     <header
       data-role={role}
       className={cn(
-        'sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border-subtle bg-card px-6',
+        'sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border-strong bg-card px-4 shadow-bar md:px-6',
         className
       )}
     >
@@ -273,7 +273,9 @@ export function PublicHeader({
   const showMobileEditor = isMobile && isEditing;
 
   return (
-    <header className={cn('border-b border-border-subtle bg-card', className)}>
+    <header
+      className={cn('relative border-b border-border-strong bg-card shadow-bar', className)}
+    >
       <div className="flex items-center justify-between gap-4 px-4 py-3.5 w-full max-w-screen-2xl mx-auto">
         <Link
           to="/"

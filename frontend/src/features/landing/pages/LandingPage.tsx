@@ -96,7 +96,7 @@ export function LandingPage() {
               onTrack={track}
               onSignIn={signedIn ? undefined : () => navigate('/login')}
               showEmptySearch={false}
-              className="border-transparent bg-transparent"
+              className="border-transparent bg-transparent shadow-none"
             />
 
             <section className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-20">

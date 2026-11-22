@@ -20,6 +20,7 @@ import {
   UserRound
 } from 'lucide-react';
 import {
+  Avatar,
   Button,
   Field,
   Input,
@@ -51,7 +52,7 @@ import {
   type ProfileErrors,
   type ProfileForm
 } from './profileFormat';
-import { UserAvatar, sourceProblem, toAvatarImage, useMyAvatarUrl } from './avatar';
+import { sourceProblem, toAvatarImage, useMyAvatarUrl } from './avatar';
 import { DeleteAccountCard } from '@/features/customer/components/profile/DeleteAccountCard';
 import { SavedAddressesCard } from '@/features/customer/components/profile/SavedAddressesCard';
 
@@ -151,10 +152,11 @@ function ProfilePhoto({
   return (
     <div className="flex shrink-0 flex-col items-start gap-2 sm:items-center">
       <div className="relative">
-        <UserAvatar
+        <Avatar
           name={name}
           src={src}
-          className={cn('size-20 text-h2', busy === 'upload' && 'opacity-60')}
+          size="lg"
+          className={cn(busy === 'upload' && 'opacity-60')}
         />
         <button
           type="button"

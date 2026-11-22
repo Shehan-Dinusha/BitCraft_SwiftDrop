@@ -75,7 +75,7 @@ Figma is the source of truth; every component below has a section in `/catalog`.
 | 03 Status timeline                 | `TimelineStep`, `StatusTimeline`, `StatusProgress`, `LiveIndicator`                                                                                                                                                 |
 | 04 Feedback                        | `Alert` (use for new work; `StatusBanner` stays for existing pages), `Toast` with `ToastProvider` and `useToast`, `EmptyState`, `Skeleton` presets                                                                  |
 | 05 Page structure                  | `Tabs` and `TabItem`, `PageHeader`                                                                                                                                                                                  |
-| 06 Navigation                      | `NavItem`, `SideNav`, `TopBar`, `PublicHeader`, `BottomNav`                                                                                                                                                         |
+| 06 Navigation                      | `NavItem`, `SideNav`, `TopBar`, `PublicHeader`, `BottomNav`, `Avatar`, `AccountMenu`                                                                                                                                                         |
 | 07 Order patterns                  | `PriceBreakdown` (customer, merchant, recalculated), `OrderCard` (customer, courier pickup, courier delivery)                                                                                                       |
 | 08 Inputs and selection            | `Checkbox`, `Radio`, `Toggle`, `Textarea`, `RadioCard`, `ChoiceChip`, `SpecialField`, `IconButton`, `PhotoUpload`, `SlotChip`, `PickupSlotPicker`                                                                   |
 | 09 Data tables                     | `TableHeaderCell`, `OrderTable` and `OrderTableRow`, `FilterBar`, `Pagination`; `HighDensityDataGrid` keeps the simpler generic grid                                                                                |
@@ -406,8 +406,18 @@ Shell behaviour lives in `src/app/AppShell.tsx`, built from the shell parts in
   the persona home. A dev session uses a fake token, so it is marked
   `isDevSession` and the API client does not sign you out when the backend
   answers 401. For a real sign-in per role run `npm run seed:demo`.
-- Sign-out lives in the side nav account footer. It clears the session and
+- Menus are one flat list per role, without section headings. Give every entry its
+  own icon, and a one-word `shortLabel` when the role has a `BottomNav`.
+- The side nav is a tinted panel (`bg-nav`, `border-border-strong`, `shadow-nav`);
+  its brand strip is as tall as the top bar. Keep the shell parts visibly separate
+  from the page: do not put them back on plain white without a border and shadow.
+- Show people with `Avatar`; its ring keeps a photo on a white background round.
+- Sign-out lives in the side nav account card, and in the `AccountMenu` on phones
+  (customer, courier), where the side nav is hidden. It clears the session and
   replaces the route with `/login`.
+- `cn()` (tailwind-merge) does not know our text sizes: `cn('text-label text-muted')`
+  drops `text-label`. In the shell, put the colour on the parent and the size on
+  the child.
 - `PublicHeader` is the two-row header for public pages (no login). It is not
   used by `AppShell`.
 
