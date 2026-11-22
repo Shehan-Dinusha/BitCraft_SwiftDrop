@@ -49,7 +49,7 @@ public class GatewayRoutesConfig {
 
                 // ─── Delivery Execution ──────────────────────────────────
                 .route("delivery-execution-service", r -> r
-                        .path("/api/v1/deliveries/**", "/api/v1/deliveries/v3/api-docs/**")
+                        .path("/api/v1/deliveries/**", "/api/v1/cash/**", "/api/v1/deliveries/v3/api-docs/**")
                         .filters(f -> f.rewritePath("/api/v1/deliveries/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
                         .uri(routes.delivery()))
 

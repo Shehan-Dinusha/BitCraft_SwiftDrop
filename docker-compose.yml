@@ -258,6 +258,8 @@ services:
       - "8084:8084"
     environment:
       DB_URL: jdbc:postgresql://dispatch-postgres:5432/swiftdrop_dispatch
+      # The cash ledger: a courier hands over their cash before ending a shift.
+      DELIVERY_SERVICE_URL: http://delivery-execution-service:8085
       DB_USERNAME: ${POSTGRES_USER:-swiftdrop}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme_pg}
       RABBITMQ_HOST: rabbitmq

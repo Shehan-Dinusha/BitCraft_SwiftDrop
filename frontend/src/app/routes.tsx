@@ -12,7 +12,7 @@ import { RegistrationSuccessPage } from '@/features/auth/pages/RegistrationSucce
 import { InviteAcceptPage } from '@/features/auth/pages/InviteAcceptPage';
 import { CourierVehicleSetupPage } from '@/features/courier/pages/CourierVehicleSetupPage';
 import { CourierTodayDeliveriesPage } from '@/features/courier/pages/CourierTodayDeliveriesPage';
-import { CourierTodayEarningsPage } from '@/features/courier/pages/CourierTodayEarningsPage';
+import { CourierCashPage } from '@/features/courier/pages/CourierCashPage';
 import { CourierManagementPage } from '@/features/admin-ops/pages/CourierManagementPage';
 import { CustomerBookingPage } from '@/features/customer/pages/CustomerBookingPage';
 import { LiveTrackingPage } from '@/features/customer/pages/LiveTrackingPage';
@@ -26,6 +26,7 @@ import { ApiGuidePage } from '@/features/merchant/pages/ApiGuidePage';
 import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
 import { ZonePricingEditorPage } from '@/features/admin-ops/pages/ZonePricingEditorPage';
+import { CashDeskPage } from '@/features/admin-ops/pages/CashDeskPage';
 import { DispatchBoardPage } from '@/features/admin-ops/pages/DispatchBoardPage';
 import { MerchantApprovalsPage } from '@/features/admin-ops/pages/MerchantApprovalsPage';
 import { NotificationConsolePage } from '@/features/admin-ops/pages/NotificationConsolePage';
@@ -197,18 +198,10 @@ export const routes: RouteObject[] = [
         )
       },
       {
-        path: '/courier/today-earnings',
+        path: '/courier/cash',
         element: (
           <RoleGuard roles={['COURIER']}>
-            <CourierTodayEarningsPage />
-          </RoleGuard>
-        )
-      },
-      {
-        path: '/courier/earnings',
-        element: (
-          <RoleGuard roles={['COURIER']}>
-            <CourierTodayEarningsPage />
+            <CourierCashPage />
           </RoleGuard>
         )
       },
@@ -281,6 +274,14 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
             <DispatchBoardPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/cash',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <CashDeskPage />
           </RoleGuard>
         )
       },

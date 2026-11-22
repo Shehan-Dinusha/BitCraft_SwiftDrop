@@ -28,6 +28,8 @@ public class RabbitMQConfig {
     public static final String EXCHANGE_NAME = "swiftdrop.events.exchange";
     public static final String COURIER_ASSIGNED_QUEUE = "delivery.dispatch-assigned.queue";
     public static final String ROUTING_KEY_COURIER_ASSIGNED = "dispatch.courier.assigned";
+    public static final String ORDER_CANCELLED_QUEUE = "delivery.order-cancelled.queue";
+    public static final String ROUTING_KEY_ORDER_CANCELLED = "order.cancelled";
     public static final int COURIER_ASSIGNED_QUEUE_TTL_MILLIS = 86_400_000;
 
     public static final String DEAD_LETTER_EXCHANGE_NAME = "swiftdrop.dlx.exchange";
@@ -67,6 +69,26 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(courierAssignedQueue)
                 .to(eventsExchange)
                 .with(ROUTING_KEY_COURIER_ASSIGNED);
+    }
+
+    /** Cancelled orders, so the courier's job is closed. Rejected messages are dead-lettered like assignments. */
+    @Bean
+    public Queue orderCancelledQueue() {
+        return QueueBuilder.durable(ORDER_CANCELLED_QUEUE)
+                .quorum()
+                .withArgument("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE_NAME)
+                .withArgument("x-dead-letter-routing-key", DELIVERY_DEAD_LETTER_ROUTING_KEY)
+                .withArgument("x-message-ttl", COURIER_ASSIGNED_QUEUE_TTL_MILLIS)
+                .build();
+    }
+
+    @Bean
+    public Binding orderCancelledBinding(
+            Queue orderCancelledQueue,
+            @Qualifier("eventsExchange") TopicExchange eventsExchange) {
+        return BindingBuilder.bind(orderCancelledQueue)
+                .to(eventsExchange)
+                .with(ROUTING_KEY_ORDER_CANCELLED);
     }
 
     /** Holds failed delivery messages for 7 days for inspection and replay. */

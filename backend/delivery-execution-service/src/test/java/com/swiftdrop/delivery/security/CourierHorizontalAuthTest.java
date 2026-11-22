@@ -11,6 +11,7 @@ import com.swiftdrop.delivery.dto.ProofOfDeliveryUploadRequest;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.exception.GlobalExceptionHandler;
+import com.swiftdrop.delivery.service.CourierStepService;
 import com.swiftdrop.delivery.service.DeliveryExecutionService;
 import com.swiftdrop.delivery.service.ProofOfDeliveryStorageService;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +48,9 @@ class CourierHorizontalAuthTest {
     private DeliveryExecutionService deliveryService;
 
     @MockitoBean
+    private CourierStepService courierStepService;
+
+    @MockitoBean
     private ProofOfDeliveryStorageService storageService;
 
     @Test
@@ -73,7 +77,7 @@ class CourierHorizontalAuthTest {
         UUID deliveryId = UUID.randomUUID();
         UUID courierA = UUID.randomUUID();
 
-        when(deliveryService.transition(eq(deliveryId), any(TransitionDeliveryRequest.class), any()))
+        when(courierStepService.step(eq(deliveryId), any(TransitionDeliveryRequest.class), any()))
                 .thenThrow(new ForbiddenException("Courier does not own this delivery session"));
 
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(
@@ -146,7 +150,7 @@ class CourierHorizontalAuthTest {
         session.setCourierId(courierB);
         session.setCurrentState(DeliveryState.PICKED_UP);
 
-        when(deliveryService.transition(eq(deliveryId), any(TransitionDeliveryRequest.class), any()))
+        when(courierStepService.step(eq(deliveryId), any(TransitionDeliveryRequest.class), any()))
                 .thenReturn(session);
 
         TransitionDeliveryRequest request = new TransitionDeliveryRequest(

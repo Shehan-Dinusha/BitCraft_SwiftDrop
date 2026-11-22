@@ -9,6 +9,7 @@ import com.swiftdrop.delivery.controller.DeliveryExecutionController;
 import com.swiftdrop.delivery.controller.ProofOfDeliveryController;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
 import com.swiftdrop.delivery.exception.GlobalExceptionHandler;
+import com.swiftdrop.delivery.service.CourierStepService;
 import com.swiftdrop.delivery.service.DeliveryExecutionService;
 import com.swiftdrop.delivery.service.ProofOfDeliveryStorageService;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,9 @@ class CourierReadAuthorizationTest {
 
     @MockitoBean
     private DeliveryExecutionService deliveryService;
+
+    @MockitoBean
+    private CourierStepService courierStepService;
 
     @MockitoBean
     private ProofOfDeliveryStorageService storageService;

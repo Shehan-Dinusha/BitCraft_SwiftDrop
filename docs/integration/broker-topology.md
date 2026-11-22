@@ -25,6 +25,7 @@
 | `dlq.dispatch.events.queue` | dispatch-assignment-service | ✅ | — | 7 d |
 | `delivery.events.queue` | delivery-execution-service | ✅ | `dlq.delivery.events` | 24 h |
 | `delivery.dispatch-assigned.queue` | delivery-execution-service | ✅ | `dlq.delivery.events` | 24 h |
+| `delivery.order-cancelled.queue` | delivery-execution-service | ✅ | `dlq.delivery.events` | 24 h |
 | `dlq.delivery.events.queue` | delivery-execution-service | ✅ | — | 7 d |
 | `notification.events.queue` | notification-service | ✅ | `dlq.notification.events` | 24 h |
 | `dlq.notification.events.queue` | notification-service | ✅ | — | 7 d |
@@ -46,6 +47,7 @@
 | `order.cancelled` | `dispatch.order-cancelled.queue` | dispatch-assignment-service |
 | `parcel.status.changed.#` | `dispatch.parcel-status.queue` | dispatch-assignment-service |
 | `dispatch.courier.assigned` | `delivery.dispatch-assigned.queue` | delivery-execution-service |
+| `order.cancelled` | `delivery.order-cancelled.queue` | delivery-execution-service |
 | `delivery.#` | `delivery.events.queue` | delivery-execution-service |
 | `parcel.status.changed.#` | `notification.events.queue` | notification-service |
 | `notification.#` | `notification.events.queue` | notification-service |

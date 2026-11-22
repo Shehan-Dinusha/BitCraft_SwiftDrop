@@ -55,6 +55,17 @@ public record DeliverySessionResponse(
         @Schema(description = "Last updated timestamp")
         Instant updatedAt
 ) {
+    /**
+     * How a cross-district delivery looks to the courier who handed it in: their part ended at the hub, and
+     * nothing after it (the next courier, the delivery) is theirs to see.
+     */
+    public static DeliverySessionResponse handedIn(DeliverySession entity) {
+        return new DeliverySessionResponse(entity.getDeliveryId(), entity.getOrderId(), entity.getTrackingNumber(),
+                entity.getFirstMileCourierId(), null, entity.getPickupDistrict(), entity.getDeliveryDistrict(),
+                DeliveryState.AT_ORIGIN_HUB, DeliveryState.PICKED_UP, null, entity.getAttemptCount(),
+                entity.getPickupAt(), null, entity.getCreatedAt(), entity.getHandedInAt());
+    }
+
     public static DeliverySessionResponse fromEntity(DeliverySession entity) {
         if (entity == null) return null;
         return new DeliverySessionResponse(

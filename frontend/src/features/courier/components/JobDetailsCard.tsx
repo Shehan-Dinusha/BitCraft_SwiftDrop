@@ -1,5 +1,6 @@
 import { Banknote, MapPin, Navigation, Package, Phone, StickyNote } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { Checkbox } from '@/design-system/components/Checkbox/Checkbox';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { MoneyAmount } from '@/design-system/components/MoneyAmount/MoneyAmount';
 import { districtLabel } from '@/features/profile/profileFormat';
@@ -11,6 +12,10 @@ export interface JobDetailsCardProps {
   viaHubs: boolean;
   pickupDistrict?: string | null;
   deliveryDistrict?: string | null;
+  /** Whose cash the next step needs; that row gets the box the courier ticks. */
+  cashFrom?: 'sender' | 'recipient' | null;
+  cashConfirmed?: boolean;
+  onCashConfirmedChange?: (confirmed: boolean) => void;
 }
 
 /** Where the courier goes, whom they call and what cash they collect, for the leg they carry. */
@@ -18,7 +23,10 @@ export function JobDetailsCard({
   job,
   viaHubs,
   pickupDistrict,
-  deliveryDistrict
+  deliveryDistrict,
+  cashFrom = null,
+  cashConfirmed = false,
+  onCashConfirmedChange
 }: JobDetailsCardProps) {
   // On a cross-district parcel the service gives each courier one person; the other end is a hub.
   const pickupHub = viaHubs && !job.pickup && Boolean(job.dropOff);
@@ -29,10 +37,24 @@ export function JobDetailsCard({
     <SurfaceCard>
       <div className="space-y-5">
         {job.feeToCollect != null && (
-          <CashToCollect from="sender" amount={job.feeToCollect} currency={job.currency} />
+          <CashToCollect
+            from="sender"
+            amount={job.feeToCollect}
+            currency={job.currency}
+            confirm={cashFrom === 'sender'}
+            confirmed={cashConfirmed}
+            onConfirmedChange={onCashConfirmedChange}
+          />
         )}
         {job.codToCollect != null && (
-          <CashToCollect from="recipient" amount={job.codToCollect} currency={job.currency} />
+          <CashToCollect
+            from="recipient"
+            amount={job.codToCollect}
+            currency={job.currency}
+            confirm={cashFrom === 'recipient'}
+            confirmed={cashConfirmed}
+            onConfirmedChange={onCashConfirmedChange}
+          />
         )}
 
         {job.pickup && <Stop icon={MapPin} title="Pick up from" stop={job.pickup} />}
@@ -62,19 +84,36 @@ export function JobDetailsCard({
 function CashToCollect({
   from,
   amount,
-  currency
+  currency,
+  confirm,
+  confirmed,
+  onConfirmedChange
 }: {
   from: 'sender' | 'recipient';
   amount: number;
   currency?: string;
+  /** The next step takes this cash, so the courier ticks that they have it. */
+  confirm: boolean;
+  confirmed: boolean;
+  onConfirmedChange?: (confirmed: boolean) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-status-warning-border bg-status-warning-bg p-4 text-status-warning-fg">
-      <span className="flex items-center gap-2 text-body-strong">
-        <Banknote aria-hidden="true" className="size-5 shrink-0" />
-        Collect cash from the {from}
-      </span>
-      <MoneyAmount amount={amount} currency={currency} size="lg" inheritColor />
+    <div className="rounded-xl border border-status-warning-border bg-status-warning-bg px-4 pt-4 text-status-warning-fg">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
+        <span className="flex items-center gap-2 text-body-strong">
+          <Banknote aria-hidden="true" className="size-5 shrink-0" />
+          Collect cash from the {from}
+        </span>
+        <MoneyAmount amount={amount} currency={currency} size="lg" inheritColor />
+      </div>
+      {confirm && (
+        <Checkbox
+          className="min-h-target w-full border-t border-status-warning-border"
+          label={`I have this cash from the ${from}`}
+          checked={confirmed}
+          onChange={(event) => onConfirmedChange?.(event.target.checked)}
+        />
+      )}
     </div>
   );
 }

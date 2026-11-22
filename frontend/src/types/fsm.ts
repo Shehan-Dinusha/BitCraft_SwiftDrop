@@ -32,6 +32,10 @@ export function crossesDistricts(route: {
   );
 }
 
+/** Still work for the courier: not finished, and not handed in at the hub (the end of their leg). */
+export const isOpenForCourier = (state: string | null | undefined) =>
+  state !== 'DELIVERED' && state !== 'FAILED' && state !== 'CANCELLED' && state !== 'AT_ORIGIN_HUB';
+
 /**
  * The step a courier takes next, by route. Couriers never take the hub steps between the legs
  * (Outbound and accepting at the drop-off hub belong to the dispatchers), so none is offered for them.

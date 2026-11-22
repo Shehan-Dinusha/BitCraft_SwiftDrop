@@ -37,5 +37,9 @@ public interface DeliverySessionRepository extends JpaRepository<DeliverySession
             @org.springframework.data.repository.query.Param("startOfDay") java.time.Instant startOfDay,
             @org.springframework.data.repository.query.Param("endOfDay") java.time.Instant endOfDay);
 
+    /** Cross-district parcels this courier handed in at their hub in the period. */
+    List<DeliverySession> findByFirstMileCourierIdAndHandedInAtGreaterThanEqualAndHandedInAtLessThanOrderByHandedInAtAsc(
+            UUID courierId, java.time.Instant from, java.time.Instant to);
+
     Page<DeliverySession> findByCurrentState(DeliveryState currentState, Pageable pageable);
 }

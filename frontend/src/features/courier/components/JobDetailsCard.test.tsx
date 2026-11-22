@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import type { CourierJobResponse, CourierJobStop } from '@/services/api/deliveryApi';
 import { JobDetailsCard } from './JobDetailsCard';
 
@@ -38,6 +38,24 @@ const show = (value: CourierJobResponse, viaHubs: boolean) =>
   );
 
 describe('JobDetailsCard', () => {
+  it('asks the courier to tick only the cash the next step takes', async () => {
+    const onChange = vi.fn();
+    render(
+      <JobDetailsCard
+        job={job({ pickup: sender, dropOff: recipient, feeToCollect: 350, codToCollect: 2500 })}
+        viaHubs={false}
+        cashFrom="sender"
+        onCashConfirmedChange={onChange}
+      />
+    );
+
+    const boxes = screen.getAllByRole('checkbox');
+    expect(boxes).toHaveLength(1);
+    expect(boxes[0]).toHaveAccessibleName('I have this cash from the sender');
+    fireEvent.click(boxes[0]);
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+
   it('shows the sender, a call link and the fee to the first courier, and the hub to hand in at', () => {
     show(job({ pickup: sender, feeToCollect: 670 }), true);
 
