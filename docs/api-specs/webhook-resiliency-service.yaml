@@ -200,8 +200,8 @@ paths:
       tags: [WebhookSubscription]
       summary: Dispatch a test ping to the webhook endpoint
       description: >-
-        Connectivity check: exactly one signed POST of a fixed test payload, with no retry and no
-        dead-letter record. Returns the HTTP status, failure classification and latency; the endpoint's
+        One POST of event `webhook.test.ping`, with the same envelope, headers and signature as a real event and
+        no retry. Returns the HTTP status, failure classification and latency; the endpoint's
         response body is never returned.
       parameters:
         - name: endpointId
@@ -241,6 +241,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListWebhookDeliveryAttemptResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/webhooks/deliveries/failed:
+    get:
+      tags: [FailedDeliveries]
+      operationId: listFailedDeliveries
+      summary: List failed deliveries, newest first (up to 200)
+      description: A MERCHANT sees its own; a SYSTEM_ADMIN every merchant's. Other roles receive 403.
+      responses:
+        "200":
+          description: Deliveries that used up their attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListFailedDeliveryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/webhooks/deliveries/failed/replay:
+    post:
+      tags: [FailedDeliveries]
+      operationId: replayAllFailedDeliveries
+      summary: Queue every failed delivery that has not been replayed
+      responses:
+        "202":
+          description: How many replays were queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseInteger"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/webhooks/deliveries/failed/{deliveryId}/replay:
+    post:
+      tags: [FailedDeliveries]
+      operationId: replayFailedDelivery
+      summary: Queue a failed delivery to be sent again
+      description: >-
+        Sent in the background with the same event id and a new delivery id, on the normal retry schedule. Safe to
+        repeat: one that is already waiting, running or delivered is returned unchanged.
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "202":
+          description: The failed delivery with its latest replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseFailedDeliveryResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -522,6 +583,87 @@ components:
         attemptedAt:
           type: string
           format: date-time
+    FailedDeliveryResponse:
+      type: object
+      description: A webhook delivery that failed for good, with its latest replay if there is one.
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+        endpointId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+          description: The same in every attempt and replay.
+        eventType:
+          type: string
+          example: parcel.status.changed
+        orderId:
+          type: string
+          format: uuid
+          nullable: true
+        trackingNumber:
+          type: string
+          nullable: true
+        attempts:
+          type: integer
+        lastHttpStatus:
+          type: integer
+          nullable: true
+          description: Null when there was no response.
+        errorClass:
+          type: string
+          nullable: true
+          enum: [TIMEOUT, CONNECTION_FAILURE, HTTP_CLIENT_ERROR, HTTP_RATE_LIMITED, HTTP_SERVER_ERROR, INVALID_RESPONSE, BLOCKED_DESTINATION, UNKNOWN]
+        errorMessage:
+          type: string
+          description: The reason as a sentence from a fixed set.
+        occurredAt:
+          type: string
+          format: date-time
+        failedAt:
+          type: string
+          format: date-time
+        replayStatus:
+          type: string
+          nullable: true
+          enum: [PENDING, IN_FLIGHT, SUCCEEDED, RETRY, DEAD]
+          description: Status of the latest replay; null when it was never replayed.
+        replayedAt:
+          type: string
+          format: date-time
+          nullable: true
+    ApiResponseFailedDeliveryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/FailedDeliveryResponse"
+    ApiResponseListFailedDeliveryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FailedDeliveryResponse"
+    ApiResponseInteger:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: integer
     DeadLetterWebhookResponse:
       type: object
       properties:

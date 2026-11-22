@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.events.merchant.MerchantApplicationEvent;
 import com.swiftdrop.contracts.security.CallerContext;
@@ -73,7 +74,7 @@ public class MerchantApprovalService {
         account.setBusinessRegNo(regNo == null ? null : regNo.toUpperCase(java.util.Locale.ROOT));
         account.setWebsiteUrl(website);
         account.setContactEmail(request.contactEmail().trim());
-        account.setContactPhone(phone(request.contactPhone()));
+        account.setContactPhone(SriLankanPhone.toE164(request.contactPhone()));
         account.setPickupAddress(request.pickupAddress().trim());
         account.setPickupCity(request.pickupCity().trim());
         account.setPickupPostalCode(request.pickupPostalCode().trim());
@@ -186,12 +187,6 @@ public class MerchantApprovalService {
         String url = blankToNull(value);
         if (url == null) return null;
         return url.matches("(?i)^https?://.*") ? url : "https://" + url;
-    }
-
-    /** "0771234567" -> "+94771234567", the format the rest of the platform stores. */
-    static String phone(String value) {
-        String number = value.trim();
-        return number.startsWith("0") ? "+94" + number.substring(1) : number;
     }
 
     private void announce(MerchantAccount account, MerchantApplicationEvent.Outcome outcome, String reason,

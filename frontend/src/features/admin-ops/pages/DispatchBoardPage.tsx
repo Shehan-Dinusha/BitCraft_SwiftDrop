@@ -6,7 +6,6 @@ import { Button, SelectDropdown, StatusBanner, SurfaceCard, Tabs } from '@/desig
 import { Input } from '@/design-system/primitives/Input';
 import { useAuthStore } from '@/store/useAuthStore';
 import { parseApiError } from '@/services/api/apiError';
-import { SRI_LANKAN_DISTRICTS } from '@/services/api/authApi';
 import { deliveryApi } from '@/services/api/deliveryApi';
 import {
   dispatchApi,
@@ -19,6 +18,7 @@ import { LiveFleetHeatmap } from '../components/LiveFleetHeatmap';
 import { AssignedTab } from '../components/dispatch/AssignedTab';
 import { CouriersTab } from '../components/dispatch/CouriersTab';
 import { TableSkeleton } from '../components/dispatch/DispatchTable';
+import { ALL_DISTRICTS, DISTRICT_OPTIONS } from '../components/dispatch/districtOptions';
 import { IncomingTab, ReadyToSendTab } from '../components/dispatch/HubTabs';
 import { ToAssignTab } from '../components/dispatch/ToAssignTab';
 import { useDispatchData } from '../components/dispatch/useDispatchData';
@@ -34,12 +34,6 @@ type Notice = { tone: 'success' | 'danger'; title: string; body?: string };
 
 /** Dispatch learns about a hub step from an event, so its lists follow a moment later. */
 const EVENT_LAG_MS = 2_000;
-
-const ALL_DISTRICTS = 'ALL';
-const ADMIN_DISTRICT_OPTIONS = [
-  { value: ALL_DISTRICTS, label: 'All districts' },
-  ...SRI_LANKAN_DISTRICTS.map((value) => ({ value, label: districtLabel(value) }))
-];
 
 const errorText = (error: unknown, fallback: string) =>
   parseApiError(error).message ?? (error instanceof Error ? error.message : fallback);
@@ -86,7 +80,11 @@ export function DispatchBoardPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'SYSTEM_ADMIN';
   const [params, setParams] = useSearchParams();
-  const [adminDistrict, setAdminDistrict] = useState<string>(ALL_DISTRICTS);
+  // The control tower links here with ?district= for an admin who picked one there.
+  const [adminDistrict, setAdminDistrict] = useState<string>(() => {
+    const asked = params.get('district');
+    return DISTRICT_OPTIONS.some(({ value }) => value === asked) ? asked! : ALL_DISTRICTS;
+  });
   const scope =
     isAdmin && adminDistrict !== ALL_DISTRICTS ? (adminDistrict as SriLankanDistrict) : undefined;
   const hubTabs = !isAdmin || scope !== undefined;
@@ -161,12 +159,16 @@ export function DispatchBoardPage() {
     setSelectedOrder(order);
   };
 
-  const handleAssign = async (courierId: string, reason: string) => {
+  const handleAssign = async (courierId: string) => {
     if (!selectedOrder?.orderId) return;
     // An order that already has a courier is moved with /reassign, naming the courier the dispatcher
     // saw so the backend can reject the change if the assignment moved meanwhile.
     const currentCourierId = selectedOrder.courierId;
-    const request = { orderId: selectedOrder.orderId, assignedBy: 'DISPATCHER', reason };
+    const request = {
+      orderId: selectedOrder.orderId,
+      assignedBy: 'DISPATCHER',
+      reason: `Dispatcher console ${currentCourierId ? 'reassignment' : 'assignment'}`
+    };
     setSubmitting(true);
     setNotice(null);
     setAssignError(null);
@@ -296,7 +298,7 @@ export function DispatchBoardPage() {
             <SelectDropdown
               label="District"
               searchable
-              options={ADMIN_DISTRICT_OPTIONS}
+              options={DISTRICT_OPTIONS}
               value={adminDistrict}
               onChange={setAdminDistrict}
               className="w-56"
@@ -358,7 +360,7 @@ export function DispatchBoardPage() {
         loadError={suggestions.isError}
         submitting={submitting}
         error={assignError}
-        onSubmit={(courierId, reason) => void handleAssign(courierId, reason)}
+        onSubmit={(courierId) => void handleAssign(courierId)}
       />
     </main>
   );

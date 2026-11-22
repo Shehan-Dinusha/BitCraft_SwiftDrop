@@ -64,6 +64,7 @@ html {
   --color-shadow-ambient: rgba(15, 23, 42, 0.094);
   --color-shadow-overlay: rgba(15, 23, 42, 0.08);
   --color-shadow-raised: rgba(15, 23, 42, 0.1);
+  --color-shadow-panel: rgba(15, 23, 42, 0.28);
 
   --color-scrim: rgba(15, 23, 42, 0.5);
   --color-scrim-soft: rgba(15, 23, 42, 0.3);

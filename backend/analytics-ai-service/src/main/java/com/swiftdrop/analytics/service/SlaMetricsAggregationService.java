@@ -26,19 +26,21 @@ public class SlaMetricsAggregationService {
         this.clock = clock;
     }
 
-    public OperationalKpiSummaryResponse getSystemKpiSummary() {
+    /** Today in one district, or on the whole island when {@code district} is null. */
+    public OperationalKpiSummaryResponse getKpiSummary(SriLankanDistrict district) {
         LocalDate today = LocalDate.now(clock.withZone(OrderProjection.REPORTING_ZONE));
-        var day = reports.daily(today, today).getFirst();
-        int activeCouriers = Math.toIntExact(reports.workload().stream().filter(c -> c.activeOrders() > 0).count());
+        var day = reports.daily(today, today, district).getFirst();
+        int activeCouriers = Math.toIntExact(reports.workload(district).stream().filter(c -> c.activeOrders() > 0).count());
         return new OperationalKpiSummaryResponse(Math.toIntExact(day.created()), null, null,
-                Math.toIntExact(day.failed()), null, null, activeCouriers, reports.districts(today));
+                Math.toIntExact(day.failed()), null, null, activeCouriers, reports.districts(today).stream()
+                .filter(row -> district == null || row.district() == district).toList());
     }
 
     public List<CourierPerformanceResponse> listCourierPerformances(SriLankanDistrict district) {
         return reports.couriers(district, null);
     }
 
-    public Optional<CourierPerformanceResponse> getCourierPerformance(UUID courierId) {
-        return reports.couriers(null, courierId).stream().findFirst();
+    public Optional<CourierPerformanceResponse> getCourierPerformance(UUID courierId, SriLankanDistrict district) {
+        return reports.couriers(district, courierId).stream().findFirst();
     }
 }

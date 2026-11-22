@@ -1,4 +1,5 @@
-﻿import { X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { ReactNode, useEffect, useId, useRef } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/design-system/primitives/Button';
@@ -171,7 +172,7 @@ export function ModalDrawerShell({
     return <div className="flex w-full justify-center">{panel}</div>;
   }
 
-  return (
+  return createPortal(
     // Clicking the scrim closes the dialog; keyboard users close it with Escape (handled above).
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
@@ -184,7 +185,9 @@ export function ModalDrawerShell({
       }}
     >
       {panel}
-    </div>
+    </div>,
+    // At the end of the body, so a page's spacing or stacking never moves or covers it.
+    document.body
   );
 }
 

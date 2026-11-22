@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { PHONE_HINT, phoneDigits } from '@/utils/phone';
 import { useNavigate } from 'react-router-dom';
 import { Field } from '@/design-system/primitives/Field';
 import { Button } from '@/design-system/primitives/Button';
@@ -14,7 +15,6 @@ import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   districtsOf,
-  normalisePhoneDigits,
   provinceOf,
   provinceOptions,
   type ProvinceId
@@ -272,10 +272,10 @@ export function MerchantRegistrationPage() {
                 variant="phone"
                 inputMode="numeric"
                 autoComplete="tel-national"
-                hint="9 digits after +94"
+                hint={PHONE_HINT}
                 {...text('contactPhone')}
                 onChange={(event) =>
-                  change('contactPhone', normalisePhoneDigits(event.target.value))
+                  change('contactPhone', phoneDigits(event.target.value))
                 }
               />
             </Section>

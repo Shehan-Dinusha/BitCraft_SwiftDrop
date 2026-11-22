@@ -1,11 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { Sparkles } from 'lucide-react';
 import { AssistantPanel, Button, type AssistantMessage } from '@/design-system';
 import { analyticsAiApi } from '@/services/api/analyticsAiApi';
+import { cn } from '@/utils/cn';
+import { useAssistantDocked } from './useAssistantDocked';
 
+/**
+ * The customer's order assistant. Its button floats in the bottom-right corner and moves to the header
+ * while something the person needs is under it (see useAssistantDocked); the chat opens where the button was.
+ */
 export function CustomerAiAssistant() {
   const [open, setOpen] = useState(false);
+  const floating = useRef<HTMLButtonElement>(null);
+  const header = useRef<HTMLButtonElement>(null);
+  // Paused while the chat is open, so it does not jump between the corner and the header.
+  const docked = useAssistantDocked(floating, open);
   const [conversationId, setConversationId] = useState<string>();
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [pending, setPending] = useState(false);
@@ -13,7 +24,7 @@ export function CustomerAiAssistant() {
   const sending = useRef(false);
   const failedQuestion = useRef('');
   const nextId = useRef(1);
-  const wrapper = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const activeRequest = useRef<AbortController>();
   const wasOpen = useRef(false);
   const [retryAt, setRetryAt] = useState(0);
@@ -34,12 +45,12 @@ export function CustomerAiAssistant() {
 
   useEffect(() => {
     if (!open) {
-      if (wasOpen.current) wrapper.current?.querySelector('button')?.focus();
+      if (wasOpen.current) (header.current ?? floating.current)?.focus();
       wasOpen.current = false;
       return;
     }
     wasOpen.current = true;
-    wrapper.current?.querySelector('input')?.focus();
+    panel.current?.querySelector('input')?.focus();
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
@@ -109,62 +120,92 @@ export function CustomerAiAssistant() {
   }
 
   return (
-    <div ref={wrapper} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-label="Ask SwiftDrop"
-        className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-primary px-3 text-label font-semibold text-brand-on transition-colors hover:bg-brand-hover active:bg-brand-pressed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
-      >
-        <Sparkles aria-hidden="true" className="size-4" />
-        <span className="hidden sm:inline">Ask SwiftDrop</span>
-      </button>
-
-      {open ? (
-        // Opens just under the header, on the right, and stays put while the page scrolls.
-        <div className="fixed right-4 top-16 z-50 flex w-[min(380px,calc(100vw-2rem))] flex-col items-end gap-2">
-          <AssistantPanel
-            title="SwiftDrop order assistant"
-            subtitle="Your orders and delivery estimates"
-            placeholder="Ask about your order or a delivery fee..."
-            messages={messages}
-            typing={pending}
-            disabled={retrySeconds > 0}
-            className="max-h-[calc(100dvh-5rem)] w-full"
-            suggestions={
-              messages.length
-                ? undefined
-                : ['Where is my parcel?', 'How much to send 2 kg from Colombo to Kandy?']
-            }
-            onSend={(question) => void send(question)}
-            onClose={() => setOpen(false)}
-            onReset={() => {
-              if (sending.current) return;
-              setConversationId(undefined);
-              setMessages([]);
-              setError(undefined);
-              failedQuestion.current = '';
-            }}
-          />
-          {error && (
-            <div
-              role="alert"
-              className="w-full rounded-lg border border-border-subtle bg-card p-3 text-sm text-status-danger"
-            >
-              {error}{' '}
-              <Button
-                variant="ghost"
-                density="comfortable"
-                disabled={pending || retrySeconds > 0}
-                onClick={() => void send(failedQuestion.current, true)}
-              >
-                {retrySeconds > 0 ? `Retry in ${retrySeconds}s` : 'Retry message'}
-              </Button>
-            </div>
-          )}
-        </div>
+    <>
+      {docked ? (
+        <button
+          ref={header}
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-label="Ask SwiftDrop"
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-primary px-3 text-label font-semibold text-brand-on transition-colors hover:bg-brand-hover active:bg-brand-pressed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+        >
+          <Sparkles aria-hidden="true" className="size-4" />
+          <span className="hidden sm:inline">Ask SwiftDrop</span>
+        </button>
       ) : null}
-    </div>
+
+      {createPortal(
+        // Hidden with visibility, not removed: useAssistantDocked measures where it would be.
+        <button
+          ref={floating}
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-expanded={open}
+          aria-label="Ask SwiftDrop"
+          className={cn(
+            'fixed bottom-[84px] right-4 z-20 inline-flex h-14 min-w-14 items-center justify-center gap-2 rounded-full bg-brand-primary px-4 text-brand-on shadow-panel transition-colors hover:bg-brand-hover active:bg-brand-pressed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus md:bottom-6 md:right-6',
+            (docked || open) && 'invisible'
+          )}
+        >
+          <Sparkles aria-hidden="true" className="size-5" />
+          <span className="hidden text-label font-semibold sm:inline">Ask SwiftDrop</span>
+        </button>,
+        document.body
+      )}
+
+      {open
+        ? createPortal(
+            <div
+              ref={panel}
+              className={cn(
+                'fixed right-4 z-40 flex w-[min(380px,calc(100vw-2rem))] flex-col items-end gap-2 md:right-6',
+                docked ? 'top-16' : 'bottom-[84px] md:bottom-6'
+              )}
+            >
+              <AssistantPanel
+                title="SwiftDrop order assistant"
+                subtitle="Your orders and delivery estimates"
+                placeholder="Ask about your order or a delivery fee..."
+                messages={messages}
+                typing={pending}
+                disabled={retrySeconds > 0}
+                className="max-h-[calc(100dvh-10rem)] w-full md:max-h-[calc(100dvh-6rem)]"
+                suggestions={
+                  messages.length
+                    ? undefined
+                    : ['Where is my parcel?', 'How much to send 2 kg from Colombo to Kandy?']
+                }
+                onSend={(question) => void send(question)}
+                onClose={() => setOpen(false)}
+                onReset={() => {
+                  if (sending.current) return;
+                  setConversationId(undefined);
+                  setMessages([]);
+                  setError(undefined);
+                  failedQuestion.current = '';
+                }}
+              />
+              {error && (
+                <div
+                  role="alert"
+                  className="w-full rounded-lg border border-border-subtle bg-card p-3 text-sm text-status-danger"
+                >
+                  {error}{' '}
+                  <Button
+                    variant="ghost"
+                    density="comfortable"
+                    disabled={pending || retrySeconds > 0}
+                    onClick={() => void send(failedQuestion.current, true)}
+                  >
+                    {retrySeconds > 0 ? `Retry in ${retrySeconds}s` : 'Retry message'}
+                  </Button>
+                </div>
+              )}
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   );
 }

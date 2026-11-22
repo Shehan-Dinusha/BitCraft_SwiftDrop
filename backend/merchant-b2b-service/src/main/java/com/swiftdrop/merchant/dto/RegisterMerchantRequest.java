@@ -1,5 +1,6 @@
 package com.swiftdrop.merchant.dto;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.merchant.domain.entity.BusinessCategory;
 import com.swiftdrop.merchant.domain.entity.MonthlyParcelVolume;
@@ -38,8 +39,8 @@ public record RegisterMerchantRequest(
         @Schema(description = "Business email", example = "orders@lankacrafts.lk")
         String contactEmail,
 
-        @NotBlank @Pattern(regexp = PHONE, message = "Must be a valid Sri Lankan phone number")
-        @Schema(description = "Business phone: 0771234567 or +94771234567", example = "+94771234567")
+        @NotBlank @Pattern(regexp = SriLankanPhone.REGEX, message = SriLankanPhone.MESSAGE)
+        @Schema(description = "Business phone: 771234567, 0771234567 or +94771234567", example = "+94771234567")
         String contactPhone,
 
         @NotBlank @Size(min = 5, max = 255) @Pattern(regexp = ADDRESS, message = NOT_ALLOWED)
@@ -63,7 +64,6 @@ public record RegisterMerchantRequest(
     static final String REG_NO = "^[A-Za-z0-9 ./-]*$";
     /** Optional scheme, a host with a dot, then an optional path; no spaces or angle brackets. */
     static final String URL = "^$|^(https?://)?[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+(:\\d+)?(/[^\\s<>\"]*)?$";
-    static final String PHONE = "^(0\\d{9}|\\+94\\d{9})$";
     static final String ADDRESS = "^[\\p{L}\\p{M}\\p{N} .,/#()&'’:-]*$";
     static final String CITY = "^[\\p{L}\\p{M}\\p{N} .'’-]*$";
 }

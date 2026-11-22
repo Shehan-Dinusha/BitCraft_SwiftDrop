@@ -91,7 +91,8 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
   ],
   merchant: [
     { id: 'portal', label: 'Dashboard', icon: 'grid', to: '/merchant' },
-    { id: 'webhooks', label: 'Webhook logs', icon: 'webhook', to: '/merchant/webhooks' }
+    { id: 'webhooks', label: 'Webhooks', icon: 'webhook', to: '/merchant/webhooks' },
+    { id: 'api-guide', label: 'API guide', icon: 'book', to: '/merchant/api-guide' }
   ],
   dispatcher: [
     { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
@@ -99,8 +100,7 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
     { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
     { id: 'merchants', label: 'Merchant applications', icon: 'store', to: '/ops/merchants' },
     { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
-    { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' },
-    { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
+    { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' }
   ],
   'system-admin': [
     { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
@@ -109,8 +109,7 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
     { id: 'merchants', label: 'Merchants', icon: 'store', to: '/ops/merchants' },
     { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
     { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
-    { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' },
-    { id: 'dlq', label: 'Webhooks DLQ', icon: 'webhook', to: '/ops/webhooks' }
+    { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' }
   ]
 };
 
@@ -252,7 +251,7 @@ export function AppShell() {
             // Phones hide the sidebar and its account card, so the menu carries profile and sign-out.
             hasTabs ? (
               <AccountMenu
-                className={shellRole === 'courier' ? 'md:hidden' : undefined}
+                className="md:hidden"
                 avatarUrl={avatarUrl}
                 name={user ? displayName(user) : 'Account'}
                 email={user?.email}

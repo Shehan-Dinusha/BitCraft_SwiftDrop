@@ -45,6 +45,9 @@ Use `tabular-nums` for tracking IDs, ETAs, prices, and currency. Use the semanti
 
 - Navigation menus are one flat list per role: no section headings ("Shipping", "Updates") and no two items with the same icon. The shell is documented in [COMPONENTS.md](COMPONENTS.md).
 
+- The customer assistant button (`CustomerAiAssistant`) floats bottom-right and moves to the header when a row marked `data-assistant-avoid`, or the end of the page, is under it. Mark a row of page buttons that can reach that corner.
+- There is no map anywhere in the product, so add no map placeholder.
+
 ## PWA rules
 
 The app is an installable PWA built with `vite-plugin-pwa` (config in `vite.config.ts`, UI in `src/features/pwa/`).

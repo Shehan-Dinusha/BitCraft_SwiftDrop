@@ -519,7 +519,7 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
   - Replaying a `DEAD` job creates exactly one new row, even with a double-click.
   - The worker sends it with the same `X-SwiftDrop-Event-Id`.
 - **Migration moved here from Step 9:** `V4__…`: a partial unique index allowing one active replay per original, `(replay_of_delivery_id) WHERE replay_of_delivery_id IS NOT NULL AND status IN ('PENDING','IN_FLIGHT','RETRY')` (D10).
-- **Status:** NOT STARTED
+- **Status:** DONE (2026-11-22), except that the legacy `/dlq` replay endpoints still send. List and replay are `GET /api/v1/webhooks/deliveries/failed`, `POST .../failed/{id}/replay` and `POST .../failed/replay` (`FailedDeliveryService`); the index is `V4__one_active_replay.sql`; tests are `FailedDeliveryReplayIT`.
 
 ### Step 14 — Frontend console update
 - **Objective:**
@@ -533,7 +533,7 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
 - **Split if large:** 14a history; 14b DEAD/replay.
 - **Depends on:** Steps 12 and 13.
 - **Done when:** `npm run lint && npm run build` pass, and the flows work in dev mode.
-- **Status:** NOT STARTED
+- **Status:** DONE (2026-11-22) for failed deliveries, replay, copy and event checkboxes. Full delivery history is still the attempts dialog. Test pings use the real sender (`TestPingService`), and merchants have an API guide page.
 
 ### Step 15 — Secret encryption at rest + rotation (required before production)
 - **Objective:**

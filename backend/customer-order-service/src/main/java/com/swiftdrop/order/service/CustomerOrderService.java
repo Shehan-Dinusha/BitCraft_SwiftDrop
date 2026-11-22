@@ -1,5 +1,6 @@
 package com.swiftdrop.order.service;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.dto.PagedResult;
 import com.swiftdrop.contracts.enums.FeeRevisionStatus;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
@@ -110,16 +111,16 @@ public class CustomerOrderService {
                 .pickupDistrict(request.getPickupDistrict())
                 .pickupPostalCode(request.getPickupPostalCode())
                 .pickupContactName(request.getPickupContactName())
-                .pickupContactPhone(request.getPickupContactPhone())
-                .pickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()))
+                .pickupContactPhone(SriLankanPhone.toE164(request.getPickupContactPhone()))
+                .pickupContactAlternatePhone(SriLankanPhone.toE164OrNull(request.getPickupContactAlternatePhone()))
                 .deliveryAddressLine1(request.getDeliveryAddressLine1())
                 .deliveryAddressLine2(request.getDeliveryAddressLine2())
                 .deliveryCity(request.getDeliveryCity())
                 .deliveryDistrict(request.getDeliveryDistrict())
                 .deliveryPostalCode(request.getDeliveryPostalCode())
                 .recipientName(request.getRecipientName())
-                .recipientPhone(request.getRecipientPhone())
-                .recipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()))
+                .recipientPhone(SriLankanPhone.toE164(request.getRecipientPhone()))
+                .recipientAlternatePhone(SriLankanPhone.toE164OrNull(request.getRecipientAlternatePhone()))
                 .recipientEmail(request.getRecipientEmail())
                 .lengthCm(request.getLengthCm())
                 .widthCm(request.getWidthCm())
@@ -254,8 +255,8 @@ public class CustomerOrderService {
         if (request.getPickupDistrict() != null) order.setPickupDistrict(request.getPickupDistrict());
         if (request.getPickupPostalCode() != null) order.setPickupPostalCode(request.getPickupPostalCode());
         if (request.getPickupContactName() != null) order.setPickupContactName(request.getPickupContactName());
-        if (request.getPickupContactPhone() != null) order.setPickupContactPhone(request.getPickupContactPhone());
-        if (request.getPickupContactAlternatePhone() != null) order.setPickupContactAlternatePhone(blankToNull(request.getPickupContactAlternatePhone()));
+        if (request.getPickupContactPhone() != null) order.setPickupContactPhone(SriLankanPhone.toE164(request.getPickupContactPhone()));
+        if (request.getPickupContactAlternatePhone() != null) order.setPickupContactAlternatePhone(SriLankanPhone.toE164OrNull(request.getPickupContactAlternatePhone()));
 
         if (request.getDeliveryAddressLine1() != null) order.setDeliveryAddressLine1(request.getDeliveryAddressLine1());
         if (request.getDeliveryAddressLine2() != null) order.setDeliveryAddressLine2(request.getDeliveryAddressLine2());
@@ -263,8 +264,8 @@ public class CustomerOrderService {
         if (request.getDeliveryDistrict() != null) order.setDeliveryDistrict(request.getDeliveryDistrict());
         if (request.getDeliveryPostalCode() != null) order.setDeliveryPostalCode(request.getDeliveryPostalCode());
         if (request.getRecipientName() != null) order.setRecipientName(request.getRecipientName());
-        if (request.getRecipientPhone() != null) order.setRecipientPhone(request.getRecipientPhone());
-        if (request.getRecipientAlternatePhone() != null) order.setRecipientAlternatePhone(blankToNull(request.getRecipientAlternatePhone()));
+        if (request.getRecipientPhone() != null) order.setRecipientPhone(SriLankanPhone.toE164(request.getRecipientPhone()));
+        if (request.getRecipientAlternatePhone() != null) order.setRecipientAlternatePhone(SriLankanPhone.toE164OrNull(request.getRecipientAlternatePhone()));
         if (request.getRecipientEmail() != null) order.setRecipientEmail(request.getRecipientEmail());
 
         if (request.getItemDescription() != null) order.setItemDescription(request.getItemDescription());

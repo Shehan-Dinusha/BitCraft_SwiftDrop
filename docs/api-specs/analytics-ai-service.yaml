@@ -95,6 +95,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/FromDate'
         - $ref: '#/components/parameters/ToDate'
+        - $ref: '#/components/parameters/ReportDistrict'
       responses:
         "200":
           description: Zero-filled daily counts, sorted by date
@@ -116,6 +117,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/FromDate'
         - $ref: '#/components/parameters/ToDate'
+        - $ref: '#/components/parameters/ReportDistrict'
       responses:
         "200":
           description: Delivered and failed counts and rates
@@ -134,6 +136,8 @@ paths:
       summary: Current projected courier workload for DISPATCHER or SYSTEM_ADMIN
       description: Known couriers sorted by ID, including zero-workload couriers. No date filters. Empty storage returns zero total and an empty list. Read time does not guarantee broker completeness or online availability.
       security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ReportDistrict'
       responses:
         "200":
           description: Current active orders across known couriers
@@ -159,8 +163,10 @@ paths:
   /api/v1/analytics/kpis:
     get:
       tags: [OperationalKpi]
-      summary: Retrieve system-wide and district-level operational KPIs
+      summary: Operational KPIs for today
       security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ReportDistrict'
       responses:
         "200":
           description: Operational KPI summary
@@ -175,11 +181,7 @@ paths:
       summary: List courier performance analytics across districts
       security: [{ bearerAuth: [] }]
       parameters:
-        - name: district
-          in: query
-          required: false
-          schema:
-            type: string
+        - $ref: '#/components/parameters/ReportDistrict'
       responses:
         "200":
           description: List of courier performance metrics
@@ -215,6 +217,8 @@ paths:
       tags: [OperationalKpi]
       summary: Read current persisted analytics projections
       security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ReportDistrict'
       responses:
         "200":
           description: Current event-projected operational KPIs
@@ -315,6 +319,12 @@ components:
       bearerFormat: JWT
       description: Gateway validates JWT and replaces caller identity headers. Downstream ports must remain internal.
   parameters:
+    ReportDistrict:
+      name: district
+      in: query
+      required: false
+      description: For a SYSTEM_ADMIN, one district (omit it for the whole island). Ignored for a DISPATCHER, who always gets their own district.
+      schema: { type: string, example: KANDY }
     FromDate:
       name: from
       in: query

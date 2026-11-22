@@ -179,8 +179,8 @@ Member 9 provides three integrated frontend interfaces:
    - Click to reveal user notifications with status-tinted icons.
    - Clicking an alert marks it as read and navigates to `/customer/tracking/{trackingNumber}` or `/track/{trackingNumber}`.
    - "Mark all as read" button clears all notifications.
-3. **Dispatcher Audit Console (`NotificationConsolePage.tsx` & `NotificationLogModal.tsx`):**
-   - Mounted at `/ops/notifications` and via modal button on `FleetControlTowerPage.tsx`.
+3. **Dispatcher Audit Console (`NotificationConsolePage.tsx`):**
+   - Mounted at `/ops/notifications`.
    - Displays masked recipient details, channel tags, template codes, and rendered content bodies.
 
 ---

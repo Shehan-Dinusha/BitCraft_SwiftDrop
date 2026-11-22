@@ -21,6 +21,7 @@ import { CourierShiftDashboard } from '@/features/courier/pages/CourierShiftDash
 import { ActiveDeliveryExecutionPage } from '@/features/courier/pages/ActiveDeliveryExecutionPage';
 import { MerchantPortalDashboard } from '@/features/merchant/pages/MerchantPortalDashboard';
 import { MerchantRegistrationPage } from '@/features/merchant/pages/MerchantRegistrationPage';
+import { ApiGuidePage } from '@/features/merchant/pages/ApiGuidePage';
 import { WebhookResiliencyConsolePage } from '@/features/merchant/pages/WebhookResiliencyConsolePage';
 import { FleetControlTowerPage } from '@/features/admin-ops/pages/FleetControlTowerPage';
 import { ZonePricingEditorPage } from '@/features/admin-ops/pages/ZonePricingEditorPage';
@@ -221,8 +222,16 @@ export const routes: RouteObject[] = [
       {
         path: '/merchant/webhooks',
         element: (
-          <RoleGuard roles={['MERCHANT', 'ADMIN_OPS']}>
+          <RoleGuard roles={['MERCHANT']}>
             <WebhookResiliencyConsolePage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/merchant/api-guide',
+        element: (
+          <RoleGuard roles={['MERCHANT']}>
+            <ApiGuidePage />
           </RoleGuard>
         )
       },
@@ -239,14 +248,6 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
             <FleetControlTowerPage />
-          </RoleGuard>
-        )
-      },
-      {
-        path: '/ops/webhooks',
-        element: (
-          <RoleGuard roles={['ADMIN_OPS']}>
-            <WebhookResiliencyConsolePage />
           </RoleGuard>
         )
       },

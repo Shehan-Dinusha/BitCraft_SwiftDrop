@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { PHONE_HINT, phoneDigits, phoneProblem, toE164 } from '@/utils/phone';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bike,
@@ -432,6 +433,7 @@ function AddCourierModal({
 }) {
   const empty = { firstName: '', lastName: '', username: '', email: '', phone: '' };
   const [form, setForm] = useState(empty);
+  const [phoneError, setPhoneError] = useState<string>();
   const [district, setDistrict] = useState<SriLankanDistrict>(defaultDistrict);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -442,12 +444,16 @@ function AddCourierModal({
   function close() {
     if (saving) return;
     setForm(empty);
+    setPhoneError(undefined);
     setError('');
     onClose();
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const problem = phoneProblem(form.phone);
+    setPhoneError(problem);
+    if (problem) return;
     setSaving(true);
     setError('');
     try {
@@ -456,7 +462,7 @@ function AddCourierModal({
         lastName: form.lastName.trim(),
         username: form.username.trim(),
         email: form.email.trim(),
-        phone: form.phone.replace(/\s/g, ''),
+        phone: toE164(form.phone),
         ...(isAdmin ? { district } : {})
       });
       setForm(empty);
@@ -504,8 +510,14 @@ function AddCourierModal({
           density="compact"
           variant="phone"
           value={form.phone}
-          onChange={set('phone')}
-          inputMode="tel"
+          error={phoneError}
+          hint={PHONE_HINT}
+          onChange={(event) => {
+            setPhoneError(undefined);
+            setForm((current) => ({ ...current, phone: phoneDigits(event.target.value) }));
+          }}
+          onBlur={() => setPhoneError(form.phone ? phoneProblem(form.phone) : undefined)}
+          inputMode="numeric"
         />
         <Field
           label="Email"

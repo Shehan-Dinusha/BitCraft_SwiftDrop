@@ -3,7 +3,6 @@ import {
   PROFILE_PATH,
   displayName,
   districtLabel,
-  normalizePhone,
   passwordProblem,
   roleLabel,
   toUpdateRequest,
@@ -39,12 +38,12 @@ describe('profile helpers', () => {
       firstName: 'Enter your first name'
     });
     expect(validateProfile({ ...valid, phone: '12' }).phone).toBeDefined();
-    expect(validateProfile({ ...valid, phone: '+94 77 123-4567' })).toEqual({});
+    expect(validateProfile({ ...valid, phone: '771234567' })).toEqual({});
+    expect(validateProfile({ ...valid, phone: '7712345678' }).phone).toBeDefined();
   });
 
-  it('sends trimmed names and a phone without spaces', () => {
-    expect(normalizePhone('077 123-4567')).toBe('0771234567');
-    expect(toUpdateRequest({ firstName: ' Nimal ', lastName: 'Perera ', phone: '+94 77 123 4567', district: 'KANDY' })).toEqual({
+  it('sends trimmed names and the phone with +94', () => {
+    expect(toUpdateRequest({ firstName: ' Nimal ', lastName: 'Perera ', phone: '771234567', district: 'KANDY' })).toEqual({
       firstName: 'Nimal',
       lastName: 'Perera',
       phone: '+94771234567',

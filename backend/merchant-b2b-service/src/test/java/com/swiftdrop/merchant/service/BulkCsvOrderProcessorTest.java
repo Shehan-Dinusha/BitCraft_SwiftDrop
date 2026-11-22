@@ -48,8 +48,8 @@ class BulkCsvOrderProcessorTest {
     void testParseCsvSuccess() {
         String csvData = """
                 recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed
-                Kasun Perera,+94 77 123 4567,COLOMBO,"123 Main St, Colombo 03",2.5,EXPRESS
-                Nimal Silva,+94 71 987 6543,GAMPAHA,45 Kandy Rd Kadawatha,1.0,STANDARD
+                Kasun Perera,+94771234567,COLOMBO,"123 Main St, Colombo 03",2.5,EXPRESS
+                Nimal Silva,+94719876543,GAMPAHA,45 Kandy Rd Kadawatha,1.0,STANDARD
                 """;
 
         List<BulkOrderIngestItem> items = csvProcessor.parseCsv(
@@ -59,7 +59,7 @@ class BulkCsvOrderProcessorTest {
 
         BulkOrderIngestItem first = items.get(0);
         assertEquals("Kasun Perera", first.recipientName());
-        assertEquals("+94 77 123 4567", first.recipientPhone());
+        assertEquals("+94771234567", first.recipientPhone());
         assertEquals(SriLankanDistrict.COLOMBO, first.deliveryDistrict());
         assertEquals("123 Main St, Colombo 03", first.deliveryAddress());
         assertEquals(new BigDecimal("2.5"), first.packageWeightKg());
@@ -75,7 +75,7 @@ class BulkCsvOrderProcessorTest {
     @DisplayName("parseCsv should handle missing header or empty rows gracefully")
     void testParseCsvEmptyOrInvalidRows() {
         String csvData = """
-                Sunil Mendis,+94 77 000 1111,KANDY,Peradeniya Road
+                Sunil Mendis,+94770001111,KANDY,Peradeniya Road
                 
                 """;
 

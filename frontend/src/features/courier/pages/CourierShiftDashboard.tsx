@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { phoneDigits, phoneProblem, toE164 } from '@/utils/phone';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
@@ -117,10 +118,12 @@ export function CourierShiftDashboard() {
       // the name and phone dispatchers see come from the account, not placeholders.
       const profile = await fetchCurrentUser().catch(() => null);
       const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ');
+      const phone = phoneDigits(profile?.phone || shift?.phone || '');
       const res = await dispatchApi.startShift({
         courierId,
         courierName: fullName || shift?.courierName || user?.username || 'Courier',
-        phone: profile?.phone || shift?.phone || undefined,
+        // An account phone saved before today's rule is left out rather than blocking the shift.
+        phone: phone && !phoneProblem(phone) ? toE164(phone) : undefined,
         initialDistrict: selectedDistrict
       });
       setShift(res);

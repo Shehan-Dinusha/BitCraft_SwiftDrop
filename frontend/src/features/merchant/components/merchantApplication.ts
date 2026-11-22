@@ -1,10 +1,10 @@
+import { phoneDigits, phoneProblem, toE164 } from '@/utils/phone';
 import type {
   MerchantApprovalResponse,
   RegisterMerchantRequest,
   SriLankanDistrict
 } from '@/services/api/merchantApi';
 import {
-  normalisePhoneDigits,
   provinceOf,
   type ProvinceId
 } from '@/features/customer/components/booking/bookingForm';
@@ -76,7 +76,6 @@ const PATTERNS = {
   regNo: /^[A-Za-z0-9 ./-]*$/,
   url: /^(https?:\/\/)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?(\/[^\s<>"]*)?$/i,
   email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  phoneDigits: /^[1-9]\d{8}$/,
   address: /^[\p{L}\p{M}\p{N} .,/#()&'’:-]*$/u,
   city: /^[\p{L}\p{M}\p{N} .'’-]*$/u,
   postalCode: /^\d{5}$/
@@ -114,7 +113,7 @@ export function fromApplication(application: MerchantApprovalResponse): Applicat
     businessRegNo: application.businessRegNo ?? '',
     websiteUrl: application.websiteUrl ?? '',
     contactEmail: application.contactEmail ?? '',
-    contactPhone: normalisePhoneDigits(application.contactPhone ?? ''),
+    contactPhone: phoneDigits(application.contactPhone ?? ''),
     pickupAddress: application.pickupAddress ?? '',
     pickupCity: application.pickupCity ?? '',
     pickupPostalCode: application.pickupPostalCode ?? '',
@@ -156,7 +155,7 @@ export function validateField(field: ApplicationField, form: ApplicationForm): s
         : 'Enter a valid email address';
     case 'contactPhone':
       if (!value) return 'Enter the business phone';
-      return PATTERNS.phoneDigits.test(value) ? undefined : 'Enter the 9 digits after +94';
+      return phoneProblem(value);
     case 'pickupAddress':
       return text(value, 'pickup address', 5, 255, PATTERNS.address);
     case 'pickupCity':
@@ -190,7 +189,7 @@ export function toRequest(form: ApplicationForm): RegisterMerchantRequest {
     businessRegNo: optional(form.businessRegNo),
     websiteUrl: optional(form.websiteUrl),
     contactEmail: form.contactEmail.trim(),
-    contactPhone: `+94${form.contactPhone}`,
+    contactPhone: toE164(form.contactPhone),
     pickupAddress: form.pickupAddress.trim(),
     pickupCity: form.pickupCity.trim(),
     pickupPostalCode: form.pickupPostalCode.trim(),

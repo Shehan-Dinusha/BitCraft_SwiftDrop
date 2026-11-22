@@ -184,14 +184,15 @@ class CreateOrderValidationTest {
     }
 
     @ParameterizedTest(name = "[{index}] invalid phone is rejected")
-    @ValueSource(strings = {"12345", "0771234", "07712345678", "+9477123456789", "+94 77 123 4567", "abcdefghij", "077-123-4567"})
+    @ValueSource(strings = {"12345", "0771234", "07712345678", "+9477123456789", "+94 77 123 4567", "abcdefghij", "077-123-4567",
+            "94771234567", "0094771234567", "0012345678", "77123456", "7712345678"})
     void invalidPhoneIsRejected(String phone) throws Exception {
         create(r -> r.setPickupContactPhone(phone)).andExpect(status().isBadRequest());
         create(r -> r.setRecipientPhone(phone)).andExpect(status().isBadRequest());
     }
 
     @ParameterizedTest(name = "[{index}] valid phone is accepted")
-    @ValueSource(strings = {"0771234567", "+94771234567", "0112345678"})
+    @ValueSource(strings = {"0771234567", "+94771234567", "771234567", "0112345678"})
     void validPhoneIsAccepted(String phone) throws Exception {
         create(r -> r.setPickupContactPhone(phone)).andExpect(status().isOk());
         create(r -> r.setRecipientPhone(phone)).andExpect(status().isOk());

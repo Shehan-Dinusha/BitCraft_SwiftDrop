@@ -69,7 +69,7 @@ class OperationalKpiControllerTest {
                 ))
         );
 
-        when(metricsService.getSystemKpiSummary()).thenReturn(summary);
+        when(metricsService.getKpiSummary(null)).thenReturn(summary);
 
         mockMvc.perform(get("/api/v1/analytics/kpis"))
                 .andExpect(status().isOk())
@@ -111,8 +111,8 @@ class OperationalKpiControllerTest {
                 "AVAILABLE", Instant.now()
         );
 
-        when(metricsService.getCourierPerformance(courierId)).thenReturn(Optional.of(courier));
-        when(metricsService.getCourierPerformance(UUID.fromString("00000000-0000-0000-0000-000000000000")))
+        when(metricsService.getCourierPerformance(courierId, null)).thenReturn(Optional.of(courier));
+        when(metricsService.getCourierPerformance(UUID.fromString("00000000-0000-0000-0000-000000000000"), null))
                 .thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/analytics/couriers/" + courierId))
@@ -131,7 +131,7 @@ class OperationalKpiControllerTest {
                 100, 95, 3, 2,
                 new BigDecimal("95.00"), new BigDecimal("40.00"), 8, List.of()
         );
-        when(metricsService.getSystemKpiSummary()).thenReturn(summary);
+        when(metricsService.getKpiSummary(null)).thenReturn(summary);
 
         mockMvc.perform(post("/api/v1/analytics/snapshots/aggregate"))
                 .andExpect(status().isOk())
@@ -141,7 +141,7 @@ class OperationalKpiControllerTest {
 
     @Test
     void unavailableSlaMeasurementsAreExplicitJsonNull() throws Exception {
-        when(metricsService.getSystemKpiSummary()).thenReturn(new OperationalKpiSummaryResponse(
+        when(metricsService.getKpiSummary(null)).thenReturn(new OperationalKpiSummaryResponse(
                 0,null,null,0,null,null,0,List.of()));
         mockMvc.perform(get("/api/v1/analytics/kpis"))
                 .andExpect(status().isOk())

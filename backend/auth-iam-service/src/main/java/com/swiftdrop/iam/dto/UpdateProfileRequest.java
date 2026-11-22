@@ -1,5 +1,6 @@
 package com.swiftdrop.iam.dto;
 
+import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -23,7 +24,7 @@ public record UpdateProfileRequest(
         String lastName,
 
         @Size(max = 32)
-        @Pattern(regexp = "^$|^\\+?[0-9]{7,15}$", message = "Phone number is invalid")
+        @Pattern(regexp = SriLankanPhone.OPTIONAL_REGEX, message = SriLankanPhone.MESSAGE)
         @Schema(description = "Phone number; empty removes it.", example = "+94771234567")
         String phone,
 
