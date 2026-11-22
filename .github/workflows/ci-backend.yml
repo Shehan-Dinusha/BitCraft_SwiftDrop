@@ -77,7 +77,7 @@ jobs:
         if: always()
         with:
           name: JUnit Results
-          path: "**/target/surefire-reports/TEST-*.xml"
+          path: "**/target/*-reports/TEST-*.xml"
           reporter: java-junit
 
       - name: Upload coverage reports
@@ -86,4 +86,14 @@ jobs:
         with:
           name: coverage-reports
           path: "**/target/site/jacoco/"
-          retention-days: 14
+          retention-days: 90
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-results
+          path: |
+            **/target/surefire-reports/TEST-*.xml
+            **/target/failsafe-reports/TEST-*.xml
+          retention-days: 90
