@@ -135,6 +135,18 @@
       }
     },
     {
+      "name": "dispatch.order-updated.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "swiftdrop.dlx.exchange",
+        "x-dead-letter-routing-key": "dlq.dispatch.events",
+        "x-message-ttl": 86400000,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
       "name": "dispatch.parcel-status.queue",
       "vhost": "/",
       "durable": true,
@@ -339,6 +351,14 @@
       "destination": "dispatch.order-cancelled.queue",
       "destination_type": "queue",
       "routing_key": "order.cancelled",
+      "arguments": {}
+    },
+    {
+      "source": "swiftdrop.events.exchange",
+      "vhost": "/",
+      "destination": "dispatch.order-updated.queue",
+      "destination_type": "queue",
+      "routing_key": "order.updated",
       "arguments": {}
     },
     {

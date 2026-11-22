@@ -695,14 +695,20 @@ components:
           example: 1.5
         lengthCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
           example: 25.0
         widthCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
           example: 20.0
         heightCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
           example: 10.0
         speed:
@@ -919,14 +925,20 @@ components:
           example: anura.f@gmail.com
         lengthCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
           example: 25.0
         widthCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
           example: 20.0
         heightCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
           example: 10.0
         actualWeightKg:
@@ -1032,12 +1044,18 @@ components:
           format: email
         lengthCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
         widthCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
         heightCm:
           type: number
+          minimum: 0.1
+          maximum: 500
           format: double
         actualWeightKg:
           type: number

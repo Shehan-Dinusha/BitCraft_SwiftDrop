@@ -3,6 +3,7 @@ import { districtLabel } from '@/features/profile/profileFormat';
 import { vehicleLabel } from '@/utils/vehicles';
 import { Badge, CELL, DispatchTable, TabEmpty, type BadgeTone } from './DispatchTable';
 import { LoadBar } from './LoadBar';
+import { amount } from './courierFit';
 import { sortCouriers } from './dispatchQueues';
 
 const SHIFT: Record<string, { label: string; tone: BadgeTone }> = {
@@ -25,7 +26,15 @@ export function CouriersTab({
   return (
     <DispatchTable
       label="Courier workload"
-      headers={['Courier', 'Vehicle', ...(showDistrict ? ['District'] : []), 'Shift', 'Parcels']}
+      headers={[
+        'Courier',
+        'Vehicle',
+        ...(showDistrict ? ['District'] : []),
+        'Shift',
+        'Parcels',
+        'Weight',
+        'Volume'
+      ]}
     >
       {sortCouriers(couriers).map((courier) => {
         const shift = SHIFT[courier.shiftStatus ?? ''] ?? { label: 'Unknown', tone: 'neutral' };
@@ -46,6 +55,20 @@ export function CouriersTab({
             </td>
             <td className={CELL}>
               <LoadBar used={used} limit={limit} label={`${used} of ${limit}`} />
+            </td>
+            <td className={CELL}>
+              <LoadBar
+                used={courier.activeWeightKg ?? 0}
+                limit={courier.maxWeightKg ?? 0}
+                label={`${amount(courier.activeWeightKg)} of ${amount(courier.maxWeightKg)} kg`}
+              />
+            </td>
+            <td className={CELL}>
+              <LoadBar
+                used={courier.activeVolumeLitres ?? 0}
+                limit={courier.maxVolumeLitres ?? 0}
+                label={`${amount(courier.activeVolumeLitres)} of ${amount(courier.maxVolumeLitres)} L`}
+              />
             </td>
           </tr>
         );

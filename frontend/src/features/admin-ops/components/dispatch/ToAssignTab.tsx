@@ -3,6 +3,7 @@ import { UserCheck } from 'lucide-react';
 import { Button, QueueChip } from '@/design-system';
 import type { DispatchAssignmentResponse } from '@/services/api/dispatchApi';
 import { Badge, CELL, DispatchTable, RouteCell, TabEmpty, TrackingCell } from './DispatchTable';
+import { parcelSize } from './courierFit';
 import {
   formatAge,
   isAtHub,
@@ -54,7 +55,7 @@ export function ToAssignTab({
       ) : (
         <DispatchTable
           label="Orders to assign"
-          headers={['Order', 'Route', 'Stage', 'Waiting', 'Action']}
+          headers={['Order', 'Route', 'Parcel', 'Stage', 'Waiting', 'Action']}
         >
           {shown.map((order) => (
             <tr key={orderKey(order)} className="hover:bg-canvas">
@@ -63,6 +64,9 @@ export function ToAssignTab({
               </td>
               <td className={CELL}>
                 <RouteCell order={order} />
+              </td>
+              <td className={`${CELL} whitespace-nowrap text-secondary`}>
+                {parcelSize(order) ?? '—'}
               </td>
               <td className={CELL}>
                 <Badge tone={isAtHub(order) ? 'info' : 'neutral'}>

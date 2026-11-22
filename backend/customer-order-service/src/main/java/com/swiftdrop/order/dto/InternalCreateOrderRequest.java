@@ -2,6 +2,7 @@ package com.swiftdrop.order.dto;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.parcel.ParcelLimits;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
@@ -20,8 +21,7 @@ import java.util.UUID;
  *
  * <p>Uses the same shared patterns and limits as the customer {@link CreateOrderRequest}
  * ({@link ValidationPatterns}). Differences: the merchant id and an external reference are required,
- * the recipient email and the parcel dimensions are optional (dimensions default to
- * {@value #DEFAULT_DIMENSION_CM} cm), and there is no customer id: the merchant id is used as the
+ * the recipient email is optional, and there is no customer id: the merchant id is used as the
  * customer id.</p>
  */
 @Schema(description = "Order created on behalf of a merchant. Idempotent on (merchantId, externalRef).")
@@ -107,16 +107,19 @@ public record InternalCreateOrderRequest(
         @Schema(description = "Optional for merchant orders (the merchant is notified by webhook).")
         String recipientEmail,
 
+        @NotNull(message = "Length is mandatory")
         @DecimalMin(value = "0.1", message = "Length must be at least 0.1 cm")
-        @Schema(description = "Optional, defaults to 10 cm")
+        @DecimalMax(value = ParcelLimits.MAX_SIDE_CM, message = ParcelLimits.MAX_SIDE_MESSAGE)
         BigDecimal lengthCm,
 
+        @NotNull(message = "Width is mandatory")
         @DecimalMin(value = "0.1", message = "Width must be at least 0.1 cm")
-        @Schema(description = "Optional, defaults to 10 cm")
+        @DecimalMax(value = ParcelLimits.MAX_SIDE_CM, message = ParcelLimits.MAX_SIDE_MESSAGE)
         BigDecimal widthCm,
 
+        @NotNull(message = "Height is mandatory")
         @DecimalMin(value = "0.1", message = "Height must be at least 0.1 cm")
-        @Schema(description = "Optional, defaults to 10 cm")
+        @DecimalMax(value = ParcelLimits.MAX_SIDE_CM, message = ParcelLimits.MAX_SIDE_MESSAGE)
         BigDecimal heightCm,
 
         @NotNull(message = "Actual weight is mandatory")
@@ -141,11 +144,8 @@ public record InternalCreateOrderRequest(
         Boolean prohibitedItemsDeclared
 ) {
 
-    public static final String DEFAULT_DIMENSION_CM = "10";
-
-    /** Maps to the customer request used by the shared creation path, applying the dimension and speed defaults. */
+    /** Maps to the customer request used by the shared creation path, applying the speed default. */
     public CreateOrderRequest toCreateOrderRequest() {
-        BigDecimal defaultDimension = new BigDecimal(DEFAULT_DIMENSION_CM);
         return CreateOrderRequest.builder()
                 .merchantId(merchantId)
                 .pickupAddressLine1(pickupAddressLine1)
@@ -163,9 +163,9 @@ public record InternalCreateOrderRequest(
                 .recipientName(recipientName)
                 .recipientPhone(recipientPhone)
                 .recipientEmail(recipientEmail)
-                .lengthCm(lengthCm != null ? lengthCm : defaultDimension)
-                .widthCm(widthCm != null ? widthCm : defaultDimension)
-                .heightCm(heightCm != null ? heightCm : defaultDimension)
+                .lengthCm(lengthCm)
+                .widthCm(widthCm)
+                .heightCm(heightCm)
                 .actualWeightKg(actualWeightKg)
                 .speed(speed != null ? speed : OrderSpeed.STANDARD)
                 .itemDescription(itemDescription)

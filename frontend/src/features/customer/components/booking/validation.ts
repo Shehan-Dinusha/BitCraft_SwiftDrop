@@ -20,6 +20,9 @@ const PATTERNS = {
 };
 
 export const WEIGHT_MAX_KG = 50;
+/** The largest vehicle's limits, as the order service enforces them (ParcelLimits). */
+export const SIDE_MAX_CM = 500;
+export const VOLUME_MAX_LITRES = 15_000;
 
 export type BookingErrors = Partial<Record<BookingField, string>>;
 
@@ -201,11 +204,17 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
       return PATTERNS.email.test(value) ? undefined : 'Enter an email like name@example.com';
     }
     case 'lengthCm':
-      return measure(form.lengthCm, 'Length', { min: 0.1, unit: 'cm' });
+      return measure(form.lengthCm, 'Length', { min: 0.1, max: SIDE_MAX_CM, unit: 'cm' });
     case 'widthCm':
-      return measure(form.widthCm, 'Width', { min: 0.1, unit: 'cm' });
+      return measure(form.widthCm, 'Width', { min: 0.1, max: SIDE_MAX_CM, unit: 'cm' });
     case 'heightCm':
-      return measure(form.heightCm, 'Height', { min: 0.1, unit: 'cm' });
+      return (
+        measure(form.heightCm, 'Height', { min: 0.1, max: SIDE_MAX_CM, unit: 'cm' }) ??
+        (Number(form.lengthCm) * Number(form.widthCm) * Number(form.heightCm) >
+        VOLUME_MAX_LITRES * 1000
+          ? 'This parcel is too big for our vehicles'
+          : undefined)
+      );
     case 'actualWeightKg':
       return measure(form.actualWeightKg, 'Weight', { min: 0.01, max: WEIGHT_MAX_KG, unit: 'kg' });
     case 'prohibitedItemsDeclared':

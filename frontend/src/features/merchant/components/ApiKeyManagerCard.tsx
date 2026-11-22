@@ -32,7 +32,14 @@ function usageExamples(secret: string) {
       contactName: 'Test Recipient',
       contactPhone: '+94711234567'
     },
-    parcel: { weightGrams: 1500, prohibitedItemsDeclared: true, itemDescription: 'Books' },
+    parcel: {
+      weightGrams: 1500,
+      lengthCm: 30,
+      widthCm: 20,
+      heightCm: 10,
+      prohibitedItemsDeclared: true,
+      itemDescription: 'Books'
+    },
     speed: 'STANDARD'
   };
   return {

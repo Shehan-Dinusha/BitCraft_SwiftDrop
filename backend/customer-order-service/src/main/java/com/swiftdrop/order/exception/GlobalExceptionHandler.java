@@ -107,6 +107,13 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(401, "Unauthorized", "Customer identification is required", safePath(request)));
     }
 
+    /** The message is fixed text, never request data. */
+    @ExceptionHandler(ParcelTooLargeException.class)
+    public ResponseEntity<ApiErrorResponse> handleParcelTooLarge(ParcelTooLargeException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiErrorResponse.of(400, "Bad Request", ex.getMessage(), safePath(request)));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         log.warn("Illegal argument on {}", safePath(request));

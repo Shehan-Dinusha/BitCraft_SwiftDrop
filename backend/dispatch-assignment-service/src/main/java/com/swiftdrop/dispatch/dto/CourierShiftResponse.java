@@ -4,8 +4,10 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
+import com.swiftdrop.dispatch.service.CourierLoad;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -42,10 +44,21 @@ public record CourierShiftResponse(
         Instant shiftEndedAt,
 
         @Schema(description = "Last heartbeat timestamp")
-        Instant lastHeartbeatAt
+        Instant lastHeartbeatAt,
+
+        @Schema(description = "Weight of the parcels held, in kg")
+        BigDecimal activeWeightKg,
+
+        @Schema(description = "Weight the vehicle carries, in kg")
+        Integer maxWeightKg,
+
+        @Schema(description = "Volume of the parcels held, in litres")
+        BigDecimal activeVolumeLitres,
+
+        @Schema(description = "Volume the vehicle carries, in litres")
+        Integer maxVolumeLitres
 ) {
-    public static CourierShiftResponse fromEntity(CourierShift entity) {
-        if (entity == null) return null;
+    public static CourierShiftResponse fromEntity(CourierShift entity, CourierLoad load) {
         return new CourierShiftResponse(
                 entity.getCourierId(),
                 entity.getCourierName(),
@@ -57,7 +70,11 @@ public record CourierShiftResponse(
                 entity.getMaxCapacity(),
                 entity.getShiftStartedAt(),
                 entity.getShiftEndedAt(),
-                entity.getLastHeartbeatAt()
+                entity.getLastHeartbeatAt(),
+                load.weightKg(),
+                entity.getVehicleType().maxWeightKg(),
+                load.volumeLitres(),
+                entity.getVehicleType().maxVolumeLitres()
         );
     }
 }

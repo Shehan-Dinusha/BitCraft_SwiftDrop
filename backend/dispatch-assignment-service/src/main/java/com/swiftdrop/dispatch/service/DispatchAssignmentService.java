@@ -6,8 +6,10 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.order.OrderCancelledEvent;
+import com.swiftdrop.contracts.events.order.OrderUpdatedEvent;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
+import com.swiftdrop.dispatch.domain.enums.CourierBlock;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -133,10 +136,13 @@ public class DispatchAssignmentService {
     }
 
     /**
-     * Up to three AVAILABLE couriers below capacity for an order: for a new
-     * assignment when it is UNASSIGNED, or for a reassignment when it is ASSIGNED
-     * or REASSIGNED, in which case the courier currently holding it is left out. A
-     * COMPLETED or CANCELLED order cannot be (re)assigned, so it gets no suggestions.
+     * The couriers on shift who could be asked to carry an order: for a new assignment when it is
+     * UNASSIGNED, or for a reassignment when it is ASSIGNED or REASSIGNED, in which case the courier
+     * currently holding it is left out. Those who can take it come first, best first; the rest carry the
+     * reason they cannot. A COMPLETED or CANCELLED order cannot be (re)assigned, so it gets none.
+     *
+     * <p>Best is the smallest vehicle the parcel fits, so bigger ones stay free for bigger parcels, then the
+     * emptiest courier. Without a recorded size the vehicle says nothing, so only the load counts.</p>
      */
     @Transactional(readOnly = true)
     public List<CourierSuggestionResponse> getSuggestions(UUID orderId) {
@@ -154,23 +160,56 @@ public class DispatchAssignmentService {
         // first leg, the drop-off district on the last. Orders from before the pickup district was
         // recorded have none, so every available courier is offered for them.
         var district = assignment.getResponsibleDistrict();
-        var candidates = district != null
-                ? courierShiftRepository.findAvailableCandidates(district, ShiftStatus.AVAILABLE)
-                : courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE);
-        Comparator<CourierShift> ranking =
-                Comparator.comparing((CourierShift courier) ->
-                                courier.getCurrentDistrict() != assignment.getResponsibleDistrict())
-                        .thenComparingInt(courier -> courier.getActiveParcelsCount())
-                        .thenComparing(courier -> courier.getLastHeartbeatAt(),
-                                Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(CourierShift::getCourierId);
+        List<CourierShift> candidates = (district != null
+                ? courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(district, ShiftStatus.OFFLINE)
+                : courierShiftRepository.findByShiftStatusNot(ShiftStatus.OFFLINE)).stream()
+                .filter(courier -> !courier.getCourierId().equals(currentCourierId))
+                .toList();
+        Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
+                candidates.stream().map(CourierShift::getCourierId).toList());
+        boolean sized = assignment.getVolumeLitres() != null;
+
+        record Option(CourierShift courier, CourierLoad load, CourierBlock block) {}
+        Comparator<Option> ranking = Comparator.comparing((Option option) -> option.block() != null)
+                .thenComparing(option -> sized ? option.courier().getVehicleType().ordinal() : 0)
+                .thenComparingDouble(option -> CourierFit.fullness(option.courier(), option.load()))
+                .thenComparing(option -> option.courier().getLastHeartbeatAt(),
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(option -> option.courier().getCourierId());
 
         return candidates.stream()
-                .filter(courier -> !courier.getCourierId().equals(currentCourierId))
+                .map(courier -> {
+                    CourierLoad load = loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE);
+                    return new Option(courier, load, CourierFit.block(courier, load, assignment).orElse(null));
+                })
                 .sorted(ranking)
-                .limit(3)
-                .map(courier -> CourierSuggestionResponse.fromEntity(courier, assignment.getResponsibleDistrict()))
+                .map(option -> CourierSuggestionResponse.of(option.courier(), option.load(), option.block(), district))
                 .toList();
+    }
+
+    /**
+     * Takes over an edit made before a courier was assigned. The size and weight always apply. Districts and
+     * speed apply only while the order still waits for its first courier; once one is on the way the route is
+     * fixed. An update that overtakes its {@code order.created} is retried until the order is registered.
+     */
+    @Transactional
+    public void handleOrderUpdated(OrderUpdatedEvent event) {
+        DispatchAssignment assignment = assignmentRepository.findByOrderId(event.orderId())
+                .orElseThrow(() -> new AssignmentNotFoundException(
+                        "Dispatch assignment not found for order: " + event.orderId()));
+        if (assignment.getStatus().isTerminal()) {
+            return;
+        }
+        assignment.setParcel(event.lengthCm(), event.widthCm(), event.heightCm(), event.actualWeightKg());
+        if (assignment.getStatus() == AssignmentStatus.UNASSIGNED && assignment.getLeg() == AssignmentLeg.FIRST_MILE) {
+            if (event.pickupDistrict() != null) assignment.setPickupDistrict(event.pickupDistrict());
+            if (event.deliveryDistrict() != null) assignment.setDeliveryDistrict(event.deliveryDistrict());
+            if (event.speed() != null) {
+                assignment.setOrderSpeed(event.speed());
+                assignment.setEstimatedPickupMinutes(CourierMatchingEngine.pickupMinutes(event.speed()));
+            }
+        }
+        assignmentRepository.save(assignment);
     }
 
     @Transactional

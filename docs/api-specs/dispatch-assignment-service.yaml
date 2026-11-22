@@ -379,12 +379,12 @@ paths:
         - Dispatch
       summary: Suggest available couriers for an order
       description: >-
-        Returns up to three AVAILABLE couriers below capacity working in the order's pickup district
-        (a DISPATCHER only for orders of their district), then
-        lower active workload, then the most recent heartbeat (couriers without one last), then courier
-        ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or
-        REASSIGNED order they are reassignment suggestions and leave out the courier currently holding
-        the order. An empty list means no courier is eligible. Requires the DISPATCHER or SYSTEM_ADMIN role.
+        Returns the couriers on shift in the district handling the order (a DISPATCHER only for orders of
+        their district). Those who can take it come first (eligible true): the smallest vehicle the parcel
+        fits, then the emptiest by parcels, weight or volume, then the most recent heartbeat, then courier ID.
+        The rest carry an ineligibleReason. For an ASSIGNED or REASSIGNED order the courier currently holding
+        it is left out. An order without a recorded size is limited by the parcel count only. Requires the
+        DISPATCHER or SYSTEM_ADMIN role.
       operationId: getCourierSuggestions
       parameters:
         - name: orderId
@@ -938,7 +938,17 @@ components:
       type: string
       description: >-
         Courier's own vehicle. Default parcel capacity: MOTORCYCLE 5, THREE_WHEELER 10, VAN 25, LORRY 50.
+        Total weight, total volume and longest side: MOTORCYCLE 25 kg / 100 l / 50 cm, THREE_WHEELER 150 kg /
+        600 l / 100 cm, VAN 600 kg / 4000 l / 200 cm, LORRY 2000 kg / 15000 l / 500 cm.
       enum: [MOTORCYCLE, THREE_WHEELER, VAN, LORRY]
+
+    CourierBlock:
+      type: string
+      description: >-
+        Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all.
+        PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds.
+      enum:
+        [OFF_SHIFT, ON_BREAK, BUSY, TOO_LONG, TOO_HEAVY, TOO_BIG, PARCEL_LIMIT, WEIGHT_LIMIT, VOLUME_LIMIT]
 
     OrderSpeed:
       type: string
@@ -1179,6 +1189,19 @@ components:
           description: When the courier of the current leg collected the parcel; reassignment is blocked once set.
           type: string
           format: date-time
+        lengthCm:
+          description: Parcel length in cm; absent for orders booked before sizes were recorded.
+          type: number
+          example: 30
+        widthCm:
+          type: number
+          example: 20
+        heightCm:
+          type: number
+          example: 10
+        weightKg:
+          type: number
+          example: 2.5
 
     CourierShiftResponse:
       type: object
@@ -1209,6 +1232,16 @@ components:
         lastHeartbeatAt:
           type: string
           format: date-time
+        activeWeightKg:
+          description: Weight of the parcels held.
+          type: number
+        maxWeightKg:
+          type: integer
+        activeVolumeLitres:
+          description: Volume of the parcels held.
+          type: number
+        maxVolumeLitres:
+          type: integer
 
     CourierWorkloadResponse:
       type: object
@@ -1245,6 +1278,26 @@ components:
           type: integer
         shiftStatus:
           $ref: "#/components/schemas/ShiftStatus"
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        activeWeightKg:
+          description: Weight of the parcels held.
+          type: number
+        maxWeightKg:
+          type: integer
+        activeVolumeLitres:
+          description: Volume of the parcels held.
+          type: number
+        maxVolumeLitres:
+          type: integer
+        maxSideCm:
+          description: Longest side of a parcel the vehicle takes.
+          type: integer
+        eligible:
+          description: Whether the order can be assigned to this courier now.
+          type: boolean
+        ineligibleReason:
+          $ref: "#/components/schemas/CourierBlock"
 
     ApiErrorResponse:
       type: object

@@ -2,12 +2,16 @@ package com.swiftdrop.dispatch.dto;
 
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
+import com.swiftdrop.dispatch.domain.enums.CourierBlock;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
+import com.swiftdrop.dispatch.domain.enums.VehicleType;
+import com.swiftdrop.dispatch.service.CourierLoad;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
-@Schema(description = "Courier suggestion for an order assignment.")
+@Schema(description = "A courier on shift, and whether they can take the order.")
 public record CourierSuggestionResponse(
         @Schema(description = "Courier UUID")
         UUID courierId,
@@ -18,7 +22,7 @@ public record CourierSuggestionResponse(
         @Schema(description = "Courier's current district")
         SriLankanDistrict currentDistrict,
 
-        @Schema(description = "Whether the courier is in the order pickup district")
+        @Schema(description = "Whether the courier is in the district handling the order")
         boolean samePickupDistrict,
 
         @Schema(description = "Current active assignment count")
@@ -28,17 +32,51 @@ public record CourierSuggestionResponse(
         int maxCapacity,
 
         @Schema(description = "Current shift status")
-        ShiftStatus shiftStatus
+        ShiftStatus shiftStatus,
+
+        @Schema(description = "Courier's vehicle")
+        VehicleType vehicleType,
+
+        @Schema(description = "Weight of the parcels held, in kg")
+        BigDecimal activeWeightKg,
+
+        @Schema(description = "Weight the vehicle carries, in kg")
+        int maxWeightKg,
+
+        @Schema(description = "Volume of the parcels held, in litres")
+        BigDecimal activeVolumeLitres,
+
+        @Schema(description = "Volume the vehicle carries, in litres")
+        int maxVolumeLitres,
+
+        @Schema(description = "Longest side of a parcel the vehicle takes, in cm")
+        int maxSideCm,
+
+        @Schema(description = "Whether the order can be assigned to this courier now")
+        boolean eligible,
+
+        @Schema(description = "Why not, when it cannot; null otherwise")
+        CourierBlock ineligibleReason
 ) {
-    public static CourierSuggestionResponse fromEntity(CourierShift courier, SriLankanDistrict pickupDistrict) {
+    public static CourierSuggestionResponse of(CourierShift courier, CourierLoad load, CourierBlock block,
+                                               SriLankanDistrict orderDistrict) {
+        VehicleType vehicle = courier.getVehicleType();
         return new CourierSuggestionResponse(
                 courier.getCourierId(),
                 courier.getCourierName(),
                 courier.getCurrentDistrict(),
-                courier.getCurrentDistrict() == pickupDistrict,
+                courier.getCurrentDistrict() == orderDistrict,
                 courier.getActiveParcelsCount(),
                 courier.getMaxCapacity(),
-                courier.getShiftStatus()
+                courier.getShiftStatus(),
+                vehicle,
+                load.weightKg(),
+                vehicle.maxWeightKg(),
+                load.volumeLitres(),
+                vehicle.maxVolumeLitres(),
+                vehicle.maxSideCm(),
+                block == null,
+                block
         );
     }
 }

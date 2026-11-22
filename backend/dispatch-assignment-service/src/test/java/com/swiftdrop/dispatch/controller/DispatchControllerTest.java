@@ -3,7 +3,10 @@ package com.swiftdrop.dispatch.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
+import com.swiftdrop.dispatch.domain.enums.CourierBlock;
+import com.swiftdrop.dispatch.service.CourierLoad;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
@@ -118,7 +121,7 @@ class DispatchControllerTest {
                 1,
                 Instant.now(),
                 Instant.now()
-        , null, null, null, null);
+        , null, null, null, null, null, null, null, null);
 
         when(dispatchAssignmentService.getUnassignedParcels(any())).thenReturn(List.of(item));
 
@@ -134,15 +137,12 @@ class DispatchControllerTest {
     void testGetCourierSuggestions() throws Exception {
         UUID orderId = UUID.randomUUID();
         UUID courierId = UUID.randomUUID();
-        CourierSuggestionResponse suggestion = new CourierSuggestionResponse(
-                courierId,
-                "Sunil Perera",
-                SriLankanDistrict.COLOMBO,
-                true,
-                1,
-                5,
-                com.swiftdrop.dispatch.domain.enums.ShiftStatus.AVAILABLE
-        );
+        CourierShift courier = new CourierShift();
+        courier.setCourierId(courierId);
+        courier.setCourierName("Sunil Perera");
+        courier.setCurrentDistrict(SriLankanDistrict.COLOMBO);
+        CourierSuggestionResponse suggestion = CourierSuggestionResponse.of(courier, CourierLoad.NONE,
+                CourierBlock.TOO_LONG, SriLankanDistrict.COLOMBO);
         when(dispatchAssignmentService.getSuggestions(orderId)).thenReturn(List.of(suggestion));
         DispatchAssignment order = new DispatchAssignment();
         order.setOrderId(orderId);
@@ -154,7 +154,11 @@ class DispatchControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].courierId").value(courierId.toString()))
-                .andExpect(jsonPath("$.data[0].samePickupDistrict").value(true));
+                .andExpect(jsonPath("$.data[0].samePickupDistrict").value(true))
+                .andExpect(jsonPath("$.data[0].vehicleType").value("MOTORCYCLE"))
+                .andExpect(jsonPath("$.data[0].maxWeightKg").value(25))
+                .andExpect(jsonPath("$.data[0].eligible").value(false))
+                .andExpect(jsonPath("$.data[0].ineligibleReason").value("TOO_LONG"));
     }
 
     @Test

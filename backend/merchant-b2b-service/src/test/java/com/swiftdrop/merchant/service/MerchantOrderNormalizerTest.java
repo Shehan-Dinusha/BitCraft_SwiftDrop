@@ -12,6 +12,8 @@ import static org.assertj.core.api.Assertions.*;
 class MerchantOrderNormalizerTest {
     private static final jakarta.validation.ValidatorFactory FACTORY = Validation.buildDefaultValidatorFactory();
     private final MerchantOrderNormalizer normalizer = new MerchantOrderNormalizer(FACTORY.getValidator());
+    private static final BigDecimal L = new BigDecimal("30"), W = new BigDecimal("20"), H = new BigDecimal("10");
+
     @AfterAll static void close() { FACTORY.close(); }
 
     @Test void convertsDistrictPhonesAndGramsToOrderContract() {
@@ -19,6 +21,9 @@ class MerchantOrderNormalizerTest {
         var normalized = normalizer.normalize(merchant, B2bTestData.order());
         assertThat(normalized.get("merchantId")).isEqualTo(merchant);
         assertThat(normalized.get("actualWeightKg")).isEqualTo(new BigDecimal("1.500"));
+        assertThat(normalized.get("lengthCm")).isEqualTo(new BigDecimal("30"));
+        assertThat(normalized.get("widthCm")).isEqualTo(new BigDecimal("20"));
+        assertThat(normalized.get("heightCm")).isEqualTo(new BigDecimal("10"));
         assertThat(normalized.get("pickupContactPhone")).isEqualTo("+94771234567");
         assertThat(normalized.get("recipientPhone")).isEqualTo("+94711234567");
         assertThat(normalized.get("deliveryDistrict")).isEqualTo(SriLankanDistrict.GAMPAHA);
@@ -32,13 +37,29 @@ class MerchantOrderNormalizerTest {
         assertThatThrownBy(() -> normalizer.phone("123")).hasMessage("Invalid Sri Lankan phone number");
     }
 
+    @Test void requiresEverySideAndASizeThatFitsALorry() {
+        BigDecimal max = new BigDecimal("500");
+        rejects(new B2bParcel(BigDecimal.ONE, null, null, W, H, true, null, null, null), "Parcel length is required");
+        rejects(new B2bParcel(BigDecimal.ONE, null, L, null, H, true, null, null, null), "Parcel width is required");
+        rejects(new B2bParcel(BigDecimal.ONE, null, L, W, null, true, null, null, null), "Parcel height is required");
+        rejects(new B2bParcel(BigDecimal.ONE, null, new BigDecimal("501"), W, H, true, null, null, null), "Must not exceed 500 cm");
+        rejects(new B2bParcel(BigDecimal.ONE, null, max, max, max, true, null, null, null), "must not exceed 15,000 litres");
+    }
+
+    private void rejects(B2bParcel parcel, String message) {
+        var base = B2bTestData.order();
+        assertThatThrownBy(() -> normalizer.normalize(UUID.randomUUID(), new B2bOrderRequest(
+                base.externalRef(), base.pickup(), base.delivery(), parcel, base.speed())))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(message);
+    }
+
     @Test void requiresExactlyOneWeightAndExplicitDeclaration() {
         var base = B2bTestData.order();
         for (B2bParcel parcel : new B2bParcel[]{
-                new B2bParcel(null, null, true, null, null, null),
-                new B2bParcel(BigDecimal.ONE, new BigDecimal("1000"), true, null, null, null),
-                new B2bParcel(BigDecimal.ONE, null, false, null, null, null),
-                new B2bParcel(new BigDecimal("51"), null, true, null, null, null)}) {
+                new B2bParcel(null, null, L, W, H, true, null, null, null),
+                new B2bParcel(BigDecimal.ONE, new BigDecimal("1000"), L, W, H, true, null, null, null),
+                new B2bParcel(BigDecimal.ONE, null, L, W, H, false, null, null, null),
+                new B2bParcel(new BigDecimal("51"), null, L, W, H, true, null, null, null)}) {
             assertThatThrownBy(() -> normalizer.normalize(UUID.randomUUID(), new B2bOrderRequest(
                     base.externalRef(), base.pickup(), base.delivery(), parcel, base.speed())))
                     .isInstanceOf(IllegalArgumentException.class);
