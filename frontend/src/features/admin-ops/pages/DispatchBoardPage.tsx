@@ -1,470 +1,365 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isAxiosError } from 'axios';
-import { AlertTriangle, Bike, Package, RefreshCw, Search, UserCheck } from 'lucide-react';
-import { Button, EmptyState, StatusBanner, SurfaceCard } from '@/design-system';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { RefreshCw } from 'lucide-react';
+import { Button, SelectDropdown, StatusBanner, SurfaceCard, Tabs } from '@/design-system';
 import { Input } from '@/design-system/primitives/Input';
+import { useAuthStore } from '@/store/useAuthStore';
+import { parseApiError } from '@/services/api/apiError';
+import { SRI_LANKAN_DISTRICTS } from '@/services/api/authApi';
+import { deliveryApi } from '@/services/api/deliveryApi';
 import {
   dispatchApi,
-  type CourierShiftResponse,
-  type CourierWorkloadResponse,
-  type DispatchAssignmentResponse
+  type DispatchAssignmentResponse,
+  type SriLankanDistrict
 } from '@/services/api/dispatchApi';
+import { districtLabel } from '@/features/profile/profileFormat';
 import { ManualDispatchOverrideModal } from '../components/ManualDispatchOverrideModal';
 import { LiveFleetHeatmap } from '../components/LiveFleetHeatmap';
+import { AssignedTab } from '../components/dispatch/AssignedTab';
+import { CouriersTab } from '../components/dispatch/CouriersTab';
+import { TableSkeleton } from '../components/dispatch/DispatchTable';
+import { IncomingTab, ReadyToSendTab } from '../components/dispatch/HubTabs';
+import { ToAssignTab } from '../components/dispatch/ToAssignTab';
+import { useDispatchData } from '../components/dispatch/useDispatchData';
+import {
+  matchesCourier,
+  matchesOrder,
+  orderKey,
+  orderLabel
+} from '../components/dispatch/dispatchQueues';
 
-function getErrorMessage(error: unknown, fallback: string) {
-  if (isAxiosError(error)) {
-    const data = error.response?.data as { message?: string; error?: string } | undefined;
-    return data?.message ?? data?.error ?? fallback;
+type HubStep = 'IN_TRANSIT' | 'AT_DESTINATION_HUB';
+type Notice = { tone: 'success' | 'danger'; title: string; body?: string };
+
+/** Dispatch learns about a hub step from an event, so its lists follow a moment later. */
+const EVENT_LAG_MS = 2_000;
+
+const ALL_DISTRICTS = 'ALL';
+const ADMIN_DISTRICT_OPTIONS = [
+  { value: ALL_DISTRICTS, label: 'All districts' },
+  ...SRI_LANKAN_DISTRICTS.map((value) => ({ value, label: districtLabel(value) }))
+];
+
+const errorText = (error: unknown, fallback: string) =>
+  parseApiError(error).message ?? (error instanceof Error ? error.message : fallback);
+
+/** One parcel's hub step. A failure is returned so the rest of the batch still runs. */
+async function hubStep(order: DispatchAssignmentResponse, target: HubStep): Promise<string | null> {
+  try {
+    if (!order.orderId) throw new Error('This parcel has no order ID.');
+    const delivery = await deliveryApi.getDeliveryByOrderId(order.orderId);
+    if (!delivery.deliveryId) throw new Error('This parcel has no delivery record yet.');
+    await deliveryApi.transitionDelivery(delivery.deliveryId, {
+      targetState: target,
+      notes: target === 'IN_TRANSIT' ? 'Marked Outbound at the hub' : 'Accepted at the hub'
+    });
+    return null;
+  } catch (error) {
+    return `${orderLabel(order)}: ${errorText(error, 'The hub step could not be saved.')}`;
   }
-  return error instanceof Error ? error.message : fallback;
+}
+
+function hubNotice(target: HubStep, done: number, failures: string[]): Notice {
+  const parcels = `${done} ${done === 1 ? 'parcel' : 'parcels'}`;
+  const title =
+    target === 'IN_TRANSIT' ? `${parcels} marked outbound` : `${parcels} accepted at the hub`;
+  if (failures.length) {
+    return {
+      tone: 'danger',
+      title: done ? `${title}, ${failures.length} failed` : 'The hub step failed',
+      body: failures.join(' ')
+    };
+  }
+  return {
+    tone: 'success',
+    title,
+    body: target === 'AT_DESTINATION_HUB' ? 'Find them under To assign.' : undefined
+  };
 }
 
 /**
- * A 409 from assign or reassign carries a specific reason (order already assigned,
- * assignment changed since it was viewed, picked up, courier not available), so the
- * backend's error title and message are shown instead of a single generic text.
+ * One tab per job, so nothing sits below the fold. A dispatcher sees only their own district (the server
+ * decides); a system admin picks one, and the hub tabs appear once they have.
  */
-function getDispatchActionErrorMessage(error: unknown, reassigning: boolean) {
-  const fallback = reassigning ? 'Courier reassignment failed.' : 'Courier assignment failed.';
-  if (isAxiosError(error) && error.response?.status === 409) {
-    const data = error.response.data as { message?: string; error?: string } | undefined;
-    const message =
-      data?.message ??
-      'This order or courier changed in another dispatch session. Refresh and try again.';
-    return data?.error ? `${data.error}: ${message}` : message;
-  }
-  return getErrorMessage(error, fallback);
-}
-
-/**
- * Orders that currently hold a courier are ASSIGNED or, after a reassignment,
- * REASSIGNED. The assignments endpoint filters by one status at a time, so the two
- * pages are merged here, keeping one entry per assignment and newest first (the
- * order the endpoint itself returns).
- */
-function mergeActiveAssignments(...pages: DispatchAssignmentResponse[][]) {
-  const byKey = new Map<string, DispatchAssignmentResponse>();
-  for (const assignment of pages.flat()) {
-    const key = assignment.assignmentId ?? assignment.orderId;
-    if (key && !byKey.has(key)) byKey.set(key, assignment);
-  }
-  const createdTime = (assignment: DispatchAssignmentResponse) =>
-    Date.parse(assignment.createdAt ?? '') || 0;
-  return [...byKey.values()].sort((a, b) => createdTime(b) - createdTime(a));
-}
-
-/** How often the courier workload panel refreshes in the background. */
-const WORKLOAD_REFRESH_INTERVAL_MS = 10_000;
-
-const formatTime = (date: Date) =>
-  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
 export function DispatchBoardPage() {
-  const [unassigned, setUnassigned] = useState<DispatchAssignmentResponse[]>([]);
-  const [assignments, setAssignments] = useState<DispatchAssignmentResponse[]>([]);
-  const [couriers, setCouriers] = useState<CourierShiftResponse[]>([]);
-  const [workloads, setWorkloads] = useState<CourierWorkloadResponse[]>([]);
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === 'SYSTEM_ADMIN';
+  const [params, setParams] = useSearchParams();
+  const [adminDistrict, setAdminDistrict] = useState<string>(ALL_DISTRICTS);
+  const scope =
+    isAdmin && adminDistrict !== ALL_DISTRICTS ? (adminDistrict as SriLankanDistrict) : undefined;
+  const hubTabs = !isAdmin || scope !== undefined;
+
+  // Other pages link here with ?q=<tracking number>.
+  const [query, setQuery] = useState(() => params.get('q') ?? '');
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<DispatchAssignmentResponse | null>(null);
-  const [suggestions, setSuggestions] = useState<
-    Awaited<ReturnType<typeof dispatchApi.getCourierSuggestions>>
-  >([]);
-  const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [workloadUpdatedAt, setWorkloadUpdatedAt] = useState<Date | null>(null);
-  const [workloadRefreshFailed, setWorkloadRefreshFailed] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [hubBusy, setHubBusy] = useState(false);
+  // Hub steps done here, hidden at once while dispatch catches up. An order takes each step only once.
+  const [done, setDone] = useState<ReadonlySet<string>>(new Set());
+  const lagTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(lagTimer.current), []);
 
-  // Background refresh bookkeeping. Each request that can replace the workload list takes
-  // a sequence number, and only the newest one may write, so a slow poll can never
-  // overwrite the result of a later full load (or the other way round).
-  const workloadSequence = useRef(0);
-  const fullLoadInFlight = useRef(false);
-  const pollInFlight = useRef(false);
+  const { unassigned, assigned, ready, incoming, couriers, refresh } = useDispatchData(
+    user?.id,
+    scope,
+    hubTabs
+  );
 
-  const loadData = useCallback(async () => {
-    const sequence = ++workloadSequence.current;
-    fullLoadInFlight.current = true;
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const [unassignedOrders, courierList, workloadList, assignedPage, reassignedPage] =
-        await Promise.all([
-          dispatchApi.getUnassignedParcels(),
-          dispatchApi.getCouriers(),
-          dispatchApi.getCourierWorkloads(),
-          dispatchApi.getAssignments({ status: 'ASSIGNED', page: 0, size: 100 }),
-          dispatchApi.getAssignments({ status: 'REASSIGNED', page: 0, size: 100 })
-        ]);
-      setUnassigned(unassignedOrders);
-      setCouriers(courierList);
-      if (sequence === workloadSequence.current) {
-        setWorkloads(workloadList);
-        setWorkloadUpdatedAt(new Date());
-        setWorkloadRefreshFailed(false);
-      }
-      setAssignments(mergeActiveAssignments(assignedPage.content, reassignedPage.content));
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error, 'Dispatch data could not be loaded.'));
-    } finally {
-      fullLoadInFlight.current = false;
-      setLoading(false);
-    }
-  }, []);
+  const suggestions = useQuery({
+    queryKey: ['dispatch-suggestions', selectedOrder?.orderId],
+    queryFn: () => dispatchApi.getCourierSuggestions(selectedOrder!.orderId!),
+    enabled: Boolean(selectedOrder?.orderId),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false
+  });
 
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+  const pending = (orders: DispatchAssignmentResponse[] | undefined, step: HubStep) =>
+    (orders ?? []).filter((order) => !done.has(`${orderKey(order)}:${step}`));
+  const readyOrders = pending(ready.data, 'IN_TRANSIT');
+  const incomingOrders = pending(incoming.data, 'AT_DESTINATION_HUB');
 
-  // Refresh courier workloads every 10 seconds without touching the rest of the page:
-  // no loading spinner, no banner changes, and the queue, search and open modal are left
-  // as they are. A tick is skipped while another request is still running or the tab is
-  // hidden. A failed refresh keeps the last data and is shown next to the panel title.
-  useEffect(() => {
-    let active = true;
-    const refreshWorkloads = async () => {
-      if (pollInFlight.current || fullLoadInFlight.current || document.hidden) return;
-      pollInFlight.current = true;
-      const sequence = ++workloadSequence.current;
-      try {
-        const workloadList = await dispatchApi.getCourierWorkloads();
-        if (active && sequence === workloadSequence.current) {
-          setWorkloads(workloadList);
-          setWorkloadUpdatedAt(new Date());
-          setWorkloadRefreshFailed(false);
-        }
-      } catch {
-        if (active && sequence === workloadSequence.current) setWorkloadRefreshFailed(true);
-      } finally {
-        pollInFlight.current = false;
-      }
-    };
-    const timer = window.setInterval(() => void refreshWorkloads(), WORKLOAD_REFRESH_INTERVAL_MS);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, []);
+  const tabs = [
+    { id: 'assign', label: 'To assign', count: unassigned.data?.length, list: unassigned },
+    { id: 'assigned', label: 'Assigned', count: assigned.data?.total, list: assigned },
+    ...(hubTabs
+      ? [
+          {
+            id: 'ready',
+            label: 'Ready to send',
+            count: ready.data && readyOrders.length,
+            list: ready
+          },
+          {
+            id: 'incoming',
+            label: 'Incoming',
+            count: incoming.data && incomingOrders.length,
+            list: incoming
+          }
+        ]
+      : []),
+    { id: 'couriers', label: 'Couriers', count: couriers.data?.length, list: couriers }
+  ];
+  const current = tabs.find((tab) => tab.id === params.get('tab')) ?? tabs[0];
+  const openTab = (id: string) => setParams({ tab: id }, { replace: true });
 
-  const openAssignment = async (order: DispatchAssignmentResponse) => {
+  const searching = query.trim() !== '';
+  const search = (orders: DispatchAssignmentResponse[]) =>
+    orders.filter((order) => matchesOrder(order, query));
+  const lists = [unassigned, assigned, ready, incoming, couriers];
+  const failed = lists.some((list) => list.isError);
+  const fetching = lists.some((list) => list.isFetching);
+  // Waiting times are measured at the last refresh, which is at most a few seconds ago.
+  const now = Math.max(...lists.map((list) => list.dataUpdatedAt));
+
+  const openAssignment = (order: DispatchAssignmentResponse | null) => {
+    setAssignError(null);
     setSelectedOrder(order);
-    setSuggestions([]);
-    if (!order.orderId) return;
-    setLoadingSuggestions(true);
-    try {
-      setSuggestions(await dispatchApi.getCourierSuggestions(order.orderId));
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error, 'Courier suggestions could not be loaded.'));
-    } finally {
-      setLoadingSuggestions(false);
-    }
   };
 
   const handleAssign = async (courierId: string, reason: string) => {
     if (!selectedOrder?.orderId) return;
-    // An order that already has a courier is moved with /reassign, naming the courier the
-    // dispatcher saw so the backend can reject the change if the assignment moved meanwhile.
+    // An order that already has a courier is moved with /reassign, naming the courier the dispatcher
+    // saw so the backend can reject the change if the assignment moved meanwhile.
     const currentCourierId = selectedOrder.courierId;
-    if (currentCourierId && courierId === currentCourierId) {
-      setErrorMessage('Choose a different courier: this order is already assigned to that courier.');
-      return;
-    }
+    const request = { orderId: selectedOrder.orderId, assignedBy: 'DISPATCHER', reason };
     setSubmitting(true);
-    setErrorMessage(null);
+    setNotice(null);
+    setAssignError(null);
     try {
       if (currentCourierId) {
         await dispatchApi.reassign({
-          orderId: selectedOrder.orderId,
+          ...request,
           expectedCurrentCourierId: currentCourierId,
-          newCourierId: courierId,
-          assignedBy: 'DISPATCHER',
-          reason
+          newCourierId: courierId
         });
       } else {
-        await dispatchApi.manualAssign({
-          orderId: selectedOrder.orderId,
-          courierId,
-          assignedBy: 'DISPATCHER',
-          reason
-        });
+        await dispatchApi.manualAssign({ ...request, courierId });
       }
+      setNotice({
+        tone: 'success',
+        title: `${orderLabel(selectedOrder)} ${currentCourierId ? 'reassigned' : 'assigned'}`
+      });
       setSelectedOrder(null);
-      setSuccessMessage(
-        `${selectedOrder.trackingNumber ?? 'Order'} was ${currentCourierId ? 'reassigned' : 'assigned'}. The queue and workload have been refreshed.`
-      );
-      await loadData();
     } catch (error) {
-      setErrorMessage(getDispatchActionErrorMessage(error, Boolean(currentCourierId)));
+      // Stay open with fresh loads, so the dispatcher can pick someone else.
+      setAssignError(errorText(error, 'Close this, refresh and try again.'));
+      void suggestions.refetch();
     } finally {
       setSubmitting(false);
+      void refresh();
     }
   };
 
-  const filteredUnassigned = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return unassigned;
-    return unassigned.filter((order) =>
-      [order.trackingNumber, order.pickupDistrict, order.deliveryDistrict, order.orderSpeed]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(normalized))
-    );
-  }, [query, unassigned]);
+  /** Marks parcels Outbound from this hub, or accepts ones arriving at it. */
+  const runHubStep = async (orders: DispatchAssignmentResponse[], target: HubStep) => {
+    if (hubBusy || orders.length === 0) return;
+    setHubBusy(true);
+    setNotice(null);
+    const failures: string[] = [];
+    let completed = 0;
+    for (const order of orders) {
+      const failure = await hubStep(order, target);
+      if (failure) failures.push(failure);
+      else {
+        completed += 1;
+        setDone((keys) => new Set(keys).add(`${orderKey(order)}:${target}`));
+      }
+    }
+    setNotice(hubNotice(target, completed, failures));
+    setHubBusy(false);
+    void refresh();
+    window.clearTimeout(lagTimer.current);
+    lagTimer.current = window.setTimeout(() => void refresh(), EVENT_LAG_MS);
+  };
 
-  const availableCount = couriers.filter((courier) => courier.shiftStatus === 'AVAILABLE').length;
-  const totalActive = workloads.reduce((sum, workload) => sum + (workload.activeParcels ?? 0), 0);
+  const renderTab = () => {
+    // A list that never loaded is not an empty one: the banner above says why.
+    if (current.list.data === undefined) {
+      return current.list.isError ? null : <TableSkeleton />;
+    }
+    switch (current.id) {
+      case 'assigned': {
+        const orders = assigned.data?.orders ?? [];
+        return (
+          <AssignedTab
+            orders={search(orders)}
+            hiddenCount={Math.max(0, (assigned.data?.total ?? 0) - orders.length)}
+            searching={searching}
+            now={now}
+            onReassign={openAssignment}
+          />
+        );
+      }
+      case 'ready':
+        return (
+          <ReadyToSendTab
+            orders={search(readyOrders)}
+            searching={searching}
+            busy={hubBusy}
+            now={now}
+            onRun={(orders) => void runHubStep(orders, 'IN_TRANSIT')}
+          />
+        );
+      case 'incoming':
+        return (
+          <IncomingTab
+            orders={search(incomingOrders)}
+            searching={searching}
+            busy={hubBusy}
+            now={now}
+            onRun={(orders) => void runHubStep(orders, 'AT_DESTINATION_HUB')}
+          />
+        );
+      case 'couriers':
+        return (
+          <>
+            {isAdmin && !scope ? (
+              <div className="px-3 pb-3">
+                <LiveFleetHeatmap couriers={couriers.data} />
+              </div>
+            ) : null}
+            <CouriersTab
+              couriers={(couriers.data ?? []).filter((courier) => matchesCourier(courier, query))}
+              searching={searching}
+              showDistrict={isAdmin && !scope}
+            />
+          </>
+        );
+      default:
+        return (
+          <ToAssignTab
+            orders={search(unassigned.data ?? [])}
+            searching={searching}
+            now={now}
+            onAssign={openAssignment}
+          />
+        );
+    }
+  };
 
   return (
-    <main className="mx-auto max-w-[1600px] space-y-5 p-4 md:p-6" data-density="compact">
-      <header className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+    <main className="mx-auto max-w-[1600px] space-y-4 p-4 md:p-6" data-density="compact">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">Dispatch console</h1>
+          <h1 className="text-h1 text-primary">Dispatch</h1>
+          {!isAdmin && user?.district ? (
+            <p className="text-caption text-secondary">{districtLabel(user.district)} district</p>
+          ) : null}
         </div>
-        <Button variant="outline" onClick={() => void loadData()} disabled={loading}>
-          <RefreshCw className={`mr-1.5 size-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-end gap-2">
+          {isAdmin ? (
+            <SelectDropdown
+              label="District"
+              searchable
+              options={ADMIN_DISTRICT_OPTIONS}
+              value={adminDistrict}
+              onChange={setAdminDistrict}
+              className="w-56"
+            />
+          ) : null}
+          <Button
+            variant="outline"
+            density="compact"
+            leftIcon={<RefreshCw className={fetching ? 'animate-spin' : undefined} />}
+            onClick={() => void refresh()}
+          >
+            Refresh
+          </Button>
+        </div>
       </header>
 
-      {errorMessage ? (
-        <StatusBanner
-          tone="danger"
-          title="Dispatch action failed"
-          onDismiss={() => setErrorMessage(null)}
-        >
-          {errorMessage}
+      {failed ? (
+        <StatusBanner tone="warning" title="Some lists could not be refreshed">
+          Retrying automatically. Anything shown may be out of date.
         </StatusBanner>
       ) : null}
-      {successMessage ? (
-        <StatusBanner
-          tone="success"
-          title="Dispatch updated"
-          onDismiss={() => setSuccessMessage(null)}
-        >
-          {successMessage}
+      {notice ? (
+        <StatusBanner tone={notice.tone} title={notice.title} onDismiss={() => setNotice(null)}>
+          {notice.body}
         </StatusBanner>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SurfaceCard className="p-3">
-          <p className="text-caption text-secondary">Unassigned orders</p>
-          <p className="mt-1 text-2xl font-bold text-status-danger">{unassigned.length}</p>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <p className="text-caption text-secondary">Available couriers</p>
-          <p className="mt-1 text-2xl font-bold text-status-success">{availableCount}</p>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <p className="text-caption text-secondary">Active parcels</p>
-          <p className="mt-1 text-2xl font-bold text-primary">{totalActive}</p>
-        </SurfaceCard>
-        <SurfaceCard className="p-3">
-          <p className="text-caption text-secondary">Assigned orders shown</p>
-          <p className="mt-1 text-2xl font-bold text-primary">{assignments.length}</p>
-        </SurfaceCard>
-      </div>
-
-      <LiveFleetHeatmap couriers={couriers} />
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <SurfaceCard className="p-4">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <Package className="size-4 text-status-danger" />
-              <h2 className="text-label font-semibold text-primary">Unassigned order queue</h2>
-            </div>
+      <SurfaceCard density="compact" className="overflow-hidden p-0">
+        <Tabs
+          aria-label="Dispatch queues"
+          tabs={tabs.map(({ id, label, count }) => ({ id, label, count }))}
+          value={current.id}
+          onChange={openTab}
+          className="px-1"
+        />
+        <div role="tabpanel" aria-label={current.label}>
+          <div className="p-3">
             <Input
               variant="search"
+              density="compact"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onClear={() => setQuery('')}
-              placeholder="Search tracking or district"
-              aria-label="Search unassigned orders"
-              className="sm:max-w-64"
+              placeholder={
+                current.id === 'couriers' ? 'Search couriers' : 'Search tracking number or district'
+              }
+              aria-label={`Search ${current.label}`}
+              className="max-w-80"
             />
           </div>
-          <div className="mt-4 overflow-x-auto">
-            {loading ? (
-              <p className="py-10 text-center text-caption text-muted">
-                Loading unassigned orders...
-              </p>
-            ) : filteredUnassigned.length === 0 ? (
-              <EmptyState type={query ? 'no-results' : 'empty-queue'} className="mx-auto" />
-            ) : (
-              <table className="w-full text-left text-caption">
-                <thead className="border-b border-border-subtle text-overline uppercase text-secondary">
-                  <tr>
-                    <th className="px-2 py-2">Order</th>
-                    <th className="px-2 py-2">Route</th>
-                    <th className="px-2 py-2">Status</th>
-                    <th className="px-2 py-2 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUnassigned.map((order) => (
-                    <tr
-                      key={order.assignmentId ?? order.orderId}
-                      className="border-b border-border-subtle"
-                    >
-                      <td className="px-2 py-3">
-                        <p className="font-mono font-semibold text-primary">
-                          {order.trackingNumber ?? order.orderId}
-                        </p>
-                        <p className="text-muted">
-                          {order.orderSpeed ?? 'STANDARD'} · retry {order.retryCount ?? 0}
-                        </p>
-                      </td>
-                      <td className="px-2 py-3 text-secondary">
-                        {order.pickupDistrict ?? 'Unknown'} to {order.deliveryDistrict ?? 'Unknown'}
-                      </td>
-                      <td className="px-2 py-3">
-                        <span className="rounded-full bg-status-danger-bg px-2 py-1 text-[10px] font-semibold uppercase text-status-danger-fg">
-                          {order.status ?? 'UNASSIGNED'}
-                        </span>
-                      </td>
-                      <td className="px-2 py-3 text-right">
-                        <Button variant="primary" onClick={() => void openAssignment(order)}>
-                          <UserCheck className="mr-1.5 size-4" />
-                          Assign
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard className="p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Bike className="size-4 text-brand-primary" />
-              <h2 className="text-label font-semibold text-primary">Courier workload</h2>
-            </div>
-            <span
-              className={`text-caption ${workloadRefreshFailed ? 'text-status-warning-fg' : 'text-muted'}`}
-              aria-live="polite"
-            >
-              {workloadRefreshFailed
-                ? 'Auto-refresh failed, retrying'
-                : workloadUpdatedAt
-                  ? `Auto-refresh every 10s · updated ${formatTime(workloadUpdatedAt)}`
-                  : 'Auto-refresh every 10s'}
-            </span>
-          </div>
-          <div className="mt-4 space-y-2">
-            {workloads.length === 0 ? (
-              <p className="py-8 text-center text-caption text-muted">
-                No workload data available.
-              </p>
-            ) : (
-              workloads.map((workload) => {
-                const active = workload.activeParcels ?? 0;
-                const capacity = workload.maxCapacity ?? 0;
-                const percentage = capacity
-                  ? Math.min(100, Math.round((active / capacity) * 100))
-                  : 0;
-                return (
-                  <div
-                    key={workload.courierId}
-                    className="rounded-lg border border-border-subtle p-3"
-                  >
-                    <div className="flex items-center justify-between gap-2 text-caption">
-                      <span className="font-semibold text-primary">
-                        {workload.courierName ?? workload.courierId}
-                      </span>
-                      <span className="text-secondary">
-                        {workload.currentDistrict ?? 'Unknown district'}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-canvas">
-                        <div
-                          className={
-                            percentage >= 80
-                              ? 'h-full bg-status-warning-fg'
-                              : 'h-full bg-status-success-fg'
-                          }
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <span className="w-16 text-right text-caption text-secondary">
-                        {active}/{capacity}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-overline uppercase text-secondary">
-                      {workload.shiftStatus ?? 'UNKNOWN'}
-                    </p>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </SurfaceCard>
-      </div>
-
-      <SurfaceCard className="p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Search className="size-4 text-secondary" />
-            <h2 className="text-label font-semibold text-primary">Assigned orders</h2>
-          </div>
+          {renderTab()}
         </div>
-        {assignments.length === 0 ? (
-          <p className="py-8 text-center text-caption text-muted">
-            No assigned orders.
-          </p>
-        ) : (
-          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {assignments.map((assignment) => (
-              <button
-                type="button"
-                key={assignment.assignmentId ?? assignment.orderId}
-                onClick={() => void openAssignment(assignment)}
-                className="rounded-lg border border-border-subtle p-3 text-left transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-caption font-semibold text-primary">
-                    {assignment.trackingNumber ?? assignment.orderId}
-                  </span>
-                  <span
-                    className={
-                      assignment.status === 'REASSIGNED'
-                        ? 'rounded-full bg-status-info-bg px-2 py-0.5 text-[10px] font-semibold uppercase text-status-info-fg'
-                        : 'rounded-full bg-canvas px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary'
-                    }
-                  >
-                    {assignment.status}
-                  </span>
-                </div>
-                <p className="mt-1 text-caption text-secondary">
-                  {assignment.courierName ?? 'Unassigned'} ·{' '}
-                  {assignment.pickupDistrict ?? 'Unknown district'}
-                </p>
-              </button>
-            ))}
-          </div>
-        )}
       </SurfaceCard>
 
       <ManualDispatchOverrideModal
-        open={Boolean(selectedOrder)}
-        onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
-        couriers={couriers}
-        suggestions={suggestions}
-        loadingSuggestions={loadingSuggestions}
+        onClose={() => openAssignment(null)}
+        suggestions={suggestions.data}
+        loadError={suggestions.isError}
         submitting={submitting}
-        onSubmit={handleAssign}
+        error={assignError}
+        onSubmit={(courierId, reason) => void handleAssign(courierId, reason)}
       />
-      {errorMessage?.includes('conflict') ? (
-        <div className="sr-only">
-          <AlertTriangle aria-hidden="true" />
-        </div>
-      ) : null}
     </main>
   );
 }

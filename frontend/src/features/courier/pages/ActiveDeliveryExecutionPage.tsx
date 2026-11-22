@@ -7,12 +7,14 @@ import type {
   DeliveryState,
   DeliveryFailureReason
 } from '@/services/api/deliveryApi';
-import { allowedTransitions } from '@/types/fsm';
+import { courierNextStep, crossesDistricts } from '@/types/fsm';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
 import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBar/ErgonomicActionBar';
+import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
+import { cn } from '@/utils/cn';
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
 import { DeliveryFailureReportModal } from '../components/DeliveryFailureReportModal';
@@ -37,6 +39,7 @@ export function ActiveDeliveryExecutionPage() {
   const deliveryIdParam = id || searchParams.get('deliveryId');
 
   const [session, setSession] = useState<DeliverySessionResponse | null>(null);
+  const [allDeliveries, setAllDeliveries] = useState<DeliverySessionResponse[]>([]);
   const [isPoDVerified, setIsPoDVerified] = useState(false);
   const [isPoDModalOpen, setIsPoDModalOpen] = useState(false);
   const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
@@ -45,15 +48,12 @@ export function ActiveDeliveryExecutionPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Compute allowed next states for ErgonomicActionBar from FSM definition
+  // A parcel going to another district goes through both hubs; the courier's next step depends on it.
+  const viaHubs = session ? crossesDistricts(session) : false;
   const allowedNextStates = useMemo(() => {
-    if (!session?.currentState || !(session.currentState in allowedTransitions)) {
-      return [] as DeliveryState[];
-    }
-    return (allowedTransitions[session.currentState as DeliveryState] || []).filter(
-      (s) => s !== 'CANCELLED' && s !== 'FAILED'
-    ) as DeliveryState[];
-  }, [session?.currentState]);
+    const next = courierNextStep(session?.currentState as DeliveryState | undefined, viaHubs);
+    return next ? [next] : ([] as DeliveryState[]);
+  }, [session?.currentState, viaHubs]);
 
   // Load delivery session
   const loadDelivery = useCallback(async () => {
@@ -62,13 +62,29 @@ export function ActiveDeliveryExecutionPage() {
       setErrorMsg(null);
       let activeDelivery: DeliverySessionResponse | null = null;
 
+      // Always load all today's deliveries to populate the switcher bar
+      let myDeliveries: DeliverySessionResponse[] = [];
+      try {
+        myDeliveries = (await deliveryApi.getMyDeliveries('today')) || [];
+        setAllDeliveries(myDeliveries);
+      } catch {
+        myDeliveries = [];
+      }
+
       if (deliveryIdParam) {
         activeDelivery = await deliveryApi.getDeliveryById(deliveryIdParam);
       } else if (orderIdParam) {
         activeDelivery = await deliveryApi.getDeliveryByOrderId(orderIdParam);
+      } else if (myDeliveries.length > 0) {
+        // Prioritize actionable/in-progress delivery so the slide-to-transition bar is immediately available
+        activeDelivery =
+          myDeliveries.find(
+            (d) => d.currentState !== 'DELIVERED' && d.currentState !== 'FAILED' && d.currentState !== 'CANCELLED'
+          ) || myDeliveries[0];
       } else if (courierId) {
         // Fallback: lookup current courier's active deliveries
         const courierDeliveries = await deliveryApi.getDeliveriesByCourier(courierId);
+        setAllDeliveries(courierDeliveries || []);
         if (courierDeliveries && courierDeliveries.length > 0) {
           activeDelivery =
             courierDeliveries.find(
@@ -241,6 +257,37 @@ export function ActiveDeliveryExecutionPage() {
         </SurfaceCard>
       ) : (
         <div className="space-y-5">
+          {/* Active Job Switcher Bar */}
+          {allDeliveries.length > 1 && (
+            <SurfaceCard className="space-y-2.5 p-3.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-primary">Today's Jobs ({allDeliveries.length})</span>
+                <span className="text-secondary text-[11px]">Select job to traverse state</span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {allDeliveries.map((job) => {
+                  const isSelected = job.deliveryId === session.deliveryId;
+                  return (
+                    <button
+                      key={job.deliveryId}
+                      type="button"
+                      onClick={() => navigate(`/courier/delivery/${job.deliveryId}`)}
+                      className={cn(
+                        'flex items-center gap-2 shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all touch-manipulation cursor-pointer',
+                        isSelected
+                          ? 'border-brand-primary bg-brand-subtle text-brand-primary shadow-sm'
+                          : 'border-border-subtle bg-card text-secondary hover:border-brand-primary hover:text-primary'
+                      )}
+                    >
+                      <span className="font-mono">{job.trackingNumber}</span>
+                      <FsmStatusBadge state={job.currentState || 'ASSIGNED'} size="sm" />
+                    </button>
+                  );
+                })}
+              </div>
+            </SurfaceCard>
+          )}
+
           {/* Visual FSM Stepper Card */}
           <SurfaceCard className="space-y-4 p-5">
             <div className="flex items-center justify-between">
@@ -261,6 +308,7 @@ export function ActiveDeliveryExecutionPage() {
             <div className="py-2">
               <DeliveryProgressStepper
                 current={(session.currentState || 'CREATED') as DeliveryState}
+                viaHubs={viaHubs}
                 density="touch"
               />
             </div>

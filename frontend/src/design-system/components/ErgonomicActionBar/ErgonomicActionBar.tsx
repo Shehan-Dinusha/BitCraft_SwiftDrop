@@ -19,6 +19,7 @@ export interface ErgonomicActionBarProps {
 const actionLabels: Partial<Record<DeliveryState, string>> = {
   ASSIGNED: 'Accept job',
   PICKED_UP: 'Confirm pickup',
+  AT_ORIGIN_HUB: 'Hand in at hub',
   IN_TRANSIT: 'Start trip',
   DELIVERED: 'Complete delivery',
   FAILED: 'Report failure',

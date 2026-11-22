@@ -1,7 +1,10 @@
 package com.swiftdrop.dispatch.domain.entity;
 
+import com.swiftdrop.contracts.enums.InternalQueueStatus;
+import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.parcel.ParcelLimits;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +18,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -72,6 +76,34 @@ public class DispatchAssignment {
     /** When delivery-execution reported the parcel past pickup; reassignment is blocked once set. */
     @Column(name = "picked_up_at")
     private Instant pickedUpAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "leg", nullable = false, length = 16)
+    private AssignmentLeg leg = AssignmentLeg.FIRST_MILE;
+
+    /** Between the legs: AT_HUB, OUTBOUND or INCOMING. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hub_stage", length = 32)
+    private InternalQueueStatus hubStage;
+
+    @Column(name = "first_mile_courier_id")
+    private UUID firstMileCourierId;
+
+    /** Null for orders booked before sizes were recorded. */
+    @Column(name = "length_cm", precision = 8, scale = 2)
+    private BigDecimal lengthCm;
+
+    @Column(name = "width_cm", precision = 8, scale = 2)
+    private BigDecimal widthCm;
+
+    @Column(name = "height_cm", precision = 8, scale = 2)
+    private BigDecimal heightCm;
+
+    @Column(name = "weight_kg", precision = 8, scale = 2)
+    private BigDecimal weightKg;
+
+    @Column(name = "volume_litres", precision = 12, scale = 2)
+    private BigDecimal volumeLitres;
 
     @Column(name = "estimated_pickup_minutes")
     private Integer estimatedPickupMinutes = 30;
@@ -165,6 +197,45 @@ public class DispatchAssignment {
 
     public Instant getPickedUpAt() { return pickedUpAt; }
     public void setPickedUpAt(Instant pickedUpAt) { this.pickedUpAt = pickedUpAt; }
+
+    public AssignmentLeg getLeg() { return leg; }
+    public void setLeg(AssignmentLeg leg) { this.leg = leg; }
+
+    public InternalQueueStatus getHubStage() { return hubStage; }
+    public void setHubStage(InternalQueueStatus hubStage) { this.hubStage = hubStage; }
+
+    public UUID getFirstMileCourierId() { return firstMileCourierId; }
+    public void setFirstMileCourierId(UUID firstMileCourierId) { this.firstMileCourierId = firstMileCourierId; }
+
+    /** The district whose dispatcher manages the order now: pickup on the first leg, drop-off on the last. */
+    public SriLankanDistrict getResponsibleDistrict() {
+        return leg == AssignmentLeg.LAST_MILE ? deliveryDistrict : pickupDistrict;
+    }
+
+    /** Picked up in one district and delivered in another, so it goes through both hubs. */
+    public boolean crossesDistricts() {
+        return pickupDistrict != null && deliveryDistrict != null && pickupDistrict != deliveryDistrict;
+    }
+
+    public BigDecimal getLengthCm() { return lengthCm; }
+    public BigDecimal getWidthCm() { return widthCm; }
+    public BigDecimal getHeightCm() { return heightCm; }
+    public BigDecimal getWeightKg() { return weightKg; }
+    public BigDecimal getVolumeLitres() { return volumeLitres; }
+
+    /** The parcel's size in cm and weight in kg; the volume follows from them. */
+    public void setParcel(BigDecimal lengthCm, BigDecimal widthCm, BigDecimal heightCm, BigDecimal weightKg) {
+        this.lengthCm = lengthCm;
+        this.widthCm = widthCm;
+        this.heightCm = heightCm;
+        this.weightKg = weightKg;
+        this.volumeLitres = ParcelLimits.volumeLitres(lengthCm, widthCm, heightCm);
+    }
+
+    /** Null when the size is unknown. */
+    public BigDecimal getLongestSideCm() {
+        return volumeLitres == null ? null : lengthCm.max(widthCm).max(heightCm);
+    }
 
     public Integer getEstimatedPickupMinutes() { return estimatedPickupMinutes; }
     public void setEstimatedPickupMinutes(Integer estimatedPickupMinutes) { this.estimatedPickupMinutes = estimatedPickupMinutes; }

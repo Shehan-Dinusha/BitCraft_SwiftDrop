@@ -1879,7 +1879,8 @@ export interface components {
             password: string;
             /** @description Self-service registration supports CUSTOMER and MERCHANT only. */
             role: components["schemas"]["UserRole"];
-            district: components["schemas"]["SriLankanDistrict"];
+            /** @description Optional. Not asked at sign-up: a customer's orders are routed by each order's pickup district, and a merchant gives its pickup district on the business application. */
+            district?: components["schemas"]["SriLankanDistrict"];
             /** Format: uuid */
             merchantId?: string | null;
         };
@@ -1986,7 +1987,7 @@ export interface components {
             /** Format: password */
             newPassword: string;
         };
-        /** @description Self-service profile update. */
+        /** @description Self-service profile update. Couriers and dispatchers must send their assigned district unchanged; customers and merchants may leave it out. */
         UpdateProfileRequest: {
             /** @example Nimal */
             firstName: string;
@@ -1997,7 +1998,7 @@ export interface components {
              * @example +94771234567
              */
             phone?: string;
-            district: components["schemas"]["SriLankanDistrict"];
+            district?: components["schemas"]["SriLankanDistrict"];
         };
         DeleteAccountRequest: {
             /**

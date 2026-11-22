@@ -32,7 +32,8 @@ public enum PublicOrderStatus {
             case CREATED -> CREATED;
             case ASSIGNED -> PICKUP_ASSIGNED;
             case PICKED_UP -> PICKED_UP;
-            case IN_TRANSIT -> IN_TRANSIT;
+            // Hub steps stay "in transit" for customers; the internal sub-status tells them apart.
+            case AT_ORIGIN_HUB, IN_TRANSIT, AT_DESTINATION_HUB -> IN_TRANSIT;
             case OUT_FOR_DELIVERY -> OUT_FOR_DELIVERY;
             case DELIVERED -> DELIVERED;
             case FAILED -> FAILED;

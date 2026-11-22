@@ -2,10 +2,11 @@ import { LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/design-system/primitives/Button';
+import { Avatar } from '../Avatar/Avatar';
 import { BrandMark } from '../BrandMark/BrandMark';
 import { navIcons } from './navIcons';
 import { NavItem } from './NavItem';
-import { roleShellSpec, type NavEntry, type NavGroup, type ShellRole } from './roleNav';
+import { roleShellSpec, type NavEntry, type ShellRole } from './roleNav';
 
 const roleDot: Record<ShellRole, string> = {
   customer: 'bg-role-customer',
@@ -29,10 +30,10 @@ export interface SideNavAccount {
 export interface SideNavProps {
   role: ShellRole;
   /** Defaults to the role's menu from the Figma spec. */
-  groups?: NavGroup[];
+  items?: NavEntry[];
   /** Overrides the workspace line ("Personal account", a merchant name, a district…). */
   workspace?: string;
-  /** Primary action under the switcher. Defaults to the role's CTA label when `onCta` is given. */
+  /** Primary action above the menu. */
   cta?: { label: string; onClick: () => void };
   /** Marks one item as active. */
   activeId?: string;
@@ -45,19 +46,88 @@ export interface SideNavProps {
   className?: string;
 }
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
+const cardButton =
+  'flex w-full items-center transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus';
+
+/** The account card at the bottom of the side nav: who is signed in, and Sign out. */
+function AccountCard({
+  account,
+  onSignOut,
+  rail
+}: {
+  account: SideNavAccount;
+  onSignOut?: () => void;
+  rail: boolean;
+}) {
+  const identity = (
+    <>
+      <Avatar name={account.name} src={account.avatarUrl} />
+      {rail ? null : (
+        <span className="flex min-w-0 flex-1 flex-col text-left">
+          <span className="truncate text-body-strong">{account.name}</span>
+          {account.email ? (
+            <span className="text-secondary">
+              <span className="block truncate text-caption">{account.email}</span>
+            </span>
+          ) : null}
+        </span>
+      )}
+    </>
+  );
+  const identityClass = cn('gap-3 p-3', rail && 'justify-center px-0');
+
+  return (
+    <div
+      className={cn(
+        'm-3 mt-0 shrink-0 overflow-hidden rounded-xl border border-border-strong bg-card shadow-raised',
+        rail && 'mx-2',
+        account.active && 'border-border-selected'
+      )}
+    >
+      {account.onOpen ? (
+        <button
+          type="button"
+          onClick={account.onOpen}
+          aria-label={`Your profile: ${account.name}`}
+          aria-current={account.active ? 'page' : undefined}
+          title="Your profile"
+          className={cn(
+            cardButton,
+            identityClass,
+            account.active ? 'bg-brand-subtle' : 'hover:bg-elevated'
+          )}
+        >
+          {identity}
+        </button>
+      ) : (
+        <div className={cn('flex items-center', identityClass)}>{identity}</div>
+      )}
+      {onSignOut ? (
+        <button
+          type="button"
+          onClick={onSignOut}
+          aria-label="Sign out"
+          title={rail ? 'Sign out' : undefined}
+          className={cn(
+            cardButton,
+            'h-10 justify-center gap-2 border-t border-border-strong text-status-danger-fg hover:bg-status-danger-bg'
+          )}
+        >
+          <LogOut aria-hidden="true" className="size-4" />
+          {rail ? null : <span className="text-label">Sign out</span>}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
-/** Figma SideNav: 256px (72px rail) with workspace switcher, primary action, grouped menu and account footer. */
+/**
+ * SideNav: 256px (72px rail) tinted panel with the brand strip, one flat menu and the account card.
+ * The brand strip is as tall as the TopBar, so the two read as one line across the screen.
+ */
 export function SideNav({
   role,
-  groups,
+  items,
   workspace,
   cta,
   activeId,
@@ -68,78 +138,37 @@ export function SideNav({
   className
 }: SideNavProps) {
   const spec = roleShellSpec[role];
-  const operational = role === 'system-admin' || role === 'dispatcher';
-  const menu = groups ?? spec.groups;
-  const lastGroup = menu[menu.length - 1];
-  const bodyGroups = lastGroup && !lastGroup.label && menu.length > 1 ? menu.slice(0, -1) : menu;
-  const footerGroup = bodyGroups === menu ? undefined : lastGroup;
-
-  const renderEntry = (entry: NavEntry) => {
-    const active = entry.id === activeId;
-    return (
-      <li key={entry.id}>
-        {renderItem ? (
-          renderItem(entry, active, rail)
-        ) : (
-          <NavItem
-            href={entry.to ?? '#'}
-            icon={entry.icon}
-            label={entry.label}
-            count={entry.count}
-            active={active}
-            rail={rail}
-          />
-        )}
-      </li>
-    );
-  };
+  const menu = items ?? spec.items;
 
   return (
     <aside
       aria-label={`${spec.label} navigation`}
       className={cn(
-        'sticky top-0 flex h-screen shrink-0 flex-col gap-0.5 border-r border-border-subtle bg-card px-3 pb-3 pt-3.5',
+        'sticky top-0 z-30 flex h-screen shrink-0 flex-col border-r border-border-strong bg-nav shadow-nav',
         rail ? 'w-[72px]' : 'w-64',
-        operational && 'px-4 pb-4 pt-5 shadow-[4px_0_24px_rgb(15_23_42_/_3%)]',
-        operational && rail && 'px-2',
         className
       )}
     >
       <div
         className={cn(
-          'flex items-center gap-2.5 rounded-[10px] p-2',
-          operational &&
-            !rail &&
-            'mb-6 gap-3 rounded-2xl border border-border-subtle bg-gradient-to-br from-brand-subtle to-card p-3',
-          rail && 'justify-center p-1',
-          operational && rail && 'mb-5'
+          'flex h-14 shrink-0 items-center gap-3 border-b border-border-strong bg-card px-5',
+          rail && 'justify-center px-0'
         )}
       >
-        <BrandMark size={operational ? 40 : 32} />
+        <BrandMark size={36} />
         {rail ? null : (
-          <>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span
-                className={cn(
-                  'text-body-strong text-primary',
-                  operational && 'text-lg font-bold tracking-tight'
-                )}
-              >
-                SwiftDrop
-              </span>
-              <span className="flex items-center gap-1.5 text-caption text-secondary">
-                {!operational && (
-                  <span aria-hidden="true" className={cn('size-1.5 rounded-full', roleDot[role])} />
-                )}
-                <span className="truncate">{workspace ?? spec.workspace}</span>
-              </span>
-            </div>
-          </>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="text-body-strong font-bold">SwiftDrop</span>
+            <span className="flex items-center gap-1.5 text-secondary">
+              <span aria-hidden="true" className={cn('size-1.5 rounded-full', roleDot[role])} />
+              <span className="truncate text-caption">{workspace ?? spec.workspace}</span>
+            </span>
+          </div>
         )}
       </div>
 
       {cta ? (
-        <div className="py-1.5 pr-0">
+        <div className={cn('px-3 pt-3', rail && 'px-2')}>
           {rail ? (
             <Button
               density="comfortable"
@@ -159,99 +188,32 @@ export function SideNav({
 
       <nav
         aria-label={`${spec.label} menu`}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        className={cn('min-h-0 flex-1 overflow-y-auto p-3', rail && 'px-2')}
       >
-        {bodyGroups.map((group, index) => (
-          <div key={group.label ?? index} className="flex flex-col">
-            {group.label && !rail ? (
-              <p
-                className={cn(
-                  'px-3 pb-1 pt-3 text-overline uppercase text-muted',
-                  operational && 'pb-3 pt-0 text-[10px] font-semibold tracking-[0.16em]'
+        <ul className="flex flex-col gap-1">
+          {menu.map((entry) => {
+            const active = entry.id === activeId;
+            return (
+              <li key={entry.id}>
+                {renderItem ? (
+                  renderItem(entry, active, rail)
+                ) : (
+                  <NavItem
+                    href={entry.to ?? '#'}
+                    icon={entry.icon}
+                    label={entry.label}
+                    count={entry.count}
+                    active={active}
+                    rail={rail}
+                  />
                 )}
-              >
-                {group.label}
-              </p>
-            ) : (
-              <div className={rail && index > 0 ? 'my-2 h-px bg-border-subtle' : undefined} />
-            )}
-            <ul className={cn('flex flex-col gap-0.5', operational && 'gap-2')}>
-              {group.items.map(renderEntry)}
-            </ul>
-          </div>
-        ))}
-        {footerGroup ? (
-          <ul className="mt-auto flex flex-col gap-0.5 pt-2">
-            {footerGroup.items.map(renderEntry)}
-          </ul>
-        ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </nav>
 
-      {account ? (
-        <div
-          className={cn(
-            'mt-1 border-t border-border-subtle pt-2.5',
-            operational && 'mt-5 rounded-xl border bg-canvas py-3'
-          )}
-        >
-          <div className={cn('flex items-center gap-1.5 px-1', rail && 'flex-col px-0')}>
-            {(() => {
-              const identity = (
-                <>
-                  {account.avatarUrl ? (
-                    <img src={account.avatarUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-caption text-brand-primary"
-                    >
-                      {initials(account.name)}
-                    </span>
-                  )}
-                  {rail ? null : (
-                    <span className="flex min-w-0 flex-1 flex-col text-left">
-                      <span className="truncate text-body-strong text-primary">{account.name}</span>
-                      {account.email ? (
-                        <span className="truncate text-caption text-muted">{account.email}</span>
-                      ) : null}
-                    </span>
-                  )}
-                </>
-              );
-              const base = cn('flex min-w-0 items-center gap-2.5 rounded-lg p-1', rail ? 'justify-center' : 'flex-1');
-              return account.onOpen ? (
-                <button
-                  type="button"
-                  onClick={account.onOpen}
-                  aria-label={`Your profile: ${account.name}`}
-                  aria-current={account.active ? 'page' : undefined}
-                  title="Your profile"
-                  className={cn(
-                    base,
-                    'transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus',
-                    account.active && 'bg-brand-subtle'
-                  )}
-                >
-                  {identity}
-                </button>
-              ) : (
-                <div className={base}>{identity}</div>
-              );
-            })()}
-            {onSignOut ? (
-              <button
-                type="button"
-                onClick={onSignOut}
-                aria-label="Sign out"
-                title="Sign out"
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-secondary hover:bg-elevated hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
-              >
-                <LogOut aria-hidden="true" className="size-4" />
-              </button>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+      {account ? <AccountCard account={account} onSignOut={onSignOut} rail={rail} /> : null}
     </aside>
   );
 }

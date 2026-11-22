@@ -36,6 +36,14 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(404, "Not Found", "Order not found", safePath(request)));
     }
 
+    /** The message is fixed text written by {@link AddressBookException}, never request data. */
+    @ExceptionHandler(AddressBookException.class)
+    public ResponseEntity<ApiErrorResponse> handleAddressBook(AddressBookException ex, HttpServletRequest request) {
+        HttpStatus status = ex.getStatus();
+        return ResponseEntity.status(status)
+                .body(ApiErrorResponse.of(status.value(), status.getReasonPhrase(), ex.getMessage(), safePath(request)));
+    }
+
     @ExceptionHandler(InvalidOrderStateException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidState(InvalidOrderStateException ex, HttpServletRequest request) {
         log.warn("Invalid order state transition on {}", safePath(request));
@@ -97,6 +105,13 @@ public class GlobalExceptionHandler {
         log.warn("Caller identity missing on {}", safePath(request));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiErrorResponse.of(401, "Unauthorized", "Customer identification is required", safePath(request)));
+    }
+
+    /** The message is fixed text, never request data. */
+    @ExceptionHandler(ParcelTooLargeException.class)
+    public ResponseEntity<ApiErrorResponse> handleParcelTooLarge(ParcelTooLargeException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiErrorResponse.of(400, "Bad Request", ex.getMessage(), safePath(request)));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/store/useAuthStore';
 import {
   dispatchApi,
   type CourierShiftResponse,
@@ -8,7 +10,6 @@ import {
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
-import { Modal } from '@/design-system/primitives/Modal';
 import { SlaBreachAlertTicker } from '../components/SlaBreachAlertTicker';
 import { AiDeliveryAssistantPanel } from '../components/AiDeliveryAssistantPanel';
 import { NotificationLogModal } from '@/features/notifications/NotificationLogModal';
@@ -43,19 +44,15 @@ const SRI_LANKAN_DISTRICTS: SriLankanDistrict[] = [
 ];
 
 export function FleetControlTowerPage() {
+  const navigate = useNavigate();
   const [couriers, setCouriers] = useState<CourierShiftResponse[]>([]);
   const [unassigned, setUnassigned] = useState<DispatchAssignmentResponse[]>([]);
   const [kpiSummary, setKpiSummary] = useState<OperationalKpiSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [districtFilter, setDistrictFilter] = useState<string>('ALL');
+  const isDispatcher = useAuthStore((state) => state.user?.role === 'DISPATCHER');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Manual Assign Modal State
-  const [selectedOrder, setSelectedOrder] = useState<DispatchAssignmentResponse | null>(null);
-  const [selectedCourierId, setSelectedCourierId] = useState<string>('');
-  const [overrideReason, setOverrideReason] = useState<string>('');
-  const [isAssigning, setIsAssigning] = useState(false);
   const [isLogsOpen, setIsLogsOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -83,32 +80,6 @@ export function FleetControlTowerPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleManualAssign = async () => {
-    if (!selectedOrder || !selectedCourierId) return;
-    try {
-      setIsAssigning(true);
-      setErrorMsg(null);
-      await dispatchApi.manualAssign({
-        orderId: selectedOrder.orderId!,
-        courierId: selectedCourierId,
-        assignedBy: 'FLEET_CONTROLLER',
-        reason: overrideReason || 'Manual controller assignment'
-      });
-      setSuccessMsg(
-        `Order ${selectedOrder.trackingNumber} successfully assigned to courier!`
-      );
-      setSelectedOrder(null);
-      setSelectedCourierId('');
-      setOverrideReason('');
-      await fetchData();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Manual assignment failed';
-      setErrorMsg(msg);
-    } finally {
-      setIsAssigning(false);
-    }
-  };
 
   const filteredCouriers = couriers.filter((c) => {
     if (districtFilter !== 'ALL' && c.currentDistrict !== districtFilter) return false;
@@ -169,16 +140,6 @@ export function FleetControlTowerPage() {
           {errorMsg}
         </StatusBanner>
       )}
-      {successMsg && (
-        <StatusBanner
-          tone="success"
-          title="Operation Succeeded"
-          onDismiss={() => setSuccessMsg(null)}
-        >
-          {successMsg}
-        </StatusBanner>
-      )}
-
       {/* Fleet KPI Metric Tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <SurfaceCard className="p-3">
@@ -305,19 +266,14 @@ export function FleetControlTowerPage() {
                   )}
 
                   <div className="flex justify-end pt-1">
+                    {/* Assigning happens in one place, with the eligibility checks. */}
                     <Button
                       variant="primary"
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        const candidate = couriers.find(
-                          (c) =>
-                            c.currentDistrict === order.pickupDistrict &&
-                            c.shiftStatus === 'AVAILABLE'
-                        );
-                        if (candidate?.courierId) {
-                          setSelectedCourierId(candidate.courierId);
-                        }
-                      }}
+                      onClick={() =>
+                        navigate(
+                          `/ops/dispatch?tab=assign&q=${encodeURIComponent(order.trackingNumber ?? '')}`
+                        )
+                      }
                       className="h-7 text-xs"
                     >
                       <UserCheck className="mr-1 h-3.5 w-3.5" />
@@ -340,7 +296,8 @@ export function FleetControlTowerPage() {
               </h2>
             </div>
 
-            {/* District Filter Dropdown */}
+            {/* District filter: admins only. A dispatcher's couriers are all in their own district. */}
+            {!isDispatcher && (
             <div className="flex items-center gap-2">
               <Filter className="h-3.5 w-3.5 text-muted" />
               <select
@@ -356,6 +313,7 @@ export function FleetControlTowerPage() {
                 ))}
               </select>
             </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -417,81 +375,6 @@ export function FleetControlTowerPage() {
           </div>
         </section>
       </div>
-
-      {/* Manual Assignment Modal */}
-      <Modal
-        open={Boolean(selectedOrder)}
-        onClose={() => setSelectedOrder(null)}
-        title="Manual Courier Override"
-      >
-        {selectedOrder && (
-          <div className="space-y-4 text-xs">
-            <div className="rounded-lg bg-canvas p-3">
-              <div className="flex justify-between font-mono font-bold text-primary">
-                <span>{selectedOrder.trackingNumber}</span>
-                <span className="text-brand-primary">
-                  {selectedOrder.orderSpeed}
-                </span>
-              </div>
-              <p className="mt-1 text-secondary">
-                Route: <strong>{selectedOrder.pickupDistrict}</strong> ?{' '}
-                <strong>{selectedOrder.deliveryDistrict}</strong>
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="fleet-assign-courier" className="font-semibold text-primary">
-                Select Courier to Assign
-              </label>
-              <select id="fleet-assign-courier"
-                value={selectedCourierId}
-                onChange={(e) => setSelectedCourierId(e.target.value)}
-                className="w-full rounded border border-border-subtle bg-card p-2 text-xs"
-              >
-                <option value="">-- Choose Courier --</option>
-                {couriers
-                  .filter((c) => c.shiftStatus !== 'OFFLINE')
-                  .map((c) => (
-                    <option key={c.courierId} value={c.courierId}>
-                      {c.courierName} ({c.currentDistrict}) ? {c.activeParcelsCount ?? 0}/
-                      {c.maxCapacity} [{c.shiftStatus}]
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="fleet-reassign-reason" className="font-semibold text-primary">
-                Override Reason
-              </label>
-              <input id="fleet-reassign-reason"
-                type="text"
-                placeholder="e.g. VIP express customer, area re-route"
-                value={overrideReason}
-                onChange={(e) => setOverrideReason(e.target.value)}
-                className="w-full rounded border border-border-subtle bg-card p-2 text-xs"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedOrder(null)}
-                disabled={isAssigning}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleManualAssign}
-                disabled={!selectedCourierId || isAssigning}
-              >
-                {isAssigning ? 'Assigning...' : 'Confirm Assignment'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
 
       <NotificationLogModal
         open={isLogsOpen}

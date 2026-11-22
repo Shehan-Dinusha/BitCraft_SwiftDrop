@@ -1,10 +1,15 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
+import com.swiftdrop.contracts.enums.InternalQueueStatus;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.order.OrderCancelledEvent;
+import com.swiftdrop.contracts.events.order.OrderUpdatedEvent;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
+import com.swiftdrop.dispatch.domain.enums.CourierBlock;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
@@ -24,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -52,13 +58,40 @@ public class DispatchAssignmentService {
 
     @Transactional(readOnly = true)
     public Page<DispatchAssignmentResponse> getAssignments(AssignmentStatus status, Pageable pageable) {
+        return getAssignments(status, null, pageable);
+    }
+
+    /** Assignments picked up in {@code pickupDistrict}, or in every district when it is {@code null}. */
+    @Transactional(readOnly = true)
+    public Page<DispatchAssignmentResponse> getAssignments(AssignmentStatus status, SriLankanDistrict pickupDistrict,
+                                                           Pageable pageable) {
         Page<DispatchAssignment> page;
-        if (status != null) {
+        if (pickupDistrict != null) {
+            page = status != null
+                    ? assignmentRepository.findHandledByAndStatus(pickupDistrict, status, pageable)
+                    : assignmentRepository.findHandledBy(pickupDistrict, pageable);
+        } else if (status != null) {
             page = assignmentRepository.findByStatus(status, pageable);
         } else {
             page = assignmentRepository.findAll(pageable);
         }
         return page.map(DispatchAssignmentResponse::fromEntity);
+    }
+
+    /** Handed in at {@code district}'s hub and waiting to be marked Outbound. */
+    @Transactional(readOnly = true)
+    public List<DispatchAssignmentResponse> getReadyToSend(SriLankanDistrict district) {
+        return assignmentRepository.findReadyToSend(district).stream()
+                .map(DispatchAssignmentResponse::fromEntity)
+                .toList();
+    }
+
+    /** Open orders delivered into {@code district} from elsewhere: shown to its dispatcher read-only. */
+    @Transactional(readOnly = true)
+    public List<DispatchAssignmentResponse> getIncoming(SriLankanDistrict district) {
+        return assignmentRepository.findIncoming(district).stream()
+                .map(DispatchAssignmentResponse::fromEntity)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -77,7 +110,16 @@ public class DispatchAssignmentService {
 
     @Transactional(readOnly = true)
     public List<DispatchAssignmentResponse> getUnassignedParcels() {
-        return assignmentRepository.findByStatus(AssignmentStatus.UNASSIGNED).stream()
+        return getUnassignedParcels(null);
+    }
+
+    /** The unassigned queue of one pickup district, or of every district when it is {@code null}. */
+    @Transactional(readOnly = true)
+    public List<DispatchAssignmentResponse> getUnassignedParcels(SriLankanDistrict pickupDistrict) {
+        List<DispatchAssignment> queue = pickupDistrict == null
+                ? assignmentRepository.findByStatus(AssignmentStatus.UNASSIGNED)
+                : assignmentRepository.findHandledByWithStatus(pickupDistrict, AssignmentStatus.UNASSIGNED);
+        return queue.stream()
                 .map(DispatchAssignmentResponse::fromEntity)
                 .toList();
     }
@@ -94,10 +136,13 @@ public class DispatchAssignmentService {
     }
 
     /**
-     * Up to three AVAILABLE couriers below capacity for an order: for a new
-     * assignment when it is UNASSIGNED, or for a reassignment when it is ASSIGNED
-     * or REASSIGNED, in which case the courier currently holding it is left out. A
-     * COMPLETED or CANCELLED order cannot be (re)assigned, so it gets no suggestions.
+     * The couriers on shift who could be asked to carry an order: for a new assignment when it is
+     * UNASSIGNED, or for a reassignment when it is ASSIGNED or REASSIGNED, in which case the courier
+     * currently holding it is left out. Those who can take it come first, best first; the rest carry the
+     * reason they cannot. A COMPLETED or CANCELLED order cannot be (re)assigned, so it gets none.
+     *
+     * <p>Best is the smallest vehicle the parcel fits, so bigger ones stay free for bigger parcels, then the
+     * emptiest courier. Without a recorded size the vehicle says nothing, so only the load counts.</p>
      */
     @Transactional(readOnly = true)
     public List<CourierSuggestionResponse> getSuggestions(UUID orderId) {
@@ -111,21 +156,60 @@ public class DispatchAssignmentService {
                 ? null
                 : assignment.getCourierId();
 
-        var candidates = courierShiftRepository.findAvailableCandidates(ShiftStatus.AVAILABLE);
-        Comparator<CourierShift> ranking =
-                Comparator.comparing((CourierShift courier) ->
-                                courier.getCurrentDistrict() != assignment.getPickupDistrict())
-                        .thenComparingInt(courier -> courier.getActiveParcelsCount())
-                        .thenComparing(courier -> courier.getLastHeartbeatAt(),
-                                Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(CourierShift::getCourierId);
+        // Only couriers of the district handling the order now can carry it: the pickup district on the
+        // first leg, the drop-off district on the last. Orders from before the pickup district was
+        // recorded have none, so every available courier is offered for them.
+        var district = assignment.getResponsibleDistrict();
+        List<CourierShift> candidates = (district != null
+                ? courierShiftRepository.findByCurrentDistrictAndShiftStatusNot(district, ShiftStatus.OFFLINE)
+                : courierShiftRepository.findByShiftStatusNot(ShiftStatus.OFFLINE)).stream()
+                .filter(courier -> !courier.getCourierId().equals(currentCourierId))
+                .toList();
+        Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
+                candidates.stream().map(CourierShift::getCourierId).toList());
+        boolean sized = assignment.getVolumeLitres() != null;
+
+        record Option(CourierShift courier, CourierLoad load, CourierBlock block) {}
+        Comparator<Option> ranking = Comparator.comparing((Option option) -> option.block() != null)
+                .thenComparing(option -> sized ? option.courier().getVehicleType().ordinal() : 0)
+                .thenComparingDouble(option -> CourierFit.fullness(option.courier(), option.load()))
+                .thenComparing(option -> option.courier().getLastHeartbeatAt(),
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(option -> option.courier().getCourierId());
 
         return candidates.stream()
-                .filter(courier -> !courier.getCourierId().equals(currentCourierId))
+                .map(courier -> {
+                    CourierLoad load = loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE);
+                    return new Option(courier, load, CourierFit.block(courier, load, assignment).orElse(null));
+                })
                 .sorted(ranking)
-                .limit(3)
-                .map(courier -> CourierSuggestionResponse.fromEntity(courier, assignment.getPickupDistrict()))
+                .map(option -> CourierSuggestionResponse.of(option.courier(), option.load(), option.block(), district))
                 .toList();
+    }
+
+    /**
+     * Takes over an edit made before a courier was assigned. The size and weight always apply. Districts and
+     * speed apply only while the order still waits for its first courier; once one is on the way the route is
+     * fixed. An update that overtakes its {@code order.created} is retried until the order is registered.
+     */
+    @Transactional
+    public void handleOrderUpdated(OrderUpdatedEvent event) {
+        DispatchAssignment assignment = assignmentRepository.findByOrderId(event.orderId())
+                .orElseThrow(() -> new AssignmentNotFoundException(
+                        "Dispatch assignment not found for order: " + event.orderId()));
+        if (assignment.getStatus().isTerminal()) {
+            return;
+        }
+        assignment.setParcel(event.lengthCm(), event.widthCm(), event.heightCm(), event.actualWeightKg());
+        if (assignment.getStatus() == AssignmentStatus.UNASSIGNED && assignment.getLeg() == AssignmentLeg.FIRST_MILE) {
+            if (event.pickupDistrict() != null) assignment.setPickupDistrict(event.pickupDistrict());
+            if (event.deliveryDistrict() != null) assignment.setDeliveryDistrict(event.deliveryDistrict());
+            if (event.speed() != null) {
+                assignment.setOrderSpeed(event.speed());
+                assignment.setEstimatedPickupMinutes(CourierMatchingEngine.pickupMinutes(event.speed()));
+            }
+        }
+        assignmentRepository.save(assignment);
     }
 
     @Transactional
@@ -154,6 +238,10 @@ public class DispatchAssignmentService {
 
     @Transactional
     public void handleParcelStatusChanged(ParcelStatusChangedEvent event) {
+        if (event.newPublicStatus() == PublicOrderStatus.IN_TRANSIT && event.internalSubStatus() != null
+                && handleHubStep(event)) {
+            return;
+        }
         if (PICKUP_BOUNDARY_STATUSES.contains(event.newPublicStatus())) {
             recordPickup(event);
             return;
@@ -230,6 +318,70 @@ public class DispatchAssignmentService {
         assignmentRepository.save(assignment);
         log.info("Order {} passed pickup ({}); reassignment is now blocked",
                 assignment.getOrderId(), event.newPublicStatus());
+    }
+
+    /**
+     * The steps between the legs of a cross-district order. Returns false when the event is not one of
+     * them (a same-district courier on the way also reports IN_TRANSIT/OUTBOUND), so normal handling runs.
+     * Each step is idempotent: a repeated or late event finds the assignment already moved on.
+     */
+    private boolean handleHubStep(ParcelStatusChangedEvent event) {
+        Optional<DispatchAssignment> found = event.orderId() != null
+                ? assignmentRepository.findByOrderId(event.orderId())
+                : assignmentRepository.findByTrackingNumber(event.trackingNumber());
+        if (found.isEmpty() || !found.get().crossesDistricts() || found.get().getStatus().isTerminal()) {
+            return found.isPresent() && found.get().crossesDistricts();
+        }
+        DispatchAssignment assignment = found.get();
+        switch (event.internalSubStatus()) {
+            case AT_HUB -> {
+                // Handed in at the pickup district's hub: the first courier is free again.
+                if (assignment.getStatus() == AssignmentStatus.ASSIGNED
+                        || assignment.getStatus() == AssignmentStatus.REASSIGNED) {
+                    UUID firstCourier = assignment.getCourierId();
+                    AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.IN_TRANSFER);
+                    assignment.setStatus(AssignmentStatus.IN_TRANSFER);
+                    assignment.setFirstMileCourierId(firstCourier);
+                    assignment.setCourierId(null);
+                    assignment.setCourierName(null);
+                    assignment.setHubStage(InternalQueueStatus.AT_HUB);
+                    assignmentRepository.save(assignment);
+                    if (firstCourier != null) decrementCourierWorkload(firstCourier);
+                    log.info("Order {} handed in at the {} hub", assignment.getOrderId(), assignment.getPickupDistrict());
+                }
+                return true;
+            }
+            case OUTBOUND -> {
+                // Marked Outbound by the pickup district. A same-district courier reports OUTBOUND too,
+                // while still holding the order: that is the normal pickup boundary, not a hub step.
+                if (assignment.getStatus() != AssignmentStatus.IN_TRANSFER) {
+                    return false;
+                }
+                if (assignment.getHubStage() == InternalQueueStatus.AT_HUB) {
+                    assignment.setHubStage(InternalQueueStatus.OUTBOUND);
+                    assignmentRepository.save(assignment);
+                }
+                return true;
+            }
+            case INCOMING -> {
+                // Accepted at the drop-off district's hub: it becomes that district's last-mile order.
+                if (assignment.getStatus() == AssignmentStatus.IN_TRANSFER) {
+                    AssignmentStateMachine.transition(AssignmentStatus.IN_TRANSFER, AssignmentStatus.UNASSIGNED);
+                    assignment.setStatus(AssignmentStatus.UNASSIGNED);
+                    assignment.setLeg(AssignmentLeg.LAST_MILE);
+                    assignment.setHubStage(InternalQueueStatus.INCOMING);
+                    // The last-mile courier collects it later: reassignment is allowed until then.
+                    assignment.setPickedUpAt(null);
+                    assignment.setRetryCount(0);
+                    assignmentRepository.save(assignment);
+                    log.info("Order {} accepted at the {} hub", assignment.getOrderId(), assignment.getDeliveryDistrict());
+                }
+                return true;
+            }
+            default -> {
+                return false;
+            }
+        }
     }
 
     private AssignmentStatus toTerminalAssignmentStatus(PublicOrderStatus status) {

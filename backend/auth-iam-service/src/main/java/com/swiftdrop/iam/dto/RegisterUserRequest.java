@@ -49,8 +49,9 @@ public record RegisterUserRequest(
         @Schema(description = "Self-service roles are CUSTOMER and MERCHANT.", example = "CUSTOMER")
         UserRole role,
 
-        @NotNull
-        @Schema(description = "Primary operating district.", example = "COLOMBO")
+        @Schema(description = "Optional. Not asked at sign-up: a customer's orders are routed by each order's "
+                + "pickup district, and a merchant gives its pickup district on the business application.",
+                example = "COLOMBO")
         SriLankanDistrict district,
 
         @Schema(description = "Merchant identifier required for MERCHANT accounts.", example = "0f5e8c4a-2c6d-4a58-9c8f-4c2c4e7b8a11")

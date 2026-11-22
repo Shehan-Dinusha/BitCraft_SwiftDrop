@@ -6,6 +6,7 @@ import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierProfileRepository;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
+import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -27,11 +29,14 @@ public class CourierShiftService {
 
     private final CourierShiftRepository courierShiftRepository;
     private final CourierProfileRepository courierProfileRepository;
+    private final DispatchAssignmentRepository assignmentRepository;
 
     public CourierShiftService(CourierShiftRepository courierShiftRepository,
-                               CourierProfileRepository courierProfileRepository) {
+                               CourierProfileRepository courierProfileRepository,
+                               DispatchAssignmentRepository assignmentRepository) {
         this.courierShiftRepository = courierShiftRepository;
         this.courierProfileRepository = courierProfileRepository;
+        this.assignmentRepository = assignmentRepository;
     }
 
     @Transactional
@@ -63,7 +68,7 @@ public class CourierShiftService {
         shift.setLastHeartbeatAt(Instant.now());
 
         shift = courierShiftRepository.save(shift);
-        return CourierShiftResponse.fromEntity(shift);
+        return toResponse(shift);
     }
 
     @Transactional
@@ -81,7 +86,7 @@ public class CourierShiftService {
         shift.setShiftStatus(ShiftStatus.OFFLINE);
         shift.setShiftEndedAt(Instant.now());
         shift = courierShiftRepository.save(shift);
-        return CourierShiftResponse.fromEntity(shift);
+        return toResponse(shift);
     }
 
     @Transactional
@@ -94,7 +99,7 @@ public class CourierShiftService {
         shift.setShiftStatus(status);
         shift.setLastHeartbeatAt(Instant.now());
         shift = courierShiftRepository.save(shift);
-        return CourierShiftResponse.fromEntity(shift);
+        return toResponse(shift);
     }
 
     @Transactional(readOnly = true)
@@ -109,19 +114,35 @@ public class CourierShiftService {
         } else {
             list = courierShiftRepository.findAll();
         }
-        return list.stream().map(CourierShiftResponse::fromEntity).toList();
+        Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
+                list.stream().map(CourierShift::getCourierId).toList());
+        return list.stream()
+                .map(shift -> CourierShiftResponse.fromEntity(shift,
+                        loads.getOrDefault(shift.getCourierId(), CourierLoad.NONE)))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public CourierShiftResponse getCourier(UUID courierId) {
         return courierShiftRepository.findByCourierId(courierId)
-                .map(CourierShiftResponse::fromEntity)
+                .map(this::toResponse)
                 .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
+    }
+
+    private CourierShiftResponse toResponse(CourierShift shift) {
+        return CourierShiftResponse.fromEntity(shift, CourierLoad.of(assignmentRepository, shift.getCourierId()));
     }
 
     @Transactional(readOnly = true)
     public List<CourierWorkloadResponse> getWorkloads() {
-        return courierShiftRepository.findAll().stream()
+        return getWorkloads(null);
+    }
+
+    /** Workload of the couriers in {@code district}, or of all couriers when it is {@code null}. */
+    @Transactional(readOnly = true)
+    public List<CourierWorkloadResponse> getWorkloads(SriLankanDistrict district) {
+        return (district == null ? courierShiftRepository.findAll() : courierShiftRepository.findByCurrentDistrict(district))
+                .stream()
                 .map(CourierWorkloadResponse::fromEntity)
                 .toList();
     }

@@ -70,7 +70,7 @@ export interface paths {
         };
         /**
          * List dispatch assignments with pagination and optional status filter
-         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description A DISPATCHER gets the orders picked up in their own district; a SYSTEM_ADMIN gets every district or the one given.
          */
         get: operations["getAssignments"];
         put?: never;
@@ -130,9 +130,49 @@ export interface paths {
         };
         /**
          * List unassigned orders pending dispatch
-         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description A DISPATCHER gets their own district's queue; a SYSTEM_ADMIN gets every district or the one given.
          */
         get: operations["getUnassignedParcels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/ready-to-send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List parcels handed in at the district's hub and waiting to be marked Outbound
+         * @description A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise). Mark one Outbound with the delivery transition AT_ORIGIN_HUB -> IN_TRANSIT.
+         */
+        get: operations["getReadyToSend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/incoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List open orders coming into a district from another one
+         * @description Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+         */
+        get: operations["getIncoming"];
         put?: never;
         post?: never;
         delete?: never;
@@ -150,7 +190,7 @@ export interface paths {
         };
         /**
          * Suggest available couriers for an order
-         * @description Returns up to three AVAILABLE couriers below capacity, preferring the pickup district, then lower active workload, then the most recent heartbeat (couriers without one last), then courier ID. For an UNASSIGNED order these are suggestions for a new assignment; for an ASSIGNED or REASSIGNED order they are reassignment suggestions and leave out the courier currently holding the order. An empty list means no courier is eligible. Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description Returns the couriers on shift in the district handling the order (a DISPATCHER only for orders of their district). Those who can take it come first (eligible true): the smallest vehicle the parcel fits, then the emptiest by parcels, weight or volume, then the most recent heartbeat, then courier ID. The rest carry an ineligibleReason. For an ASSIGNED or REASSIGNED order the courier currently holding it is left out. An order without a recorded size is limited by the parcel count only. Requires the DISPATCHER or SYSTEM_ADMIN role.
          */
         get: operations["getCourierSuggestions"];
         put?: never;
@@ -406,15 +446,33 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @enum {string} */
-        AssignmentStatus: "UNASSIGNED" | "ASSIGNED" | "REASSIGNED" | "FAILED" | "CANCELLED" | "COMPLETED";
+        /**
+         * @description IN_TRANSFER is between the two legs of a cross-district order; no courier holds it.
+         * @enum {string}
+         */
+        AssignmentStatus: "UNASSIGNED" | "ASSIGNED" | "REASSIGNED" | "IN_TRANSFER" | "FAILED" | "CANCELLED" | "COMPLETED";
+        /**
+         * @description FIRST_MILE is managed by the pickup district; a cross-district order moves to LAST_MILE, managed by the drop-off district, when its hub accepts it.
+         * @enum {string}
+         */
+        AssignmentLeg: "FIRST_MILE" | "LAST_MILE";
+        /**
+         * @description Where a cross-district order is between the legs.
+         * @enum {string}
+         */
+        HubStage: "AT_HUB" | "OUTBOUND" | "INCOMING";
         /** @enum {string} */
         ShiftStatus: "AVAILABLE" | "BUSY" | "ON_BREAK" | "OFFLINE";
         /**
-         * @description Courier's own vehicle. Default parcel capacity: MOTORCYCLE 5, THREE_WHEELER 10, VAN 25, LORRY 50.
+         * @description Courier's own vehicle. Default parcel capacity: MOTORCYCLE 5, THREE_WHEELER 10, VAN 25, LORRY 50. Total weight, total volume and longest side: MOTORCYCLE 25 kg / 100 l / 50 cm, THREE_WHEELER 150 kg / 600 l / 100 cm, VAN 600 kg / 4000 l / 200 cm, LORRY 2000 kg / 15000 l / 500 cm.
          * @enum {string}
          */
         VehicleType: "MOTORCYCLE" | "THREE_WHEELER" | "VAN" | "LORRY";
+        /**
+         * @description Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all. PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds.
+         * @enum {string}
+         */
+        CourierBlock: "OFF_SHIFT" | "ON_BREAK" | "BUSY" | "TOO_LONG" | "TOO_HEAVY" | "TOO_BIG" | "PARCEL_LIMIT" | "WEIGHT_LIMIT" | "VOLUME_LIMIT";
         /** @enum {string} */
         OrderSpeed: "STANDARD" | "EXPRESS" | "SAME_DAY";
         /** @enum {string} */
@@ -523,6 +581,26 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            leg?: components["schemas"]["AssignmentLeg"];
+            hubStage?: components["schemas"]["HubStage"];
+            /** @description The district whose dispatcher manages the order now. */
+            responsibleDistrict?: components["schemas"]["SriLankanDistrict"];
+            /**
+             * Format: date-time
+             * @description When the courier of the current leg collected the parcel; reassignment is blocked once set.
+             */
+            pickedUpAt?: string;
+            /**
+             * @description Parcel length in cm; absent for orders booked before sizes were recorded.
+             * @example 30
+             */
+            lengthCm?: number;
+            /** @example 20 */
+            widthCm?: number;
+            /** @example 10 */
+            heightCm?: number;
+            /** @example 2.5 */
+            weightKg?: number;
         };
         CourierShiftResponse: {
             /** Format: uuid */
@@ -540,6 +618,12 @@ export interface components {
             shiftEndedAt?: string;
             /** Format: date-time */
             lastHeartbeatAt?: string;
+            /** @description Weight of the parcels held. */
+            activeWeightKg?: number;
+            maxWeightKg?: number;
+            /** @description Volume of the parcels held. */
+            activeVolumeLitres?: number;
+            maxVolumeLitres?: number;
         };
         CourierWorkloadResponse: {
             /** Format: uuid */
@@ -559,6 +643,18 @@ export interface components {
             activeParcels?: number;
             maxCapacity?: number;
             shiftStatus?: components["schemas"]["ShiftStatus"];
+            vehicleType?: components["schemas"]["VehicleType"];
+            /** @description Weight of the parcels held. */
+            activeWeightKg?: number;
+            maxWeightKg?: number;
+            /** @description Volume of the parcels held. */
+            activeVolumeLitres?: number;
+            maxVolumeLitres?: number;
+            /** @description Longest side of a parcel the vehicle takes. */
+            maxSideCm?: number;
+            /** @description Whether the order can be assigned to this courier now. */
+            eligible?: boolean;
+            ineligibleReason?: components["schemas"]["CourierBlock"];
         };
         /** @description Error body returned by the global exception handler (com.swiftdrop.contracts.dto.ApiErrorResponse). Null fields are omitted. */
         ApiErrorResponse: {
@@ -838,6 +934,8 @@ export interface operations {
     getAssignments: {
         parameters: {
             query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
                 status?: components["schemas"]["AssignmentStatus"];
                 page?: number;
                 size?: number;
@@ -973,7 +1071,10 @@ export interface operations {
     };
     getUnassignedParcels: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -991,6 +1092,79 @@ export interface operations {
             };
             /** @description Missing or invalid gateway identity headers (X-User-Id, X-User-Role) */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getReadyToSend: {
+        parameters: {
+            query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Parcels ready to send */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description A SYSTEM_ADMIN did not give a district */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getIncoming: {
+        parameters: {
+            query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Incoming orders retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description A SYSTEM_ADMIN did not give a district */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -2,6 +2,7 @@ package com.swiftdrop.merchant.service;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.parcel.ParcelLimits;
 import com.swiftdrop.merchant.dto.*;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,9 @@ public class MerchantOrderNormalizer {
         if ((parcel.actualWeightKg() == null) == (parcel.weightGrams() == null)) {
             throw new IllegalArgumentException("Supply exactly one weight unit");
         }
+        if (ParcelLimits.exceedsMaxVolume(parcel.lengthCm(), parcel.widthCm(), parcel.heightCm())) {
+            throw new IllegalArgumentException(ParcelLimits.MAX_VOLUME_MESSAGE);
+        }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("merchantId", merchantId);
         body.put("externalRef", request.externalRef());
@@ -34,6 +38,9 @@ public class MerchantOrderNormalizer {
         body.put("recipientName", request.delivery().contactName().trim());
         body.put("recipientPhone", phone(request.delivery().contactPhone()));
         body.put("actualWeightKg", parcel.actualWeightKg() != null ? parcel.actualWeightKg() : parcel.weightGrams().movePointLeft(3));
+        body.put("lengthCm", parcel.lengthCm());
+        body.put("widthCm", parcel.widthCm());
+        body.put("heightCm", parcel.heightCm());
         body.put("prohibitedItemsDeclared", parcel.prohibitedItemsDeclared());
         body.put("itemDescription", parcel.itemDescription());
         body.put("declaredValue", parcel.declaredValue() != null ? parcel.declaredValue() : BigDecimal.ZERO);

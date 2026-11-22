@@ -19,4 +19,17 @@ class PublicOrderStatusTest {
         assertThat(InternalQueueStatus.fromDeliveryState(DeliveryState.FAILED))
                 .isEqualTo(InternalQueueStatus.FAILED_ATTEMPT);
     }
+
+    @Test
+    void hubStepsStayInTransitForCustomersButDifferInternally() {
+        for (DeliveryState hubStep : new DeliveryState[]{
+                DeliveryState.AT_ORIGIN_HUB, DeliveryState.IN_TRANSIT, DeliveryState.AT_DESTINATION_HUB}) {
+            assertThat(PublicOrderStatus.fromDeliveryState(hubStep)).isEqualTo(PublicOrderStatus.IN_TRANSIT);
+        }
+        assertThat(InternalQueueStatus.fromDeliveryState(DeliveryState.AT_ORIGIN_HUB))
+                .isEqualTo(InternalQueueStatus.AT_HUB);
+        assertThat(InternalQueueStatus.fromDeliveryState(DeliveryState.AT_DESTINATION_HUB))
+                .isEqualTo(InternalQueueStatus.INCOMING);
+        assertThat(InternalQueueStatus.INCOMING.toPublicStatus()).isEqualTo(PublicOrderStatus.IN_TRANSIT);
+    }
 }

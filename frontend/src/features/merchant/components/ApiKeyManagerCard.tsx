@@ -32,7 +32,14 @@ function usageExamples(secret: string) {
       contactName: 'Test Recipient',
       contactPhone: '+94711234567'
     },
-    parcel: { weightGrams: 1500, prohibitedItemsDeclared: true, itemDescription: 'Books' },
+    parcel: {
+      weightGrams: 1500,
+      lengthCm: 30,
+      widthCm: 20,
+      heightCm: 10,
+      prohibitedItemsDeclared: true,
+      itemDescription: 'Books'
+    },
     speed: 'STANDARD'
   };
   return {
@@ -413,7 +420,6 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
                 Key Label / Description *
               </label>
               <Input id="api-key-label"
-                placeholder="e.g. ERP Ingestion Key (Warehouse A)"
                 value={keyName}
                 onChange={(e) => setKeyName(e.target.value)}
                 required
@@ -421,12 +427,11 @@ export function ApiKeyManagerCard({ merchantId }: ApiKeyManagerCardProps) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="api-key-expiration-days" className="text-xs font-semibold text-primary">Expiration (Days)</label>
+              <label htmlFor="api-key-expiration-days" className="text-xs font-semibold text-primary">Expires after (days, leave empty for no expiry)</label>
               <div className="relative">
                 <Input id="api-key-expiration-days"
                   inputMode="numeric"
                   pattern="[0-9]+"
-                  placeholder="e.g. 90 (or leave blank for non-expiring)"
                   value={expiresInDays}
                   onChange={(e) =>
                     setExpiresInDays(e.target.value === '' ? '' : Number(e.target.value))

@@ -1,5 +1,8 @@
 package com.swiftdrop.dispatch.service;
 
+import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
+import com.swiftdrop.dispatch.security.DistrictScope;
+import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
@@ -70,21 +73,43 @@ public class ManualOverrideService {
      */
     @Transactional
     public DispatchAssignment manualAssign(ManualAssignRequest request, UUID correlationId) {
+        return manualAssign(request, correlationId, null);
+    }
+
+    /**
+     * @param caller the dispatcher or admin acting; a dispatcher may only assign orders picked up in their
+     *               own district. {@code null} skips that check (internal callers and tests).
+     */
+    @Transactional
+    public DispatchAssignment manualAssign(ManualAssignRequest request, UUID correlationId, CallerContext caller) {
         log.info("Dispatcher assignment for order: {} to courier: {}", request.orderId(), request.courierId());
 
         DispatchAssignment assignment = findActiveAssignment(request.orderId());
+        if (caller != null) {
+            DistrictScope.requireManage(caller, assignment.getResponsibleDistrict());
+        }
+        if (assignment.getStatus() == AssignmentStatus.IN_TRANSFER) {
+            throw new AssignmentConflictException("Order " + request.orderId()
+                    + " is between district hubs. The drop-off district assigns a courier once its hub accepts it.");
+        }
         if (assignment.getStatus() != AssignmentStatus.UNASSIGNED || assignment.getCourierId() != null) {
             throw new AssignmentConflictException("Order " + request.orderId()
                     + " is already assigned to a courier. Refresh the queue, or use reassignment to change the courier.");
         }
         PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
 
-        CourierShift courier = findAcceptingCourier(request.courierId());
+        CourierShift courier = findAcceptingCourier(request.courierId(), assignment);
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.ASSIGNED);
         incrementWorkload(courier);
 
         assignment = applyCourier(assignment, courier, AssignmentStatus.ASSIGNED, request.assignedBy());
-        publishAssignmentEvents(assignment, courier, previousPublicStatus, correlationId);
+        if (assignment.getLeg() == AssignmentLeg.LAST_MILE) {
+            // The parcel waits at the drop-off hub: customers already see it in transit, so only the
+            // courier assignment is published (a PICKUP_ASSIGNED status would move it backwards).
+            publishCourierAssigned(assignment, courier, eventCorrelationId(correlationId));
+        } else {
+            publishAssignmentEvents(assignment, courier, previousPublicStatus, correlationId);
+        }
         return assignment;
     }
 
@@ -116,10 +141,19 @@ public class ManualOverrideService {
      */
     @Transactional
     public DispatchAssignment reassign(ReassignCourierRequest request, UUID correlationId) {
+        return reassign(request, correlationId, null);
+    }
+
+    /** @param caller as for {@link #manualAssign(ManualAssignRequest, UUID, CallerContext)} */
+    @Transactional
+    public DispatchAssignment reassign(ReassignCourierRequest request, UUID correlationId, CallerContext caller) {
         log.info("Dispatcher reassignment for order: {} from courier: {} to courier: {}",
                 request.orderId(), request.expectedCurrentCourierId(), request.newCourierId());
 
         DispatchAssignment assignment = findActiveAssignment(request.orderId());
+        if (caller != null) {
+            DistrictScope.requireManage(caller, assignment.getResponsibleDistrict());
+        }
         UUID currentCourierId = assignment.getCourierId();
         if (assignment.getStatus() == AssignmentStatus.UNASSIGNED || currentCourierId == null) {
             throw new AssignmentConflictException("Order " + request.orderId()
@@ -137,7 +171,7 @@ public class ManualOverrideService {
             throw new IllegalArgumentException("The new courier must differ from the currently assigned courier");
         }
 
-        CourierShift newCourier = findAcceptingCourier(request.newCourierId());
+        CourierShift newCourier = findAcceptingCourier(request.newCourierId(), assignment);
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.REASSIGNED);
         courierShiftRepository.findByCourierId(currentCourierId).ifPresent(this::decrementWorkload);
         incrementWorkload(newCourier);
@@ -157,6 +191,7 @@ public class ManualOverrideService {
         return switch (status) {
             case UNASSIGNED -> PublicOrderStatus.CREATED;
             case ASSIGNED, REASSIGNED -> PublicOrderStatus.PICKUP_ASSIGNED;
+            case IN_TRANSFER -> PublicOrderStatus.IN_TRANSIT;
             case COMPLETED -> PublicOrderStatus.DELIVERED;
             case CANCELLED -> PublicOrderStatus.CANCELLED;
         };
@@ -173,18 +208,32 @@ public class ManualOverrideService {
         return assignment;
     }
 
-    private CourierShift findAcceptingCourier(UUID courierId) {
+    /** The courier, if they work in the right district, are free and their vehicle has room for the parcel. */
+    private CourierShift findAcceptingCourier(UUID courierId, DispatchAssignment assignment) {
         CourierShift courier = courierShiftRepository.findByCourierId(courierId)
                 .orElseThrow(() -> new CourierNotAvailableException("Courier not found with ID: " + courierId));
-        if (courier.getShiftStatus() == ShiftStatus.OFFLINE) {
-            throw new CourierNotAvailableException(
-                    "Courier " + courier.getCourierName() + " is currently OFFLINE");
-        }
-        if (!courier.canAcceptParcel()) {
-            throw new CourierNotAvailableException(
-                    "Courier " + courier.getCourierName() + " is not available or has reached capacity");
-        }
+        requireCourierInPickupDistrict(courier, assignment);
+        // The courier row is versioned and every assignment updates it, so two assignments that both saw the
+        // same load cannot both commit.
+        CourierLoad load = CourierLoad.of(assignmentRepository, courierId);
+        CourierFit.block(courier, load, assignment).ifPresent(block -> {
+            throw new CourierNotAvailableException(CourierFit.message(block, courier, load, assignment));
+        });
         return courier;
+    }
+
+    /**
+     * A courier works only in their own district: the pickup district for the first leg, the drop-off
+     * district for the last.
+     */
+    private void requireCourierInPickupDistrict(CourierShift courier, DispatchAssignment assignment) {
+        var district = assignment.getResponsibleDistrict();
+        if (district != null && courier.getCurrentDistrict() != district) {
+            throw new CourierNotAvailableException("Courier " + courier.getCourierName() + " works in "
+                    + DistrictScope.label(courier.getCurrentDistrict()) + ", but this parcel is "
+                    + (assignment.getLeg() == AssignmentLeg.LAST_MILE ? "delivered from the " : "picked up in ")
+                    + DistrictScope.label(district) + (assignment.getLeg() == AssignmentLeg.LAST_MILE ? " hub" : ""));
+        }
     }
 
     private void incrementWorkload(CourierShift courier) {

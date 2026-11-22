@@ -178,7 +178,7 @@ class ConsumerFailureHandlingIT {
         return new OrderCreatedEvent(UUID.randomUUID(), UUID.randomUUID(), orderId,
                 "SD-COL-" + UUID.randomUUID().toString().substring(0, 8), UUID.randomUUID(), UUID.randomUUID(),
                 SriLankanDistrict.COLOMBO, SriLankanDistrict.GAMPAHA, OrderSpeed.STANDARD,
-                null, null, null, "LKR", null);
+                null, null, null, "LKR", null, null, null, null, null);
     }
 
     private ParcelStatusChangedEvent parcelStatusChanged(PublicOrderStatus status) {

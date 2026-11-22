@@ -88,7 +88,6 @@ export function DeliveryFailureReportModal({
         <Field label="Note" required>
           <div className="relative">
             <Input
-              placeholder="e.g. Called 3 times, gate locked"
               value={notes}
               onChange={(e) => {
                 setNotes(e.target.value);

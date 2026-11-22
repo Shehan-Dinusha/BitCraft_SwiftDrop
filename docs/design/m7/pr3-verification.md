@@ -46,6 +46,9 @@ Use an existing **APPROVED** merchant. Pending/rejected/suspended merchants rece
   },
   "parcel": {
     "weightGrams": 1500,
+    "lengthCm": 30,
+    "widthCm": 20,
+    "heightCm": 10,
     "prohibitedItemsDeclared": true,
     "itemDescription": "Books"
   },
@@ -53,7 +56,7 @@ Use an existing **APPROVED** merchant. Pending/rejected/suspended merchants rece
 }
 ```
 
-Supply exactly one of `actualWeightKg` and `weightGrams`. Weight limits are 0.01–50 kg. Normalization produces E.164 Sri Lankan numbers, district enums, and kilograms. Invalid districts are never replaced with Colombo.
+Supply exactly one of `actualWeightKg` and `weightGrams`, and all three sides (up to 500 cm each, 15,000 litres together). Weight limits are 0.01–50 kg. Normalization produces E.164 Sri Lankan numbers, district enums, and kilograms. Invalid districts are never replaced with Colombo.
 
 For **local direct-service testing only**, supply `X-Merchant-Id` and `X-User-Role: MERCHANT` to emulate authenticated gateway context. These headers are trusted only on the internal network; they are not a public authentication mechanism. The request body cannot select merchant identity.
 
@@ -79,7 +82,7 @@ The existing ingestion paths remain, but rows must now contain the details Membe
 CSV column order:
 
 ```csv
-recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,prohibited_items_declared
+recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,prohibited_items_declared,package_length_cm,package_width_cm,package_height_cm
 Test Recipient,0771234567,COLOMBO,10 Galle Road,1.5,STANDARD,CSV-001,Colombo,00300,Gampaha,11000,true
 ```
 

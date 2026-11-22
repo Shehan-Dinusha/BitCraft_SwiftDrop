@@ -1096,7 +1096,7 @@ components:
           example: '123456'
     RegisterUserRequest:
       type: object
-      required: [username, email, firstName, lastName, password, role, district]
+      required: [username, email, firstName, lastName, password, role]
       properties:
         username:
           type: string
@@ -1130,7 +1130,11 @@ components:
             - $ref: '#/components/schemas/UserRole'
           description: Self-service registration supports CUSTOMER and MERCHANT only.
         district:
-          $ref: '#/components/schemas/SriLankanDistrict'
+          allOf:
+            - $ref: '#/components/schemas/SriLankanDistrict'
+          description: >-
+            Optional. Not asked at sign-up: a customer's orders are routed by each order's pickup district,
+            and a merchant gives its pickup district on the business application.
         merchantId:
           type: string
           format: uuid
@@ -1313,8 +1317,10 @@ components:
           format: password
     UpdateProfileRequest:
       type: object
-      description: Self-service profile update.
-      required: [firstName, lastName, district]
+      description: >-
+        Self-service profile update. Couriers and dispatchers must send their assigned district unchanged;
+        customers and merchants may leave it out.
+      required: [firstName, lastName]
       properties:
         firstName:
           type: string

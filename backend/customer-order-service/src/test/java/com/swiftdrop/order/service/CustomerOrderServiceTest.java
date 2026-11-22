@@ -14,6 +14,7 @@ import com.swiftdrop.order.dto.FeeEstimateRequest;
 import com.swiftdrop.order.dto.FeeEstimateResponse;
 import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
+import com.swiftdrop.order.exception.ParcelTooLargeException;
 import com.swiftdrop.order.exception.PricingUnavailableException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
 import com.swiftdrop.order.service.pricing.PricingClient;
@@ -37,6 +38,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -270,6 +273,38 @@ class CustomerOrderServiceTest {
 
         assertThat(response.getRecipientName()).isEqualTo("Sunil Perera");
         assertThat(response.getRecipientPhone()).isEqualTo("+94779998877");
+        verify(orderEventPublisher, never()).publishOrderUpdated(any(), any());
+    }
+
+    @Test
+    @DisplayName("An edit to the size or a district tells dispatch, with the order as saved")
+    void testUpdateOrderPublishesWhatDispatchPlansWith() {
+        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(sampleOrder));
+        when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(pricingClient.estimate(any())).thenReturn(FeeEstimateResponse.builder()
+                .chargeableWeightKg(new BigDecimal("9")).estimatedFee(new BigDecimal("900")).build());
+
+        customerOrderService.updateOrder(orderId,
+                UpdateOrderRequest.builder().lengthCm(new BigDecimal("120")).build(), customerId, "CUSTOMER");
+        customerOrderService.updateOrder(orderId,
+                UpdateOrderRequest.builder().pickupDistrict(SriLankanDistrict.GALLE).build(), customerId, "CUSTOMER");
+
+        verify(orderEventPublisher, times(2)).publishOrderUpdated(sampleOrder, null);
+        assertThat(sampleOrder.getLengthCm()).isEqualByComparingTo("120");
+    }
+
+    @Test
+    @DisplayName("A size no vehicle carries is refused, without pricing, saving or publishing")
+    void testUpdateOrderTooBig() {
+        when(customerOrderRepository.findByOrderId(orderId)).thenReturn(Optional.of(sampleOrder));
+        BigDecimal side = new BigDecimal("500");
+
+        assertThatThrownBy(() -> customerOrderService.updateOrder(orderId,
+                UpdateOrderRequest.builder().lengthCm(side).widthCm(side).heightCm(side).build(), customerId, "CUSTOMER"))
+                .isInstanceOf(ParcelTooLargeException.class)
+                .hasMessageContaining("15,000 litres");
+        verify(customerOrderRepository, never()).save(any());
+        verifyNoInteractions(pricingClient, orderEventPublisher);
     }
 
     @Test

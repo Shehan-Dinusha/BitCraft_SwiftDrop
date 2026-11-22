@@ -4,7 +4,9 @@ import com.swiftdrop.contracts.dto.PagedResult;
 import com.swiftdrop.contracts.enums.FeeRevisionStatus;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
 import com.swiftdrop.contracts.enums.OrderSpeed;
+import com.swiftdrop.contracts.parcel.ParcelLimits;
 import com.swiftdrop.contracts.enums.PublicOrderStatus;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import com.swiftdrop.order.domain.entity.OrderSource;
@@ -20,6 +22,7 @@ import com.swiftdrop.order.dto.UpdateOrderRequest;
 import com.swiftdrop.order.exception.CallerIdentityRequiredException;
 import com.swiftdrop.order.exception.InvalidOrderStateException;
 import com.swiftdrop.order.exception.OrderNotFoundException;
+import com.swiftdrop.order.exception.ParcelTooLargeException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
 import com.swiftdrop.order.service.pricing.PricingClient;
 import lombok.RequiredArgsConstructor;
@@ -72,6 +75,8 @@ public class CustomerOrderService {
 
     private CustomerOrderResponse persistNewOrder(CreateOrderRequest request, UUID customerId, OrderSource source,
                                                   String externalRef, UUID correlationId) {
+        requireAcceptedVolume(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
+
         // 1. Calculate price and chargeable weight
         FeeEstimateRequest estimateReq = FeeEstimateRequest.builder()
                 .pickupDistrict(request.getPickupDistrict())
@@ -95,6 +100,7 @@ public class CustomerOrderService {
                 .merchantId(request.getMerchantId())
                 .source(source)
                 .externalRef(externalRef)
+                .clientRequestId(source == OrderSource.CUSTOMER ? request.getClientRequestId() : null)
                 .orderSpeed(estimate.getSpeed())
                 .status(PublicOrderStatus.CREATED)
                 .internalQueueStatus(InternalQueueStatus.CREATED)
@@ -183,8 +189,9 @@ public class CustomerOrderService {
     }
 
     /**
-     * Ownership rule shared by every order endpoint: dispatchers and system admins may access any order,
-     * everyone else only their own. A non-owner gets the same 404 as a missing order so existence is not leaked.
+     * Ownership rule shared by every order endpoint: a system admin may access any order, a dispatcher the
+     * orders picked up in or bound for their district, everyone else only their own. Anyone else gets the
+     * same 404 as a missing order so existence is not leaked.
      */
     private CustomerOrder findAccessibleOrder(UUID orderId, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
@@ -202,8 +209,16 @@ public class CustomerOrderService {
     }
 
     private void assertCallerCanAccess(CustomerOrder order, UUID callerId, String callerRole) {
-        if (isPrivilegedRole(callerRole)) {
+        UserRole role = UserRole.fromClaim(callerRole);
+        if (role == UserRole.SYSTEM_ADMIN) {
             return;
+        }
+        if (role == UserRole.DISPATCHER) {
+            SriLankanDistrict district = CallerDistrict.current();
+            if (district != null && (district == order.getPickupDistrict() || district == order.getDeliveryDistrict())) {
+                return;
+            }
+            throw new OrderNotFoundException("Order not found");
         }
         if (callerId == null || !callerId.equals(order.getCustomerId())) {
             throw new OrderNotFoundException("Order not found");
@@ -212,6 +227,12 @@ public class CustomerOrderService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static void requireAcceptedVolume(BigDecimal lengthCm, BigDecimal widthCm, BigDecimal heightCm) {
+        if (ParcelLimits.exceedsMaxVolume(lengthCm, widthCm, heightCm)) {
+            throw new ParcelTooLargeException();
+        }
     }
 
     private boolean isPrivilegedRole(String callerRole) {
@@ -259,6 +280,7 @@ public class CustomerOrderService {
         if (request.getSpeed() != null) { order.setOrderSpeed(request.getSpeed()); dimsOrSpeedChanged = true; }
 
         if (dimsOrSpeedChanged) {
+            requireAcceptedVolume(order.getLengthCm(), order.getWidthCm(), order.getHeightCm());
             FeeEstimateRequest estimateReq = FeeEstimateRequest.builder()
                     .pickupDistrict(order.getPickupDistrict())
                     .deliveryDistrict(order.getDeliveryDistrict())
@@ -276,6 +298,9 @@ public class CustomerOrderService {
 
         order.setUpdatedAt(Instant.now());
         CustomerOrder saved = customerOrderRepository.save(order);
+        if (dimsOrSpeedChanged || request.getPickupDistrict() != null || request.getDeliveryDistrict() != null) {
+            orderEventPublisher.publishOrderUpdated(saved, null);
+        }
         return CustomerOrderResponse.fromEntity(saved);
     }
 

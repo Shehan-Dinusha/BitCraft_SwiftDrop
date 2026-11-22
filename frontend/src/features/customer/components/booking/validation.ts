@@ -10,13 +10,19 @@ const PATTERNS = {
   name: /^[\p{L}\p{M} .'’-]*$/u,
   city: /^[\p{L}\p{M}\p{N} .'’-]*$/u,
   postalCode: /^\d{5}$/,
-  phoneDigits: /^\d{9}$/,
+  /** The 9 digits after +94: never starting with 0 (that 0 is the local trunk prefix). */
+  phoneDigits: /^[1-9]\d{8}$/,
+  /** At least one letter or digit, so a box cannot hold only punctuation such as "--". */
+  meaningful: /[\p{L}\p{N}]/u,
   freeText: /^[^<>]*$/,
   email: /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/,
   decimal: /^\d+(\.\d+)?$/
 };
 
 export const WEIGHT_MAX_KG = 50;
+/** The largest vehicle's limits, as the order service enforces them (ParcelLimits). */
+export const SIDE_MAX_CM = 500;
+export const VOLUME_MAX_LITRES = 15_000;
 
 export type BookingErrors = Partial<Record<BookingField, string>>;
 
@@ -32,6 +38,7 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'pickupArea',
     'pickupLandmark',
     'pickupCity',
+    'pickupProvince',
     'pickupDistrict',
     'pickupPostalCode'
   ],
@@ -45,17 +52,12 @@ export const STEP_FIELDS: Record<BookingStepId, BookingField[]> = {
     'deliveryArea',
     'deliveryLandmark',
     'deliveryCity',
+    'deliveryProvince',
     'deliveryDistrict',
     'deliveryPostalCode',
     'customerNotes'
   ],
-  parcel: [
-    'lengthCm',
-    'widthCm',
-    'heightCm',
-    'actualWeightKg',
-    'speed'
-  ],
+  parcel: ['lengthCm', 'widthCm', 'heightCm', 'actualWeightKg', 'speed'],
   review: ['prohibitedItemsDeclared']
 };
 
@@ -99,7 +101,8 @@ const city = (value: string) =>
 /** An optional second phone: empty is fine, otherwise 9 digits that differ from the main number. */
 function alternatePhone(digits: string, main: string) {
   if (!digits) return undefined;
-  if (!PATTERNS.phoneDigits.test(digits)) return 'Enter the 9 digits after +94';
+  const problem = phoneProblem(digits);
+  if (problem) return problem;
   return digits === main ? 'Use a different number from the main phone' : undefined;
 }
 
@@ -108,6 +111,7 @@ function part(
   value: string,
   { label, required, min, max }: { label: string; required: boolean; min?: number; max: number }
 ) {
+  if (value.trim() && !PATTERNS.meaningful.test(value)) return `Enter ${label} with letters or numbers`;
   return text(value, {
     empty: required ? `Enter ${label}` : undefined,
     min,
@@ -122,9 +126,16 @@ function postalCode(value: string) {
   return PATTERNS.postalCode.test(value) ? undefined : 'Postal codes have 5 digits, e.g. 00300';
 }
 
+/** A real-looking Sri Lankan number: 9 digits after +94, not starting with 0, not one digit repeated. */
+function phoneProblem(digits: string): string | undefined {
+  if (!PATTERNS.phoneDigits.test(digits)) return 'Enter the 9 digits after +94';
+  if (/^(\d)\1+$/.test(digits)) return 'Enter a real phone number';
+  return undefined;
+}
+
 function phone(digits: string) {
   if (!digits) return 'Enter a mobile or landline number';
-  return PATTERNS.phoneDigits.test(digits) ? undefined : 'Enter the 9 digits after +94';
+  return phoneProblem(digits);
 }
 
 function measure(
@@ -167,6 +178,11 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
     case 'pickupCity':
     case 'deliveryCity':
       return city(form[field]);
+    case 'pickupProvince':
+      // A district chosen before (for example from the profile) already settles the province.
+      return form.pickupProvince || form.pickupDistrict ? undefined : 'Choose a province';
+    case 'deliveryProvince':
+      return form.deliveryProvince || form.deliveryDistrict ? undefined : 'Choose a province';
     case 'pickupDistrict':
     case 'deliveryDistrict':
       return form[field] ? undefined : 'Choose a district';
@@ -188,11 +204,17 @@ function fieldError(field: BookingField, form: BookingForm): string | undefined 
       return PATTERNS.email.test(value) ? undefined : 'Enter an email like name@example.com';
     }
     case 'lengthCm':
-      return measure(form.lengthCm, 'Length', { min: 0.1, unit: 'cm' });
+      return measure(form.lengthCm, 'Length', { min: 0.1, max: SIDE_MAX_CM, unit: 'cm' });
     case 'widthCm':
-      return measure(form.widthCm, 'Width', { min: 0.1, unit: 'cm' });
+      return measure(form.widthCm, 'Width', { min: 0.1, max: SIDE_MAX_CM, unit: 'cm' });
     case 'heightCm':
-      return measure(form.heightCm, 'Height', { min: 0.1, unit: 'cm' });
+      return (
+        measure(form.heightCm, 'Height', { min: 0.1, max: SIDE_MAX_CM, unit: 'cm' }) ??
+        (Number(form.lengthCm) * Number(form.widthCm) * Number(form.heightCm) >
+        VOLUME_MAX_LITRES * 1000
+          ? 'This parcel is too big for our vehicles'
+          : undefined)
+      );
     case 'actualWeightKg':
       return measure(form.actualWeightKg, 'Weight', { min: 0.01, max: WEIGHT_MAX_KG, unit: 'kg' });
     case 'prohibitedItemsDeclared':

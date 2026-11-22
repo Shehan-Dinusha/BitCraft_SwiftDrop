@@ -1,5 +1,10 @@
 package com.swiftdrop.dispatch.controller;
 
+import com.swiftdrop.dispatch.domain.entity.CourierShift;
+import com.swiftdrop.dispatch.dto.CourierShiftResponse;
+import static com.swiftdrop.dispatch.support.TestCallers.dispatcher;
+import static com.swiftdrop.dispatch.support.TestCallers.dispatcherOf;
+import static org.mockito.ArgumentMatchers.any;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
@@ -123,11 +128,23 @@ class CourierAccessAuthorizationTest {
 
     @ParameterizedTest(name = "{2} on {0}")
     @MethodSource("courierEndpointsForOperations")
-    @DisplayName("DISPATCHER and SYSTEM_ADMIN can use any courier's resources")
-    void operationsCanUseAnyCourier(String endpoint, CourierRequest request, UserRole role) throws Exception {
+    @DisplayName("A dispatcher can use the resources of couriers in their district; an admin of any courier")
+    void operationsCanUseCouriersInScope(String endpoint, CourierRequest request, UserRole role) throws Exception {
+        when(courierShiftService.getCourier(any())).thenReturn(courierIn(SriLankanDistrict.COLOMBO));
         mockMvc.perform(request.build(UUID.randomUUID()).with(as(role)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @DisplayName("A dispatcher cannot act on a courier of another district")
+    void aDispatcherCannotActOnAnotherDistrictsCourier() throws Exception {
+        when(courierShiftService.getCourier(any())).thenReturn(courierIn(SriLankanDistrict.GALLE));
+        UUID courierId = UUID.randomUUID();
+        mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{id}/end", courierId).with(dispatcher()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/dispatch/couriers/{id}", courierId).with(dispatcher()))
+                .andExpect(status().isForbidden());
     }
 
     @ParameterizedTest(name = "{2} on {0}")
@@ -208,8 +225,8 @@ class CourierAccessAuthorizationTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(value = UserRole.class, names = {"DISPATCHER", "SYSTEM_ADMIN"})
-    @DisplayName("DISPATCHER and SYSTEM_ADMIN can look up any assignment, including UNASSIGNED ones")
-    void operationsCanReadAnyAssignment(UserRole role) throws Exception {
+    @DisplayName("Operations can look up an assignment of their district, including UNASSIGNED ones")
+    void operationsCanReadAssignmentsInScope(UserRole role) throws Exception {
         DispatchAssignmentResponse unassigned = assignment(null, AssignmentStatus.UNASSIGNED);
         stubLookups(unassigned);
         mockMvc.perform(get("/api/v1/dispatch/assignments/{id}", unassigned.assignmentId()).with(as(role)))
@@ -222,6 +239,19 @@ class CourierAccessAuthorizationTest {
         stubLookups(held);
         mockMvc.perform(get("/api/v1/dispatch/assignments/{id}", held.assignmentId()).with(as(role)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("The drop-off district's dispatcher can read an order; another district's cannot")
+    void districtDecidesWhichDispatcherSeesAnAssignment() throws Exception {
+        DispatchAssignmentResponse order = assignment(null, AssignmentStatus.UNASSIGNED); // Colombo -> Kandy
+        stubLookups(order);
+        mockMvc.perform(get("/api/v1/dispatch/assignments/{id}", order.assignmentId()).with(dispatcherOf("KANDY")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/dispatch/assignments/{id}", order.assignmentId()).with(dispatcherOf("GALLE")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/dispatch/assignments/order/{id}", order.orderId()).with(dispatcherOf("GALLE")))
+                .andExpect(status().isForbidden());
     }
 
     @ParameterizedTest(name = "{0}")
@@ -270,7 +300,16 @@ class CourierAccessAuthorizationTest {
         entity.setOrderId(UUID.randomUUID());
         entity.setCourierId(courierId);
         entity.setStatus(status);
+        entity.setPickupDistrict(SriLankanDistrict.COLOMBO);
+        entity.setDeliveryDistrict(SriLankanDistrict.KANDY);
         return DispatchAssignmentResponse.fromEntity(entity);
+    }
+
+    private static CourierShiftResponse courierIn(SriLankanDistrict district) {
+        CourierShift shift = new CourierShift();
+        shift.setCourierId(UUID.randomUUID());
+        shift.setCurrentDistrict(district);
+        return CourierShiftResponse.fromEntity(shift, com.swiftdrop.dispatch.service.CourierLoad.NONE);
     }
 
     private void assertNoServiceCalled() {

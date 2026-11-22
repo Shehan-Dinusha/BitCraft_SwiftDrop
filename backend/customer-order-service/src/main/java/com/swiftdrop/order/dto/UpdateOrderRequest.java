@@ -2,6 +2,7 @@ package com.swiftdrop.order.dto;
 
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
+import com.swiftdrop.contracts.parcel.ParcelLimits;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
@@ -98,14 +99,17 @@ public class UpdateOrderRequest {
     private String recipientEmail;
 
     @DecimalMin(value = "0.1", message = "Length must be at least 0.1 cm")
+    @DecimalMax(value = ParcelLimits.MAX_SIDE_CM, message = ParcelLimits.MAX_SIDE_MESSAGE)
     @Schema(description = "Package length in cm", example = "25.0")
     private BigDecimal lengthCm;
 
     @DecimalMin(value = "0.1", message = "Width must be at least 0.1 cm")
+    @DecimalMax(value = ParcelLimits.MAX_SIDE_CM, message = ParcelLimits.MAX_SIDE_MESSAGE)
     @Schema(description = "Package width in cm", example = "20.0")
     private BigDecimal widthCm;
 
     @DecimalMin(value = "0.1", message = "Height must be at least 0.1 cm")
+    @DecimalMax(value = ParcelLimits.MAX_SIDE_CM, message = ParcelLimits.MAX_SIDE_MESSAGE)
     @Schema(description = "Package height in cm", example = "10.0")
     private BigDecimal heightCm;
 

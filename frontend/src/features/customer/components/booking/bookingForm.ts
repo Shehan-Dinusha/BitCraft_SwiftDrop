@@ -19,7 +19,7 @@ export interface BookingForm {
   pickupStreet: string;
   pickupArea: string;
   pickupLandmark: string;
-  /** Filled in from the district and read-only; the order stores the district. */
+  /** Chosen first; it narrows the district list. The order stores the district. */
   pickupProvince: ProvinceId | '';
   pickupCity: string;
   pickupDistrict: SriLankanDistrict | '';
@@ -142,6 +142,17 @@ export function provinceOf(district: SriLankanDistrict | '' | undefined): Provin
   return PROVINCES.find((province) => district && province.districts.includes(district))?.id ?? '';
 }
 
+/** The province picker's options, in the list order. */
+export const provinceOptions = PROVINCES.map(({ id, label }) => ({ value: id, label }));
+
+/** The districts of one province, for the district picker that follows the province. */
+export function districtsOf(
+  province: ProvinceId | '' | undefined
+): { value: SriLankanDistrict; label: string }[] {
+  const districts = PROVINCES.find((p) => p.id === province)?.districts ?? [];
+  return DISTRICTS.filter((d) => districts.includes(d.value));
+}
+
 /** "Western" for COLOMBO; empty while no district is chosen. */
 export function provinceLabelOf(district: SriLankanDistrict | '' | undefined): string {
   const id = provinceOf(district);
@@ -198,8 +209,13 @@ export function toFeeEstimateRequest(form: BookingForm): FeeEstimateRequest {
   };
 }
 
-export function toCreateOrderRequest(form: BookingForm): CreateOrderRequest {
+/**
+ * The order request. `clientRequestId` is one ID per booking: sending it again after a lost response
+ * returns the order already created instead of booking twice.
+ */
+export function toCreateOrderRequest(form: BookingForm, clientRequestId?: string): CreateOrderRequest {
   return {
+    clientRequestId,
     pickupContactName: form.pickupContactName.trim(),
     pickupContactPhone: toE164(form.pickupContactPhone),
     pickupContactAlternatePhone: form.pickupContactAlternatePhone

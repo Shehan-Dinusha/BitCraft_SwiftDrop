@@ -169,7 +169,6 @@ export function CourierVehicleSetupPage() {
             setPlateError(undefined);
           }}
           onBlur={() => plateNumber && setPlateNumber(normalisePlate(plateNumber))}
-          placeholder="WP BAB-1234"
           autoCapitalize="characters"
           maxLength={20}
           hint="As shown on the vehicle"
@@ -181,7 +180,6 @@ export function CourierVehicleSetupPage() {
           required
           value={vehicleModel}
           onChange={(event) => setVehicleModel(event.target.value)}
-          placeholder="Honda Dio"
           maxLength={64}
         />
         <Field
@@ -189,7 +187,6 @@ export function CourierVehicleSetupPage() {
           required
           value={vehicleColour}
           onChange={(event) => setVehicleColour(event.target.value)}
-          placeholder="Black"
           maxLength={32}
         />
         <Field
@@ -197,7 +194,6 @@ export function CourierVehicleSetupPage() {
           required
           value={licenceNumber}
           onChange={(event) => setLicenceNumber(event.target.value.toUpperCase())}
-          placeholder="B1234567"
           autoCapitalize="characters"
           maxLength={20}
           inputClassName="font-mono"

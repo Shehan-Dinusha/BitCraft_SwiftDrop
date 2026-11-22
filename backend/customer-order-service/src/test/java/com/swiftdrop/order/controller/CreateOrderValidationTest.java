@@ -1,5 +1,8 @@
 package com.swiftdrop.order.controller;
 
+import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
+import com.swiftdrop.order.service.CustomerOrderBookingService;
+import org.springframework.context.annotation.Import;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
@@ -40,7 +43,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(OutputCaptureExtension.class)
 @WebMvcTest(OrderController.class)
+@Import(CustomerOrderBookingService.class)
 class CreateOrderValidationTest {
+
+    /** Used by the real {@link CustomerOrderBookingService}; bookings here carry no clientRequestId. */
+    @MockitoBean
+    private CustomerOrderRepository customerOrderRepository;
 
     private static final String SQLI = "' OR 1=1 --";
     private static final String XSS = "<script>alert(1)</script>";
@@ -206,6 +214,12 @@ class CreateOrderValidationTest {
     @ValueSource(strings = {"0.01", "1.5", "50"})
     void weightWithinRangeIsAccepted(String weight) throws Exception {
         create(r -> r.setActualWeightKg(new BigDecimal(weight))).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("A side longer than any vehicle takes is rejected")
+    void tooLongSideIsRejected() throws Exception {
+        create(r -> r.setLengthCm(new BigDecimal("500.1"))).andExpect(status().isBadRequest());
     }
 
     @Test

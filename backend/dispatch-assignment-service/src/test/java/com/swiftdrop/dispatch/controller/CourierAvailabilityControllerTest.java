@@ -80,7 +80,11 @@ class CourierAvailabilityControllerTest {
                 5,
                 Instant.now(),
                 null,
-                Instant.now()
+                Instant.now(),
+                java.math.BigDecimal.ZERO,
+                25,
+                java.math.BigDecimal.ZERO,
+                100
         );
 
         when(courierShiftService.startShift(any(StartShiftRequest.class))).thenReturn(response);
@@ -111,7 +115,11 @@ class CourierAvailabilityControllerTest {
                 5,
                 Instant.now(),
                 null,
-                Instant.now()
+                Instant.now(),
+                java.math.BigDecimal.ZERO,
+                25,
+                java.math.BigDecimal.ZERO,
+                100
         );
 
         when(courierShiftService.updateStatus(eq(courierId), eq(ShiftStatus.ON_BREAK))).thenReturn(response);
@@ -136,7 +144,7 @@ class CourierAvailabilityControllerTest {
                 SriLankanDistrict.COLOMBO,
                 ShiftStatus.AVAILABLE
         );
-        when(courierShiftService.getWorkloads()).thenReturn(List.of(workload));
+        when(courierShiftService.getWorkloads(any())).thenReturn(List.of(workload));
 
         mockMvc.perform(get("/api/v1/dispatch/couriers/workload").with(dispatcher()))
                 .andExpect(status().isOk())

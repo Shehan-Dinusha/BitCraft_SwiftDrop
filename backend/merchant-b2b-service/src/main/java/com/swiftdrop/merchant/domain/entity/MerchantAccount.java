@@ -59,6 +59,24 @@ public class MerchantAccount {
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "business_category", length = 32)
+    private BusinessCategory businessCategory;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "monthly_parcel_volume", length = 32)
+    private MonthlyParcelVolume monthlyParcelVolume;
+
+    /** Website or social media page, stored with its https:// scheme. */
+    @Column(name = "website_url", length = 255)
+    private String websiteUrl;
+
+    @Column(name = "pickup_city", length = 100)
+    private String pickupCity;
+
+    @Column(name = "pickup_postal_code", length = 5)
+    private String pickupPostalCode;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

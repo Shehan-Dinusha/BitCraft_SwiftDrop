@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
+import com.swiftdrop.dispatch.domain.enums.CourierBlock;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
@@ -24,6 +25,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -33,9 +35,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Courier suggestions against PostgreSQL, so the eligibility rules in
- * {@code CourierShiftRepository.findAvailableCandidates} (AVAILABLE and below
- * capacity) run as real SQL on Flyway-migrated tables. Each test runs in a
+ * Courier suggestions against PostgreSQL, so the candidate and load queries run
+ * as real SQL on Flyway-migrated tables. Each test runs in a
  * transaction that is rolled back, and starts from empty tables.
  */
 @DataJpaTest
@@ -70,7 +71,7 @@ class CourierSuggestionIT {
     }
 
     @Test
-    @DisplayName("Only AVAILABLE couriers below capacity are suggested: OFFLINE, ON_BREAK, BUSY and full are not")
+    @DisplayName("Only AVAILABLE couriers below capacity are eligible; ON_BREAK, BUSY and full say why, OFFLINE is left out")
     void onlyAvailableCouriersBelowCapacityAreSuggested() {
         UUID eligible = courier(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE, 4, 5, null);
         courier(SriLankanDistrict.COLOMBO, ShiftStatus.OFFLINE, 0, 5, null);
@@ -79,12 +80,40 @@ class CourierSuggestionIT {
         courier(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE, 5, 5, null); // full but still AVAILABLE
         UUID orderId = order(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
 
-        assertThat(courierIds(dispatchAssignmentService.getSuggestions(orderId))).containsExactly(eligible);
+        List<CourierSuggestionResponse> suggestions = dispatchAssignmentService.getSuggestions(orderId);
+        assertThat(suggestions).filteredOn(CourierSuggestionResponse::eligible)
+                .extracting(CourierSuggestionResponse::courierId).containsExactly(eligible);
+        assertThat(suggestions).filteredOn(s -> !s.eligible())
+                .extracting(CourierSuggestionResponse::ineligibleReason)
+                .containsExactlyInAnyOrder(CourierBlock.ON_BREAK, CourierBlock.BUSY, CourierBlock.PARCEL_LIMIT);
     }
 
     @Test
-    @DisplayName("Ranking: pickup district, then workload, then latest heartbeat (none last), then courier ID; three at most")
-    void rankingAndLimitOnRealData() {
+    @DisplayName("A courier's load is the sum of what they hold now: delivered parcels and other couriers' do not count")
+    void loadIsSummedFromHeldParcels() {
+        UUID motorcycle = courier(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE, 2, 5, null);
+        UUID other = courier(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE, 1, 5, null);
+        sized(order(AssignmentStatus.ASSIGNED, motorcycle, SriLankanDistrict.COLOMBO), "40", "10", "10", "12.5");
+        sized(order(AssignmentStatus.REASSIGNED, motorcycle, SriLankanDistrict.COLOMBO), "20", "20", "20", "8");
+        sized(order(AssignmentStatus.COMPLETED, motorcycle, SriLankanDistrict.COLOMBO), "40", "40", "40", "20");
+        order(AssignmentStatus.ASSIGNED, motorcycle, SriLankanDistrict.COLOMBO); // no recorded size
+        sized(order(AssignmentStatus.ASSIGNED, other, SriLankanDistrict.COLOMBO), "10", "10", "10", "1");
+        UUID waiting = order(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
+        sized(waiting, "30", "30", "20", "5");
+
+        List<CourierSuggestionResponse> suggestions = dispatchAssignmentService.getSuggestions(waiting);
+
+        // 20.5 kg of 25 kg are taken, so 5 kg more does not fit.
+        assertThat(courierIds(suggestions)).containsExactly(other, motorcycle);
+        CourierSuggestionResponse full = suggestions.get(1);
+        assertThat(full.ineligibleReason()).isEqualTo(CourierBlock.WEIGHT_LIMIT);
+        assertThat(full.activeWeightKg()).isEqualByComparingTo("20.5");
+        assertThat(full.activeVolumeLitres()).isEqualByComparingTo("12");
+    }
+
+    @Test
+    @DisplayName("Ranking: pickup district, then workload, then latest heartbeat (none last), then courier ID")
+    void rankingOnRealData() {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         UUID kandyIdle = courier(SriLankanDistrict.KANDY, ShiftStatus.AVAILABLE, 0, 5, now);
         UUID colomboBusier = courier(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE, 3, 5, now);
@@ -96,8 +125,8 @@ class CourierSuggestionIT {
         List<CourierSuggestionResponse> suggestions = dispatchAssignmentService.getSuggestions(orderId);
 
         assertThat(courierIds(suggestions))
-                .containsExactly(colomboRecentHeartbeat, colomboOlderHeartbeat, colomboNoHeartbeat)
-                .doesNotContain(colomboBusier, kandyIdle);
+                .containsExactly(colomboRecentHeartbeat, colomboOlderHeartbeat, colomboNoHeartbeat, colomboBusier)
+                .doesNotContain(kandyIdle);
         assertThat(suggestions).allSatisfy(s -> assertThat(s.samePickupDistrict()).isTrue());
     }
 
@@ -165,6 +194,12 @@ class CourierSuggestionIT {
 
     private static List<UUID> courierIds(List<CourierSuggestionResponse> suggestions) {
         return suggestions.stream().map(CourierSuggestionResponse::courierId).toList();
+    }
+
+    private void sized(UUID orderId, String length, String width, String height, String weight) {
+        DispatchAssignment assignment = assignmentRepository.findByOrderId(orderId).orElseThrow();
+        assignment.setParcel(new BigDecimal(length), new BigDecimal(width), new BigDecimal(height), new BigDecimal(weight));
+        assignmentRepository.saveAndFlush(assignment);
     }
 
     private UUID order(AssignmentStatus status, UUID courierId, SriLankanDistrict pickupDistrict) {

@@ -56,7 +56,8 @@ public class CourierMatchingEngine {
         assignment.setPickupDistrict(event.pickupDistrict());
         assignment.setDeliveryDistrict(event.deliveryDistrict());
         assignment.setOrderSpeed(event.speed() != null ? event.speed() : OrderSpeed.STANDARD);
-        assignment.setEstimatedPickupMinutes(calculatePickupMinutes(event.speed()));
+        assignment.setEstimatedPickupMinutes(pickupMinutes(event.speed()));
+        assignment.setParcel(event.lengthCm(), event.widthCm(), event.heightCm(), event.actualWeightKg());
         assignment.setStatus(AssignmentStatus.UNASSIGNED);
         assignment.setRetryCount(0);
         assignment.setLastOrderCreatedEventId(event.eventId());
@@ -67,7 +68,7 @@ public class CourierMatchingEngine {
         return assignmentRepository.save(assignment);
     }
 
-    private int calculatePickupMinutes(OrderSpeed speed) {
+    static int pickupMinutes(OrderSpeed speed) {
         if (speed == null) return 30;
         return switch (speed) {
             case EXPRESS -> 15;

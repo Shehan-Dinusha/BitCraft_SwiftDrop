@@ -633,23 +633,63 @@ components:
       enum: [PENDING_APPROVAL, APPROVED, REJECTED, SUSPENDED]
     RegisterMerchantRequest:
       type: object
+      description: >-
+        Business application. businessRegNo and websiteUrl are each optional, but at least one is
+        required (400 otherwise) so the district dispatcher has something to verify.
       required:
         [
           businessName,
-          businessRegNo,
+          businessCategory,
+          monthlyParcelVolume,
           contactEmail,
           contactPhone,
           pickupAddress,
+          pickupCity,
+          pickupPostalCode,
           operatingDistrict,
         ]
       properties:
-        businessName: { type: string, minLength: 1, maxLength: 150 }
-        businessRegNo: { type: string, minLength: 1, maxLength: 64 }
+        businessName: { type: string, minLength: 2, maxLength: 150 }
+        businessCategory:
+          $ref: "#/components/schemas/BusinessCategory"
+        monthlyParcelVolume:
+          $ref: "#/components/schemas/MonthlyParcelVolume"
+        businessRegNo:
+          type: string
+          maxLength: 64
+          pattern: "^[A-Za-z0-9 ./-]*$"
+          description: Business registration number, if registered.
+        websiteUrl:
+          type: string
+          maxLength: 255
+          description: Website or social media page; https:// is added when no scheme is given.
+          example: facebook.com/lankacrafts
         contactEmail: { type: string, format: email, maxLength: 100 }
-        contactPhone: { type: string, minLength: 1, maxLength: 30 }
-        pickupAddress: { type: string, minLength: 1, maxLength: 255 }
+        contactPhone:
+          type: string
+          pattern: "^(0\\d{9}|\\+94\\d{9})$"
+          description: Sri Lankan number; stored as +94 followed by 9 digits.
+        pickupAddress: { type: string, minLength: 5, maxLength: 255 }
+        pickupCity: { type: string, minLength: 2, maxLength: 100 }
+        pickupPostalCode: { type: string, pattern: "^\\d{5}$" }
         operatingDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
+    BusinessCategory:
+      type: string
+      enum:
+        [
+          FASHION_AND_CLOTHING,
+          ELECTRONICS,
+          HOME_AND_LIVING,
+          HEALTH_AND_BEAUTY,
+          FOOD_AND_GROCERY,
+          BOOKS_AND_STATIONERY,
+          GIFTS_AND_CRAFTS,
+          OTHER,
+        ]
+    MonthlyParcelVolume:
+      type: string
+      enum: [UP_TO_50, FROM_51_TO_200, FROM_201_TO_1000, OVER_1000]
     RejectMerchantRequest:
       type: object
       required: [reason]
@@ -661,10 +701,17 @@ components:
         merchantId: { type: string, format: uuid }
         ownerUserId: { type: string, format: uuid }
         businessName: { type: string }
+        businessCategory:
+          $ref: "#/components/schemas/BusinessCategory"
+        monthlyParcelVolume:
+          $ref: "#/components/schemas/MonthlyParcelVolume"
         businessRegNo: { type: string }
+        websiteUrl: { type: string }
         contactEmail: { type: string }
         contactPhone: { type: string }
         pickupAddress: { type: string }
+        pickupCity: { type: string }
+        pickupPostalCode: { type: string }
         operatingDistrict:
           $ref: "#/components/schemas/SriLankanDistrict"
         status:
@@ -734,8 +781,9 @@ components:
           description: Local or international Sri Lankan number, normalized to +94
     B2bParcel:
       type: object
-      required: [prohibitedItemsDeclared]
-      description: Supply exactly one of actualWeightKg and weightGrams
+      required: [lengthCm, widthCm, heightCm, prohibitedItemsDeclared]
+      description: >-
+        Supply exactly one of actualWeightKg and weightGrams. Length x width x height must not exceed 15,000 litres.
       properties:
         actualWeightKg:
           type: number
@@ -745,6 +793,21 @@ components:
           type: number
           minimum: 10
           maximum: 50000
+        lengthCm:
+          description: In cm
+          type: number
+          minimum: 0.1
+          maximum: 500
+        widthCm:
+          description: In cm
+          type: number
+          minimum: 0.1
+          maximum: 500
+        heightCm:
+          description: In cm
+          type: number
+          minimum: 0.1
+          maximum: 500
         prohibitedItemsDeclared:
           type: boolean
           const: true
@@ -980,6 +1043,15 @@ components:
           type: string
         packageWeightKg:
           type: number
+        packageLengthCm:
+          type: number
+          description: Required to forward the row
+        packageWidthCm:
+          type: number
+          description: Required to forward the row
+        packageHeightCm:
+          type: number
+          description: Required to forward the row
         deliverySpeed:
           type: string
 

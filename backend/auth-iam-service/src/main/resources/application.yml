@@ -35,6 +35,11 @@ spring:
       connect-timeout: 2s
 
 swiftdrop:
+  avatars:
+    # Profile pictures go to this private Blob container when the storage connection string is set
+    # (the same storage account as proof-of-delivery photos); otherwise they stay in PostgreSQL.
+    azure-connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
+    container-name: ${AVATAR_STORAGE_CONTAINER_NAME:profile-photos}
   auth:
     refresh-cookie:
       # Secure flag on the HttpOnly refresh-token cookie. Only set false for plain-HTTP local setups.

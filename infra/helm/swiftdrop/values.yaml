@@ -239,6 +239,9 @@ services:
       GOOGLE_REDIRECT_URI: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}/api/v1/auth/oauth2/google/callback'
       FRONTEND_URL: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}'
       AUTH_OTP_LOG_CODE: "false"
+      # Profile pictures go to this private container in the PoD storage account (same secret as
+      # delivery-execution-service); without secrets.podStorage they stay in PostgreSQL.
+      AVATAR_STORAGE_CONTAINER_NAME: profile-photos
     secretEnv:
       - { name: JWT_SECRET, secretName: swiftdrop-jwt-credentials, key: secret }
       - {
@@ -285,6 +288,12 @@ services:
           name: GOOGLE_CLIENT_SECRET,
           secretName: swiftdrop-google-oauth,
           key: client-secret,
+          optional: true,
+        }
+      - {
+          name: AZURE_STORAGE_CONNECTION_STRING,
+          secretName: delivery-pod-storage,
+          key: azure-connection-string,
           optional: true,
         }
 

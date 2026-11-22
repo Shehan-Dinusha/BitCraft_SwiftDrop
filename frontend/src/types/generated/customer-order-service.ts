@@ -75,6 +75,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List my saved addresses, most recently changed first */
+        get: operations["listSavedAddresses"];
+        put?: never;
+        /**
+         * Save a new address
+         * @description Up to 20 per customer.
+         */
+        post: operations["createSavedAddress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/addresses/{addressId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change a saved address */
+        put: operations["updateSavedAddress"];
+        post?: never;
+        /** Delete a saved address */
+        delete: operations["deleteSavedAddress"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/tracking/{trackingNumber}": {
         parameters: {
             query?: never;
@@ -300,7 +339,56 @@ export interface components {
             /** @example PRICING-2026-V1 */
             pricingRuleVersionId?: string;
         };
+        /** @description A saved pickup or drop-off address, in the same parts as the booking form. */
+        SavedAddressRequest: {
+            /** @description The customer's name for it, such as Home */
+            label: string;
+            contactName: string;
+            /** @description Stored as +94 and 9 digits */
+            contactPhone: string;
+            alternatePhone?: string;
+            /** @description Must contain a letter or digit */
+            house: string;
+            street: string;
+            area?: string;
+            landmark?: string;
+            city: string;
+            district: components["schemas"]["SriLankanDistrict"];
+            postalCode: string;
+        };
+        SavedAddressResponse: {
+            /** Format: uuid */
+            addressId?: string;
+            label?: string;
+            contactName?: string;
+            contactPhone?: string;
+            alternatePhone?: string;
+            house?: string;
+            street?: string;
+            area?: string;
+            landmark?: string;
+            city?: string;
+            district?: components["schemas"]["SriLankanDistrict"];
+            postalCode?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ApiResponseSavedAddress: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["SavedAddressResponse"];
+        };
+        ApiResponseSavedAddressList: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["SavedAddressResponse"][];
+        };
         CreateOrderRequest: {
+            /**
+             * Format: uuid
+             * @description Optional ID the client generates once per booking. Sending the same value again (a retry after a dropped connection) returns the order already created instead of a second one.
+             */
+            clientRequestId?: string;
             /** Format: uuid */
             customerId?: string;
             /** Format: uuid */
@@ -864,6 +952,158 @@ export interface operations {
                 };
             };
             /** @description Order not found, or not owned by the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listSavedAddresses: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway; only CUSTOMER has an address book */
+                "X-User-Role"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved addresses */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseSavedAddressList"];
+                };
+            };
+            /** @description No signed-in caller */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not a customer */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createSavedAddress: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway; only CUSTOMER has an address book */
+                "X-User-Role"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedAddressRequest"];
+            };
+        };
+        responses: {
+            /** @description Address saved */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseSavedAddress"];
+                };
+            };
+            /** @description An invalid field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address book is full */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateSavedAddress: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway; only CUSTOMER has an address book */
+                "X-User-Role"?: string;
+            };
+            path: {
+                addressId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedAddressRequest"];
+            };
+        };
+        responses: {
+            /** @description Address updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseSavedAddress"];
+                };
+            };
+            /** @description Not one of the caller's addresses */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteSavedAddress: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Authenticated user UUID */
+                "X-User-Id"?: string;
+                /** @description Caller role set by the gateway; only CUSTOMER has an address book */
+                "X-User-Role"?: string;
+            };
+            path: {
+                addressId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not one of the caller's addresses */
             404: {
                 headers: {
                     [name: string]: unknown;

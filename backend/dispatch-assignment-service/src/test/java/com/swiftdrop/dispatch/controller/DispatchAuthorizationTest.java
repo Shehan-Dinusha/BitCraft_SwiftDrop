@@ -1,5 +1,7 @@
 package com.swiftdrop.dispatch.controller;
 
+import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
+import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
@@ -70,9 +72,13 @@ class DispatchAuthorizationTest {
         assignment.setAssignmentId(UUID.randomUUID());
         assignment.setOrderId(UUID.randomUUID());
         assignment.setStatus(AssignmentStatus.ASSIGNED);
-        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any())).thenReturn(assignment);
-        when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any())).thenReturn(assignment);
-        when(dispatchAssignmentService.getAssignments(any(), any())).thenReturn(Page.empty());
+        assignment.setPickupDistrict(SriLankanDistrict.COLOMBO);
+        when(manualOverrideService.manualAssign(any(ManualAssignRequest.class), any(), any())).thenReturn(assignment);
+        when(manualOverrideService.reassign(any(ReassignCourierRequest.class), any(), any())).thenReturn(assignment);
+        when(dispatchAssignmentService.getAssignments(any(), any(), any())).thenReturn(Page.empty());
+        // Suggestions check the order's pickup district first; the test dispatcher works in Colombo.
+        when(dispatchAssignmentService.getAssignmentByOrderId(any()))
+                .thenReturn(DispatchAssignmentResponse.fromEntity(assignment));
     }
 
     /** Every endpoint restricted to the operations roles, as a fresh request builder. */

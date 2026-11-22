@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Lock, LogIn, Mail, ShieldCheck } from 'lucide-react';
+import { ChevronRight, Lock, LogIn, Mail, ShieldCheck, Store, User, UserPlus } from 'lucide-react';
 import { Alert } from '@/design-system/components/Alert/Alert';
 import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
@@ -18,7 +18,6 @@ import { EMAIL_NOT_VERIFIED, parseApiError } from '@/services/api/apiError';
 import { useSignedInRedirect } from '@/features/auth/useSignedInRedirect';
 import {
   AuthDivider,
-  AuthLink,
   AuthShell,
   authFieldClass,
   FieldIcon,
@@ -42,6 +41,7 @@ export function LoginPage() {
   const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
   const [code, setCode] = useState('');
   const [searchParams] = useSearchParams();
+  const [choosingAccountType, setChoosingAccountType] = useState(false);
   const oauthError = searchParams.get('oauth_error');
   const [error, setError] = useState<string | null>(
     oauthError ? oauthErrorMessage(oauthError) : null
@@ -126,7 +126,7 @@ export function LoginPage() {
             onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
             inputMode="numeric"
             autoComplete="one-time-code"
-            placeholder="000000"
+            placeholder="6-digit code"
             pattern="\d{6}"
             maxLength={6}
             required
@@ -159,13 +159,44 @@ export function LoginPage() {
     );
   }
 
+  if (choosingAccountType) {
+    return (
+      <AuthShell
+        icon={<UserPlus />}
+        title="Create an account"
+        below={
+          <>
+            Already have an account?{' '}
+            <TextButton onClick={() => setChoosingAccountType(false)}>Sign in</TextButton>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <AccountTypeOption
+            to="/register"
+            icon={<User />}
+            title="For myself"
+            text="Send parcels and track your orders."
+          />
+          <AccountTypeOption
+            to="/register/business"
+            icon={<Store />}
+            title="For my business"
+            text="Ship your orders in bulk or through the API. Needs approval."
+          />
+        </div>
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell
       icon={<LogIn />}
       title="Sign in to SwiftDrop"
       below={
         <>
-          Don&apos;t have an account? <AuthLink to="/register">Create one</AuthLink>
+          Don&apos;t have an account?{' '}
+          <TextButton onClick={() => setChoosingAccountType(true)}>Create one</TextButton>
         </>
       }
     >
@@ -247,6 +278,54 @@ export function LoginPage() {
         </Button>
       ) : null}
     </AuthShell>
+  );
+}
+
+/** Brand-coloured text button, styled like `AuthLink`, for switching views on this page. */
+function TextButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded font-semibold text-brand-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** One choice in "Create an account": a full-width tile that opens the matching sign-up form. */
+function AccountTypeOption({
+  to,
+  icon,
+  title,
+  text
+}: {
+  to: string;
+  icon: ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="group flex min-h-target items-center gap-4 rounded-xl border border-border-subtle bg-card p-4 text-left shadow-ambient transition-all hover:-translate-y-px hover:border-brand-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+    >
+      <span
+        aria-hidden="true"
+        className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-subtle text-brand-primary [&_svg]:size-5"
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-body-strong text-primary">{title}</span>
+        <span className="block pt-0.5 text-body text-secondary">{text}</span>
+      </span>
+      <ChevronRight
+        aria-hidden="true"
+        className="size-5 shrink-0 text-muted transition-colors group-hover:text-brand-primary"
+      />
+    </Link>
   );
 }
 

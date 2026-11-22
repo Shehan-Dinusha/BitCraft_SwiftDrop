@@ -1,11 +1,12 @@
 import { Field, SelectDropdown } from '@/design-system';
 import type { SriLankanDistrict } from '@/services/api/orderApi';
 import {
-  DISTRICTS,
-  provinceLabelOf,
+  districtsOf,
   provinceOf,
+  provinceOptions,
   type BookingField,
-  type BookingForm
+  type BookingForm,
+  type ProvinceId
 } from './bookingForm';
 import type { BookingErrors } from './validation';
 
@@ -17,14 +18,11 @@ export interface BookingStepProps {
   onBlur: (field: BookingField) => void;
 }
 
-/** Every district, in the order of the list. */
-const districtOptions = DISTRICTS.map(({ value, label }) => ({ value, label }));
-
 /**
- * House and street, area and landmark, then district, province, city and postal code, for the
- * pickup or the drop-off side. The customer picks the district and the province fills in from it
- * (read-only); the order stores the district. House and street become the order's first address
- * line, area and landmark the second.
+ * House and street, area and landmark, then province, district, city and postal code, for the
+ * pickup or the drop-off side. The customer picks the province first and then a district from it;
+ * the order stores the district. House and street become the order's first address line, area and
+ * landmark the second.
  */
 export function AddressFields({
   side,
@@ -41,6 +39,8 @@ export function AddressFields({
   const district = `${side}District` as const;
   const city = `${side}City` as const;
   const postal = `${side}PostalCode` as const;
+  // A district set without a province (prefilled from the profile) still shows its province.
+  const chosenProvince = form[province] || provinceOf(form[district]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -52,14 +52,12 @@ export function AddressFields({
           maxLength={40}
           value={form[house]}
           error={errors[house]}
-          placeholder="45 or 12/A"
           hint="For example No. 45 or 12/A"
           onChange={(event) => onChange(house, event.target.value)}
           onBlur={() => onBlur(house)}
         />
         <Field
           label="Street or road"
-          placeholder="Galle Road"
           required
           autoComplete={`section-${side} address-line2`}
           maxLength={150}
@@ -70,7 +68,6 @@ export function AddressFields({
         />
         <Field
           label="Area or locality"
-          placeholder="Kollupitiya"
           maxLength={98}
           value={form[area]}
           error={errors[area]}
@@ -80,7 +77,6 @@ export function AddressFields({
         />
         <Field
           label="Landmark"
-          placeholder="Opposite Liberty Plaza"
           maxLength={100}
           value={form[landmark]}
           error={errors[landmark]}
@@ -92,32 +88,32 @@ export function AddressFields({
 
       <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SelectDropdown
+          label="Province"
+          required
+          placeholder="Choose a province"
+          options={provinceOptions}
+          value={chosenProvince || undefined}
+          error={errors[province]}
+          onChange={(value) => {
+            const next = value as ProvinceId;
+            onChange(province, next);
+            // A district from another province no longer fits: clear it so it is chosen again.
+            if (form[district] && provinceOf(form[district]) !== next) onChange(district, '');
+          }}
+        />
+        <SelectDropdown
           label="District"
           required
           searchable
-          placeholder="Choose a district"
-          options={districtOptions}
+          disabled={!chosenProvince}
+          placeholder={chosenProvince ? 'Choose a district' : 'Choose a province first'}
+          options={districtsOf(chosenProvince)}
           value={form[district] || undefined}
           error={errors[district]}
-          onChange={(value) => {
-            const next = value as SriLankanDistrict;
-            onChange(district, next);
-            // The province always follows the district, so the two can never disagree.
-            onChange(province, provinceOf(next));
-          }}
-        />
-        <Field
-          label="Province"
-          readOnly
-          state="readOnly"
-          tabIndex={-1}
-          placeholder="Fills in from the district"
-          value={provinceLabelOf(form[district])}
-          onChange={() => undefined}
+          onChange={(value) => onChange(district, value as SriLankanDistrict)}
         />
         <Field
           label="City or town"
-          placeholder="Colombo 03"
           required
           autoComplete={`section-${side} address-level2`}
           maxLength={100}
@@ -128,7 +124,6 @@ export function AddressFields({
         />
         <Field
           label="Postal code"
-          placeholder="00300"
           required
           inputMode="numeric"
           autoComplete={`section-${side} postal-code`}

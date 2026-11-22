@@ -11,6 +11,7 @@
 // Usage:  node scripts/seed/seed.mjs <stage> [<stage> ...]
 //   stages: users orders merchants shifts cancel assign deliver notifications summary
 //           all  (every stage in order — for a cluster that runs all services at once)
+//           vehicles  (not part of all: registers vehicles for couriers seeded before they existed)
 //
 // Environment:
 //   SEED_API              gateway base URL      (default http://127.0.0.1:18080)
@@ -486,6 +487,27 @@ async function stageShifts() {
   report('shifts');
 }
 
+// ── Stage: vehicles ─────────────────────────────────────────────────────────
+// Registers each seeded courier's vehicle (capacity 20) without starting a shift or creating
+// orders, so it sends no e-mail. For a database seeded before couriers had a vehicle record:
+// without one a courier cannot start a shift. Couriers who already have a vehicle are left alone.
+async function stageVehicles() {
+  const couriers = PEOPLE.staff.filter((p) => p.role === 'COURIER');
+  await mapLimit(couriers, CONCURRENCY, async (c) => {
+    const s = await login(c.username);
+    const existing = await api('GET', '/api/v1/dispatch/couriers/me/profile', { token: s.token, expect: [200, 404] });
+    if (existing?.vehicleType) { count('already had a vehicle'); return; }
+    const vehicle = vehicleOf(c, couriers.indexOf(c));
+    await api('PUT', '/api/v1/dispatch/couriers/me/profile', { token: s.token, body: vehicle });
+    const d = await login(dispatcherOf(c.district.code).username);
+    await api('PUT', `/api/v1/dispatch/couriers/${s.userId}/profile`, {
+      token: d.token, body: { ...vehicle, maxCapacity: 20 },
+    });
+    count('vehicles registered');
+  });
+  report('vehicles');
+}
+
 // ── Stage: cancel ───────────────────────────────────────────────────────────
 async function customerOrders(token) {
   const all = [];
@@ -785,8 +807,8 @@ function placeholderPhotos() {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 const STAGES = {
-  users: stageUsers, orders: stageOrders, merchants: stageMerchants, shifts: stageShifts, cancel: stageCancel,
-  assign: stageAssign, deliver: stageDeliver, notifications: stageNotifications, summary: stageSummary,
+  users: stageUsers, orders: stageOrders, merchants: stageMerchants, shifts: stageShifts, vehicles: stageVehicles,
+  cancel: stageCancel, assign: stageAssign, deliver: stageDeliver, notifications: stageNotifications, summary: stageSummary,
 };
 
 async function stageAll() {

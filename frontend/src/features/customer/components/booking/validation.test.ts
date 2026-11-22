@@ -33,6 +33,20 @@ const validForm: BookingForm = {
 };
 
 describe('booking validation', () => {
+  it('asks for the province first, unless a district already settles it', () => {
+    expect(validateField('pickupProvince', { ...validForm, pickupDistrict: '' })).toBe(
+      'Choose a province'
+    );
+    expect(validateField('pickupProvince', validForm)).toBeUndefined();
+    expect(
+      validateField('deliveryProvince', {
+        ...validForm,
+        deliveryDistrict: '',
+        deliveryProvince: 'CENTRAL'
+      })
+    ).toBeUndefined();
+  });
+
   it('accepts a complete form', () => {
     expect(firstInvalidStep(validForm)).toBeNull();
   });
@@ -63,9 +77,9 @@ describe('booking validation', () => {
   });
 
   it('blocks markup characters in free text', () => {
-    expect(
-      validateField('customerNotes', { ...validForm, customerNotes: '<script>' })
-    ).toContain('< and >');
+    expect(validateField('customerNotes', { ...validForm, customerNotes: '<script>' })).toContain(
+      '< and >'
+    );
   });
 
   it('enforces the parcel weight range', () => {
@@ -78,6 +92,13 @@ describe('booking validation', () => {
     expect(validateField('actualWeightKg', { ...validForm, actualWeightKg: 'heavy' })).toContain(
       'as a number'
     );
+  });
+
+  it('limits each side and the whole size to what the largest vehicle takes', () => {
+    expect(validateField('lengthCm', { ...validForm, lengthCm: '501' })).toContain('up to 500');
+    const big = { ...validForm, lengthCm: '500', widthCm: '200', heightCm: '151' };
+    expect(validateField('heightCm', big)).toContain('too big');
+    expect(validateField('heightCm', { ...big, heightCm: '150' })).toBeUndefined();
   });
 
   it('maps server field errors, including joined address fields', () => {

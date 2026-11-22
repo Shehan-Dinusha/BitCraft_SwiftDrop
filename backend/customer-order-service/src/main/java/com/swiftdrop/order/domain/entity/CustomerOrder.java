@@ -58,6 +58,10 @@ public class CustomerOrder {
     @Column(name = "external_ref", length = 128)
     private String externalRef;
 
+    /** The client's per-booking ID; with customer_id it makes a retried customer booking return the same order. */
+    @Column(name = "client_request_id")
+    private UUID clientRequestId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "order_speed", nullable = false, length = 32)
     @Builder.Default

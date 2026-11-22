@@ -20,16 +20,15 @@ import {
   UserRound
 } from 'lucide-react';
 import {
+  Avatar,
   Button,
   Field,
   Input,
   PageHeader,
-  SelectDropdown,
   StatusBanner,
   SurfaceCard
 } from '@/design-system';
 import {
-  SRI_LANKAN_DISTRICTS,
   changeMyPassword,
   fetchCurrentUser,
   logoutUser,
@@ -53,13 +52,9 @@ import {
   type ProfileErrors,
   type ProfileForm
 } from './profileFormat';
-import { UserAvatar, sourceProblem, toAvatarImage, useMyAvatarUrl } from './avatar';
+import { sourceProblem, toAvatarImage, useMyAvatarUrl } from './avatar';
 import { DeleteAccountCard } from '@/features/customer/components/profile/DeleteAccountCard';
-
-const DISTRICT_OPTIONS = SRI_LANKAN_DISTRICTS.map((value) => ({
-  value,
-  label: districtLabel(value)
-}));
+import { SavedAddressesCard } from '@/features/customer/components/profile/SavedAddressesCard';
 
 function formFrom(user: AuthUserProfile | null | undefined): ProfileForm {
   return {
@@ -157,10 +152,11 @@ function ProfilePhoto({
   return (
     <div className="flex shrink-0 flex-col items-start gap-2 sm:items-center">
       <div className="relative">
-        <UserAvatar
+        <Avatar
           name={name}
           src={src}
-          className={cn('size-20 text-h2', busy === 'upload' && 'opacity-60')}
+          size="lg"
+          className={cn(busy === 'upload' && 'opacity-60')}
         />
         <button
           type="button"
@@ -357,30 +353,24 @@ function PersonalDetails({
             label="Phone number"
             inputMode="tel"
             autoComplete="tel"
-            placeholder="+94 77 123 4567"
             maxLength={32}
             value={form.phone}
             error={errors.phone}
             hint="Optional"
             onChange={(e) => set('phone')(e.target.value)}
           />
-          <SelectDropdown
-            label="District"
-            required
-            searchable
-            options={DISTRICT_OPTIONS}
-            value={form.district}
-            error={errors.district}
-            placeholder="Choose a district"
-            onChange={set('district')}
-            // A courier's or dispatcher's district is assigned by operations (the API refuses changes).
-            disabled={user.role === 'COURIER' || user.role === 'DISPATCHER'}
-            hint={
-              user.role === 'COURIER' || user.role === 'DISPATCHER'
-                ? 'Set by operations'
-                : undefined
-            }
-          />
+          {/* Only staff have a district: it decides who manages them and is assigned by operations.
+              A customer's orders follow each order's pickup district, so customers are not asked. */}
+          {user.role === 'COURIER' || user.role === 'DISPATCHER' ? (
+            <Field
+              label="District"
+              readOnly
+              state="readOnly"
+              value={districtLabel(form.district)}
+              hint="Set by operations"
+              onChange={() => undefined}
+            />
+          ) : null}
         </div>
 
         {result ? (
@@ -558,6 +548,7 @@ export function ProfilePage() {
             <IdentityCard user={user} onSaved={onSaved} />
             <PersonalDetails user={user} onSaved={onSaved} />
             <ChangePassword />
+            {user.role === 'CUSTOMER' ? <SavedAddressesCard /> : null}
             <Link
               to={`${NOTIFICATIONS_PATH[role]}?tab=settings`}
               className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3 text-body text-primary transition-colors hover:bg-elevated"
