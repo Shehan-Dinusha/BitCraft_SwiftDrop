@@ -88,6 +88,12 @@ public record EventEnvelope(
         return Optional.empty();
     }
 
+    /** Whether the public status changed; a step inside the same status is no news to a customer. */
+    public boolean statusChanged() {
+        return !payload.hasNonNull("previousPublicStatus")
+                || !payload.get("previousPublicStatus").asText().equalsIgnoreCase(extractStatus().orElse(""));
+    }
+
     private static Optional<UUID> parseUuid(JsonNode node, String fieldName) {
         if (node.hasNonNull(fieldName)) {
             try {

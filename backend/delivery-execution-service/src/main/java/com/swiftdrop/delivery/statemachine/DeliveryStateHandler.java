@@ -30,6 +30,7 @@ public interface DeliveryStateHandler {
      * @param request the transition request payload
      * @param session the current delivery session entity
      */
-    void validate(TransitionDeliveryRequest request, DeliverySession session);
+    default void validate(TransitionDeliveryRequest request, DeliverySession session) {
+    }
 }
 

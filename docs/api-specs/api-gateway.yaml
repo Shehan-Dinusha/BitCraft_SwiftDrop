@@ -124,6 +124,8 @@ components:
         - PICKED_UP
         - IN_TRANSIT
         - OUT_FOR_DELIVERY
+        - DELIVERY_ATTEMPTED
+        - RETURNING
         - FAILED
         - DELIVERED
         - CANCELLED

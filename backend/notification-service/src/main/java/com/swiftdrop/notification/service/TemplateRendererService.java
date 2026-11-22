@@ -82,7 +82,15 @@ public class TemplateRendererService {
                 }
                 case "PARCEL_FAILED" -> {
                     subjectTmpl = "We could not deliver your parcel";
-                    bodyTmpl = "We could not deliver parcel {{trackingNumber}}: {{failureReason}}. Our operations team has been notified and will arrange the next step.";
+                    bodyTmpl = "We could not deliver parcel {{trackingNumber}}: {{failureReason}}. {{nextStep}}";
+                }
+                case "PARCEL_RETURNING" -> {
+                    subjectTmpl = "Your parcel is coming back to you";
+                    bodyTmpl = "We could not deliver parcel {{trackingNumber}}, so it is on its way back to you. The return is free.";
+                }
+                case "PARCEL_RETURNED" -> {
+                    subjectTmpl = "Your parcel has been returned";
+                    bodyTmpl = "Parcel {{trackingNumber}} was handed back on {{returnedAt}}.";
                 }
                 case "EMAIL_VERIFICATION" -> {
                     subjectTmpl = "Your SwiftDrop verification code";

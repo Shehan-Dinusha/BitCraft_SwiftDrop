@@ -33,6 +33,8 @@ public final class PushMessages {
             "PARCEL_OUT_FOR_DELIVERY", new Kind("Out for delivery", "%s is on its way", false),
             "PARCEL_DELIVERED", new Kind("Delivered", "%s has been delivered", false),
             "PARCEL_FAILED", new Kind("Delivery failed", "%s could not be delivered", false),
+            "PARCEL_RETURNING", new Kind("Coming back", "%s is on its way back to you", false),
+            "PARCEL_RETURNED", new Kind("Returned", "%s has been handed back", false),
             "COURIER_ASSIGNED", new Kind("New delivery assigned", "%s · open your deliveries", true));
 
     private PushMessages() {

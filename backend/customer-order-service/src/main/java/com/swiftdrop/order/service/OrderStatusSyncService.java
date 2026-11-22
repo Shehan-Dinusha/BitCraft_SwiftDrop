@@ -32,8 +32,8 @@ import java.util.Set;
 public class OrderStatusSyncService {
 
     /**
-     * Statuses an order does not leave. FAILED is deliberately not here: a failed delivery is retried
-     * (up to three attempts) and so moves on to out-for-delivery or returned-to-sender.
+     * Statuses an order does not leave. FAILED is deliberately not here: before DELIVERY_ATTEMPTED existed,
+     * a failed delivery could still move on to out-for-delivery or returned-to-sender.
      */
     private static final Set<PublicOrderStatus> FINAL_STATUSES = Set.of(
             PublicOrderStatus.DELIVERED, PublicOrderStatus.CANCELLED, PublicOrderStatus.RETURNED_TO_SENDER);

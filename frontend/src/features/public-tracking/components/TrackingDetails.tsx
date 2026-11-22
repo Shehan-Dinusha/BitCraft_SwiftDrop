@@ -28,6 +28,8 @@ const STATUS_LABELS: Record<PublicOrderStatus, string> = {
   PICKED_UP: 'Picked up',
   IN_TRANSIT: 'In transit',
   OUT_FOR_DELIVERY: 'Out for delivery',
+  DELIVERY_ATTEMPTED: 'Delivery attempted',
+  RETURNING: 'Returning to sender',
   FAILED: 'Delivery failed',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',
@@ -42,9 +44,19 @@ const PROGRESS_STATUSES: StatusProgressStatus[] = [
   'DELIVERED'
 ];
 
-const TERMINAL_ALERTS: Partial<
+const STATUS_ALERTS: Partial<
   Record<PublicOrderStatus, { tone: AlertTone; title: string; message: string }>
 > = {
+  DELIVERY_ATTEMPTED: {
+    tone: 'warning',
+    title: 'Delivery attempted',
+    message: 'The courier could not deliver this parcel. It is tried again or returned to the sender.'
+  },
+  RETURNING: {
+    tone: 'warning',
+    title: 'Returning to sender',
+    message: 'This parcel is on its way back to the sender.'
+  },
   FAILED: {
     tone: 'danger',
     title: 'Delivery failed',
@@ -57,8 +69,8 @@ const TERMINAL_ALERTS: Partial<
   },
   RETURNED_TO_SENDER: {
     tone: 'warning',
-    title: 'Returning to sender',
-    message: 'This parcel is on its way back to the sender.'
+    title: 'Returned to sender',
+    message: 'This parcel was handed back to the sender.'
   }
 };
 
@@ -81,7 +93,7 @@ export function TrackingDetails({ view, connection, className }: TrackingDetails
   const isWide = useMediaQuery('(min-width: 640px)');
   const isTerminal = isTerminalPublicStatus(view.currentPublicStatus);
   const progressStatus = toProgressStatus(view.currentPublicStatus);
-  const terminalAlert = TERMINAL_ALERTS[view.currentPublicStatus];
+  const statusAlert = STATUS_ALERTS[view.currentPublicStatus];
   const timeline = buildTimeline(view);
   const hasMaskedContact = Boolean(
     view.senderNameMasked ||
@@ -135,9 +147,9 @@ export function TrackingDetails({ view, connection, className }: TrackingDetails
 
           {progressStatus ? <StatusProgress current={progressStatus} className="py-1" /> : null}
 
-          {terminalAlert ? (
-            <Alert tone={terminalAlert.tone} title={terminalAlert.title}>
-              {terminalAlert.message}
+          {statusAlert ? (
+            <Alert tone={statusAlert.tone} title={statusAlert.title}>
+              {statusAlert.message}
             </Alert>
           ) : null}
         </div>
@@ -195,6 +207,7 @@ function buildTimeline(view: PublicTrackingView): StatusTimelineEntry[] {
     const isLast = index === view.statusTimeline.length - 1;
     const isFailure =
       entry.status === 'FAILED' ||
+      entry.status === 'DELIVERY_ATTEMPTED' ||
       entry.status === 'CANCELLED' ||
       entry.status === 'RETURNED_TO_SENDER';
 
@@ -224,6 +237,7 @@ function buildTimeline(view: PublicTrackingView): StatusTimelineEntry[] {
 
 function toProgressStatus(status: PublicOrderStatus): StatusProgressStatus | null {
   if (status === 'PICKUP_ASSIGNED') return 'CREATED';
+  if (status === 'DELIVERY_ATTEMPTED') return 'OUT_FOR_DELIVERY';
   return PROGRESS_STATUSES.includes(status as StatusProgressStatus)
     ? (status as StatusProgressStatus)
     : null;

@@ -23,6 +23,19 @@ public enum DeliveryState {
     AT_DESTINATION_HUB,
     OUT_FOR_DELIVERY,
     DELIVERED,
+    /** A delivery attempt failed; the courier still has the parcel and brings it to their district's hub. */
+    ATTEMPT_FAILED,
+    /** Back at the hub after a failed attempt; its dispatcher tries again or returns it to the sender. */
+    HELD_AT_HUB,
+    /** Different districts only: on its way back to the sender's hub. */
+    RETURN_IN_TRANSIT,
+    /** At the sender's hub, waiting for a courier to bring it back to them. */
+    RETURN_AT_HUB,
+    /** A courier is bringing it back to the sender. */
+    OUT_FOR_RETURN,
+    /** The sender has it back. */
+    RETURNED,
+    /** Final: the pickup failed, or the parcel was lost or damaged. Never a delivery that can be tried again. */
     FAILED,
     CANCELLED
 }

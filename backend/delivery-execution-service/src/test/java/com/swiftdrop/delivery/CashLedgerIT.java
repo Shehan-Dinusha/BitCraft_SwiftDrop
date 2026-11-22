@@ -97,7 +97,7 @@ class CashLedgerIT {
         jdbc.update("DELETE FROM cash_handovers");
         jdbc.update("DELETE FROM cash_deposits");
         jdbc.update("DELETE FROM delivery_sessions");
-        when(proofOfDeliveryGuard.isSatisfied(any())).thenReturn(true);
+        when(proofOfDeliveryGuard.isSatisfied(any(), any())).thenReturn(true);
     }
 
     @Test

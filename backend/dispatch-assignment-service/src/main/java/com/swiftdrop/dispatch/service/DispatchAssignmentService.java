@@ -94,6 +94,14 @@ public class DispatchAssignmentService {
                 .toList();
     }
 
+    /** Failed deliveries {@code district} deals with, and returns coming to its hub. */
+    @Transactional(readOnly = true)
+    public List<DispatchAssignmentResponse> getReturns(SriLankanDistrict district) {
+        return assignmentRepository.findReturns(district).stream()
+                .map(DispatchAssignmentResponse::fromEntity)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public DispatchAssignmentResponse getAssignmentById(UUID assignmentId) {
         return assignmentRepository.findByAssignmentId(assignmentId)
@@ -242,6 +250,11 @@ public class DispatchAssignmentService {
                 && handleHubStep(event)) {
             return;
         }
+        if (event.newPublicStatus() == PublicOrderStatus.DELIVERY_ATTEMPTED
+                || event.newPublicStatus() == PublicOrderStatus.RETURNING) {
+            handleReturnStep(event);
+            return;
+        }
         if (PICKUP_BOUNDARY_STATUSES.contains(event.newPublicStatus())) {
             recordPickup(event);
             return;
@@ -254,11 +267,7 @@ public class DispatchAssignmentService {
             log.info("Parcel {} reached terminal/delivered status: {}. Releasing courier capacity.",
                     event.trackingNumber(), event.newPublicStatus());
 
-            Optional<DispatchAssignment> assignmentOpt = event.orderId() != null
-                    ? assignmentRepository.findByOrderId(event.orderId())
-                    : assignmentRepository.findByTrackingNumber(event.trackingNumber());
-
-            assignmentOpt.ifPresent(assignment -> {
+            find(event).ifPresent(assignment -> {
                 AssignmentStatus targetStatus = toTerminalAssignmentStatus(event.newPublicStatus());
                 if (assignment.getStatus().isTerminal()) {
                     if (assignment.getStatus() == targetStatus) {
@@ -274,6 +283,8 @@ public class DispatchAssignmentService {
                 assignment.setStatus(targetStatus);
                 if (event.newPublicStatus() == PublicOrderStatus.FAILED) {
                     assignment.setFailureReason("Parcel delivery failed");
+                } else if (event.newPublicStatus() == PublicOrderStatus.RETURNED_TO_SENDER) {
+                    assignment.setFailureReason("Returned to the sender");
                 }
                 assignmentRepository.save(assignment);
                 if (releasedWorkload && assignment.getCourierId() != null) {
@@ -296,9 +307,7 @@ public class DispatchAssignmentService {
      * listener) or rejected with 409 (the HTTP request).</p>
      */
     private void recordPickup(ParcelStatusChangedEvent event) {
-        Optional<DispatchAssignment> assignmentOpt = event.orderId() != null
-                ? assignmentRepository.findByOrderId(event.orderId())
-                : assignmentRepository.findByTrackingNumber(event.trackingNumber());
+        Optional<DispatchAssignment> assignmentOpt = find(event);
         if (assignmentOpt.isEmpty()) {
             log.debug("No dispatch assignment for {} event on order {}", event.newPublicStatus(), event.orderId());
             return;
@@ -326,11 +335,12 @@ public class DispatchAssignmentService {
      * Each step is idempotent: a repeated or late event finds the assignment already moved on.
      */
     private boolean handleHubStep(ParcelStatusChangedEvent event) {
-        Optional<DispatchAssignment> found = event.orderId() != null
-                ? assignmentRepository.findByOrderId(event.orderId())
-                : assignmentRepository.findByTrackingNumber(event.trackingNumber());
-        if (found.isEmpty() || !found.get().crossesDistricts() || found.get().getStatus().isTerminal()) {
-            return found.isPresent() && found.get().crossesDistricts();
+        Optional<DispatchAssignment> found = find(event);
+        // INCOMING is also how any parcel, same-district ones too, goes out again after a failed attempt.
+        boolean hubStep = found.isPresent() && (found.get().crossesDistricts()
+                || event.internalSubStatus() == InternalQueueStatus.INCOMING);
+        if (!hubStep || found.get().getStatus().isTerminal()) {
+            return hubStep;
         }
         DispatchAssignment assignment = found.get();
         switch (event.internalSubStatus()) {
@@ -364,7 +374,8 @@ public class DispatchAssignmentService {
                 return true;
             }
             case INCOMING -> {
-                // Accepted at the drop-off district's hub: it becomes that district's last-mile order.
+                // Accepted at the drop-off district's hub, or tried again from there: that district's
+                // last-mile order.
                 if (assignment.getStatus() == AssignmentStatus.IN_TRANSFER) {
                     AssignmentStateMachine.transition(AssignmentStatus.IN_TRANSFER, AssignmentStatus.UNASSIGNED);
                     assignment.setStatus(AssignmentStatus.UNASSIGNED);
@@ -382,6 +393,82 @@ public class DispatchAssignmentService {
                 return false;
             }
         }
+    }
+
+    /**
+     * A failed delivery on its way back: to the hub with the courier, held there, to the sender's hub, and out
+     * to the sender. Repeated and late events find the assignment already moved on and change nothing.
+     */
+    private void handleReturnStep(ParcelStatusChangedEvent event) {
+        DispatchAssignment assignment = find(event).orElse(null);
+        if (assignment == null || assignment.getStatus().isTerminal() || event.internalSubStatus() == null) {
+            return;
+        }
+        boolean withCourier = assignment.getStatus() == AssignmentStatus.ASSIGNED
+                || assignment.getStatus() == AssignmentStatus.REASSIGNED;
+        boolean between = assignment.getStatus() == AssignmentStatus.IN_TRANSFER;
+        boolean comingBack = assignment.getHubStage() == InternalQueueStatus.RETURN_TO_HUB;
+        switch (event.internalSubStatus()) {
+            case RETURN_TO_HUB -> {
+                if (!withCourier || comingBack) return;
+                assignment.recordFailedAttempt(event.failureReason());
+                assignment.setHubStage(InternalQueueStatus.RETURN_TO_HUB);
+                if (assignment.getPickedUpAt() == null) {
+                    assignment.setPickedUpAt(event.timestamp());
+                }
+            }
+            case HELD_AT_HUB -> {
+                if (!withCourier) return;
+                if (!comingBack) {
+                    assignment.recordFailedAttempt(event.failureReason());
+                }
+                releaseAtHub(assignment);
+                assignment.setHubStage(InternalQueueStatus.HELD_AT_HUB);
+            }
+            case RETURN_OUTBOUND -> {
+                if (!between) return;
+                assignment.setLeg(AssignmentLeg.RETURN);
+                assignment.setHubStage(InternalQueueStatus.RETURN_OUTBOUND);
+            }
+            case RETURN_AT_HUB -> {
+                if (withCourier && assignment.getLeg() == AssignmentLeg.RETURN && assignment.getPickedUpAt() != null) {
+                    // The sender could not take it: back at the hub, for another day.
+                    releaseAtHub(assignment);
+                } else if (!between) {
+                    return;
+                }
+                AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.UNASSIGNED);
+                assignment.setStatus(AssignmentStatus.UNASSIGNED);
+                assignment.setLeg(AssignmentLeg.RETURN);
+                assignment.setHubStage(InternalQueueStatus.RETURN_AT_HUB);
+                assignment.setPickedUpAt(null);
+                assignment.setRetryCount(0);
+            }
+            case OUT_FOR_RETURN -> {
+                recordPickup(event);
+                return;
+            }
+            default -> {
+                return;
+            }
+        }
+        assignmentRepository.save(assignment);
+        log.info("Order {} is now {} after a failed delivery", assignment.getOrderId(), assignment.getHubStage());
+    }
+
+    private void releaseAtHub(DispatchAssignment assignment) {
+        UUID courier = assignment.getCourierId();
+        AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.IN_TRANSFER);
+        assignment.setStatus(AssignmentStatus.IN_TRANSFER);
+        assignment.setCourierId(null);
+        assignment.setCourierName(null);
+        if (courier != null) decrementCourierWorkload(courier);
+    }
+
+    private Optional<DispatchAssignment> find(ParcelStatusChangedEvent event) {
+        return event.orderId() != null
+                ? assignmentRepository.findByOrderId(event.orderId())
+                : assignmentRepository.findByTrackingNumber(event.trackingNumber());
     }
 
     private AssignmentStatus toTerminalAssignmentStatus(PublicOrderStatus status) {

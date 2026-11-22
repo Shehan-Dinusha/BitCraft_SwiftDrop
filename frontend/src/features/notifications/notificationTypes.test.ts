@@ -14,7 +14,8 @@ describe('notification types per role', () => {
       'MERCHANT_APPROVED',
       'MERCHANT_REJECTED',
       'MERCHANT_COURIER_ASSIGNED',
-      'MERCHANT_DELIVERY_FAILED'
+      'MERCHANT_DELIVERY_FAILED',
+      'MERCHANT_RETURN'
     ]);
     expect(NOTIFICATION_TYPES_BY_ROLE.ADMIN_OPS).toEqual(['OPS_DELIVERY_FAILED', 'DISPATCH_FAILED', 'MERCHANT_APPLICATION']);
   });
@@ -44,7 +45,7 @@ describe('notification types per role', () => {
     expect(notificationTarget('CUSTOMER', 'PARCEL_DELIVERED', 'SD-AAAA-BBBB')).toBe('/customer/tracking/SD-AAAA-BBBB');
     expect(notificationTarget('COURIER', 'COURIER_ASSIGNED', 'SD-AAAA-BBBB')).toBe('/courier');
     expect(notificationTarget('MERCHANT', 'MERCHANT_DELIVERY_FAILED', 'SD-AAAA-BBBB')).toBe('/merchant');
-    expect(notificationTarget('ADMIN_OPS', 'OPS_DELIVERY_FAILED', 'SD-AAAA-BBBB')).toBe('/ops/dispatch');
+    expect(notificationTarget('ADMIN_OPS', 'OPS_DELIVERY_FAILED', 'SD-AAAA-BBBB')).toBe('/ops/dispatch?tab=returns');
     expect(notificationTarget('ADMIN_OPS', 'DISPATCH_FAILED', null)).toBe('/ops/dispatch');
     expect(notificationTarget('CUSTOMER', 'PARCEL_DELIVERED', null)).toBeNull();
   });

@@ -6,7 +6,7 @@ import { Button, SelectDropdown, StatusBanner, SurfaceCard, Tabs } from '@/desig
 import { Input } from '@/design-system/primitives/Input';
 import { useAuthStore } from '@/store/useAuthStore';
 import { parseApiError } from '@/services/api/apiError';
-import { deliveryApi } from '@/services/api/deliveryApi';
+import { deliveryApi, type DeliveryFailureReason } from '@/services/api/deliveryApi';
 import {
   dispatchApi,
   type DispatchAssignmentResponse,
@@ -20,6 +20,7 @@ import { CouriersTab } from '../components/dispatch/CouriersTab';
 import { TableSkeleton } from '../components/dispatch/DispatchTable';
 import { ALL_DISTRICTS, DISTRICT_OPTIONS } from '../components/dispatch/districtOptions';
 import { IncomingTab, ReadyToSendTab } from '../components/dispatch/HubTabs';
+import { ReturnsTab, type ReturnStep } from '../components/dispatch/ReturnsTab';
 import { ToAssignTab } from '../components/dispatch/ToAssignTab';
 import { useDispatchData } from '../components/dispatch/useDispatchData';
 import {
@@ -29,7 +30,7 @@ import {
   orderLabel
 } from '../components/dispatch/dispatchQueues';
 
-type HubStep = 'IN_TRANSIT' | 'AT_DESTINATION_HUB';
+type HubStep = 'IN_TRANSIT' | ReturnStep;
 type Notice = { tone: 'success' | 'danger'; title: string; body?: string };
 
 /** Dispatch learns about a hub step from an event, so its lists follow a moment later. */
@@ -38,15 +39,23 @@ const EVENT_LAG_MS = 2_000;
 const errorText = (error: unknown, fallback: string) =>
   parseApiError(error).message ?? (error instanceof Error ? error.message : fallback);
 
+const stepKey = (order: DispatchAssignmentResponse, step: string) =>
+  `${orderKey(order)}:${step}:${order.deliveryAttempts ?? 0}`;
+
 /** One parcel's hub step. A failure is returned so the rest of the batch still runs. */
-async function hubStep(order: DispatchAssignmentResponse, target: HubStep): Promise<string | null> {
+async function hubStep(
+  order: DispatchAssignmentResponse,
+  target: HubStep,
+  reason?: DeliveryFailureReason
+): Promise<string | null> {
   try {
     if (!order.orderId) throw new Error('This parcel has no order ID.');
     const delivery = await deliveryApi.getDeliveryByOrderId(order.orderId);
     if (!delivery.deliveryId) throw new Error('This parcel has no delivery record yet.');
     await deliveryApi.transitionDelivery(delivery.deliveryId, {
       targetState: target,
-      notes: target === 'IN_TRANSIT' ? 'Marked Outbound at the hub' : 'Accepted at the hub'
+      failureReason: reason,
+      notes: `Dispatcher: ${STEP_DONE[target]}`
     });
     return null;
   } catch (error) {
@@ -54,10 +63,18 @@ async function hubStep(order: DispatchAssignmentResponse, target: HubStep): Prom
   }
 }
 
-function hubNotice(target: HubStep, done: number, failures: string[]): Notice {
+const STEP_DONE: Record<HubStep, string> = {
+  IN_TRANSIT: 'marked outbound',
+  AT_DESTINATION_HUB: 'accepted at the hub',
+  HELD_AT_HUB: 'received at the hub',
+  RETURN_IN_TRANSIT: 'sent back',
+  RETURN_AT_HUB: 'ready to return',
+  FAILED: 'recorded as lost or damaged'
+};
+
+function hubNotice(target: HubStep, done: number, failures: string[], retry: boolean): Notice {
   const parcels = `${done} ${done === 1 ? 'parcel' : 'parcels'}`;
-  const title =
-    target === 'IN_TRANSIT' ? `${parcels} marked outbound` : `${parcels} accepted at the hub`;
+  const title = `${parcels} ${retry ? 'ready to go out again' : STEP_DONE[target]}`;
   if (failures.length) {
     return {
       tone: 'danger',
@@ -68,7 +85,10 @@ function hubNotice(target: HubStep, done: number, failures: string[]): Notice {
   return {
     tone: 'success',
     title,
-    body: target === 'AT_DESTINATION_HUB' ? 'Find them under To assign.' : undefined
+    body:
+      target === 'AT_DESTINATION_HUB' || target === 'RETURN_AT_HUB'
+        ? 'Find them under To assign.'
+        : undefined
   };
 }
 
@@ -96,12 +116,13 @@ export function DispatchBoardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
   const [hubBusy, setHubBusy] = useState(false);
-  // Hub steps done here, hidden at once while dispatch catches up. An order takes each step only once.
+  // Hub steps done here, hidden at once while dispatch catches up. An order takes each step only once
+  // per delivery attempt.
   const [done, setDone] = useState<ReadonlySet<string>>(new Set());
   const lagTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(lagTimer.current), []);
 
-  const { unassigned, assigned, ready, incoming, couriers, refresh } = useDispatchData(
+  const { unassigned, assigned, ready, incoming, returns, couriers, refresh } = useDispatchData(
     user?.id,
     scope,
     hubTabs
@@ -117,9 +138,13 @@ export function DispatchBoardPage() {
   });
 
   const pending = (orders: DispatchAssignmentResponse[] | undefined, step: HubStep) =>
-    (orders ?? []).filter((order) => !done.has(`${orderKey(order)}:${step}`));
+    (orders ?? []).filter((order) => !done.has(stepKey(order, step)));
   const readyOrders = pending(ready.data, 'IN_TRANSIT');
   const incomingOrders = pending(incoming.data, 'AT_DESTINATION_HUB');
+  // What is shown of a return follows from its stage, so any step taken from that stage hides it.
+  const returnOrders = (returns.data ?? []).filter(
+    (order) => !done.has(stepKey(order, order.hubStage ?? ''))
+  );
 
   const tabs = [
     { id: 'assign', label: 'To assign', count: unassigned.data?.length, list: unassigned },
@@ -137,6 +162,12 @@ export function DispatchBoardPage() {
             label: 'Incoming',
             count: incoming.data && incomingOrders.length,
             list: incoming
+          },
+          {
+            id: 'returns',
+            label: 'Returns',
+            count: returns.data && returnOrders.length,
+            list: returns
           }
         ]
       : []),
@@ -148,7 +179,7 @@ export function DispatchBoardPage() {
   const searching = query.trim() !== '';
   const search = (orders: DispatchAssignmentResponse[]) =>
     orders.filter((order) => matchesOrder(order, query));
-  const lists = [unassigned, assigned, ready, incoming, couriers];
+  const lists = [unassigned, assigned, ready, incoming, returns, couriers];
   const failed = lists.some((list) => list.isError);
   const fetching = lists.some((list) => list.isFetching);
   // Waiting times are measured at the last refresh, which is at most a few seconds ago.
@@ -197,22 +228,29 @@ export function DispatchBoardPage() {
     }
   };
 
-  /** Marks parcels Outbound from this hub, or accepts ones arriving at it. */
-  const runHubStep = async (orders: DispatchAssignmentResponse[], target: HubStep) => {
+  /** Marks parcels Outbound from this hub, accepts ones arriving at it, or decides on a failed delivery. */
+  const runHubStep = async (
+    orders: DispatchAssignmentResponse[],
+    target: HubStep,
+    reason?: DeliveryFailureReason
+  ) => {
     if (hubBusy || orders.length === 0) return;
     setHubBusy(true);
     setNotice(null);
     const failures: string[] = [];
     let completed = 0;
     for (const order of orders) {
-      const failure = await hubStep(order, target);
+      const failure = await hubStep(order, target, reason);
       if (failure) failures.push(failure);
       else {
         completed += 1;
-        setDone((keys) => new Set(keys).add(`${orderKey(order)}:${target}`));
+        setDone((keys) =>
+          new Set(keys).add(stepKey(order, target)).add(stepKey(order, order.hubStage ?? ''))
+        );
       }
     }
-    setNotice(hubNotice(target, completed, failures));
+    const retry = orders.some((order) => order.hubStage === 'HELD_AT_HUB');
+    setNotice(hubNotice(target, completed, failures, retry && target === 'AT_DESTINATION_HUB'));
     setHubBusy(false);
     void refresh();
     window.clearTimeout(lagTimer.current);
@@ -255,6 +293,16 @@ export function DispatchBoardPage() {
             busy={hubBusy}
             now={now}
             onRun={(orders) => void runHubStep(orders, 'AT_DESTINATION_HUB')}
+          />
+        );
+      case 'returns':
+        return (
+          <ReturnsTab
+            orders={search(returnOrders)}
+            searching={searching}
+            busy={hubBusy}
+            now={now}
+            onRun={(orders, step, reason) => void runHubStep(orders, step, reason)}
           />
         );
       case 'couriers':

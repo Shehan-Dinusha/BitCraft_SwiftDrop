@@ -84,6 +84,15 @@ export const dispatchApi = {
     return data.data;
   },
 
+  /** Failed deliveries the district deals with, and returns coming to its hub. */
+  getReturns: async (district?: SriLankanDistrict) => {
+    const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
+      '/v1/dispatch/returns',
+      { params: { district } }
+    );
+    return data.data;
+  },
+
   getCourierSuggestions: async (orderId: string) => {
     const { data } = await apiClient.get<{
       success: boolean;

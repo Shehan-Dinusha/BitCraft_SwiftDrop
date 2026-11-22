@@ -643,6 +643,8 @@ components:
         - PICKED_UP
         - IN_TRANSIT
         - OUT_FOR_DELIVERY
+        - DELIVERY_ATTEMPTED
+        - RETURNING
         - FAILED
         - DELIVERED
         - CANCELLED
@@ -661,6 +663,11 @@ components:
         - OUTBOUND
         - INCOMING
         - DELIVERED
+        - RETURN_TO_HUB
+        - HELD_AT_HUB
+        - RETURN_OUTBOUND
+        - RETURN_AT_HUB
+        - OUT_FOR_RETURN
         - FAILED_ATTEMPT
         - FAILED_RETURN
         - CANCELLED

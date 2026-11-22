@@ -6,7 +6,13 @@ import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 import com.swiftdrop.delivery.statemachine.states.AssignedState;
 import com.swiftdrop.delivery.statemachine.states.CancelledState;
+import com.swiftdrop.delivery.statemachine.states.AttemptFailedState;
 import com.swiftdrop.delivery.statemachine.states.CreatedState;
+import com.swiftdrop.delivery.statemachine.states.HeldAtHubState;
+import com.swiftdrop.delivery.statemachine.states.OutForReturnState;
+import com.swiftdrop.delivery.statemachine.states.ReturnAtHubState;
+import com.swiftdrop.delivery.statemachine.states.ReturnInTransitState;
+import com.swiftdrop.delivery.statemachine.states.ReturnedState;
 import com.swiftdrop.delivery.statemachine.states.DeliveredState;
 import com.swiftdrop.delivery.statemachine.states.FailedState;
 import com.swiftdrop.delivery.statemachine.states.InTransitState;
@@ -44,6 +50,12 @@ public class DeliveryStateMachine {
                 new AtDestinationHubState(),
                 new OutForDeliveryState(),
                 new DeliveredState(),
+                new AttemptFailedState(),
+                new HeldAtHubState(),
+                new ReturnInTransitState(),
+                new ReturnAtHubState(),
+                new OutForReturnState(),
+                new ReturnedState(),
                 new FailedState(),
                 new CancelledState()
         ));

@@ -1,4 +1,4 @@
-import { Banknote, MapPin, Navigation, Package, Phone, StickyNote } from 'lucide-react';
+import { Banknote, MapPin, Navigation, Package, Phone, StickyNote, Undo2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Checkbox } from '@/design-system/components/Checkbox/Checkbox';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
@@ -10,6 +10,8 @@ export interface JobDetailsCardProps {
   job: CourierJobResponse;
   /** Goes to another district, so this courier takes it to a hub or collects it from one. */
   viaHubs: boolean;
+  /** Where the parcel is, for the hub a failed or returned one goes through. */
+  state?: string;
   pickupDistrict?: string | null;
   deliveryDistrict?: string | null;
   cashConfirmed?: boolean;
@@ -20,14 +22,19 @@ export interface JobDetailsCardProps {
 export function JobDetailsCard({
   job,
   viaHubs,
+  state,
   pickupDistrict,
   deliveryDistrict,
   cashConfirmed = false,
   onCashConfirmedChange
 }: JobDetailsCardProps) {
   // On a cross-district parcel the service gives each courier one person; the other end is a hub.
-  const pickupHub = viaHubs && !job.pickup && Boolean(job.dropOff);
-  const dropOffHub = viaHubs && !job.dropOff;
+  const failed = state === 'ATTEMPT_FAILED';
+  const collectReturn = state === 'RETURN_AT_HUB';
+  // A parcel tried again leaves from the hub too, also inside one district.
+  const pickupHub =
+    !job.pickup && Boolean(job.dropOff) && (viaHubs || state === 'AT_DESTINATION_HUB');
+  const dropOffHub = viaHubs && !job.dropOff && !job.returnTo && !failed;
   const parcel = parcelSummary(job);
 
   return (
@@ -51,6 +58,13 @@ export function JobDetailsCard({
           <Hub icon={Navigation} title="Hand in at" name={`${districtLabel(pickupDistrict)} hub`} />
         )}
 
+        {failed && (
+          <Hub icon={Navigation} title="Hand in at" name={`${districtLabel(deliveryDistrict)} hub`} />
+        )}
+        {collectReturn && (
+          <Hub icon={MapPin} title="Collect from" name={`${districtLabel(pickupDistrict)} hub`} />
+        )}
+        {job.returnTo && <Stop icon={Undo2} title="Return to the sender" stop={job.returnTo} />}
         {job.notes && (
           <Row icon={StickyNote} title="Note from the sender">
             <p className="break-words text-body text-primary">{job.notes}</p>

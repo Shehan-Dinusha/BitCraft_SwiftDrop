@@ -56,6 +56,7 @@ public final class DisplayText {
             case "ACCESS_RESTRICTED" -> "the courier could not reach the address";
             case "PAYMENT_FAILED" -> "the delivery fee was not paid";
             case "DAMAGED", "DAMAGED_IN_TRANSIT" -> "the parcel was damaged";
+            case "LOST" -> "the parcel was lost";
             case "WEATHER_DELAY", "ADVERSE_WEATHER" -> "bad weather prevented the delivery";
             case "OTHER" -> "the delivery attempt was not successful";
             default -> {

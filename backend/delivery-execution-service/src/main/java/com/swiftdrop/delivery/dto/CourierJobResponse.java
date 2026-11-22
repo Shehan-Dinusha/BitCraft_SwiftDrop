@@ -24,6 +24,9 @@ public record CourierJobResponse(
         @Schema(description = "Recipient contact and address, for the courier who delivers the parcel")
         CourierJobStop dropOff,
 
+        @Schema(description = "Where to bring the parcel back: the sender, for the courier returning it")
+        CourierJobStop returnTo,
+
         @Schema(description = "The sender's note for the courier", example = "Call when you reach the gate")
         String notes,
 

@@ -112,7 +112,33 @@ class CourierJobServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = DeliveryState.class, names = {"DELIVERED", "FAILED", "CANCELLED"})
+    @EnumSource(value = DeliveryState.class, names = {"ATTEMPT_FAILED", "HELD_AT_HUB", "RETURN_IN_TRANSIT"})
+    @DisplayName("After a failed attempt: the parcel goes to the hub, nobody is contacted")
+    void failedAttemptGivesNoContacts(DeliveryState state) {
+        session(state, SriLankanDistrict.COLOMBO);
+        order(false);
+
+        assertNothingToDo(service().getJob(deliveryId, courier(courierId)));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = DeliveryState.class, names = {"RETURN_AT_HUB", "OUT_FOR_RETURN"})
+    @DisplayName("The returning courier sees the sender, and no fee")
+    void returningCourierSeesTheSender(DeliveryState state) {
+        session(state, SriLankanDistrict.KANDY);
+        order(false);
+
+        CourierJobResponse job = service().getJob(deliveryId, courier(courierId));
+
+        assertThat(job.returnTo().name()).isEqualTo("Sender");
+        assertThat(job.dropOff()).isNull();
+        assertThat(job.pickup()).isNull();
+        assertThat(job.feeToCollect()).isNull();
+        assertThat(job.notes()).isNull();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = DeliveryState.class, names = {"DELIVERED", "RETURNED", "FAILED", "CANCELLED"})
     @DisplayName("A finished delivery gives no contacts and no amounts")
     void finishedDeliveryGivesNoContacts(DeliveryState state) {
         session(state, SriLankanDistrict.COLOMBO);
@@ -169,6 +195,7 @@ class CourierJobServiceTest {
     private static void assertNothingToDo(CourierJobResponse job) {
         assertThat(job.pickup()).isNull();
         assertThat(job.dropOff()).isNull();
+        assertThat(job.returnTo()).isNull();
         assertThat(job.notes()).isNull();
         assertThat(job.feeToCollect()).isNull();
     }

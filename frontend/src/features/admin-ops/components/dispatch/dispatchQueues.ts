@@ -19,9 +19,13 @@ export function toSpeed(value?: string): Speed {
   return value === 'SAME_DAY' ? 'same-day' : 'standard';
 }
 
-export const isAtHub = (order: DispatchAssignmentResponse) => order.leg === 'LAST_MILE';
+export const isReturn = (order: DispatchAssignmentResponse) => order.leg === 'RETURN';
 
-/** When the order joined its current queue: accepted at the hub on the last leg, booked otherwise. */
+/** Waiting at this district's hub: to go out for delivery, or back to the sender. */
+export const isAtHub = (order: DispatchAssignmentResponse) =>
+  order.leg === 'LAST_MILE' || isReturn(order);
+
+/** When the order joined its current queue: accepted at the hub, booked otherwise. */
 export const waitingSince = (order: DispatchAssignmentResponse) =>
   isAtHub(order) ? (order.updatedAt ?? order.createdAt) : order.createdAt;
 

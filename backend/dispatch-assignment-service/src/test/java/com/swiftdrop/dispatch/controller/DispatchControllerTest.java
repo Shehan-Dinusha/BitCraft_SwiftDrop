@@ -122,7 +122,7 @@ class DispatchControllerTest {
                 Instant.now(),
                 Instant.now()
         , null, null, null, null, null, null, null, null,
-                null, null, false, true, null);
+                null, null, false, true, null, 0, null, true);
 
         when(dispatchAssignmentService.getUnassignedParcels(any())).thenReturn(List.of(item));
 

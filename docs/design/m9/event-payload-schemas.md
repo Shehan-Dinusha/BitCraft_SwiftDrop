@@ -138,7 +138,7 @@ Fields: `eventId`, `correlationId`, `orderId`, `trackingNumber`, `pickupDistrict
 | `orderId` | `UUID` | No | Order identifier | Safe |
 | `customerId` | `UUID` | Yes | Customer identity (for user notification matching) | Safe |
 | `previousPublicStatus` | `String` (Enum) | Yes | Status before transition | Safe |
-| `newPublicStatus` | `String` (Enum) | No | Current public status (e.g. `DELIVERED`, `OUT_FOR_DELIVERY`) | Safe |
+| `newPublicStatus` | `String` (Enum) | No | Current public status (e.g. `DELIVERED`, `OUT_FOR_DELIVERY`, `DELIVERY_ATTEMPTED`, `RETURNING`) | Safe |
 | `internalSubStatus` | `String` (Enum) | Yes | Internal queue status | Safe |
 | `district` | `String` (Enum) | Yes | Current checkpoint district | Safe |
 | `destinationDistrict`| `String` (Enum) | Yes | Target delivery district | Safe |
@@ -578,7 +578,10 @@ dispatch makes by itself, an order the merchant created themselves) send nothing
 | `parcel.status.changed` PICKED_UP | Email + in-app + lock screen "Picked up" | | | |
 | `parcel.status.changed` OUT_FOR_DELIVERY | Email + in-app + lock screen "Out for delivery" | | | |
 | `parcel.status.changed` DELIVERED | Email + in-app + lock screen "Delivered" | | | |
-| `parcel.status.changed` FAILED | Email + in-app + lock screen "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" (arrange a new attempt or a return) |
+| `parcel.status.changed` DELIVERY_ATTEMPTED (only when the status changed) | Email + in-app + lock screen "Delivery failed" (it goes back to the hub) | | In-app "Delivery failed" | In-app "Delivery failed" (try again or return it) |
+| `parcel.status.changed` FAILED (lost, damaged or never collected) | Email + in-app + lock screen "Delivery failed" | | In-app "Delivery failed" | In-app "Delivery failed" |
+| `parcel.status.changed` RETURNING (only when the status changed) | Email + in-app + lock screen "Coming back" | | In-app "Parcel coming back" | |
+| `parcel.status.changed` RETURNED_TO_SENDER | Email + in-app + lock screen "Returned" | | In-app "Parcel returned" | |
 | `dispatch.failed` (retryable = false only) | | | | In-app "Dispatch needs attention" |
 | `notification.auth.otp` | Email only | Email only | Email only (to the signing-in user) | Email only |
 | `notification.auth.login` SUCCESS (new device or network only) | Email only | Email only | Email only (to the signing-in user) | Email only |

@@ -3,6 +3,7 @@ package com.swiftdrop.delivery.service;
 import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
+import com.swiftdrop.contracts.enums.DeliveryFailureReason;
 import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
@@ -17,6 +18,7 @@ import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 import com.swiftdrop.delivery.messaging.publisher.DeliveryEventPublisher;
 import com.swiftdrop.delivery.security.DeliveryAccessPolicy;
 import com.swiftdrop.delivery.statemachine.DeliveryStateMachine;
+import com.swiftdrop.delivery.statemachine.ReturnRoute;
 import com.swiftdrop.delivery.statemachine.actions.AuditTransitionAction;
 import com.swiftdrop.delivery.statemachine.actions.PublishStateTransitionAction;
 import com.swiftdrop.delivery.statemachine.guards.ProofOfDeliveryGuard;
@@ -80,13 +82,13 @@ public class DeliveryExecutionService {
                 });
 
         DeliveryState prevState = session.getCurrentState();
-        if (prevState == DeliveryState.CANCELLED) {
-            // A late or repeated assignment must not bring a cancelled job back.
-            log.info("Ignoring assignment of cancelled order {}", event.orderId());
-            return session;
+        if (prevState == DeliveryState.AT_DESTINATION_HUB || prevState == DeliveryState.RETURN_AT_HUB) {
+            return assignHubCourier(session, event);
         }
-        if (prevState == DeliveryState.AT_DESTINATION_HUB) {
-            return assignLastMileCourier(session, event);
+        if (prevState != DeliveryState.CREATED && prevState != DeliveryState.ASSIGNED) {
+            // A late or repeated assignment must not bring a cancelled job back, or move one backwards.
+            log.info("Ignoring assignment of order {} in state {}", event.orderId(), prevState);
+            return session;
         }
         session.setCourierId(event.courierId());
         session.setCourierName(event.courierName());
@@ -162,17 +164,17 @@ public class DeliveryExecutionService {
     }
 
     /**
-     * The drop-off district's dispatcher assigned (or changed) the courier who collects the parcel from
-     * their hub. The parcel stays AT_DESTINATION_HUB until that courier collects it; customers see no
+     * A hub's dispatcher assigned (or changed) the courier who collects the parcel there: to deliver it, or
+     * to bring it back to the sender. It stays at the hub until that courier collects it; customers see no
      * change, so no status event is published.
      */
-    private DeliverySession assignLastMileCourier(DeliverySession session, CourierAssignedEvent event) {
+    private DeliverySession assignHubCourier(DeliverySession session, CourierAssignedEvent event) {
         session.setCourierId(event.courierId());
         session.setCourierName(event.courierName());
         session = deliverySessionRepository.save(session);
         auditTransitionAction.execute(session.getDeliveryId(), session.getOrderId(),
-                DeliveryState.AT_DESTINATION_HUB, DeliveryState.AT_DESTINATION_HUB,
-                "DISPATCH_ASSIGNMENT_EVENT", "SYSTEM", "Last-mile courier assigned at the drop-off hub");
+                session.getCurrentState(), session.getCurrentState(),
+                "DISPATCH_ASSIGNMENT_EVENT", "SYSTEM", "Courier assigned at the hub");
         return session;
     }
 
@@ -195,6 +197,21 @@ public class DeliveryExecutionService {
         }
         if (accept && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
             throw new ForbiddenException("Only the drop-off district's dispatcher can accept this parcel");
+        }
+        if (from == DeliveryState.HELD_AT_HUB && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
+            throw new ForbiddenException("Only the dispatcher of the hub that holds this parcel can decide");
+        }
+        boolean heldHandIn = from == DeliveryState.ATTEMPT_FAILED && to == DeliveryState.HELD_AT_HUB;
+        if (heldHandIn && caller.role() == UserRole.DISPATCHER && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
+            throw new ForbiddenException("Only the courier's own hub can receive this parcel");
+        }
+        boolean atSendersHub = from == DeliveryState.RETURN_IN_TRANSIT || from == DeliveryState.RETURN_AT_HUB
+                || from == DeliveryState.OUT_FOR_RETURN;
+        if (from == DeliveryState.RETURN_IN_TRANSIT && !isDispatcherOf(caller, session.getPickupDistrict())) {
+            throw new ForbiddenException("Only the sender's hub can accept this return");
+        }
+        if (atSendersHub && caller.role() == UserRole.DISPATCHER && !isDispatcherOf(caller, session.getPickupDistrict())) {
+            throw new ForbiddenException("This return is handled by the sender's district");
         }
         if (handIn && caller.role() == UserRole.DISPATCHER && !isDispatcherOf(caller, session.getPickupDistrict())) {
             throw new ForbiddenException("Only the pickup district's hub can receive this parcel");
@@ -230,7 +247,7 @@ public class DeliveryExecutionService {
         }
 
         DeliveryState fromState = session.getCurrentState();
-        DeliveryState toState = request.targetState();
+        DeliveryState toState = ReturnRoute.resolve(fromState, request.targetState(), request.failureReason(), session);
 
         if (!stateMachine.canTransition(fromState, toState)) {
             throw new InvalidStateTransitionException(
@@ -243,7 +260,7 @@ public class DeliveryExecutionService {
 
         // Enforce Proof of Delivery Guard before transitioning to DELIVERED
         if (toState == DeliveryState.DELIVERED) {
-            if (!proofOfDeliveryGuard.isSatisfied(deliveryId)) {
+            if (!proofOfDeliveryGuard.isSatisfied(deliveryId, session.getProofSince())) {
                 throw new InvalidStateTransitionException(
                         "Proof of delivery must be verified with an uploaded photo or signature before marking delivery as DELIVERED");
             }
@@ -257,6 +274,23 @@ public class DeliveryExecutionService {
                     : (request.notes() != null ? request.notes() : "Delivery attempt failed"));
             session.setAttemptCount((session.getAttemptCount() != null ? session.getAttemptCount() : 0) + 1);
             session.setStatus("FAILED");
+        } else if (toState == DeliveryState.ATTEMPT_FAILED) {
+            session.setFailedReason(request.failureReason() != null
+                    ? request.failureReason().name() : DeliveryFailureReason.OTHER.name());
+            session.setAttemptCount((session.getAttemptCount() != null ? session.getAttemptCount() : 0) + 1);
+            session.setProofSince(Instant.now());
+        } else if (toState == DeliveryState.HELD_AT_HUB || toState == DeliveryState.RETURN_AT_HUB) {
+            // At a hub nobody carries it until its dispatcher assigns a courier.
+            session.setCourierId(null);
+            session.setCourierName(null);
+        } else if (toState == DeliveryState.OUT_FOR_RETURN) {
+            session.setProofSince(Instant.now());
+        } else if (toState == DeliveryState.RETURNED) {
+            if (!proofOfDeliveryGuard.isSatisfied(deliveryId, session.getProofSince())) {
+                throw new InvalidStateTransitionException("Take a photo of the parcel with the sender first");
+            }
+            session.setReturnedAt(Instant.now());
+            session.setStatus("RETURNED");
         } else if (toState == DeliveryState.CANCELLED) {
             session.setStatus("CANCELLED");
         } else if (toState == DeliveryState.AT_ORIGIN_HUB) {

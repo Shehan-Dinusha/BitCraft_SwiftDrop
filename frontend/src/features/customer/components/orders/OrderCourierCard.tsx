@@ -6,7 +6,7 @@ import { vehicleLabel } from '@/utils/vehicles';
 import type { PublicOrderStatus } from './orderDisplay';
 
 /** While a courier is on the way, the customer can recognise them by name and number plate. */
-const WITH_COURIER: PublicOrderStatus[] = ['PICKUP_ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'];
+const WITH_COURIER: PublicOrderStatus[] = ['PICKUP_ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'RETURNING'];
 
 /**
  * The courier handling the parcel: first name and vehicle only (never a phone number). Shown only

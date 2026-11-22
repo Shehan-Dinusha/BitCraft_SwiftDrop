@@ -6,12 +6,15 @@ import {
   Store,
   OctagonAlert,
   PackageCheck,
+  PackageMinus,
   PackageOpen,
   PackagePlus,
   PackageX,
+  RotateCcw,
   Siren,
   TriangleAlert,
   Truck,
+  Undo2,
   UserCheck,
   type LucideIcon
 } from 'lucide-react';
@@ -25,6 +28,9 @@ export type NotificationType =
   | 'PARCEL_OUT_FOR_DELIVERY'
   | 'PARCEL_DELIVERED'
   | 'PARCEL_FAILED'
+  | 'PARCEL_RETURNING'
+  | 'PARCEL_RETURNED'
+  | 'MERCHANT_RETURN'
   | 'COURIER_ASSIGNED'
   | 'MERCHANT_COURIER_ASSIGNED'
   | 'MERCHANT_DELIVERY_FAILED'
@@ -82,6 +88,20 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
     status: 'FAILED',
     emailed: true
   },
+  PARCEL_RETURNING: {
+    label: 'Coming back',
+    description: 'When a parcel that could not be delivered is on its way back to you',
+    Icon: Undo2,
+    status: 'RETURNING',
+    emailed: true
+  },
+  PARCEL_RETURNED: {
+    label: 'Returned',
+    description: 'When a parcel has been handed back to you',
+    Icon: PackageMinus,
+    status: 'RETURNED_TO_SENDER',
+    emailed: true
+  },
   COURIER_ASSIGNED: {
     label: 'New delivery',
     description: 'When a parcel is assigned to you',
@@ -101,6 +121,13 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
     description: 'When one of your parcels could not be delivered',
     Icon: PackageX,
     status: 'FAILED',
+    emailed: false
+  },
+  MERCHANT_RETURN: {
+    label: 'Return',
+    description: 'When one of your parcels comes back to you',
+    Icon: RotateCcw,
+    status: 'RETURNING',
     emailed: false
   },
   OPS_DELIVERY_FAILED: {
@@ -142,9 +169,23 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
 
 /** Which notifications each workspace receives, in the order shown in settings. */
 export const NOTIFICATION_TYPES_BY_ROLE: Record<PersonaRole, NotificationType[]> = {
-  CUSTOMER: ['PARCEL_CREATED', 'PARCEL_PICKED_UP', 'PARCEL_OUT_FOR_DELIVERY', 'PARCEL_DELIVERED', 'PARCEL_FAILED'],
+  CUSTOMER: [
+    'PARCEL_CREATED',
+    'PARCEL_PICKED_UP',
+    'PARCEL_OUT_FOR_DELIVERY',
+    'PARCEL_DELIVERED',
+    'PARCEL_FAILED',
+    'PARCEL_RETURNING',
+    'PARCEL_RETURNED'
+  ],
   COURIER: ['COURIER_ASSIGNED'],
-  MERCHANT: ['MERCHANT_APPROVED', 'MERCHANT_REJECTED', 'MERCHANT_COURIER_ASSIGNED', 'MERCHANT_DELIVERY_FAILED'],
+  MERCHANT: [
+    'MERCHANT_APPROVED',
+    'MERCHANT_REJECTED',
+    'MERCHANT_COURIER_ASSIGNED',
+    'MERCHANT_DELIVERY_FAILED',
+    'MERCHANT_RETURN'
+  ],
   ADMIN_OPS: ['OPS_DELIVERY_FAILED', 'DISPATCH_FAILED', 'MERCHANT_APPLICATION']
 };
 
@@ -200,7 +241,9 @@ export function notificationTarget(
     case 'ADMIN_OPS':
       if (type === 'MERCHANT_APPLICATION') return '/ops/merchants';
       return type === 'DISPATCH_FAILED' || type === 'OPS_DELIVERY_FAILED'
-        ? '/ops/dispatch'
+        ? type === 'OPS_DELIVERY_FAILED'
+          ? '/ops/dispatch?tab=returns'
+          : '/ops/dispatch'
         : trackingNumber
           ? `/track/${trackingNumber}`
           : null;
