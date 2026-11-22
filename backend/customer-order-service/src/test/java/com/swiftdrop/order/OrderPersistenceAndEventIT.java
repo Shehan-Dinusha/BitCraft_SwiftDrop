@@ -166,7 +166,7 @@ class OrderPersistenceAndEventIT {
                  "pickupContactName":"Sunil Perera","pickupContactPhone":"+94771234567",
                  "deliveryAddressLine1":"No. 18, Peradeniya Road","deliveryCity":"Kandy","deliveryDistrict":"KANDY","deliveryPostalCode":"20000",
                  "recipientName":"Kasun Perera","recipientPhone":"0711234567",
-                 "actualWeightKg":2.4,"speed":"EXPRESS","prohibitedItemsDeclared":true}
+                 "lengthCm":30,"widthCm":20,"heightCm":15,"actualWeightKg":2.4,"speed":"EXPRESS","prohibitedItemsDeclared":true}
                 """.formatted(merchantId, externalRef);
     }
 
@@ -204,6 +204,8 @@ class OrderPersistenceAndEventIT {
         assertThat(event.get("orderId").asText()).isEqualTo(saved.getOrderId().toString());
         assertThat(event.get("customerId").asText()).isEqualTo(customerId.toString());
         assertThat(event.get("correlationId").asText()).isEqualTo(correlationId.toString());
+        assertThat(event.get("lengthCm").decimalValue()).as("size for dispatch").isEqualByComparingTo("30");
+        assertThat(event.get("actualWeightKg").decimalValue()).isEqualByComparingTo("2.4");
         assertThat(event.toString()).as("no personal data in the event").doesNotContain("Galle Road", "Perera", "0711234567", "kasun@example.com");
         assertNoFurtherEvents();
     }

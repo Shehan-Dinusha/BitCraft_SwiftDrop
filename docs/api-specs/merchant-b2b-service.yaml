@@ -781,8 +781,9 @@ components:
           description: Local or international Sri Lankan number, normalized to +94
     B2bParcel:
       type: object
-      required: [prohibitedItemsDeclared]
-      description: Supply exactly one of actualWeightKg and weightGrams
+      required: [lengthCm, widthCm, heightCm, prohibitedItemsDeclared]
+      description: >-
+        Supply exactly one of actualWeightKg and weightGrams. Length x width x height must not exceed 15,000 litres.
       properties:
         actualWeightKg:
           type: number
@@ -792,6 +793,21 @@ components:
           type: number
           minimum: 10
           maximum: 50000
+        lengthCm:
+          description: In cm
+          type: number
+          minimum: 0.1
+          maximum: 500
+        widthCm:
+          description: In cm
+          type: number
+          minimum: 0.1
+          maximum: 500
+        heightCm:
+          description: In cm
+          type: number
+          minimum: 0.1
+          maximum: 500
         prohibitedItemsDeclared:
           type: boolean
           const: true
@@ -1027,6 +1043,15 @@ components:
           type: string
         packageWeightKg:
           type: number
+        packageLengthCm:
+          type: number
+          description: Required to forward the row
+        packageWidthCm:
+          type: number
+          description: Required to forward the row
+        packageHeightCm:
+          type: number
+          description: Required to forward the row
         deliverySpeed:
           type: string
 

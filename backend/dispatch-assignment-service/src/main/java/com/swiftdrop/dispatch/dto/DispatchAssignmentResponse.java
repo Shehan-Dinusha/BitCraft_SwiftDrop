@@ -8,6 +8,7 @@ import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -71,7 +72,19 @@ public record DispatchAssignmentResponse(
         SriLankanDistrict responsibleDistrict,
 
         @Schema(description = "When the courier of the current leg collected the parcel; reassignment is blocked once set")
-        Instant pickedUpAt
+        Instant pickedUpAt,
+
+        @Schema(description = "Parcel length in cm; null for orders booked before sizes were recorded", example = "30")
+        BigDecimal lengthCm,
+
+        @Schema(description = "Parcel width in cm", example = "20")
+        BigDecimal widthCm,
+
+        @Schema(description = "Parcel height in cm", example = "10")
+        BigDecimal heightCm,
+
+        @Schema(description = "Parcel weight in kg", example = "2.5")
+        BigDecimal weightKg
 ) {
     public static DispatchAssignmentResponse fromEntity(DispatchAssignment entity) {
         if (entity == null) return null;
@@ -95,7 +108,11 @@ public record DispatchAssignmentResponse(
                 entity.getLeg(),
                 entity.getHubStage(),
                 entity.getResponsibleDistrict(),
-                entity.getPickedUpAt()
+                entity.getPickedUpAt(),
+                entity.getLengthCm(),
+                entity.getWidthCm(),
+                entity.getHeightCm(),
+                entity.getWeightKg()
         );
     }
 }

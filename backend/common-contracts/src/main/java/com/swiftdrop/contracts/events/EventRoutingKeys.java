@@ -11,6 +11,8 @@ public final class EventRoutingKeys {
 
     public static final String ORDER_CREATED = "order.created";
     public static final String ORDER_CANCELLED = "order.cancelled";
+    /** A booked order was edited before a courier was assigned; dispatch plans it again. */
+    public static final String ORDER_UPDATED = "order.updated";
 
     public static final String PARCEL_STATUS_CHANGED = "parcel.status.changed";
     public static final String PARCEL_FEE_REVISED = "parcel.fee.revised";

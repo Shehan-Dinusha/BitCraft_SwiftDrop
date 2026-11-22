@@ -49,6 +49,8 @@ Every event serialized onto the bus complies with the following baseline rules:
 | `estimatedPrice` | `BigDecimal` | No | Calculated shipping charge | Safe |
 | `currency` | `String` | No | ISO currency code (default: `LKR`) | Safe |
 | `timestamp` | `Instant` (ISO 8601) | No | Order creation UTC timestamp | Safe |
+| `lengthCm`, `widthCm`, `heightCm` | `BigDecimal` | Yes | Parcel size; absent in events published before it was added | Safe |
+| `actualWeightKg` | `BigDecimal` | Yes | Parcel weight; absent in events published before it was added | Safe |
 
 #### Example JSON Payload
 ```json
@@ -66,9 +68,24 @@ Every event serialized onto the bus complies with the following baseline rules:
   "declaredValue": 10000.00,
   "estimatedPrice": 650.00,
   "currency": "LKR",
-  "timestamp": "2026-11-13T14:30:00Z"
+  "timestamp": "2026-11-13T14:30:00Z",
+  "lengthCm": 30,
+  "widthCm": 20,
+  "heightCm": 10,
+  "actualWeightKg": 2.5
 }
 ```
+
+---
+
+### 2.1a `order.updated` — `OrderUpdatedEvent`
+
+* **Producer:** `customer-order-service` (:8082), when an order is edited before a courier is assigned and its districts, speed, size or weight changed
+* **Routing Key:** `order.updated`
+* **Destination Queues:** `dispatch.order-updated.queue`, `order.events.queue`
+* **Consumers:** `dispatch-assignment-service` (size and weight always; districts and speed only while the order still waits for its first courier)
+
+Fields: `eventId`, `correlationId`, `orderId`, `trackingNumber`, `pickupDistrict`, `deliveryDistrict`, `speed`, `lengthCm`, `widthCm`, `heightCm`, `actualWeightKg`, `timestamp`. The values are the whole order after the edit, not only what changed. No addresses or contacts.
 
 ---
 

@@ -218,9 +218,10 @@ public class DispatchController {
 
     @GetMapping("/orders/{orderId}/suggestions")
     @Operation(summary = "Suggest available couriers for an order",
-            description = "Returns up to three available couriers working in the order's pickup district, lowest "
-                    + "workload first. For an assigned order the current courier is left out (reassignment "
-                    + "suggestions); a completed or cancelled order returns 409. A DISPATCHER only for orders picked "
+            description = "Returns the couriers on shift in the district handling the order. Those who can take it "
+                    + "come first (smallest vehicle the parcel fits, then emptiest); the rest carry the reason they "
+                    + "cannot. For an assigned order the current courier is left out (reassignment suggestions); a "
+                    + "completed or cancelled order returns 409. A DISPATCHER only for orders picked "
                     + "up in their district.")
     public ApiResponse<List<CourierSuggestionResponse>> getCourierSuggestions(
             @PathVariable UUID orderId,

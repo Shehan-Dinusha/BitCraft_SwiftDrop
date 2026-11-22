@@ -94,6 +94,13 @@ describe('booking validation', () => {
     );
   });
 
+  it('limits each side and the whole size to what the largest vehicle takes', () => {
+    expect(validateField('lengthCm', { ...validForm, lengthCm: '501' })).toContain('up to 500');
+    const big = { ...validForm, lengthCm: '500', widthCm: '200', heightCm: '151' };
+    expect(validateField('heightCm', big)).toContain('too big');
+    expect(validateField('heightCm', { ...big, heightCm: '150' })).toBeUndefined();
+  });
+
   it('maps server field errors, including joined address fields', () => {
     expect(
       parseServerFieldErrors(

@@ -87,7 +87,8 @@ public class BulkOrderIngestionService {
                         new B2bAddress(item.deliveryAddress(), item.deliveryCity(),
                                 item.deliveryDistrict() == null ? null : item.deliveryDistrict().name(), item.deliveryPostalCode(),
                                 item.recipientName(), item.recipientPhone()),
-                        new B2bParcel(item.packageWeightKg(), null, item.prohibitedItemsDeclared(), null, null, null),
+                        new B2bParcel(item.packageWeightKg(), null, item.packageLengthCm(), item.packageWidthCm(),
+                                item.packageHeightCm(), item.prohibitedItemsDeclared(), null, null, null),
                         item.deliverySpeed()), correlation);
 
                 BulkBatchItem batchItem = BulkBatchItem.builder()

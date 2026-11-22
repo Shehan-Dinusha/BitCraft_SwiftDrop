@@ -59,7 +59,21 @@ public record OrderCreatedEvent(
         String currency,
 
         @JsonProperty("timestamp")
-        Instant timestamp
+        Instant timestamp,
+
+        // Parcel size and weight, for matching it to a courier's vehicle. Null in events published before
+        // they were added.
+        @JsonProperty("lengthCm")
+        BigDecimal lengthCm,
+
+        @JsonProperty("widthCm")
+        BigDecimal widthCm,
+
+        @JsonProperty("heightCm")
+        BigDecimal heightCm,
+
+        @JsonProperty("actualWeightKg")
+        BigDecimal actualWeightKg
 
 ) {
     public OrderCreatedEvent {

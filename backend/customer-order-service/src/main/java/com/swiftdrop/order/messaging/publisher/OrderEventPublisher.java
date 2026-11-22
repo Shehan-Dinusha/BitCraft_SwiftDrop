@@ -6,6 +6,7 @@ import com.swiftdrop.contracts.events.EventRoutingKeys;
 import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.order.OrderCancelledEvent;
 import com.swiftdrop.contracts.events.order.OrderCreatedEvent;
+import com.swiftdrop.contracts.events.order.OrderUpdatedEvent;
 import com.swiftdrop.order.config.RabbitMQConfig;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,11 @@ public class OrderEventPublisher {
                 order.getDeclaredValue(),
                 order.getEstimatedFee(),
                 order.getCurrency(),
-                Instant.now()
+                Instant.now(),
+                order.getLengthCm(),
+                order.getWidthCm(),
+                order.getHeightCm(),
+                order.getActualWeightKg()
         );
 
         log.info("Publishing OrderCreatedEvent for orderId={}, trackingNumber={}, correlationId={}",
@@ -73,6 +78,27 @@ public class OrderEventPublisher {
                 EventRoutingKeys.PARCEL_STATUS_CHANGED,
                 statusEvent
         );
+    }
+
+    /** Tells dispatch about an edit to what it plans with: districts, speed, size or weight. */
+    public void publishOrderUpdated(CustomerOrder order, UUID correlationId) {
+        OrderUpdatedEvent event = new OrderUpdatedEvent(
+                UUID.randomUUID(),
+                correlationId,
+                order.getOrderId(),
+                order.getTrackingNumber(),
+                order.getPickupDistrict(),
+                order.getDeliveryDistrict(),
+                order.getOrderSpeed(),
+                order.getLengthCm(),
+                order.getWidthCm(),
+                order.getHeightCm(),
+                order.getActualWeightKg(),
+                Instant.now()
+        );
+        log.info("Publishing OrderUpdatedEvent for orderId={}, trackingNumber={}",
+                order.getOrderId(), order.getTrackingNumber());
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, EventRoutingKeys.ORDER_UPDATED, event);
     }
 
     public void publishOrderCancelled(CustomerOrder order, String reason, String cancelledBy, UUID correlationId) {

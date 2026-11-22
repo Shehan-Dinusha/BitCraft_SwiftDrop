@@ -21,8 +21,8 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
 
   const handleDownloadTemplate = () => {
     const csvContent =
-      'recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,prohibited_items_declared\n' +
-      'Test Recipient,+94771234567,COLOMBO,123 Galle Road,2.5,EXPRESS,SHOP-001,Colombo,00300,Gampaha,11000,true\n';
+      'recipient_name,recipient_phone,delivery_district,delivery_address,package_weight_kg,delivery_speed,external_ref,delivery_city,delivery_postal_code,pickup_city,pickup_postal_code,prohibited_items_declared,package_length_cm,package_width_cm,package_height_cm\n' +
+      'Test Recipient,+94771234567,COLOMBO,123 Galle Road,2.5,EXPRESS,SHOP-001,Colombo,00300,Gampaha,11000,true,30,20,10\n';
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -148,7 +148,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
             {selectedFile ? selectedFile.name : 'Choose a CSV file'}
           </p>
           <p className="mt-0.5 text-[11px] text-muted">
-            Use the template format
+            Use the template. Weight and all three sides are required.
           </p>
         </div>
       </label>

@@ -91,6 +91,24 @@ describe('DispatchBoardPage', () => {
     expect(rows[1]).toHaveTextContent('SD-B');
   });
 
+  it('keeps the assign dialog open with fresh couriers when the server refuses', async () => {
+    const suggest = vi
+      .spyOn(dispatchApi, 'getCourierSuggestions')
+      .mockResolvedValue([{ courierId: 'c1', courierName: 'Nimal', eligible: true }]);
+    vi.spyOn(dispatchApi, 'manualAssign').mockRejectedValue(
+      new Error('Courier Nimal already carries 24 of 25 kg')
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Assign SD-A' }));
+    await screen.findByRole('radio', { name: /Nimal/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Assign' }));
+
+    expect(await screen.findByText('Courier Nimal already carries 24 of 25 kg')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await waitFor(() => expect(suggest).toHaveBeenCalledTimes(2));
+  });
+
   it('opens the tab in the URL and prefills the search from a link', async () => {
     renderPage('/ops/dispatch?tab=assigned&q=SD-C');
 

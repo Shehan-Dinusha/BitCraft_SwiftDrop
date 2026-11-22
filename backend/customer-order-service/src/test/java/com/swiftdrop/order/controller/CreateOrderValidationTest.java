@@ -217,6 +217,12 @@ class CreateOrderValidationTest {
     }
 
     @Test
+    @DisplayName("A side longer than any vehicle takes is rejected")
+    void tooLongSideIsRejected() throws Exception {
+        create(r -> r.setLengthCm(new BigDecimal("500.1"))).andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("Zero or negative dimensions are rejected")
     void nonPositiveDimensionsAreRejected() throws Exception {
         create(r -> r.setLengthCm(BigDecimal.ZERO)).andExpect(status().isBadRequest());

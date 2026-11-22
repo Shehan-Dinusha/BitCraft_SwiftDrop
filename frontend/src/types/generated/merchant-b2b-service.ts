@@ -1408,10 +1408,16 @@ export interface components {
             /** @description Local or international Sri Lankan number, normalized to +94 */
             contactPhone: string;
         };
-        /** @description Supply exactly one of actualWeightKg and weightGrams */
+        /** @description Supply exactly one of actualWeightKg and weightGrams. Length x width x height must not exceed 15,000 litres. */
         B2bParcel: {
             actualWeightKg?: number;
             weightGrams?: number;
+            /** @description In cm */
+            lengthCm: number;
+            /** @description In cm */
+            widthCm: number;
+            /** @description In cm */
+            heightCm: number;
             /** @constant */
             prohibitedItemsDeclared: true;
             itemDescription?: string;
@@ -1515,6 +1521,12 @@ export interface components {
             deliveryDistrict: components["schemas"]["SriLankanDistrict"];
             deliveryAddress: string;
             packageWeightKg?: number;
+            /** @description Required to forward the row */
+            packageLengthCm?: number;
+            /** @description Required to forward the row */
+            packageWidthCm?: number;
+            /** @description Required to forward the row */
+            packageHeightCm?: number;
             deliverySpeed?: string;
         };
         BulkIngestRequest: {

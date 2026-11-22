@@ -138,7 +138,11 @@ class CourierMatchingEngineTest {
                 BigDecimal.valueOf(1000),
                 BigDecimal.valueOf(450),
                 "LKR",
-                Instant.now()
+                Instant.now(),
+                new BigDecimal("30"),
+                new BigDecimal("20"),
+                new BigDecimal("10"),
+                new BigDecimal("2.5")
         );
     }
 }

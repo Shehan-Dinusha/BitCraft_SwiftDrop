@@ -96,6 +96,7 @@ export function DispatchBoardPage() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<DispatchAssignmentResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
   const [hubBusy, setHubBusy] = useState(false);
   // Hub steps done here, hidden at once while dispatch catches up. An order takes each step only once.
   const [done, setDone] = useState<ReadonlySet<string>>(new Set());
@@ -155,6 +156,11 @@ export function DispatchBoardPage() {
   // Waiting times are measured at the last refresh, which is at most a few seconds ago.
   const now = Math.max(...lists.map((list) => list.dataUpdatedAt));
 
+  const openAssignment = (order: DispatchAssignmentResponse | null) => {
+    setAssignError(null);
+    setSelectedOrder(order);
+  };
+
   const handleAssign = async (courierId: string, reason: string) => {
     if (!selectedOrder?.orderId) return;
     // An order that already has a courier is moved with /reassign, naming the courier the dispatcher
@@ -163,6 +169,7 @@ export function DispatchBoardPage() {
     const request = { orderId: selectedOrder.orderId, assignedBy: 'DISPATCHER', reason };
     setSubmitting(true);
     setNotice(null);
+    setAssignError(null);
     try {
       if (currentCourierId) {
         await dispatchApi.reassign({
@@ -177,14 +184,12 @@ export function DispatchBoardPage() {
         tone: 'success',
         title: `${orderLabel(selectedOrder)} ${currentCourierId ? 'reassigned' : 'assigned'}`
       });
-    } catch (error) {
-      setNotice({
-        tone: 'danger',
-        title: currentCourierId ? 'Reassignment failed' : 'Assignment failed',
-        body: errorText(error, 'Refresh and try again.')
-      });
-    } finally {
       setSelectedOrder(null);
+    } catch (error) {
+      // Stay open with fresh loads, so the dispatcher can pick someone else.
+      setAssignError(errorText(error, 'Close this, refresh and try again.'));
+      void suggestions.refetch();
+    } finally {
       setSubmitting(false);
       void refresh();
     }
@@ -226,7 +231,7 @@ export function DispatchBoardPage() {
             hiddenCount={Math.max(0, (assigned.data?.total ?? 0) - orders.length)}
             searching={searching}
             now={now}
-            onReassign={setSelectedOrder}
+            onReassign={openAssignment}
           />
         );
       }
@@ -271,7 +276,7 @@ export function DispatchBoardPage() {
             orders={search(unassigned.data ?? [])}
             searching={searching}
             now={now}
-            onAssign={setSelectedOrder}
+            onAssign={openAssignment}
           />
         );
     }
@@ -347,14 +352,13 @@ export function DispatchBoardPage() {
       </SurfaceCard>
 
       <ManualDispatchOverrideModal
-        open={Boolean(selectedOrder)}
-        onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
-        couriers={couriers.data ?? []}
-        suggestions={suggestions.data ?? []}
-        loadingSuggestions={suggestions.isFetching}
+        onClose={() => openAssignment(null)}
+        suggestions={suggestions.data}
+        loadError={suggestions.isError}
         submitting={submitting}
-        onSubmit={handleAssign}
+        error={assignError}
+        onSubmit={(courierId, reason) => void handleAssign(courierId, reason)}
       />
     </main>
   );

@@ -309,7 +309,7 @@ class CourierAccessAuthorizationTest {
         CourierShift shift = new CourierShift();
         shift.setCourierId(UUID.randomUUID());
         shift.setCurrentDistrict(district);
-        return CourierShiftResponse.fromEntity(shift);
+        return CourierShiftResponse.fromEntity(shift, com.swiftdrop.dispatch.service.CourierLoad.NONE);
     }
 
     private void assertNoServiceCalled() {

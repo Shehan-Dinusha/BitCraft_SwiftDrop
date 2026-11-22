@@ -71,7 +71,7 @@ class InternalMerchantOrderTest {
         request = new InternalCreateOrderRequest(MERCHANT_ID, EXTERNAL_REF,
                 "No. 42, Galle Road", null, "Colombo 03", SriLankanDistrict.COLOMBO, "00300", "Sunil Perera", "+94771234567",
                 "No. 18, Peradeniya Road", null, "Kandy", SriLankanDistrict.KANDY, "20000", "Kasun Perera", "0711234567",
-                null, null, null, null, new BigDecimal("2.4"), OrderSpeed.EXPRESS, "Batik sarees", null, null, true);
+                null, new BigDecimal("30"), new BigDecimal("20"), new BigDecimal("10"), new BigDecimal("2.4"), OrderSpeed.EXPRESS, "Batik sarees", null, null, true);
     }
 
     private FeeEstimateResponse pricedAt(String fee) {
@@ -114,14 +114,14 @@ class InternalMerchantOrderTest {
     }
 
     @Test
-    @DisplayName("The price comes only from the pricing client, with the default dimensions applied")
-    void pricesThroughClientWithDefaultDimensions() {
+    @DisplayName("The price comes only from the pricing client, with the dimensions the merchant gave")
+    void pricesThroughClientWithMerchantDimensions() {
         createWithMocks();
 
         ArgumentCaptor<FeeEstimateRequest> priced = ArgumentCaptor.forClass(FeeEstimateRequest.class);
         verify(pricingClient).estimate(priced.capture());
-        assertThat(priced.getValue().getLengthCm()).isEqualByComparingTo("10");
-        assertThat(priced.getValue().getWidthCm()).isEqualByComparingTo("10");
+        assertThat(priced.getValue().getLengthCm()).isEqualByComparingTo("30");
+        assertThat(priced.getValue().getWidthCm()).isEqualByComparingTo("20");
         assertThat(priced.getValue().getHeightCm()).isEqualByComparingTo("10");
         assertThat(priced.getValue().getActualWeightKg()).isEqualByComparingTo("2.4");
         assertThat(priced.getValue().getSpeed()).isEqualTo(OrderSpeed.EXPRESS);
