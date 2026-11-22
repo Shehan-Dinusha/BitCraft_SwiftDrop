@@ -328,6 +328,9 @@ services:
     image:
       repository: dispatch-assignment-service
     hpa: { minReplicas: 2, maxReplicas: 10, scaleUpPods: 2 }
+    config:
+      # The cash ledger: a courier hands over their cash before ending a shift.
+      DELIVERY_SERVICE_URL: "http://delivery-execution-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
 
   delivery-execution-service:
     enabled: true

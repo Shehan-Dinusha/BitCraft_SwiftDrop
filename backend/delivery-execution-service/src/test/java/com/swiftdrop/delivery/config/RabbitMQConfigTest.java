@@ -66,7 +66,8 @@ class RabbitMQConfigTest {
      */
     @Test
     void queuesMatchTheSharedBrokerDefinitionsExactly() throws IOException {
-        for (Queue queue : new Queue[] {config.courierAssignedQueue(), config.deliveryDeadLetterQueue()}) {
+        for (Queue queue : new Queue[] {config.courierAssignedQueue(), config.orderCancelledQueue(),
+                config.deliveryDeadLetterQueue()}) {
             assertThat(queue.getArguments())
                     .as(queue.getName())
                     .containsExactlyInAnyOrderEntriesOf(definitionArguments(queue.getName()));

@@ -70,6 +70,8 @@ class DeliveryDeadLetterTopologyIT {
         admin.declareBinding(config.deliveryDeadLetterBinding(config.deliveryDeadLetterQueue(), config.deadLetterExchange()));
         admin.declareQueue(config.courierAssignedQueue());
         admin.declareBinding(config.courierAssignedBinding(config.courierAssignedQueue(), config.eventsExchange()));
+        admin.declareQueue(config.orderCancelledQueue());
+        admin.declareBinding(config.orderCancelledBinding(config.orderCancelledQueue(), config.eventsExchange()));
     }
 
     @Test

@@ -11,6 +11,9 @@ import {
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { fetchCurrentUser } from '@/services/api/authApi';
 import { parseApiError } from '@/services/api/apiError';
+import { isOpenForCourier } from '@/types/fsm';
+import { lkr } from '@/features/cash/cashDisplay';
+import { cashApi } from '@/services/api/cashApi';
 import { vehicleLabel } from '@/utils/vehicles';
 import { districtLabel } from '@/features/profile/profileFormat';
 import { Button } from '@/design-system/primitives/Button';
@@ -29,8 +32,6 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-const FINISHED_STATES = new Set(['DELIVERED', 'FAILED', 'CANCELLED']);
-
 export function CourierShiftDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,6 +40,7 @@ export function CourierShiftDashboard() {
 
   const [shift, setShift] = useState<CourierShiftResponse | null>(null);
   const [todayDeliveries, setTodayDeliveries] = useState<DeliverySessionResponse[]>([]);
+  const [cashInHand, setCashInHand] = useState(0);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -67,6 +69,13 @@ export function CourierShiftDashboard() {
         setShift(shiftData);
       } catch {
         setShift(null);
+      }
+
+      try {
+        setCashInHand((await cashApi.mine()).inHand);
+      } catch {
+        // The server still refuses to end a shift with cash in hand.
+        setCashInHand(0);
       }
 
       // Fetch today's deliveries from delivery-execution-service (/api/v1/deliveries/me)
@@ -139,14 +148,13 @@ export function CourierShiftDashboard() {
       setShift(res);
       setSuccessMsg('Shift ended. Good work today!');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to end shift';
-      setErrorMsg(msg);
+      setErrorMsg(parseApiError(err).message ?? 'Failed to end shift');
     } finally {
       setUpdating(false);
     }
   };
 
-  const openJobs = todayDeliveries.filter((job) => !FINISHED_STATES.has(job.currentState ?? ''));
+  const openJobs = todayDeliveries.filter((job) => isOpenForCourier(job.currentState));
   const isOnline = shift && shift.shiftStatus !== 'OFFLINE';
   const capacityUsed = shift ? (shift.activeParcelsCount ?? 0) : 0;
   const maxCap = shift?.maxCapacity || 5;
@@ -282,9 +290,15 @@ export function CourierShiftDashboard() {
                 <Button
                   variant="destructive"
                   onClick={handleEndShift}
-                  disabled={updating || capacityUsed > 0}
+                  disabled={updating || capacityUsed > 0 || cashInHand > 0}
                   className="min-h-[44px]"
-                  title={capacityUsed > 0 ? 'Deliver active parcels before ending shift' : 'End Shift'}
+                  title={
+                    capacityUsed > 0
+                      ? 'Deliver active parcels before ending shift'
+                      : cashInHand > 0
+                        ? 'Hand over your cash before ending shift'
+                        : 'End shift'
+                  }
                 >
                   <Power className="mr-1.5 h-4 w-4" />
                   End shift
@@ -294,6 +308,19 @@ export function CourierShiftDashboard() {
           </div>
         </div>
       </SurfaceCard>
+
+      {cashInHand > 0 && (
+        <StatusBanner tone="warning" title={`${lkr(cashInHand)} in hand`}>
+          <span className="block">Hand it over before you end your shift.</span>
+          <Button
+            variant="outline"
+            className="mt-2 min-h-target"
+            onClick={() => navigate('/courier/cash')}
+          >
+            Open Cash
+          </Button>
+        </StatusBanner>
+      )}
 
       {/* Capacity & Shift Metrics */}
       {isOnline && (

@@ -22,7 +22,7 @@ export const FAILURE_REASONS: { value: DeliveryFailureReason; label: string }[] 
   { value: 'RECIPIENT_REJECTED', label: 'Recipient refused it' },
   { value: 'DAMAGED_IN_TRANSIT', label: 'Parcel damaged' },
   { value: 'ADVERSE_WEATHER', label: 'Weather or road blocked' },
-  { value: 'SYSTEM_CANCELLATION', label: 'Cancelled by dispatch' },
+  { value: 'PAYMENT_FAILED', label: 'Would not pay' },
   { value: 'OTHER', label: 'Other' }
 ];
 

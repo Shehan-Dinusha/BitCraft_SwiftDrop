@@ -9,6 +9,7 @@ import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
 import com.swiftdrop.delivery.exception.GlobalExceptionHandler;
+import com.swiftdrop.delivery.service.CourierStepService;
 import com.swiftdrop.delivery.service.DeliveryExecutionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class TodayDeliveriesEndpointTest {
 
     @MockitoBean
     private DeliveryExecutionService deliveryService;
+
+    @MockitoBean
+    private CourierStepService courierStepService;
 
     @Test
     @DisplayName("GET /api/v1/deliveries/me without authentication returns 401 Unauthorized")

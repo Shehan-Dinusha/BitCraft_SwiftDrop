@@ -37,6 +37,8 @@ export function ActiveDeliveryExecutionPage() {
   const [allDeliveries, setAllDeliveries] = useState<DeliverySessionResponse[]>([]);
   const [job, setJob] = useState<CourierJobResponse | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
+  // The step the ticked box belongs to, so a tick never carries over to another job or amount.
+  const [confirmedCash, setConfirmedCash] = useState<string | null>(null);
   const [isPoDVerified, setIsPoDVerified] = useState(false);
   const [isPoDModalOpen, setIsPoDModalOpen] = useState(false);
   const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
@@ -62,7 +64,10 @@ export function ActiveDeliveryExecutionPage() {
       // Always load all today's deliveries to populate the switcher bar
       let myDeliveries: DeliverySessionResponse[] = [];
       try {
-        myDeliveries = (await deliveryApi.getMyDeliveries('today')) || [];
+        // A parcel handed in at the hub is no longer this courier's to open.
+        myDeliveries = ((await deliveryApi.getMyDeliveries('today')) || []).filter(
+          (d) => d.currentState !== 'AT_ORIGIN_HUB'
+        );
         setAllDeliveries(myDeliveries);
       } catch {
         myDeliveries = [];
@@ -156,6 +161,29 @@ export function ActiveDeliveryExecutionPage() {
   const shownJob = job?.deliveryId === deliveryId ? job : null;
   const orderCancelled = Boolean(shownJob?.cancelled);
 
+  // Picking up takes the sender's fee, delivering takes the recipient's cash on delivery.
+  const cashFrom =
+    currentState === 'ASSIGNED'
+      ? 'sender'
+      : currentState === 'OUT_FOR_DELIVERY'
+        ? 'recipient'
+        : null;
+  const cashDue =
+    (cashFrom === 'sender' ? shownJob?.feeToCollect : cashFrom && shownJob?.codToCollect) || 0;
+  const cashKey = `${deliveryId}:${cashFrom}:${cashDue}`;
+  const cashConfirmed = cashDue > 0 && confirmedCash === cashKey;
+  // Until the job is loaded the amount is unknown, so the step waits for it.
+  const cashBlocked = cashFrom !== null && (!shownJob || (cashDue > 0 && !cashConfirmed));
+  const CASH_FIRST = 'Collect the cash and tick the box first.';
+
+  const openPoD = () => {
+    if (cashBlocked) {
+      setErrorMsg(CASH_FIRST);
+      return;
+    }
+    setIsPoDModalOpen(true);
+  };
+
   // Handle state transition with optimistic update and rollback on 409 Conflict
   const handleTransition = async (
     targetState: DeliveryState,
@@ -163,6 +191,11 @@ export function ActiveDeliveryExecutionPage() {
     notes?: string
   ) => {
     if (!session?.deliveryId) return;
+    const takesCash = targetState === 'PICKED_UP' || targetState === 'DELIVERED';
+    if (takesCash && cashBlocked) {
+      setErrorMsg(CASH_FIRST);
+      return;
+    }
 
     // Snapshot current session for rollback
     const previousSession = { ...session };
@@ -183,7 +216,8 @@ export function ActiveDeliveryExecutionPage() {
         targetState,
         actorRole: 'COURIER',
         failureReason: reason,
-        notes: notes || `Courier transitioned to ${targetState}`
+        notes: notes || `Courier transitioned to ${targetState}`,
+        cashCollected: takesCash && cashDue > 0 ? cashDue : undefined
       });
       setSession(updated);
       setSuccessMsg(`Delivery moved to ${targetState.replace(/_/g, ' ')}!`);
@@ -196,13 +230,10 @@ export function ActiveDeliveryExecutionPage() {
         const axiosErr = err as {
           response?: { status?: number; data?: { message?: string; error?: string } };
         };
-        const status = axiosErr.response?.status;
         const serverMsg = axiosErr.response?.data?.message || axiosErr.response?.data?.error;
-        if (status === 409) {
-          msg = `State transition rejected (409 Conflict): ${serverMsg || 'Illegal state transition or missing proof of delivery'}`;
-        } else if (serverMsg) {
-          msg = serverMsg;
-        }
+        if (serverMsg) msg = serverMsg;
+        // The amount may have changed since it was shown, so it is read again.
+        void loadJob();
       } else if (err instanceof Error) {
         msg = err.message;
       }
@@ -372,6 +403,9 @@ export function ActiveDeliveryExecutionPage() {
               viaHubs={viaHubs}
               pickupDistrict={session.pickupDistrict}
               deliveryDistrict={session.deliveryDistrict}
+              cashFrom={cashFrom}
+              cashConfirmed={cashConfirmed}
+              onCashConfirmedChange={(checked) => setConfirmedCash(checked ? cashKey : null)}
             />
           )}
 
@@ -380,20 +414,21 @@ export function ActiveDeliveryExecutionPage() {
             <OneTapStateTransitionCard
               session={session}
               onTransition={handleTransition}
-              onOpenPoD={() => setIsPoDModalOpen(true)}
+              onOpenPoD={openPoD}
+              blocked={cashBlocked}
               isPoDVerified={isPoDVerified}
               pendingState={pendingState}
             />
           )}
 
           {/* Ergonomic Action Bar: thumb-friendly sticky bar for next allowed action */}
-          {!orderCancelled && allowedNextStates.length > 0 && (
+          {!orderCancelled && !cashBlocked && allowedNextStates.length > 0 && (
             <div className="sticky bottom-[76px] z-20 pt-2 md:bottom-4">
               <ErgonomicActionBar
                 next={allowedNextStates}
                 onTransition={(target) => {
                   if (target === 'DELIVERED' && !isPoDVerified) {
-                    setIsPoDModalOpen(true);
+                    openPoD();
                     return;
                   }
                   handleTransition(target);

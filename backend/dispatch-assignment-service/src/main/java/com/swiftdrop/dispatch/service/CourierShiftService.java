@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.phone.SriLankanPhone;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.CallerContext;
+import com.swiftdrop.dispatch.client.CourierCashClient;
 import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -34,13 +36,16 @@ public class CourierShiftService {
     private final CourierShiftRepository courierShiftRepository;
     private final CourierProfileRepository courierProfileRepository;
     private final DispatchAssignmentRepository assignmentRepository;
+    private final CourierCashClient courierCashClient;
 
     public CourierShiftService(CourierShiftRepository courierShiftRepository,
                                CourierProfileRepository courierProfileRepository,
-                               DispatchAssignmentRepository assignmentRepository) {
+                               DispatchAssignmentRepository assignmentRepository,
+                               CourierCashClient courierCashClient) {
         this.courierShiftRepository = courierShiftRepository;
         this.courierProfileRepository = courierProfileRepository;
         this.assignmentRepository = assignmentRepository;
+        this.courierCashClient = courierCashClient;
     }
 
     /**
@@ -83,8 +88,12 @@ public class CourierShiftService {
         return toResponse(shift);
     }
 
+    /**
+     * A courier hands over all their cash before ending a shift. Operations may end it without: the cash stays
+     * listed under the courier on the cash desk.
+     */
     @Transactional
-    public CourierShiftResponse endShift(UUID courierId) {
+    public CourierShiftResponse endShift(UUID courierId, CallerContext caller) {
         log.info("Ending shift for courier: {}", courierId);
 
         CourierShift shift = courierShiftRepository.findByCourierId(courierId)
@@ -93,6 +102,14 @@ public class CourierShiftService {
         if (shift.getActiveParcelsCount() > 0) {
             throw new ShiftEndNotAllowedException("Cannot end shift: the courier still has "
                     + shift.getActiveParcelsCount() + " active parcel(s). Complete or reassign them first.");
+        }
+
+        if (caller.role() == UserRole.COURIER) {
+            BigDecimal inHand = courierCashClient.inHand(courierId);
+            if (inHand.signum() > 0) {
+                throw new ShiftEndNotAllowedException(
+                        "Hand over your cash first: LKR %,.2f.".formatted(inHand));
+            }
         }
 
         shift.setShiftStatus(ShiftStatus.OFFLINE);

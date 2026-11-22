@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.ForbiddenException;
+import com.swiftdrop.dispatch.client.CourierCashClient;
 import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
@@ -23,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -34,6 +36,9 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CourierShiftServiceTest {
+
+    @Mock
+    private CourierCashClient courierCashClient;
 
     @Mock
     private CourierShiftRepository courierShiftRepository;
@@ -150,10 +155,34 @@ class CourierShiftServiceTest {
         when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
         when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        CourierShiftResponse response = courierShiftService.endShift(courierId);
+        when(courierCashClient.inHand(courierId)).thenReturn(BigDecimal.ZERO);
+
+        CourierShiftResponse response = courierShiftService.endShift(courierId, courier(SriLankanDistrict.COLOMBO));
 
         assertThat(response.shiftStatus()).isEqualTo(ShiftStatus.OFFLINE);
         assertThat(response.shiftEndedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("End shift: a courier who still holds cash hands it over first; their dispatcher may end it anyway")
+    void testEndShift_CashInHand() {
+        CourierShift shift = new CourierShift();
+        shift.setCourierId(courierId);
+        shift.setCurrentDistrict(SriLankanDistrict.COLOMBO);
+        shift.setShiftStatus(ShiftStatus.AVAILABLE);
+        shift.setActiveParcelsCount(0);
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
+        when(courierCashClient.inHand(courierId)).thenReturn(new BigDecimal("1340.00"));
+
+        assertThatThrownBy(() -> courierShiftService.endShift(courierId, courier(SriLankanDistrict.COLOMBO)))
+                .isInstanceOf(ShiftEndNotAllowedException.class)
+                .hasMessageContaining("1,340.00");
+        assertThat(shift.getShiftStatus()).isEqualTo(ShiftStatus.AVAILABLE);
+
+        when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
+        CallerContext dispatcher = new CallerContext(
+                UUID.randomUUID(), UserRole.DISPATCHER, null, SriLankanDistrict.COLOMBO);
+        assertThat(courierShiftService.endShift(courierId, dispatcher).shiftStatus()).isEqualTo(ShiftStatus.OFFLINE);
     }
 
     @Test
@@ -166,7 +195,7 @@ class CourierShiftServiceTest {
 
         when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
 
-        assertThatThrownBy(() -> courierShiftService.endShift(courierId))
+        assertThatThrownBy(() -> courierShiftService.endShift(courierId, courier(SriLankanDistrict.COLOMBO)))
                 .isInstanceOf(ShiftEndNotAllowedException.class)
                 .hasMessageContaining("2 active parcel(s)");
 

@@ -46,6 +46,9 @@ management:
       exposure:
         include: health,info
 springdoc:
+  # Service-to-service endpoints: the gateway never routes /internal/**, so keep them out of the public docs.
+  paths-to-exclude:
+    - /internal/**
   api-docs:
     version: OPENAPI_3_1
   swagger-ui:

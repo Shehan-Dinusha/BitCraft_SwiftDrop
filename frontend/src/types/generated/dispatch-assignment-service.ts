@@ -413,7 +413,7 @@ export interface paths {
         put?: never;
         /**
          * End courier shift
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description A COURIER must have handed over all their cash first (409 Shift Conflict otherwise). A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
          */
         post: operations["endShift"];
         delete?: never;

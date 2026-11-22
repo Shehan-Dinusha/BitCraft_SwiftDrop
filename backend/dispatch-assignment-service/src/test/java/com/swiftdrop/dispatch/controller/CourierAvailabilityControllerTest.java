@@ -157,7 +157,7 @@ class CourierAvailabilityControllerTest {
     @DisplayName("POST /shifts/{courierId}/end returns 409 Shift Conflict while active parcels remain")
     void testEndShift_ActiveParcelsConflict() throws Exception {
         UUID courierId = UUID.randomUUID();
-        when(courierShiftService.endShift(courierId)).thenThrow(new ShiftEndNotAllowedException(
+        when(courierShiftService.endShift(eq(courierId), any(CallerContext.class))).thenThrow(new ShiftEndNotAllowedException(
                 "Cannot end shift: the courier still has 2 active parcel(s). Complete or reassign them first."));
 
         mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId).with(courier(courierId)))

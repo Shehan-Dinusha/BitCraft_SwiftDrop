@@ -100,13 +100,13 @@ public class CourierAvailabilityController {
 
     @PostMapping("/shifts/{courierId}/end")
     @Operation(summary = "End courier shift",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+            description = "A COURIER must have handed over all their cash first. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
     public ApiResponse<CourierShiftResponse> endShift(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
-        requireCourierAccess(httpRequest, courierId);
+        CallerContext caller = requireCourierAccess(httpRequest, courierId);
         return ApiResponse.success(
-                courierShiftService.endShift(courierId),
+                courierShiftService.endShift(courierId, caller),
                 "Courier shift ended successfully"
         );
     }

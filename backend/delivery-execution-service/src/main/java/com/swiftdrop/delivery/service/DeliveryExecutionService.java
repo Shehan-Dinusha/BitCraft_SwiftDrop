@@ -7,6 +7,7 @@ import com.swiftdrop.contracts.enums.DeliveryState;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.UnauthenticatedCallerException;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
+import com.swiftdrop.contracts.events.order.OrderCancelledEvent;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.domain.repository.DeliverySessionRepository;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
@@ -30,6 +31,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 public class DeliveryExecutionService {
@@ -42,6 +44,7 @@ public class DeliveryExecutionService {
     private final AuditTransitionAction auditTransitionAction;
     private final PublishStateTransitionAction publishStateTransitionAction;
     private final DeliveryEventPublisher eventPublisher;
+    private final CourierCashService courierCashService;
 
     public DeliveryExecutionService(
             DeliverySessionRepository deliverySessionRepository,
@@ -49,13 +52,15 @@ public class DeliveryExecutionService {
             ProofOfDeliveryGuard proofOfDeliveryGuard,
             AuditTransitionAction auditTransitionAction,
             PublishStateTransitionAction publishStateTransitionAction,
-            DeliveryEventPublisher eventPublisher) {
+            DeliveryEventPublisher eventPublisher,
+            CourierCashService courierCashService) {
         this.deliverySessionRepository = deliverySessionRepository;
         this.stateMachine = stateMachine;
         this.proofOfDeliveryGuard = proofOfDeliveryGuard;
         this.auditTransitionAction = auditTransitionAction;
         this.publishStateTransitionAction = publishStateTransitionAction;
         this.eventPublisher = eventPublisher;
+        this.courierCashService = courierCashService;
     }
 
     @Transactional
@@ -75,6 +80,11 @@ public class DeliveryExecutionService {
                 });
 
         DeliveryState prevState = session.getCurrentState();
+        if (prevState == DeliveryState.CANCELLED) {
+            // A late or repeated assignment must not bring a cancelled job back.
+            log.info("Ignoring assignment of cancelled order {}", event.orderId());
+            return session;
+        }
         if (prevState == DeliveryState.AT_DESTINATION_HUB) {
             return assignLastMileCourier(session, event);
         }
@@ -123,6 +133,27 @@ public class DeliveryExecutionService {
         );
 
         return session;
+    }
+
+    /**
+     * The order was cancelled: a job nobody picked up yet is closed, so no courier goes for it. A parcel
+     * already on the way stays with its courier, who has to bring it back. No status event is published; the
+     * order service announced the cancellation.
+     */
+    @Transactional
+    public void handleOrderCancelled(OrderCancelledEvent event) {
+        deliverySessionRepository.findByOrderId(event.orderId()).ifPresent(session -> {
+            DeliveryState from = session.getCurrentState();
+            if (from != DeliveryState.CREATED && from != DeliveryState.ASSIGNED) {
+                return;
+            }
+            session.setPreviousState(from);
+            session.setCurrentState(DeliveryState.CANCELLED);
+            session.setStatus("CANCELLED");
+            deliverySessionRepository.save(session);
+            auditTransitionAction.execute(session.getDeliveryId(), session.getOrderId(), from, DeliveryState.CANCELLED,
+                    "ORDER_CANCELLED_EVENT", "SYSTEM", "Order cancelled before pickup");
+        });
     }
 
     /**
@@ -176,6 +207,13 @@ public class DeliveryExecutionService {
 
     @Transactional
     public DeliverySession transition(UUID deliveryId, TransitionDeliveryRequest request, CallerContext caller) {
+        return transition(deliveryId, request, caller, null);
+    }
+
+    /** {@code due} is the cash confirmed for this step ({@link CourierStepService}), saved together with it. */
+    @Transactional
+    public DeliverySession transition(UUID deliveryId, TransitionDeliveryRequest request, CallerContext caller,
+                                      CashDue due) {
         log.info("Attempting delivery transition for deliveryId: {} to targetState: {}",
                 deliveryId, request.targetState());
 
@@ -217,7 +255,9 @@ public class DeliveryExecutionService {
         } else if (toState == DeliveryState.CANCELLED) {
             session.setStatus("CANCELLED");
         } else if (toState == DeliveryState.AT_ORIGIN_HUB) {
-            // The first courier's part ends at the hub: the parcel leaves their list and workload.
+            // The first courier's part ends at the hub: the parcel leaves their workload.
+            session.setFirstMileCourierId(session.getCourierId());
+            session.setHandedInAt(Instant.now());
             session.setCourierId(null);
             session.setCourierName(null);
         }
@@ -225,6 +265,9 @@ public class DeliveryExecutionService {
         session.setPreviousState(fromState);
         session.setCurrentState(toState);
         session = deliverySessionRepository.save(session);
+        if (due != null) {
+            courierCashService.recordCollection(session, due, caller);
+        }
 
         auditTransitionAction.execute(
                 session.getDeliveryId(),
@@ -354,7 +397,13 @@ public class DeliveryExecutionService {
         List<DeliverySession> sessions = today
                 ? deliverySessionRepository.findTodayAndOpenByCourierId(courierId, startOfDay, endOfDay)
                 : deliverySessionRepository.findByCourierIdAndDateRange(courierId, startOfDay, endOfDay);
-        return sessions.stream().map(DeliverySessionResponse::fromEntity).toList();
+        // A courier's finished first legs stay in their day, after everything still on them.
+        List<DeliverySession> handedIn = deliverySessionRepository
+                .findByFirstMileCourierIdAndHandedInAtGreaterThanEqualAndHandedInAtLessThanOrderByHandedInAtAsc(
+                        courierId, startOfDay, endOfDay);
+        return Stream.concat(sessions.stream().map(DeliverySessionResponse::fromEntity),
+                handedIn.stream().filter(session -> !courierId.equals(session.getCourierId()))
+                        .map(DeliverySessionResponse::handedIn)).toList();
     }
 
     @Transactional(readOnly = true)

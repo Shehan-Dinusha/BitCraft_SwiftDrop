@@ -89,11 +89,10 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
       to: '/courier/today-deliveries'
     },
     {
-      id: 'today-earnings',
-      label: "Today's earnings",
-      shortLabel: 'Earnings',
+      id: 'cash',
+      label: 'Cash',
       icon: 'wallet',
-      to: '/courier/today-earnings'
+      to: '/courier/cash'
     }
   ],
   merchant: [
@@ -105,6 +104,7 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
     { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
     { id: 'dispatch', label: 'Dispatch', icon: 'inbox', to: '/ops/dispatch' },
     { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
+    { id: 'cash', label: 'Cash', icon: 'wallet', to: '/ops/cash' },
     { id: 'merchants', label: 'Merchant applications', icon: 'store', to: '/ops/merchants' },
     { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
     { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' }
@@ -113,6 +113,7 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
     { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
     { id: 'dispatch', label: 'Dispatch', icon: 'inbox', to: '/ops/dispatch' },
     { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
+    { id: 'cash', label: 'Cash', icon: 'wallet', to: '/ops/cash' },
     { id: 'merchants', label: 'Merchants', icon: 'store', to: '/ops/merchants' },
     { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
     { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },

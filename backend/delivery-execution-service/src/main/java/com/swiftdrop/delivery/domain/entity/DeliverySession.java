@@ -67,6 +67,13 @@ public class DeliverySession {
     @Column(name = "attempt_count", nullable = false)
     private Integer attemptCount = 0;
 
+    /** The courier who brought a cross-district parcel to the pickup district's hub. */
+    @Column(name = "first_mile_courier_id")
+    private UUID firstMileCourierId;
+
+    @Column(name = "handed_in_at")
+    private Instant handedInAt;
+
     @Column(name = "pickup_at")
     private Instant pickupAt;
 
@@ -137,6 +144,12 @@ public class DeliverySession {
 
     public Integer getAttemptCount() { return attemptCount; }
     public void setAttemptCount(Integer attemptCount) { this.attemptCount = attemptCount; }
+
+    public UUID getFirstMileCourierId() { return firstMileCourierId; }
+    public void setFirstMileCourierId(UUID firstMileCourierId) { this.firstMileCourierId = firstMileCourierId; }
+
+    public Instant getHandedInAt() { return handedInAt; }
+    public void setHandedInAt(Instant handedInAt) { this.handedInAt = handedInAt; }
 
     public Instant getPickupAt() { return pickupAt; }
     public void setPickupAt(Instant pickupAt) { this.pickupAt = pickupAt; }

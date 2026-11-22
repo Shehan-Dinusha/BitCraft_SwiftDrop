@@ -6,6 +6,7 @@ import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.dto.DeliverySessionResponse;
 import com.swiftdrop.delivery.dto.TransitionDeliveryRequest;
+import com.swiftdrop.delivery.service.CourierStepService;
 import com.swiftdrop.delivery.service.DeliveryExecutionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class DeliveryExecutionControllerTest {
 
     @MockitoBean
     private DeliveryExecutionService deliveryService;
+
+    @MockitoBean
+    private CourierStepService courierStepService;
 
     @Test
     @DisplayName("GET /api/v1/deliveries/health returns UP")
@@ -97,9 +101,11 @@ class DeliveryExecutionControllerTest {
         session.setCurrentState(DeliveryState.PICKED_UP);
         session.setPreviousState(DeliveryState.ASSIGNED);
 
-        when(deliveryService.transition(eq(deliveryId), any(TransitionDeliveryRequest.class))).thenReturn(session);
+        when(courierStepService.step(eq(deliveryId), any(TransitionDeliveryRequest.class), any())).thenReturn(session);
 
         mockMvc.perform(post("/api/v1/deliveries/" + deliveryId + "/transition")
+                        .header("X-User-Id", UUID.randomUUID().toString())
+                        .header("X-User-Role", "COURIER")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())

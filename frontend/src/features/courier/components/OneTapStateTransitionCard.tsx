@@ -25,6 +25,8 @@ export interface OneTapStateTransitionCardProps {
   onOpenPoD: () => void;
   isPoDVerified: boolean;
   pendingState: DeliveryState | null;
+  /** Cash is still to be confirmed, so the pickup or delivery cannot be completed yet. */
+  blocked?: boolean;
 }
 
 export function OneTapStateTransitionCard({
@@ -32,7 +34,8 @@ export function OneTapStateTransitionCard({
   onTransition,
   onOpenPoD,
   isPoDVerified,
-  pendingState
+  pendingState,
+  blocked = false
 }: OneTapStateTransitionCardProps) {
   const [showFailurePanel, setShowFailurePanel] = useState(false);
   const [failureReason, setFailureReason] = useState<DeliveryFailureReason>('RECIPIENT_UNAVAILABLE');
@@ -66,7 +69,7 @@ export function OneTapStateTransitionCard({
               label="Slide to confirm pickup"
               confirmLabel="Release to pick up"
               onConfirm={() => onTransition('PICKED_UP', undefined, 'Courier picked up package')}
-              disabled={isPending}
+              disabled={isPending || blocked}
               density="touch"
               icon={<PackageCheck className="h-5 w-5" />}
             />
@@ -75,7 +78,7 @@ export function OneTapStateTransitionCard({
               className="w-full min-h-[48px] text-sm"
               onClick={() => onTransition('PICKED_UP', undefined, 'Courier confirmed pickup')}
               loading={pendingState === 'PICKED_UP'}
-              disabled={isPending}
+              disabled={isPending || blocked}
             >
               <PackageCheck className="mr-2 h-4 w-4 text-status-success-fg" />
               Confirm pickup
@@ -210,7 +213,7 @@ export function OneTapStateTransitionCard({
                 label="Slide to complete delivery"
                 confirmLabel="Release to deliver"
                 onConfirm={() => onTransition('DELIVERED', undefined, 'Handover completed with verified PoD')}
-                disabled={isPending}
+                disabled={isPending || blocked}
                 density="touch"
                 icon={<CheckCircle2 className="h-5 w-5" />}
               />
