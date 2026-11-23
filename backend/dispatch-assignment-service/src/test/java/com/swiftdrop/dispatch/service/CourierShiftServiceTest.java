@@ -238,6 +238,39 @@ class CourierShiftServiceTest {
     }
 
     @Test
+    @DisplayName("End shift: a pickup not made today stays with the courier for tomorrow")
+    void endShiftWithAPickupLeft() {
+        CourierShift shift = onShift(1);
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
+        when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(assignmentRepository.findByCourierId(courierId)).thenReturn(List.of(held("SD-P", AssignmentLeg.FIRST_MILE, null)));
+        when(courierCashClient.inHand(courierId)).thenReturn(BigDecimal.ZERO);
+
+        assertThat(courierShiftService.endShift(courierId, courier(SriLankanDistrict.COLOMBO)).shiftStatus())
+                .isEqualTo(ShiftStatus.OFFLINE);
+        assertThat(shift.getActiveParcelsCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Back at the hub: the run ends so the courier can hand in and load again; twice changes nothing")
+    void backAtHub() {
+        CourierShift shift = onShift(2);
+        shift.setRunStartedAt(Instant.parse("2026-11-24T03:40:00Z"));
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
+        when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        at("2026-11-24T16:30");
+        CourierShiftResponse back = courierShiftService.backAtHub(courierId);
+        assertThat(back.runStartedAt()).isNull();
+        assertThat(back.lastRunEndedAt()).isEqualTo(LocalDateTime.parse("2026-11-24T16:30").atZone(WorkingDay.ZONE).toInstant());
+        assertThat(courierShiftService.backAtHub(courierId).lastRunEndedAt()).isEqualTo(back.lastRunEndedAt());
+        verify(courierShiftRepository, times(1)).save(shift);
+
+        shift.setShiftStatus(ShiftStatus.OFFLINE);
+        assertThatThrownBy(() -> courierShiftService.backAtHub(courierId)).isInstanceOf(ShiftRuleException.class);
+    }
+
+    @Test
     @DisplayName("At night every open shift is closed and flagged, a break included; parcels stay counted")
     void forgottenShiftsCloseAtNight() {
         CourierShift working = onShift(2);
@@ -386,21 +419,25 @@ class CourierShiftServiceTest {
     }
 
     @Test
-    @DisplayName("End shift: rejected with ShiftEndNotAllowedException while active parcels remain, nothing changes")
+    @DisplayName("End shift: refused while the courier carries parcels, nothing changes; a pickup not made does not count")
     void testEndShift_ParcelsRemaining() {
         CourierShift shift = new CourierShift();
         shift.setCourierId(courierId);
-        shift.setActiveParcelsCount(2);
+        shift.setActiveParcelsCount(3);
         shift.setShiftStatus(ShiftStatus.BUSY);
+        Instant picked = Instant.parse("2026-11-24T05:00:00Z");
 
         when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
+        when(assignmentRepository.findByCourierId(courierId)).thenReturn(List.of(
+                held("SD-A", AssignmentLeg.FIRST_MILE, picked), held("SD-B", AssignmentLeg.LAST_MILE, picked),
+                held("SD-C", AssignmentLeg.FIRST_MILE, null)));
 
         assertThatThrownBy(() -> courierShiftService.endShift(courierId, courier(SriLankanDistrict.COLOMBO)))
                 .isInstanceOf(ShiftEndNotAllowedException.class)
-                .hasMessageContaining("2 active parcel(s)");
+                .hasMessageContaining("carries 2 parcel(s)");
 
         assertThat(shift.getShiftStatus()).isEqualTo(ShiftStatus.BUSY);
-        assertThat(shift.getActiveParcelsCount()).isEqualTo(2);
+        assertThat(shift.getActiveParcelsCount()).isEqualTo(3);
         assertThat(shift.getShiftEndedAt()).isNull();
         verify(courierShiftRepository, never()).save(any());
     }

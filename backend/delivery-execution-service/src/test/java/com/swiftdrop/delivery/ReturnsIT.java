@@ -231,6 +231,44 @@ class ReturnsIT {
                 .isEqualTo(com.swiftdrop.contracts.enums.OrderSpeed.EXPRESS);
     }
 
+    @Test
+    @DisplayName("At the end of the day the courier hands in what they carry; a parcel not reached is no attempt")
+    void handInAtTheEndOfTheDay() throws Exception {
+        UUID notReached = job(kandy, COLOMBO, KANDY, DeliveryState.OUT_FOR_DELIVERY);
+        UUID pickup = job(kandy, KANDY, KANDY, DeliveryState.PICKED_UP);
+        speed(pickup, com.swiftdrop.contracts.enums.OrderSpeed.STANDARD);
+        UUID sameDay = job(kandy, KANDY, KANDY, DeliveryState.IN_TRANSIT);
+        speed(sameDay, com.swiftdrop.contracts.enums.OrderSpeed.SAME_DAY);
+        UUID failed = job(kandy, COLOMBO, KANDY, DeliveryState.ATTEMPT_FAILED);
+        UUID someoneElses = job(colombo, COLOMBO, COLOMBO, DeliveryState.OUT_FOR_DELIVERY);
+
+        assertThat(handIn(kandy, 409, notReached, someoneElses)).contains("no longer with you");
+        is(notReached, DeliveryState.OUT_FOR_DELIVERY);
+
+        handIn(kandy, 200, notReached, pickup, sameDay, failed);
+        is(notReached, DeliveryState.AT_DESTINATION_HUB);
+        is(pickup, DeliveryState.AT_ORIGIN_HUB);
+        is(sameDay, DeliveryState.AT_DESTINATION_HUB);
+        is(failed, DeliveryState.HELD_AT_HUB);
+        assertThat(session(notReached).getCourierId()).isNull();
+        assertThat(session(notReached).getAttemptCount()).isIn(null, 0);
+        assertThat(session(sameDay).getFirstMileCourierId()).isEqualTo(kandy.id());
+
+        // Tomorrow it goes out again from the hub with whoever is assigned.
+        assign(notReached, kandy);
+        go(notReached, kandy, "OUT_FOR_DELIVERY", null);
+    }
+
+    private String handIn(Person who, int status, UUID... ids) throws Exception {
+        MvcResult result = mockMvc.perform(as(post("/api/v1/deliveries/hand-in"), who)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of("deliveryIds", java.util.List.of(ids)))))
+                .andReturn();
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString()).isEqualTo(status);
+        JsonNode body = json.readTree(result.getResponse().getContentAsString());
+        return body.has("message") ? body.get("message").asText() : "";
+    }
+
     private void speed(UUID id, com.swiftdrop.contracts.enums.OrderSpeed speed) {
         DeliverySession session = session(id);
         session.setOrderSpeed(speed);

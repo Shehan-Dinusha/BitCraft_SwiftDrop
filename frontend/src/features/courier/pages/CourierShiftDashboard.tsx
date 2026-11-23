@@ -12,7 +12,7 @@ import {
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { fetchCurrentUser } from '@/services/api/authApi';
 import { parseApiError } from '@/services/api/apiError';
-import { isOpenForCourier } from '@/types/fsm';
+import { goesViaHub, isOpenForCourier } from '@/types/fsm';
 import { lkr } from '@/features/cash/cashDisplay';
 import { cashApi } from '@/services/api/cashApi';
 import { vehicleLabel } from '@/utils/vehicles';
@@ -48,6 +48,19 @@ const STATUS_LABEL: Record<string, string> = {
 /** Waiting at the hub for this courier: a delivery to take out, or a return to bring to the sender. */
 const isAtHub = (job: DeliverySessionResponse) =>
   job.currentState === 'AT_DESTINATION_HUB' || job.currentState === 'RETURN_AT_HUB';
+
+/** States in which the courier physically carries the parcel. */
+const CARRIED = ['PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'ATTEMPT_FAILED', 'OUT_FOR_RETURN'];
+
+/** Belongs at the hub now: a pickup that goes through it, or a failed attempt. */
+const isHubBound = (job: DeliverySessionResponse) =>
+  (job.currentState === 'PICKED_UP' && goesViaHub(job)) || job.currentState === 'ATTEMPT_FAILED';
+
+/** Still on its way to the recipient or the sender: brought back only if the courier did not get to it today. */
+const isStillOut = (job: DeliverySessionResponse) =>
+  job.currentState === 'OUT_FOR_DELIVERY' ||
+  job.currentState === 'OUT_FOR_RETURN' ||
+  ((job.currentState === 'PICKED_UP' || job.currentState === 'IN_TRANSIT') && !goesViaHub(job));
 
 /** A merchant's parcel still at the shop: collected with the shop's others. */
 const isShopStop = (job: DeliverySessionResponse) =>
@@ -91,6 +104,8 @@ export function CourierShiftDashboard() {
   const [workday, setWorkday] = useState<WorkdayResponse | null>(null);
   // Hub parcels the courier unticked; new ones arrive ticked.
   const [leftBehind, setLeftBehind] = useState<Set<string>>(new Set());
+  // What the courier changed in the hand-in list; untouched rows follow their default.
+  const [handInChoice, setHandInChoice] = useState<Record<string, boolean>>({});
 
   const fetchShiftData = useCallback(async () => {
     if (!courierId) return;
@@ -207,6 +222,35 @@ export function CourierShiftDashboard() {
     }
   };
 
+  const handleHandIn = async (deliveryIds: string[]) => {
+    try {
+      setUpdating(true);
+      setErrorMsg(null);
+      const done = await deliveryApi.handIn(deliveryIds);
+      setSuccessMsg(`Handed in ${done.length} ${done.length === 1 ? 'parcel' : 'parcels'}.`);
+      setHandInChoice({});
+      await fetchShiftData();
+    } catch (err: unknown) {
+      setErrorMsg(parseApiError(err).message ?? 'The parcels could not be handed in');
+      await fetchShiftData();
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleBackAtHub = async () => {
+    if (!courierId) return;
+    try {
+      setUpdating(true);
+      setErrorMsg(null);
+      setShift(await dispatchApi.backAtHub(courierId));
+    } catch (err: unknown) {
+      setErrorMsg(parseApiError(err).message ?? 'Could not record that you are back');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleStartRun = async () => {
     if (!courierId) return;
     try {
@@ -247,6 +291,15 @@ export function CourierShiftDashboard() {
   const onBoard = openJobs.filter((job) => job.currentState !== 'ASSIGNED' && !isAtHub(job));
   const toLoad = atHub.filter((job) => job.deliveryId && !leftBehind.has(job.deliveryId));
   const onRun = Boolean(shift?.runStartedAt);
+  // Back from a run: hub-bound parcels are ticked; ones still out are offered unticked, to bring back for
+  // another day (not an attempt). In the morning only what belongs at the hub is offered.
+  const cameBack = Boolean(shift?.lastRunEndedAt);
+  const handInList = openJobs.filter((job) => isHubBound(job) || (cameBack && isStillOut(job)));
+  const handInTicked = (job: DeliverySessionResponse) =>
+    handInChoice[job.deliveryId ?? ''] ?? isHubBound(job);
+  const toHandIn = handInList.filter(handInTicked);
+  const carried = openJobs.filter((job) => CARRIED.includes(job.currentState ?? '')).length;
+  const pickupsLeft = shops.reduce((sum, shop) => sum + shop.count, 0) + pickups.length;
   const isOnline = shift && shift.shiftStatus !== 'OFFLINE';
   const capacityUsed = shift ? (shift.activeParcelsCount ?? 0) : 0;
   const maxCap = shift?.maxCapacity || 5;
@@ -262,13 +315,18 @@ export function CourierShiftDashboard() {
   const inBreakWindow = workday
     ? now >= hhmm(workday.breakFrom) && now <= hhmm(workday.breakUntil)
     : true;
-  const breakOver = onBreak && Boolean(shift?.breakEndsAt) && Date.now() > Date.parse(shift?.breakEndsAt ?? '');
+  const breakOver =
+    onBreak && Boolean(shift?.breakEndsAt) && Date.now() > Date.parse(shift?.breakEndsAt ?? '');
   const tone = !isOnline
     ? 'border-l-border-strong bg-canvas'
     : status === 'AVAILABLE'
       ? 'border-l-status-success bg-status-success-bg'
       : 'border-l-status-warning bg-status-warning-bg';
-  const iconTone = !isOnline ? 'bg-muted' : status === 'AVAILABLE' ? 'bg-status-success' : 'bg-status-warning';
+  const iconTone = !isOnline
+    ? 'bg-muted'
+    : status === 'AVAILABLE'
+      ? 'bg-status-success'
+      : 'bg-status-warning';
   const pillTone = !isOnline
     ? 'bg-border-subtle text-primary'
     : status === 'AVAILABLE'
@@ -379,11 +437,11 @@ export function CourierShiftDashboard() {
                 <Button
                   variant="destructive"
                   onClick={handleEndShift}
-                  disabled={updating || capacityUsed > 0 || cashInHand > 0}
+                  disabled={updating || carried > 0 || cashInHand > 0}
                   className="min-h-target"
                   title={
-                    capacityUsed > 0
-                      ? 'Deliver active parcels before ending shift'
+                    carried > 0
+                      ? 'Deliver or hand in the parcels you carry before ending shift'
                       : cashInHand > 0
                         ? 'Hand over your cash before ending shift'
                         : 'End shift'
@@ -423,9 +481,25 @@ export function CourierShiftDashboard() {
         </StatusBanner>
       )}
       {isOnline && onRun && (
-        <p className="flex items-center gap-1.5 text-caption text-secondary">
-          <Truck aria-hidden="true" className="h-4 w-4" />
-          On the road since {colomboClock(shift?.runStartedAt)}. Only pickups can be added now.
+        <SurfaceCard className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <p className="flex items-center gap-1.5 text-body text-secondary">
+            <Truck aria-hidden="true" className="h-4 w-4" />
+            On the road since {colomboClock(shift?.runStartedAt)}. Only pickups can be added now.
+          </p>
+          <Button
+            variant="outline"
+            className="min-h-target"
+            disabled={updating}
+            onClick={handleBackAtHub}
+          >
+            <Warehouse className="mr-2 h-5 w-5" />
+            Back at the hub
+          </Button>
+        </SurfaceCard>
+      )}
+      {isOnline && !onRun && carried === 0 && pickupsLeft > 0 && cameBack && (
+        <p className="text-caption text-secondary">
+          Pickups you have not made stay with you for tomorrow.
         </p>
       )}
       {working && workday && !breakTaken && !inBreakWindow && now < hhmm(workday.breakUntil) && (
@@ -453,7 +527,7 @@ export function CourierShiftDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <SurfaceCard className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-secondary">Parcels on Board</span>
+              <span className="text-xs font-medium text-secondary">Parcels assigned</span>
               <Package className="h-4 w-4 text-brand-primary" />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
@@ -555,6 +629,53 @@ export function CourierShiftDashboard() {
           ) : (
             <p className="text-body text-secondary">Nothing waiting for you at the hub.</p>
           )}
+          {handInList.length > 0 ? (
+            <div className="space-y-2 border-t border-border-subtle pt-3">
+              <h3 className="text-body-strong text-primary">Hand in</h3>
+              <ul className="divide-y divide-border-subtle" aria-label="Parcels to hand in">
+                {handInList.map((job) => {
+                  const id = job.deliveryId ?? '';
+                  return (
+                    <li key={id}>
+                      <label className="flex min-h-target cursor-pointer items-center gap-3 py-1">
+                        <span className="sr-only">Hand in</span>
+                        <input
+                          type="checkbox"
+                          className="size-5 accent-brand-primary"
+                          checked={handInTicked(job)}
+                          disabled={updating}
+                          onChange={(event) =>
+                            setHandInChoice({ ...handInChoice, [id]: event.target.checked })
+                          }
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-mono text-sm font-bold tabular-nums text-primary">
+                            {job.trackingNumber}
+                          </span>
+                          <span className="block text-caption text-secondary">
+                            {job.currentState === 'ATTEMPT_FAILED'
+                              ? 'Delivery failed'
+                              : isHubBound(job)
+                                ? 'Picked up'
+                                : 'Not delivered today, out again on another run'}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Button
+                variant="primary"
+                className="min-h-target w-full"
+                disabled={updating || toHandIn.length === 0}
+                onClick={() => handleHandIn(toHandIn.map((job) => job.deliveryId ?? ''))}
+              >
+                <Warehouse className="mr-2 h-5 w-5" />
+                Hand in {toHandIn.length} {toHandIn.length === 1 ? 'parcel' : 'parcels'}
+              </Button>
+            </div>
+          ) : null}
           <Button
             variant={atHub.length > 0 ? 'outline' : 'primary'}
             className="min-h-target w-full"
@@ -594,14 +715,22 @@ export function CourierShiftDashboard() {
           </button>
         ))}
         {pickups.map((job) => (
-          <JobRow key={job.deliveryId} job={job} onOpen={() => navigate(`/courier/delivery/${job.deliveryId}`)} />
+          <JobRow
+            key={job.deliveryId}
+            job={job}
+            onOpen={() => navigate(`/courier/delivery/${job.deliveryId}`)}
+          />
         ))}
       </JobList>
 
       {onBoard.length > 0 && (
         <JobList title="On board" count={onBoard.length}>
           {onBoard.map((job) => (
-            <JobRow key={job.deliveryId} job={job} onOpen={() => navigate(`/courier/delivery/${job.deliveryId}`)} />
+            <JobRow
+              key={job.deliveryId}
+              job={job}
+              onOpen={() => navigate(`/courier/delivery/${job.deliveryId}`)}
+            />
           ))}
         </JobList>
       )}

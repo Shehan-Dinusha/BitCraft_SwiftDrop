@@ -20,6 +20,9 @@ import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
  * </ul>
  *
  * Sessions from before districts or the speed were recorded follow the same-district, straight route.
+ *
+ * <p>A parcel the courier carries but did not deliver today goes back to the hub ({@link #broughtBack}): from
+ * there it goes out on another run. That is not a delivery attempt.</p>
  */
 public final class HubRoute {
 
@@ -38,6 +41,19 @@ public final class HubRoute {
     public static boolean goesViaHub(DeliverySession session) {
         return crossesDistricts(session)
                 || (session.getOrderSpeed() != null && session.getOrderSpeed() != OrderSpeed.SAME_DAY);
+    }
+
+    /**
+     * The courier brings back to the hub a parcel they did not get to today: out for delivery, or a Same day parcel
+     * still with them. Between districts, IN_TRANSIT to AT_DESTINATION_HUB is the drop-off hub accepting it instead.
+     */
+    public static boolean broughtBack(DeliveryState from, DeliveryState to, DeliverySession session) {
+        if (to != DeliveryState.AT_DESTINATION_HUB) {
+            return false;
+        }
+        return from == DeliveryState.OUT_FOR_DELIVERY
+                || (from == DeliveryState.PICKED_UP && !goesViaHub(session))
+                || (from == DeliveryState.IN_TRANSIT && !crossesDistricts(session));
     }
 
     /** Rejects a step that belongs to another route. */
@@ -65,8 +81,8 @@ public final class HubRoute {
             throw new InvalidStateTransitionException(
                     "The drop-off district's hub must accept this parcel before it goes out for delivery");
         }
-        if (from == DeliveryState.IN_TRANSIT && to == DeliveryState.AT_DESTINATION_HUB && !crosses) {
-            throw new InvalidStateTransitionException("This parcel does not go through a hub");
+        if (from == DeliveryState.PICKED_UP && to == DeliveryState.AT_DESTINATION_HUB && viaHub) {
+            throw new InvalidStateTransitionException("This parcel goes through the hub: hand it in there");
         }
         if (from == DeliveryState.AT_DESTINATION_HUB && to == DeliveryState.OUT_FOR_DELIVERY
                 && session.getCourierId() == null) {

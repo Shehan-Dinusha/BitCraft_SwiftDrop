@@ -107,9 +107,12 @@ class CourierShiftErrorHandlingIT {
     }
 
     @Test
-    @DisplayName("Ending a shift with active parcels returns 409 Shift Conflict and leaves the shift unchanged")
+    @DisplayName("Ending a shift while carrying parcels returns 409 Shift Conflict and leaves the shift unchanged")
     void endShiftWithActiveParcelsIsRejectedWithoutChanges() throws Exception {
-        UUID courierId = courier(2, ShiftStatus.BUSY);
+        UUID courierId = courier(3, ShiftStatus.BUSY);
+        carried(courierId, Instant.now());
+        carried(courierId, Instant.now());
+        carried(courierId, null); // a pickup not made yet does not hold the shift
         CourierShift before = courierShiftRepository.findByCourierId(courierId).orElseThrow();
 
         MvcResult result = mockMvc.perform(post("/api/v1/dispatch/couriers/shifts/{courierId}/end", courierId)
@@ -119,10 +122,10 @@ class CourierShiftErrorHandlingIT {
         assertThat(result.getResponse().getStatus()).isEqualTo(409);
         JsonNode body = body(result);
         assertThat(body.get("error").asText()).isEqualTo("Shift Conflict");
-        assertThat(body.get("message").asText()).contains("2 active parcel(s)");
+        assertThat(body.get("message").asText()).contains("carries 2 parcel(s)");
         CourierShift after = courierShiftRepository.findByCourierId(courierId).orElseThrow();
         assertThat(after.getShiftStatus()).isEqualTo(ShiftStatus.BUSY);
-        assertThat(after.getActiveParcelsCount()).isEqualTo(2);
+        assertThat(after.getActiveParcelsCount()).isEqualTo(3);
         assertThat(after.getShiftEndedAt()).isNull();
         assertThat(after.getVersion()).isEqualTo(before.getVersion());
     }
@@ -262,6 +265,19 @@ class CourierShiftErrorHandlingIT {
         courier.setMaxCapacity(5);
         courier.setLastHeartbeatAt(Instant.now());
         return courierShiftRepository.saveAndFlush(courier).getCourierId();
+    }
+
+    private void carried(UUID courierId, Instant pickedUpAt) {
+        DispatchAssignment assignment = new DispatchAssignment();
+        assignment.setOrderId(UUID.randomUUID());
+        assignment.setTrackingNumber("SD-IT-" + UUID.randomUUID().toString().substring(0, 8));
+        assignment.setPickupDistrict(SriLankanDistrict.COLOMBO);
+        assignment.setDeliveryDistrict(SriLankanDistrict.COLOMBO);
+        assignment.setStatus(AssignmentStatus.ASSIGNED);
+        assignment.setCourierId(courierId);
+        assignment.setCourierName("IT Courier");
+        assignment.setPickedUpAt(pickedUpAt);
+        assignmentRepository.saveAndFlush(assignment);
     }
 
     private UUID unassignedOrder() {

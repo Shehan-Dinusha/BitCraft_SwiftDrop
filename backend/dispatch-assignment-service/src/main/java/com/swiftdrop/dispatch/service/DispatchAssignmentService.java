@@ -383,6 +383,12 @@ public class DispatchAssignmentService {
                 return true;
             }
             case INCOMING -> {
+                // Brought back by its courier, not delivered today: they are free of it, and it waits at the hub
+                // for another run as a last-mile order. Not a delivery attempt.
+                if (assignment.getStatus() == AssignmentStatus.ASSIGNED
+                        || assignment.getStatus() == AssignmentStatus.REASSIGNED) {
+                    releaseAtHub(assignment);
+                }
                 // Accepted at the drop-off district's hub, or tried again from there: that district's
                 // last-mile order.
                 if (assignment.getStatus() == AssignmentStatus.IN_TRANSFER) {

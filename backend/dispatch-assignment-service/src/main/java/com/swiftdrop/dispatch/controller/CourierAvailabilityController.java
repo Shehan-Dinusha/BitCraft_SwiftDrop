@@ -102,7 +102,9 @@ public class CourierAvailabilityController {
 
     @PostMapping("/shifts/{courierId}/end")
     @Operation(summary = "End courier shift",
-            description = "A COURIER must have handed over all their cash first. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+            description = "Refused while the courier carries parcels (picked up and not delivered or handed in); a "
+                    + "pickup not made today stays assigned to them. A COURIER must have handed over all their cash "
+                    + "first. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
     public ApiResponse<CourierShiftResponse> endShift(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
@@ -123,6 +125,18 @@ public class CourierAvailabilityController {
             HttpServletRequest httpRequest) {
         requireCourierAccess(httpRequest, courierId);
         return ApiResponse.success(courierShiftService.startRun(courierId), "Run started");
+    }
+
+    @PostMapping("/shifts/{courierId}/back")
+    @Operation(summary = "Back at the hub",
+            description = "Ends the courier's run: they can hand in what they carry and load again, and hub parcels "
+                    + "can be given to them again. Not on a run, nothing changes. A COURIER may use only their own "
+                    + "courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> backAtHub(
+            @PathVariable UUID courierId,
+            HttpServletRequest httpRequest) {
+        requireCourierAccess(httpRequest, courierId);
+        return ApiResponse.success(courierShiftService.backAtHub(courierId), "Back at the hub");
     }
 
     @PutMapping("/shifts/status")

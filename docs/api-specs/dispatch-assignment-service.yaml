@@ -898,7 +898,8 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "409":
           description: >-
-            Shift Conflict: the courier still has active parcels, so the shift is left unchanged.
+            Shift Conflict: the courier still carries parcels (picked up, not delivered or handed in), so the
+            shift is left unchanged. A pickup not made yet does not count: it stays assigned for tomorrow.
             Also returned as Courier Not Available for an unknown courier, or Conflict when the
             courier's record was changed by a concurrent operation.
           content:
@@ -911,7 +912,7 @@ paths:
                   value:
                     status: 409
                     error: Shift Conflict
-                    message: "Cannot end shift: the courier still has 2 active parcel(s). Complete or reassign them first."
+                    message: "Cannot end shift: the courier still carries 2 parcel(s). Deliver them or hand them in at the hub first."
                     path: /api/v1/dispatch/couriers/shifts/11111111-2222-4333-8444-555555555555/end
                     timestamp: "2026-11-15T08:30:00Z"
 
@@ -948,6 +949,43 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "409":
           description: Shift Conflict, naming the parcels still to load, or saying to end the break or start the shift
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
+  /api/v1/dispatch/couriers/shifts/{courierId}/back:
+    post:
+      tags:
+        - CourierAvailability
+      summary: Back at the hub
+      description: >-
+        Ends the courier's run: they can hand in what they carry and load again, and hub parcels can be given
+        to them again. Not on a run, nothing changes. A COURIER may use only their own courier ID; DISPATCHER
+        and SYSTEM_ADMIN may use any.
+      operationId: backAtHub
+      parameters:
+        - name: courierId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Back at the hub
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "409":
+          description: Shift Conflict, the shift has not started
           content:
             application/json:
               schema:
@@ -1617,6 +1655,10 @@ components:
           type: boolean
         runStartedAt:
           description: When the courier left the hub on their run; null while at the hub.
+          type: [string, "null"]
+          format: date-time
+        lastRunEndedAt:
+          description: When the courier last came back to the hub from a run this shift.
           type: [string, "null"]
           format: date-time
         closedAutomatically:

@@ -247,6 +247,14 @@ export const dispatchApi = {
     return data.data;
   },
 
+  /** The courier is back at the hub: the run ends, so they can hand in and load again. */
+  backAtHub: async (courierId: string) => {
+    const { data } = await apiClient.post<{ success: boolean; data: CourierShiftResponse }>(
+      `/v1/dispatch/couriers/shifts/${courierId}/back`
+    );
+    return data.data;
+  },
+
   /** Today's working day, hours, lunch break and coming holidays (Sri Lanka time). */
   getWorkday: async () => {
     const { data } = await apiClient.get<{ success: boolean; data: WorkdayResponse }>(

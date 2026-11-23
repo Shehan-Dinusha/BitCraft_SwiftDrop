@@ -8,11 +8,11 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 
-@Schema(description = "The parcels the courier loads at the hub before leaving on their run.")
+@Schema(description = "Parcels the courier loads at the hub before a run, or hands in there after it.")
 public record LoadParcelsRequest(
         @NotEmpty(message = "Choose at least one parcel")
-        @Size(max = 200, message = "Load at most 200 parcels at once")
-        @Schema(description = "Delivery session UUIDs waiting at the hub for this courier")
+        @Size(max = 200, message = "Choose at most 200 parcels at once")
+        @Schema(description = "Delivery session UUIDs")
         List<@NotNull UUID> deliveryIds
 ) {
 }
