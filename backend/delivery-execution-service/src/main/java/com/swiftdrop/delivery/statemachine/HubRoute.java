@@ -1,21 +1,25 @@
 package com.swiftdrop.delivery.statemachine;
 
 import com.swiftdrop.contracts.enums.DeliveryState;
+import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
 import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 
 /**
- * The two routes a parcel can take.
+ * The three routes a parcel can take.
  *
  * <ul>
- *   <li>Same district: one courier, PICKED_UP → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED.</li>
+ *   <li>Same day, same district: one courier, PICKED_UP → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED.</li>
+ *   <li>Standard or Express, same district, through its hub: PICKED_UP → AT_ORIGIN_HUB (the courier hands it in)
+ *       → AT_DESTINATION_HUB (the district's dispatcher sorts it for delivery) → OUT_FOR_DELIVERY (a courier
+ *       collects it on their next run) → DELIVERED.</li>
  *   <li>Different districts, through both districts' hubs: PICKED_UP → AT_ORIGIN_HUB (the first courier
  *       hands it in) → IN_TRANSIT (the pickup district's dispatcher marks it Outbound) →
  *       AT_DESTINATION_HUB (the drop-off district's dispatcher accepts it) → OUT_FOR_DELIVERY (a courier
  *       of the drop-off district collects it from the hub) → DELIVERED.</li>
  * </ul>
  *
- * Sessions from before districts were recorded follow the same-district route.
+ * Sessions from before districts or the speed were recorded follow the same-district, straight route.
  */
 public final class HubRoute {
 
@@ -27,16 +31,35 @@ public final class HubRoute {
                 && session.getPickupDistrict() != session.getDeliveryDistrict();
     }
 
-    /** Rejects a step that belongs to the other route. */
+    /**
+     * Handed in at a hub after pickup: anything going to another district, and Standard or Express within one.
+     * Only Same day (and sessions without a recorded speed) go straight to the recipient.
+     */
+    public static boolean goesViaHub(DeliverySession session) {
+        return crossesDistricts(session)
+                || (session.getOrderSpeed() != null && session.getOrderSpeed() != OrderSpeed.SAME_DAY);
+    }
+
+    /** Rejects a step that belongs to another route. */
     public static void requireRoute(DeliveryState from, DeliveryState to, DeliverySession session) {
         boolean crosses = crossesDistricts(session);
-        if (from == DeliveryState.PICKED_UP && to == DeliveryState.IN_TRANSIT && crosses) {
-            throw new InvalidStateTransitionException(
-                    "This parcel goes to another district: hand it in at the hub first");
+        boolean viaHub = goesViaHub(session);
+        if (from == DeliveryState.PICKED_UP && to == DeliveryState.IN_TRANSIT && viaHub) {
+            throw new InvalidStateTransitionException(crosses
+                    ? "This parcel goes to another district: hand it in at the hub first"
+                    : "This parcel goes through the hub: hand it in there first");
         }
-        if (from == DeliveryState.PICKED_UP && to == DeliveryState.AT_ORIGIN_HUB && !crosses) {
+        if (from == DeliveryState.PICKED_UP && to == DeliveryState.AT_ORIGIN_HUB && !viaHub) {
             throw new InvalidStateTransitionException(
-                    "This parcel stays in the district: take it straight to the recipient");
+                    "This is a same day parcel: take it straight to the recipient");
+        }
+        if (from == DeliveryState.AT_ORIGIN_HUB && to == DeliveryState.IN_TRANSIT && !crosses) {
+            throw new InvalidStateTransitionException(
+                    "This parcel stays in the district: sort it for delivery here");
+        }
+        if (from == DeliveryState.AT_ORIGIN_HUB && to == DeliveryState.AT_DESTINATION_HUB && crosses) {
+            throw new InvalidStateTransitionException(
+                    "This parcel goes to another district: mark it Outbound");
         }
         if (from == DeliveryState.IN_TRANSIT && to == DeliveryState.OUT_FOR_DELIVERY && crosses) {
             throw new InvalidStateTransitionException(

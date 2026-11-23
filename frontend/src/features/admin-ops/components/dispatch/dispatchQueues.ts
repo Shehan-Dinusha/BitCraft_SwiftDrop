@@ -2,7 +2,14 @@ import type { CourierShiftResponse, DispatchAssignmentResponse } from '@/service
 import type { Speed } from '@/design-system';
 import { districtLabel } from '@/features/profile/profileFormat';
 
-const SPEED_RANK: Record<string, number> = { EXPRESS: 0, SAME_DAY: 1, STANDARD: 2 };
+/** Same day must be done today, Express by the next working day, Standard after. */
+export const SPEED_RANK: Record<string, number> = { SAME_DAY: 0, EXPRESS: 1, STANDARD: 2 };
+
+/** Most urgent speed first; the order is otherwise kept. */
+export const bySpeed = <T extends { orderSpeed?: string | null }>(orders: T[]) =>
+  [...orders].sort(
+    (a, b) => (SPEED_RANK[a.orderSpeed ?? ''] ?? 2) - (SPEED_RANK[b.orderSpeed ?? ''] ?? 2)
+  );
 const SHIFT_RANK: Record<string, number> = { AVAILABLE: 0, BUSY: 1, ON_BREAK: 2, OFFLINE: 3 };
 
 const time = (value?: string) => Date.parse(value ?? '') || 0;
@@ -82,7 +89,8 @@ export function groupByDistrict(
     .map(([district, list]) => ({
       district,
       label: districtLabel(district) || 'Unknown district',
-      orders: list
+      // Same day and Express go first at every hub step.
+      orders: bySpeed(list)
     }))
     .sort((a, b) => b.orders.length - a.orders.length || a.label.localeCompare(b.label));
 }

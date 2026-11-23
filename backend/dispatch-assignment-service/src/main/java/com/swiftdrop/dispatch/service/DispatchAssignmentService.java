@@ -343,9 +343,11 @@ public class DispatchAssignmentService {
      */
     private boolean handleHubStep(ParcelStatusChangedEvent event) {
         Optional<DispatchAssignment> found = find(event);
-        // INCOMING is also how any parcel, same-district ones too, goes out again after a failed attempt.
+        // A same-district parcel goes through its own hub too (Standard and Express): handed in (AT_HUB), then
+        // sorted for delivery (INCOMING). INCOMING is also how any parcel goes out again after a failed attempt.
         boolean hubStep = found.isPresent() && (found.get().crossesDistricts()
-                || event.internalSubStatus() == InternalQueueStatus.INCOMING);
+                || event.internalSubStatus() == InternalQueueStatus.INCOMING
+                || event.internalSubStatus() == InternalQueueStatus.AT_HUB);
         if (!hubStep || found.get().getStatus().isTerminal()) {
             return hubStep;
         }

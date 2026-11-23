@@ -164,6 +164,14 @@ describe('ActiveDeliveryExecutionPage failed deliveries and returns', () => {
     expect(screen.queryAllByRole('button', { name: /trip/i })).toHaveLength(1);
   });
 
+  it('sends a Standard parcel in one district to the hub, and a Same day one straight on', async () => {
+    show({ currentState: 'PICKED_UP', speed: 'STANDARD', viaHub: true });
+    expect(
+      await screen.findByRole('button', { name: 'Slide when handed in at the Colombo hub' })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/It goes out on a delivery run from there/)).toBeInTheDocument();
+  });
+
   it('is done with the parcel once it is handed in', async () => {
     const current = show({ currentState: 'ATTEMPT_FAILED', failedReason: 'OTHER' });
     vi.spyOn(deliveryApi, 'transitionDelivery').mockResolvedValue({

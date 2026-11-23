@@ -116,7 +116,7 @@ public class ShopStopService {
 
     private static ShopParcel parcel(DeliverySession session, OrderJobClient.OrderJob job) {
         return new ShopParcel(session.getDeliveryId(), session.getTrackingNumber(), job.itemDescription(), job.weightKg(),
-                session.getDeliveryDistrict(), HubRoute.crossesDistricts(session), fee(job));
+                session.getDeliveryDistrict(), HubRoute.goesViaHub(session), fee(job));
     }
 
     private static BigDecimal total(List<DeliverySession> list, Map<UUID, OrderJobClient.OrderJob> jobs) {

@@ -30,7 +30,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Calculate pre-confirmation delivery fee estimate (FR-C2) */
+        /**
+         * Calculate pre-confirmation delivery fee estimate (FR-C2)
+         * @description The fee and the day delivery is promised (deliverBy, Sri Lanka time). Same day is only within one district and booked by 11:00 on a working day; otherwise 400. Couriers work Monday to Saturday, not on listed holidays.
+         */
         post: operations["calculateFeeEstimate"];
         delete?: never;
         options?: never;
@@ -335,6 +338,12 @@ export interface components {
             chargeableWeightKg?: number;
             speed?: components["schemas"]["OrderSpeed"];
             /**
+             * Format: date
+             * @description The day delivery is promised if booked now. Same day today; otherwise picked up today when booked before 15:00 on a working day (else the next one), then Express the next working day, Standard two working days later within one district or three to another district.
+             * @example 2026-11-26
+             */
+            deliverBy?: string;
+            /**
              * Format: double
              * @example 550
              */
@@ -632,6 +641,12 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /**
+             * Format: date
+             * @description The promised delivery day; null on orders from before it was recorded.
+             * @example 2026-11-26
+             */
+            deliverBy?: string | null;
         };
         ApiResponseString: {
             /** @example true */
@@ -750,6 +765,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseFeeEstimateResponse"];
                 };
+            };
+            /** @description Same day asked for between districts, after 11:00, or on a closed day */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Pricing service rejected a request this service had validated */
             502: {

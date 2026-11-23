@@ -1,6 +1,7 @@
 package com.swiftdrop.delivery.domain.entity;
 
 import com.swiftdrop.contracts.enums.DeliveryState;
+import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,6 +50,11 @@ public class DeliverySession {
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_district", length = 64)
     private SriLankanDistrict deliveryDistrict;
+
+    /** The order's speed, which decides the route ({@code HubRoute}); null on sessions from before it was sent. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_speed", length = 32)
+    private OrderSpeed orderSpeed;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "current_state", nullable = false, length = 32)
@@ -140,6 +146,9 @@ public class DeliverySession {
 
     public SriLankanDistrict getPickupDistrict() { return pickupDistrict; }
     public void setPickupDistrict(SriLankanDistrict pickupDistrict) { this.pickupDistrict = pickupDistrict; }
+
+    public OrderSpeed getOrderSpeed() { return orderSpeed; }
+    public void setOrderSpeed(OrderSpeed orderSpeed) { this.orderSpeed = orderSpeed; }
 
     public SriLankanDistrict getDeliveryDistrict() { return deliveryDistrict; }
     public void setDeliveryDistrict(SriLankanDistrict deliveryDistrict) { this.deliveryDistrict = deliveryDistrict; }

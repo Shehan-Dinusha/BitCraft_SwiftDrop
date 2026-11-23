@@ -18,6 +18,7 @@ import { cashApi } from '@/services/api/cashApi';
 import { vehicleLabel } from '@/utils/vehicles';
 import { districtLabel } from '@/features/profile/profileFormat';
 import { colomboClock, colomboTimeNow, dayLabel, hhmm } from '@/utils/colomboDate';
+import { SPEED_RANK } from '@/features/admin-ops/components/dispatch/dispatchQueues';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
@@ -235,7 +236,10 @@ export function CourierShiftDashboard() {
     }
   };
 
-  const openJobs = todayDeliveries.filter((job) => isOpenForCourier(job.currentState));
+  // Same day first, then Express: the order a courier should work through.
+  const openJobs = todayDeliveries
+    .filter((job) => isOpenForCourier(job.currentState))
+    .sort((a, b) => (SPEED_RANK[a.speed ?? ''] ?? 2) - (SPEED_RANK[b.speed ?? ''] ?? 2));
   // At the hub first, then pickups (a shop's parcels are one stop), then what is on board.
   const atHub = openJobs.filter(isAtHub);
   const shops = groupShops(openJobs);

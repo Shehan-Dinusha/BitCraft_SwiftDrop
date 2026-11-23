@@ -18,7 +18,7 @@ const order = (over: DispatchAssignmentResponse): DispatchAssignmentResponse => 
 const ids = (orders: DispatchAssignmentResponse[]) => orders.map((o) => o.trackingNumber);
 
 describe('sortQueue', () => {
-  it('puts express first, then same day, then the longest wait', () => {
+  it('puts same day first, then express, then the longest wait', () => {
     expect(
       ids(
         sortQueue([
@@ -32,7 +32,7 @@ describe('sortQueue', () => {
           })
         ])
       )
-    ).toEqual(['express', 'same-day', 'old-standard', 'new-standard']);
+    ).toEqual(['same-day', 'express', 'old-standard', 'new-standard']);
   });
 
   it('counts a hub parcel from when the hub accepted it, not from booking', () => {

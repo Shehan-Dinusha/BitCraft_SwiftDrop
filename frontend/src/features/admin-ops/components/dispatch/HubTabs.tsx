@@ -1,4 +1,4 @@
-import { Send, Warehouse } from 'lucide-react';
+import { PackageCheck, Send, Warehouse } from 'lucide-react';
 import type { DispatchAssignmentResponse } from '@/services/api/dispatchApi';
 import { districtLabel } from '@/features/profile/profileFormat';
 import { Badge, CELL, DispatchTable, TabEmpty, TrackingCell } from './DispatchTable';
@@ -13,23 +13,56 @@ interface HubTabProps {
   onRun: (orders: DispatchAssignmentResponse[]) => void;
 }
 
-/** Handed in at this district's hub, waiting to leave for the drop-off district. */
-export function ReadyToSendTab({ orders, searching, ...rest }: HubTabProps) {
+const staysInDistrict = (order: DispatchAssignmentResponse) =>
+  Boolean(order.pickupDistrict) && order.pickupDistrict === order.deliveryDistrict;
+
+/**
+ * Handed in at this district's hub. Parcels for another district are marked Outbound; those staying in the
+ * district (Standard and Express go through the hub too) are sorted for delivery, for a courier's next run.
+ */
+export function ReadyToSendTab({
+  orders,
+  searching,
+  onRun,
+  onSort,
+  ...rest
+}: HubTabProps & { onSort: (orders: DispatchAssignmentResponse[]) => void }) {
   if (orders.length === 0) {
     return <TabEmpty searching={searching} title="No parcels waiting at the hub" />;
   }
+  const local = orders.filter(staysInDistrict);
+  const leaving = orders.filter((order) => !staysInDistrict(order));
   return (
-    <HubParcelTable
-      label="Ready to send"
-      orders={orders}
-      groupField="deliveryDistrict"
-      groupPrefix="To"
-      timeLabel="Handed in"
-      actionLabel="Mark outbound"
-      busyLabel="Sending"
-      actionIcon={<Send />}
-      {...rest}
-    />
+    <>
+      {local.length ? (
+        <HubParcelTable
+          label="For this district"
+          orders={local}
+          groupField="deliveryDistrict"
+          groupPrefix="In"
+          timeLabel="Handed in"
+          actionLabel="Sort for delivery"
+          busyLabel="Sorting"
+          actionIcon={<PackageCheck />}
+          onRun={onSort}
+          {...rest}
+        />
+      ) : null}
+      {leaving.length ? (
+        <HubParcelTable
+          label="Ready to send"
+          orders={leaving}
+          groupField="deliveryDistrict"
+          groupPrefix="To"
+          timeLabel="Handed in"
+          actionLabel="Mark outbound"
+          busyLabel="Sending"
+          actionIcon={<Send />}
+          onRun={onRun}
+          {...rest}
+        />
+      ) : null}
+    </>
   );
 }
 

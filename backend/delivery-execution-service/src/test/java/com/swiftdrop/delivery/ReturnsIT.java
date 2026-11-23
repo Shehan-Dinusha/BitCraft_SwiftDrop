@@ -198,6 +198,46 @@ class ReturnsIT {
     }
 
     @Test
+    @DisplayName("Standard in one district goes through its hub, sorted by its dispatcher; Same day goes straight")
+    void sameDistrictThroughTheHub() throws Exception {
+        UUID id = job(colombo, COLOMBO, COLOMBO, DeliveryState.PICKED_UP);
+        speed(id, com.swiftdrop.contracts.enums.OrderSpeed.STANDARD);
+
+        assertThat(refused(id, colombo, "IN_TRANSIT", null, 409)).contains("through the hub");
+        go(id, colombo, "AT_ORIGIN_HUB", null);
+        assertThat(session(id).getCourierId()).isNull();
+        refused(id, kandyHub, "AT_DESTINATION_HUB", null, 403);
+        assertThat(refused(id, colomboHub, "IN_TRANSIT", null, 409)).contains("sort it for delivery");
+        go(id, colomboHub, "AT_DESTINATION_HUB", null);
+        assign(id, colombo);
+        go(id, colombo, "OUT_FOR_DELIVERY", null);
+        assertThat(ok(get("/api/v1/deliveries/" + id), colombo).get("viaHub").asBoolean()).isTrue();
+
+        UUID sameDay = job(colombo, COLOMBO, COLOMBO, DeliveryState.PICKED_UP);
+        speed(sameDay, com.swiftdrop.contracts.enums.OrderSpeed.SAME_DAY);
+        assertThat(refused(sameDay, colombo, "AT_ORIGIN_HUB", null, 409)).contains("same day");
+        go(sameDay, colombo, "IN_TRANSIT", null);
+        assertThat(ok(get("/api/v1/deliveries/" + sameDay), colombo).get("viaHub").asBoolean()).isFalse();
+    }
+
+    @Test
+    @DisplayName("The courier assignment brings the order's speed")
+    void speedComesWithTheAssignment() {
+        UUID orderId = UUID.randomUUID();
+        deliveries.handleCourierAssigned(new CourierAssignedEvent(UUID.randomUUID(), UUID.randomUUID(), orderId,
+                colombo.id(), "Courier", 25, Instant.now(), Instant.now(), "SD-SPEED-001", null, UUID.randomUUID(),
+                COLOMBO, COLOMBO, null, com.swiftdrop.contracts.enums.OrderSpeed.EXPRESS));
+        assertThat(sessions.findByOrderId(orderId).orElseThrow().getOrderSpeed())
+                .isEqualTo(com.swiftdrop.contracts.enums.OrderSpeed.EXPRESS);
+    }
+
+    private void speed(UUID id, com.swiftdrop.contracts.enums.OrderSpeed speed) {
+        DeliverySession session = session(id);
+        session.setOrderSpeed(speed);
+        sessions.saveAndFlush(session);
+    }
+
+    @Test
     @DisplayName("At the hub the courier loads their deliveries and returns in one go; all of them or none")
     void loadAtTheHub() throws Exception {
         UUID delivery = job(kandy, COLOMBO, KANDY, DeliveryState.AT_DESTINATION_HUB);

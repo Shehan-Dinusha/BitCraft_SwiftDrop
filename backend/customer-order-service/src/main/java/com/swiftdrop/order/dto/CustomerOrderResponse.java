@@ -164,6 +164,9 @@ public class CustomerOrderResponse {
     @Schema(description = "Updated timestamp")
     private Instant updatedAt;
 
+    @Schema(description = "The promised delivery day; null on older orders", example = "2026-11-26")
+    private java.time.LocalDate deliverBy;
+
     public static CustomerOrderResponse fromEntity(CustomerOrder order) {
         if (order == null) return null;
         return CustomerOrderResponse.builder()
@@ -212,6 +215,7 @@ public class CustomerOrderResponse {
                 .cancelledAt(order.getCancelledAt())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
+                .deliverBy(order.getDeliverBy())
                 .build();
     }
 }

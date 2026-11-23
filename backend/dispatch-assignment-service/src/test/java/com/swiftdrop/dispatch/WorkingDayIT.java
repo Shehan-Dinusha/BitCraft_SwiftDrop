@@ -96,6 +96,12 @@ class WorkingDayIT {
         assertThat(today.get("closedDays")).hasSize(1);
         status(send(get("/api/v1/dispatch/calendar/today"), TestCallers.as(UserRole.CUSTOMER), null), 403);
 
+        // The order service reads the holidays for its delivery promise.
+        JsonNode internal = data(send(get("/internal/v1/calendar/closed-days?from=2026-12-01&to=2026-12-31"),
+                TestCallers.as(UserRole.SYSTEM_ADMIN), null), 200);
+        assertThat(internal).hasSize(1);
+        assertThat(internal.get(0).asText()).isEqualTo("2026-12-04");
+
         assertThat(data(send(delete("/api/v1/dispatch/calendar/closed-days/2026-12-04"), admin, null), 200)).isEmpty();
     }
 

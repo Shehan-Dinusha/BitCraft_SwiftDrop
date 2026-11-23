@@ -9,7 +9,7 @@ import type {
   DeliveryState,
   DeliveryFailureReason
 } from '@/services/api/deliveryApi';
-import { crossesDistricts, isFinished } from '@/types/fsm';
+import { goesViaHub, isFinished } from '@/types/fsm';
 import { failureReasons, failureTarget, failureTitle } from '@/utils/failureReasons';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
@@ -82,7 +82,7 @@ export function ActiveDeliveryExecutionPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // A parcel going to another district goes through both hubs; the courier's next step depends on it.
-  const viaHubs = session ? crossesDistricts(session) : false;
+  const viaHubs = session ? goesViaHub(session) : false;
   // The one step the courier takes next: a single slide at the bottom of the screen.
   const step = useMemo(() => (session ? courierStep(session) : null), [session]);
 

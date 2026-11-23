@@ -114,6 +114,12 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(400, "Bad Request", ex.getMessage(), safePath(request)));
     }
 
+    @ExceptionHandler(SameDayNotAvailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleSameDay(SameDayNotAvailableException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiErrorResponse.of(400, "Bad Request", ex.getMessage(), safePath(request)));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         log.warn("Illegal argument on {}", safePath(request));

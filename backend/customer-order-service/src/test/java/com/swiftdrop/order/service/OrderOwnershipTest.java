@@ -69,6 +69,13 @@ class OrderOwnershipTest {
     @Mock
     private OrderStatusHistoryService orderStatusHistoryService;
 
+    /** Returns no promised day unless a test asks: the promise itself is tested in DeliveryPromiseTest. */
+
+    @Mock
+
+    private com.swiftdrop.order.service.promise.DeliveryPromise deliveryPromise;
+
+
     @InjectMocks
     private CustomerOrderService customerOrderService;
 

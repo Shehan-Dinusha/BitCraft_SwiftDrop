@@ -1,5 +1,5 @@
 import type { DeliverySessionResponse, DeliveryState } from '@/services/api/deliveryApi';
-import { courierNextStep, crossesDistricts } from '@/types/fsm';
+import { courierNextStep, goesViaHub } from '@/types/fsm';
 import { districtLabel } from '@/features/profile/profileFormat';
 
 export type CourierStepIcon = 'pickup' | 'trip' | 'arrive' | 'hub' | 'collect' | 'done';
@@ -21,7 +21,7 @@ export interface CourierStep {
 /** The courier's next step on this parcel, or null when it is not theirs to move. */
 export function courierStep(session: DeliverySessionResponse): CourierStep | null {
   const state = session.currentState as DeliveryState | undefined;
-  const viaHubs = crossesDistricts(session);
+  const viaHubs = goesViaHub(session);
   const target = courierNextStep(state, viaHubs);
   if (!target) return null;
   const pickupHub = `the ${districtLabel(session.pickupDistrict)} hub`;

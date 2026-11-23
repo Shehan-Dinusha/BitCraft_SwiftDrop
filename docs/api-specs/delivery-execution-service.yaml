@@ -868,6 +868,15 @@ components:
           type: [string, "null"]
           format: date-time
           description: When the sender got the parcel back.
+        speed:
+          description: The order's speed; null on older deliveries.
+          type: [string, "null"]
+          enum: [STANDARD, EXPRESS, SAME_DAY, null]
+        viaHub:
+          description: >-
+            Whether the courier hands it in at the hub after pickup (Standard or Express, or another district)
+            instead of taking it straight to the recipient (Same day within one district).
+          type: boolean
 
     CourierJobStop:
       type: object

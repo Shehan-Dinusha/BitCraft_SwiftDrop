@@ -139,7 +139,10 @@ export function DispatchBoardPage() {
 
   const pending = (orders: DispatchAssignmentResponse[] | undefined, step: HubStep) =>
     (orders ?? []).filter((order) => !done.has(stepKey(order, step)));
-  const readyOrders = pending(ready.data, 'IN_TRANSIT');
+  // A parcel staying in the district leaves this list by being sorted for delivery instead.
+  const readyOrders = pending(ready.data, 'IN_TRANSIT').filter(
+    (order) => !done.has(stepKey(order, 'AT_DESTINATION_HUB'))
+  );
   const incomingOrders = pending(incoming.data, 'AT_DESTINATION_HUB');
   // What is shown of a return follows from its stage, so any step taken from that stage hides it.
   const returnOrders = (returns.data ?? []).filter(
@@ -283,6 +286,7 @@ export function DispatchBoardPage() {
             busy={hubBusy}
             now={now}
             onRun={(orders) => void runHubStep(orders, 'IN_TRANSIT')}
+            onSort={(orders) => void runHubStep(orders, 'AT_DESTINATION_HUB')}
           />
         );
       case 'incoming':

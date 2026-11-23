@@ -106,6 +106,9 @@ public class DeliveryExecutionService {
         if (event.deliveryDistrict() != null) {
             session.setDeliveryDistrict(event.deliveryDistrict());
         }
+        if (event.speed() != null) {
+            session.setOrderSpeed(event.speed());
+        }
         // A shop's order carries the shop's id as its customer too; a customer's order never does.
         if (event.merchantId() != null && event.merchantId().equals(event.customerId())) {
             session.setMerchantId(event.merchantId());
@@ -192,6 +195,10 @@ public class DeliveryExecutionService {
         boolean outbound = from == DeliveryState.AT_ORIGIN_HUB && to == DeliveryState.IN_TRANSIT;
         boolean accept = from == DeliveryState.IN_TRANSIT && to == DeliveryState.AT_DESTINATION_HUB;
         boolean handIn = from == DeliveryState.PICKED_UP && to == DeliveryState.AT_ORIGIN_HUB;
+        boolean sorted = from == DeliveryState.AT_ORIGIN_HUB && to == DeliveryState.AT_DESTINATION_HUB;
+        if (sorted && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
+            throw new ForbiddenException("Only this district's dispatcher can sort the parcel for delivery");
+        }
         if (outbound && !isDispatcherOf(caller, session.getPickupDistrict())) {
             throw new ForbiddenException("Only the pickup district's dispatcher can mark this parcel Outbound");
         }

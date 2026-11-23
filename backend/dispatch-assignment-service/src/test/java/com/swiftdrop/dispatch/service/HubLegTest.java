@@ -245,6 +245,24 @@ class HubLegTest {
     }
 
     @Test
+    @DisplayName("One district, Standard: handed in at its hub, then sorted there as its last-mile order")
+    void sameDistrictThroughItsHub() {
+        CourierShift courier = courierIn(colomboCourier, SriLankanDistrict.COLOMBO);
+        when(couriers.findByCourierId(colomboCourier)).thenReturn(Optional.of(courier));
+        order.setDeliveryDistrict(SriLankanDistrict.COLOMBO);
+
+        dispatchService.handleParcelStatusChanged(hubEvent(InternalQueueStatus.AT_HUB));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.IN_TRANSFER);
+        assertThat(order.getFirstMileCourierId()).isEqualTo(colomboCourier);
+        assertThat(courier.getActiveParcelsCount()).isZero();
+
+        dispatchService.handleParcelStatusChanged(hubEvent(InternalQueueStatus.INCOMING));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(order.getLeg()).isEqualTo(AssignmentLeg.LAST_MILE);
+        assertThat(order.getResponsibleDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+    }
+
+    @Test
     @DisplayName("A same-district courier on the way still counts as the normal pickup boundary")
     void sameDistrictOutboundIsNotAHubStep() {
         order.setDeliveryDistrict(SriLankanDistrict.COLOMBO);

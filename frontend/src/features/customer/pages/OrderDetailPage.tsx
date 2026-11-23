@@ -32,6 +32,7 @@ import { OrderFeeSection } from '../components/orders/OrderFeeSection';
 import { OrderCourierCard } from '../components/orders/OrderCourierCard';
 import { OrderDetailsSection } from '../components/orders/OrderDetailsSection';
 import { CancelDialog, DeclineFeeDialog } from '../components/orders/OrderActionDialogs';
+import { dayLabel } from '@/utils/colomboDate';
 
 type ActionProblem = 'state' | 'invalid' | 'failed';
 type Action = 'cancel' | 'accept' | 'decline';
@@ -283,7 +284,9 @@ export function OrderDetailPage() {
             <SpeedTag speed={toSpeed(order.orderSpeed)} />
           </>
         }
-        subtitle={`${route} · Booked ${formatDate(order.createdAt, true)}`}
+        subtitle={`${route} · Booked ${formatDate(order.createdAt, true)}${
+          order.deliverBy && status !== 'DELIVERED' ? ` · Delivery by ${dayLabel(order.deliverBy)}` : ''
+        }`}
         actions={actions}
       />
 
