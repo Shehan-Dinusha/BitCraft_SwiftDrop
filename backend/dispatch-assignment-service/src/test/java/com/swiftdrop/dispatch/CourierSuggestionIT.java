@@ -12,6 +12,7 @@ import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.exception.AssignmentNotFoundException;
 import com.swiftdrop.dispatch.exception.InvalidAssignmentTransitionException;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
+import com.swiftdrop.dispatch.service.WorkingDay;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(DispatchAssignmentService.class)
+@Import({DispatchAssignmentService.class, WorkingDay.class})
 @Testcontainers(disabledWithoutDocker = true)
 class CourierSuggestionIT {
 

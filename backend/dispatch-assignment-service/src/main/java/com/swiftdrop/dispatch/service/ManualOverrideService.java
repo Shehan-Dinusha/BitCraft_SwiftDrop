@@ -47,14 +47,17 @@ public class ManualOverrideService {
     private final DispatchAssignmentRepository assignmentRepository;
     private final CourierShiftRepository courierShiftRepository;
     private final DispatchEventPublisher eventPublisher;
+    private final WorkingDay workingDay;
 
     public ManualOverrideService(
             DispatchAssignmentRepository assignmentRepository,
             CourierShiftRepository courierShiftRepository,
-            DispatchEventPublisher eventPublisher) {
+            DispatchEventPublisher eventPublisher,
+            WorkingDay workingDay) {
         this.assignmentRepository = assignmentRepository;
         this.courierShiftRepository = courierShiftRepository;
         this.eventPublisher = eventPublisher;
+        this.workingDay = workingDay;
     }
 
     /**
@@ -222,7 +225,7 @@ public class ManualOverrideService {
         // The courier row is versioned and every assignment updates it, so two assignments that both saw the
         // same load cannot both commit.
         CourierLoad load = CourierLoad.of(assignmentRepository, courierId);
-        CourierFit.block(courier, load, assignment).ifPresent(block -> {
+        CourierFit.block(courier, load, assignment, workingDay.pickupsClosed()).ifPresent(block -> {
             throw new CourierNotAvailableException(CourierFit.message(block, courier, load, assignment));
         });
         return courier;

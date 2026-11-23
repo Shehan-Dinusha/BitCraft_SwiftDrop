@@ -22,7 +22,8 @@ import java.util.Optional;
 /**
  * The courier working day: Monday to Saturday, 8:00 to 17:00 Sri Lanka time. Sundays and the holidays a
  * SYSTEM_ADMIN lists are closed. A courier checks in from 7:30 (after 9:00 counts as late), takes one lunch
- * break of up to 45 minutes between 12:00 and 14:30, and nobody works at night.
+ * break of up to 45 minutes between 12:00 and 14:30, and nobody works at night. Pickups are given out until
+ * 15:00.
  */
 @Component
 public class WorkingDay {
@@ -37,6 +38,8 @@ public class WorkingDay {
     public static final LocalTime BREAK_FROM = LocalTime.of(12, 0);
     public static final LocalTime BREAK_UNTIL = LocalTime.of(14, 30);
     public static final Duration BREAK_LENGTH = Duration.ofMinutes(45);
+    /** No new pickups after this, so the courier can still bring them to the hub by closing. */
+    public static final LocalTime PICKUP_CUTOFF = LocalTime.of(15, 0);
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("H:mm");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE d MMMM");
@@ -100,6 +103,11 @@ public class WorkingDay {
         }
     }
 
+    /** Whether it is too late in the day to send a courier for a new pickup. */
+    public boolean pickupsClosed() {
+        return !timeNow().isBefore(PICKUP_CUTOFF);
+    }
+
     /** One lunch break per shift, started between 12:00 and 14:30. */
     public void requireBreakCanStart(CourierShift shift) {
         if (shift.getBreakStartedAt() != null) {
@@ -130,7 +138,7 @@ public class WorkingDay {
         boolean shiftCanStart = closed.isEmpty() && !now.isBefore(SHIFT_FROM) && now.isBefore(CLOSES);
         return new WorkdayResponse(today, closed.isEmpty(), closed.orElse(null), nextWorkingDay(today),
                 shiftCanStart, OPENS, CLOSES, SHIFT_FROM, BREAK_FROM, BREAK_UNTIL, (int) BREAK_LENGTH.toMinutes(),
-                upcomingClosedDays());
+                PICKUP_CUTOFF, upcomingClosedDays());
     }
 
     @Transactional(readOnly = true)

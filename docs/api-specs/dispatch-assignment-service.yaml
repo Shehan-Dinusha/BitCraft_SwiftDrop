@@ -915,6 +915,44 @@ paths:
                     path: /api/v1/dispatch/couriers/shifts/11111111-2222-4333-8444-555555555555/end
                     timestamp: "2026-11-15T08:30:00Z"
 
+  /api/v1/dispatch/couriers/shifts/{courierId}/run:
+    post:
+      tags:
+        - CourierAvailability
+      summary: Leave the hub on the run
+      description: >-
+        Refused while parcels waiting at the hub for the courier are not loaded, while on break, or off
+        shift. Afterwards hub parcels go only to couriers still at the hub, and this courier gets only
+        pickups, until 15:00. Leaving again changes nothing. A COURIER may use only their own courier ID;
+        DISPATCHER and SYSTEM_ADMIN may use any.
+      operationId: startRun
+      parameters:
+        - name: courierId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Run started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "409":
+          description: Shift Conflict, naming the parcels still to load, or saying to end the break or start the shift
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
   /api/v1/dispatch/couriers/shifts/status:
     put:
       tags:
@@ -1180,9 +1218,10 @@ components:
       description: >-
         Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all.
         PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds. A courier on
-        their lunch break is not blocked.
+        their lunch break is not blocked. ON_RUN: the parcel waits at a hub and the courier has left on their
+        run. PICKUPS_CLOSED: a pickup, and pickups are given out only until 15:00.
       enum:
-        [OFF_SHIFT, TOO_LONG, TOO_HEAVY, TOO_BIG, PARCEL_LIMIT, WEIGHT_LIMIT, VOLUME_LIMIT]
+        [OFF_SHIFT, ON_RUN, PICKUPS_CLOSED, TOO_LONG, TOO_HEAVY, TOO_BIG, PARCEL_LIMIT, WEIGHT_LIMIT, VOLUME_LIMIT]
 
     OrderSpeed:
       type: string
@@ -1576,6 +1615,10 @@ components:
         startedLate:
           description: Whether the shift started after 9:00.
           type: boolean
+        runStartedAt:
+          description: When the courier left the hub on their run; null while at the hub.
+          type: [string, "null"]
+          format: date-time
         closedAutomatically:
           description: Whether the courier left the shift open and it was closed at night.
           type: boolean
@@ -1656,6 +1699,7 @@ components:
         - breakFrom
         - breakUntil
         - breakMinutes
+        - pickupCutoff
         - closedDays
       properties:
         date:
@@ -1691,6 +1735,10 @@ components:
         breakMinutes:
           type: integer
           example: 45
+        pickupCutoff:
+          description: New pickups are given out until this time.
+          type: string
+          example: "15:00"
         closedDays:
           description: Listed holidays from today on.
           type: array

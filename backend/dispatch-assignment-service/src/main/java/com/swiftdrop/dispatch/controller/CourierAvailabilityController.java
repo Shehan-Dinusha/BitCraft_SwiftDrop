@@ -113,6 +113,18 @@ public class CourierAvailabilityController {
         );
     }
 
+    @PostMapping("/shifts/{courierId}/run")
+    @Operation(summary = "Leave the hub on the run",
+            description = "Refused while parcels waiting at the hub for the courier are not loaded. Afterwards the "
+                    + "courier gets only pickups, until 15:00; leaving again changes nothing. A COURIER may use only "
+                    + "their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> startRun(
+            @PathVariable UUID courierId,
+            HttpServletRequest httpRequest) {
+        requireCourierAccess(httpRequest, courierId);
+        return ApiResponse.success(courierShiftService.startRun(courierId), "Run started");
+    }
+
     @PutMapping("/shifts/status")
     @Operation(summary = "Start or end the lunch break",
             description = "ON_BREAK starts the one lunch break of the shift (between 12:00 and 14:30, up to 45 "

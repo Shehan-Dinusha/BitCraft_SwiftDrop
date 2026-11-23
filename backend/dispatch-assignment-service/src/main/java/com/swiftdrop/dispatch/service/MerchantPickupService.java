@@ -37,13 +37,16 @@ public class MerchantPickupService {
     private final DispatchAssignmentRepository assignmentRepository;
     private final CourierShiftRepository courierShiftRepository;
     private final ManualOverrideService manualOverrideService;
+    private final WorkingDay workingDay;
 
     public MerchantPickupService(DispatchAssignmentRepository assignmentRepository,
                                  CourierShiftRepository courierShiftRepository,
-                                 ManualOverrideService manualOverrideService) {
+                                 ManualOverrideService manualOverrideService,
+                                 WorkingDay workingDay) {
         this.assignmentRepository = assignmentRepository;
         this.courierShiftRepository = courierShiftRepository;
         this.manualOverrideService = manualOverrideService;
+        this.workingDay = workingDay;
     }
 
     /** What the shop still holds. */
@@ -82,10 +85,12 @@ public class MerchantPickupService {
                 .findByCurrentDistrictAndShiftStatusNot(district, ShiftStatus.OFFLINE);
         Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
                 couriers.stream().map(CourierShift::getCourierId).toList());
+        boolean pickupsClosed = workingDay.pickupsClosed();
         return couriers.stream()
                 .map(courier -> new ShopCourierSuggestionResponse(courier.getCourierId(), courier.getCourierName(),
                         courier.getVehicleType(), courier.getActiveParcelsCount(), courier.getMaxCapacity(),
-                        CourierFit.fitting(courier, loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE), ready)
+                        CourierFit.fitting(courier, loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE), ready,
+                                        pickupsClosed)
                                 .stream().map(DispatchAssignment::getOrderId).toList(),
                         CourierSuggestionResponse.breakEndsAt(courier)))
                 // Most of the shop's parcels first, couriers at work before those on their break, then the

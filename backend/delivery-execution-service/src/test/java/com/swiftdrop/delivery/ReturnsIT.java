@@ -197,6 +197,37 @@ class ReturnsIT {
         assertThat(session(id).getCourierId()).isEqualTo(colombo.id());
     }
 
+    @Test
+    @DisplayName("At the hub the courier loads their deliveries and returns in one go; all of them or none")
+    void loadAtTheHub() throws Exception {
+        UUID delivery = job(kandy, COLOMBO, KANDY, DeliveryState.AT_DESTINATION_HUB);
+        UUID back = job(kandy, KANDY, COLOMBO, DeliveryState.RETURN_AT_HUB);
+        UUID someoneElses = job(colombo, COLOMBO, KANDY, DeliveryState.AT_DESTINATION_HUB);
+        UUID onTheRoad = job(kandy, KANDY, KANDY, DeliveryState.IN_TRANSIT);
+
+        assertThat(load(kandy, 409, delivery, back, someoneElses)).contains("no longer waiting for you");
+        assertThat(load(kandy, 409, delivery, onTheRoad)).contains("no longer waiting for you");
+        load(kandyHub, 403, delivery);
+        is(delivery, DeliveryState.AT_DESTINATION_HUB);
+        is(back, DeliveryState.RETURN_AT_HUB);
+
+        load(kandy, 200, delivery, back);
+        is(delivery, DeliveryState.OUT_FOR_DELIVERY);
+        is(back, DeliveryState.OUT_FOR_RETURN);
+        is(someoneElses, DeliveryState.AT_DESTINATION_HUB);
+        load(kandy, 409, delivery);
+    }
+
+    private String load(Person who, int status, UUID... ids) throws Exception {
+        MvcResult result = mockMvc.perform(as(post("/api/v1/deliveries/load"), who)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of("deliveryIds", java.util.List.of(ids)))))
+                .andReturn();
+        assertThat(result.getResponse().getStatus()).as(result.getResponse().getContentAsString()).isEqualTo(status);
+        JsonNode body = json.readTree(result.getResponse().getContentAsString());
+        return body.has("message") ? body.get("message").asText() : "";
+    }
+
     // ---- steps
 
     private void go(UUID id, Person who, String target, String reason) throws Exception {

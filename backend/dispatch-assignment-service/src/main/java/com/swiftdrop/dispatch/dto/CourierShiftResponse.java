@@ -71,6 +71,10 @@ public record CourierShiftResponse(
         @Schema(description = "Whether the shift started after 9:00")
         boolean startedLate,
 
+        @Schema(description = "When the courier left the hub on their run; null while at the hub. "
+                + "Hub parcels go only to couriers at the hub.")
+        Instant runStartedAt,
+
         @Schema(description = "Whether the courier left the shift open and it was closed at night")
         boolean closedAutomatically
 ) {
@@ -95,6 +99,7 @@ public record CourierShiftResponse(
                 WorkingDay.breakEndsAt(entity.getBreakStartedAt()),
                 entity.getBreakEndedAt(),
                 WorkingDay.startedLate(entity.getShiftStartedAt()),
+                entity.getRunStartedAt(),
                 entity.isClosedAutomatically()
         );
     }

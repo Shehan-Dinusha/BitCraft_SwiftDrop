@@ -9,6 +9,7 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
+import com.swiftdrop.dispatch.service.WorkingDay;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(DispatchAssignmentService.class)
+@Import({DispatchAssignmentService.class, WorkingDay.class})
 @Testcontainers(disabledWithoutDocker = true)
 class HubQueuesIT {
 

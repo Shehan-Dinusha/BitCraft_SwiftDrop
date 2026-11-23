@@ -239,6 +239,14 @@ export const dispatchApi = {
     return data.data;
   },
 
+  /** The courier leaves the hub on their run; refused while hub parcels are still to load. */
+  startRun: async (courierId: string) => {
+    const { data } = await apiClient.post<{ success: boolean; data: CourierShiftResponse }>(
+      `/v1/dispatch/couriers/shifts/${courierId}/run`
+    );
+    return data.data;
+  },
+
   /** Today's working day, hours, lunch break and coming holidays (Sri Lanka time). */
   getWorkday: async () => {
     const { data } = await apiClient.get<{ success: boolean; data: WorkdayResponse }>(

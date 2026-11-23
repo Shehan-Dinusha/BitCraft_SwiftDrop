@@ -15,7 +15,10 @@ import java.util.Optional;
 /**
  * Whether a courier can take a parcel: on shift, the parcel fits the vehicle, and there is room left for it
  * (parcels, weight and volume). A courier on their lunch break keeps their parcels and can be given more; the
- * suggestions list them after the couriers who are working. The suggestions and the assign and reassign checks all use this,
+ * suggestions list them after the couriers who are working.
+ *
+ * <p>The day decides two more things: a parcel waiting at a hub goes only to a courier who has not yet left on
+ * their run, and pickups are given out only until 15:00 ({@link WorkingDay#PICKUP_CUTOFF}).</p> The suggestions and the assign and reassign checks all use this,
  * so what a dispatcher is offered is what the server accepts.
  *
  * <p>An order from before sizes were recorded has no size, so only the shift and parcel count apply to it.</p>
@@ -25,10 +28,26 @@ public final class CourierFit {
     private CourierFit() {
     }
 
-    /** The first reason the courier cannot take the parcel, or empty when they can. */
+    /** As {@link #block(CourierShift, CourierLoad, DispatchAssignment, boolean)}, with pickups still open. */
     public static Optional<CourierBlock> block(CourierShift courier, CourierLoad load, DispatchAssignment parcel) {
+        return block(courier, load, parcel, false);
+    }
+
+    /**
+     * The first reason the courier cannot take the parcel, or empty when they can.
+     *
+     * @param pickupsClosed whether it is past the pickup cut-off ({@link WorkingDay#pickupsClosed()})
+     */
+    public static Optional<CourierBlock> block(CourierShift courier, CourierLoad load, DispatchAssignment parcel,
+                                               boolean pickupsClosed) {
         if (courier.getShiftStatus() == ShiftStatus.OFFLINE) {
             return Optional.of(CourierBlock.OFF_SHIFT);
+        }
+        if (parcel.startsAtHub() && courier.isOnRun()) {
+            return Optional.of(CourierBlock.ON_RUN);
+        }
+        if (!parcel.startsAtHub() && pickupsClosed) {
+            return Optional.of(CourierBlock.PICKUPS_CLOSED);
         }
         VehicleType vehicle = courier.getVehicleType();
         BigDecimal weight = parcel.getWeightKg();
@@ -58,12 +77,13 @@ public final class CourierFit {
      * The parcels the courier can take together, in the order given: each one counts towards the limits of
      * the next, as if it were already on board.
      */
-    public static List<DispatchAssignment> fitting(CourierShift courier, CourierLoad load, List<DispatchAssignment> parcels) {
+    public static List<DispatchAssignment> fitting(CourierShift courier, CourierLoad load, List<DispatchAssignment> parcels,
+                                                   boolean pickupsClosed) {
         List<DispatchAssignment> taken = new ArrayList<>();
         CourierLoad held = load;
         for (DispatchAssignment parcel : parcels) {
             boolean room = courier.getActiveParcelsCount() + taken.size() < courier.getMaxCapacity();
-            if (room && block(courier, held, parcel).isEmpty()) {
+            if (room && block(courier, held, parcel, pickupsClosed).isEmpty()) {
                 taken.add(parcel);
                 held = held.plus(parcel);
             }
@@ -88,6 +108,9 @@ public final class CourierFit {
         String takes = "; a " + vehicle.label() + " takes up to ";
         return switch (block) {
             case OFF_SHIFT -> name + " is currently OFFLINE";
+            case ON_RUN -> name + " has left on their run. Give hub parcels to a courier still at the hub.";
+            case PICKUPS_CLOSED -> "Pickups are given out until " + WorkingDay.PICKUP_CUTOFF
+                    + ". This one waits for tomorrow's run.";
             case PARCEL_LIMIT -> name + " already carries " + courier.getMaxCapacity() + " parcels";
             case TOO_LONG -> "The parcel is " + plain(parcel.getLongestSideCm()) + " cm long" + takes
                     + vehicle.maxSideCm() + " cm";
