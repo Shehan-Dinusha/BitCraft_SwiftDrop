@@ -149,7 +149,8 @@ public class DispatchAssignmentService {
      * currently holding it is left out. Those who can take it come first, best first; the rest carry the
      * reason they cannot. A COMPLETED or CANCELLED order cannot be (re)assigned, so it gets none.
      *
-     * <p>Best is the smallest vehicle the parcel fits, so bigger ones stay free for bigger parcels, then the
+     * <p>A courier on their lunch break can take it but comes after those at work. Best is the smallest
+     * vehicle the parcel fits, so bigger ones stay free for bigger parcels, then the
      * emptiest courier. Without a recorded size the vehicle says nothing, so only the load counts.</p>
      */
     @Transactional(readOnly = true)
@@ -178,7 +179,9 @@ public class DispatchAssignmentService {
         boolean sized = assignment.getVolumeLitres() != null;
 
         record Option(CourierShift courier, CourierLoad load, CourierBlock block) {}
+        // Couriers at work come before those on their lunch break, who can still be given it.
         Comparator<Option> ranking = Comparator.comparing((Option option) -> option.block() != null)
+                .thenComparing(option -> option.courier().getShiftStatus() == ShiftStatus.ON_BREAK)
                 .thenComparing(option -> sized ? option.courier().getVehicleType().ordinal() : 0)
                 .thenComparingDouble(option -> CourierFit.fullness(option.courier(), option.load()))
                 .thenComparing(option -> option.courier().getLastHeartbeatAt(),

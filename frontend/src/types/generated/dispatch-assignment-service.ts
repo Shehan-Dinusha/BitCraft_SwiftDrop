@@ -413,7 +413,7 @@ export interface paths {
         put?: never;
         /**
          * Start or register courier shift
-         * @description A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available.
+         * @description A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available. A shift starts only on a working day (Monday to Saturday, not a listed holiday) from 7:30 until 17:00 Sri Lanka time; otherwise 409 Shift Conflict says when the next working day is. A shift started after 9:00 is marked startedLate. Starting a shift that is already running returns it unchanged.
          */
         post: operations["startShift"];
         delete?: never;
@@ -451,12 +451,72 @@ export interface paths {
         };
         get?: never;
         /**
-         * Update courier shift status
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         * Start or end the lunch break
+         * @description ON_BREAK starts the one lunch break of the shift (started between 12:00 and 14:30 Sri Lanka time, up to 45 minutes); AVAILABLE ends it, and the courier becomes BUSY again if every parcel place is taken. OFFLINE and BUSY are refused with 409 Shift Conflict: a shift ends through End shift, which checks parcels and cash, and BUSY follows the parcels held. A courier on break keeps their parcels and can be given more. A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
          */
         put: operations["updateShiftStatus"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/calendar/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Today's working day
+         * @description Whether today is open, the hours, the lunch break and the coming holidays, in Sri Lanka time. Couriers work Monday to Saturday, 8:00 to 17:00; Sundays and listed holidays are closed. For COURIER, DISPATCHER and SYSTEM_ADMIN.
+         */
+        get: operations["getWorkingDay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/calendar/closed-days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close a holiday
+         * @description Nobody works that day: shifts cannot start. Today or later, and not a Sunday (always closed). SYSTEM_ADMIN only. Returns the holidays from today on.
+         */
+        post: operations["addClosedDay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/calendar/closed-days/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Reopen a holiday
+         * @description Today or later only. SYSTEM_ADMIN only. Returns the holidays from today on.
+         */
+        delete: operations["removeClosedDay"];
         options?: never;
         head?: never;
         patch?: never;
@@ -528,10 +588,10 @@ export interface components {
          */
         VehicleType: "MOTORCYCLE" | "THREE_WHEELER" | "VAN" | "LORRY";
         /**
-         * @description Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all. PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds.
+         * @description Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all. PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds. A courier on their lunch break is not blocked.
          * @enum {string}
          */
-        CourierBlock: "OFF_SHIFT" | "ON_BREAK" | "BUSY" | "TOO_LONG" | "TOO_HEAVY" | "TOO_BIG" | "PARCEL_LIMIT" | "WEIGHT_LIMIT" | "VOLUME_LIMIT";
+        CourierBlock: "OFF_SHIFT" | "TOO_LONG" | "TOO_HEAVY" | "TOO_BIG" | "PARCEL_LIMIT" | "WEIGHT_LIMIT" | "VOLUME_LIMIT";
         /** @enum {string} */
         OrderSpeed: "STANDARD" | "EXPRESS" | "SAME_DAY";
         /** @enum {string} */
@@ -623,6 +683,11 @@ export interface components {
             activeParcels: number;
             maxCapacity: number;
             fittingOrderIds: string[];
+            /**
+             * Format: date-time
+             * @description While the courier is on their lunch break, when it should end.
+             */
+            breakEndsAt?: string | null;
         };
         AssignShopPickupRequest: {
             /** Format: uuid */
@@ -721,6 +786,25 @@ export interface components {
             /** @description Volume of the parcels held. */
             activeVolumeLitres?: number;
             maxVolumeLitres?: number;
+            /**
+             * Format: date-time
+             * @description When the lunch break of this shift started.
+             */
+            breakStartedAt?: string | null;
+            /**
+             * Format: date-time
+             * @description When that break should end, 45 minutes after it started.
+             */
+            breakEndsAt?: string | null;
+            /**
+             * Format: date-time
+             * @description When that break ended.
+             */
+            breakEndedAt?: string | null;
+            /** @description Whether the shift started after 9:00. */
+            startedLate?: boolean;
+            /** @description Whether the courier left the shift open and it was closed at night. */
+            closedAutomatically?: boolean;
         };
         CourierWorkloadResponse: {
             /** Format: uuid */
@@ -752,6 +836,67 @@ export interface components {
             /** @description Whether the order can be assigned to this courier now. */
             eligible?: boolean;
             ineligibleReason?: components["schemas"]["CourierBlock"];
+            /**
+             * Format: date-time
+             * @description While the courier is on their lunch break, when it should end. They can still be given the order and see it when they are back.
+             */
+            breakEndsAt?: string | null;
+        };
+        /** @description Today's working day, in Sri Lanka time. */
+        WorkdayResponse: {
+            /** Format: date */
+            date: string;
+            /** @description Whether today is a working day. */
+            open: boolean;
+            /** @description Why today is closed, "Sunday" or the holiday's name. */
+            closedReason?: string | null;
+            /** Format: date */
+            nextWorkingDay: string;
+            /** @description Whether a courier can start a shift right now. */
+            shiftCanStart: boolean;
+            /** @example 08:00 */
+            opensAt: string;
+            /** @example 17:00 */
+            closesAt: string;
+            /** @example 07:30 */
+            shiftFrom: string;
+            /** @example 12:00 */
+            breakFrom: string;
+            /** @example 14:30 */
+            breakUntil: string;
+            /** @example 45 */
+            breakMinutes: number;
+            /** @description Listed holidays from today on. */
+            closedDays: components["schemas"]["ClosedDayResponse"][];
+        };
+        ClosedDayResponse: {
+            /** Format: date */
+            day: string;
+            /** @example Unduvap Poya Day */
+            name: string;
+        };
+        ClosedDayRequest: {
+            /**
+             * Format: date
+             * @description Today or later, and not a Sunday.
+             */
+            day: string;
+            /** @example Unduvap Poya Day */
+            name: string;
+        };
+        ApiResponseWorkdayResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["WorkdayResponse"];
+            /** Format: date-time */
+            timestamp?: string;
+        };
+        ApiResponseListClosedDayResponse: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ClosedDayResponse"][];
+            /** Format: date-time */
+            timestamp?: string;
         };
         /** @description Error body returned by the global exception handler (com.swiftdrop.contracts.dto.ApiErrorResponse). Null fields are omitted. */
         ApiErrorResponse: {
@@ -1919,6 +2064,126 @@ export interface operations {
                 };
             };
             /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Shift Conflict: OFFLINE or BUSY asked for, the shift has not started, the break is outside 12:00 to 14:30, or the shift's break was already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getWorkingDay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Today's working day */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseWorkdayResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    addClosedDay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClosedDayRequest"];
+            };
+        };
+        responses: {
+            /** @description Holiday closed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListClosedDayResponse"];
+                };
+            };
+            /** @description A past day, a Sunday, a day already closed, or a missing name */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    removeClosedDay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Holiday reopened */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListClosedDayResponse"];
+                };
+            };
+            /** @description A past day */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a SYSTEM_ADMIN */
             403: {
                 headers: {
                     [name: string]: unknown;

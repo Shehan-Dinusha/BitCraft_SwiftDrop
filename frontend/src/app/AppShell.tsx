@@ -116,6 +116,7 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
     { id: 'cash', label: 'Cash', icon: 'wallet', to: '/ops/cash' },
     { id: 'merchants', label: 'Merchants', icon: 'store', to: '/ops/merchants' },
     { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
+    { id: 'working-days', label: 'Working days', icon: 'calendar', to: '/ops/working-days' },
     { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
     { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' }
   ]

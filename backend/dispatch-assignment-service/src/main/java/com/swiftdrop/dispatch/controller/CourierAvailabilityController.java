@@ -87,7 +87,9 @@ public class CourierAvailabilityController {
     @PostMapping("/shifts/start")
     @Operation(summary = "Start or register courier shift",
             description = "A COURIER may use only their own courier ID, a DISPATCHER the couriers of their district, "
-                    + "a SYSTEM_ADMIN any. The shift starts in the courier's home district.")
+                    + "a SYSTEM_ADMIN any. The shift starts in the courier's home district, only on a working day "
+                    + "(Monday to Saturday, not a listed holiday) from 7:30 until 17:00 Sri Lanka time. Starting a "
+                    + "shift that is already running returns it unchanged.")
     public ApiResponse<CourierShiftResponse> startShift(
             @Valid @RequestBody StartShiftRequest request,
             HttpServletRequest httpRequest) {
@@ -112,8 +114,11 @@ public class CourierAvailabilityController {
     }
 
     @PutMapping("/shifts/status")
-    @Operation(summary = "Update courier shift status (e.g., AVAILABLE, ON_BREAK, BUSY, OFFLINE)",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    @Operation(summary = "Start or end the lunch break",
+            description = "ON_BREAK starts the one lunch break of the shift (between 12:00 and 14:30, up to 45 "
+                    + "minutes); AVAILABLE ends it. OFFLINE and BUSY are refused: a shift ends through End shift, "
+                    + "and BUSY follows the parcels held. A courier on break keeps their parcels and can be given "
+                    + "more. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
     public ApiResponse<CourierShiftResponse> updateShiftStatus(
             @Valid @RequestBody UpdateShiftStatusRequest request,
             HttpServletRequest httpRequest) {

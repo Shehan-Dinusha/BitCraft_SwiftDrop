@@ -3,12 +3,13 @@ import { districtLabel } from '@/features/profile/profileFormat';
 import { vehicleLabel } from '@/utils/vehicles';
 import { Badge, CELL, DispatchTable, TabEmpty, type BadgeTone } from './DispatchTable';
 import { LoadBar } from './LoadBar';
-import { amount } from './courierFit';
+import { amount, onBreakUntil } from './courierFit';
+import { colomboClock } from '@/utils/colomboDate';
 import { sortCouriers } from './dispatchQueues';
 
 export const SHIFT: Record<string, { label: string; tone: BadgeTone }> = {
   AVAILABLE: { label: 'Available', tone: 'success' },
-  BUSY: { label: 'Busy', tone: 'warning' },
+  BUSY: { label: 'Full', tone: 'warning' },
   ON_BREAK: { label: 'On break', tone: 'info' },
   OFFLINE: { label: 'Off shift', tone: 'neutral' }
 };
@@ -52,6 +53,7 @@ export function CouriersTab({
             ) : null}
             <td className={CELL}>
               <Badge tone={shift.tone}>{shift.label}</Badge>
+              <ShiftNote courier={courier} />
             </td>
             <td className={CELL}>
               <LoadBar used={used} limit={limit} label={`${used} of ${limit}`} />
@@ -75,4 +77,25 @@ export function CouriersTab({
       })}
     </DispatchTable>
   );
+}
+
+/** What the dispatcher should know about the shift: the break, a late start, a shift left open overnight. */
+function ShiftNote({ courier }: { courier: CourierShiftResponse }) {
+  const status = courier.shiftStatus;
+  if (status === 'ON_BREAK') {
+    const over = Date.now() > Date.parse(courier.breakEndsAt ?? '');
+    return (
+      <p className={over ? 'text-status-warning-fg' : 'text-secondary'}>
+        {over ? `Break ended ${colomboClock(courier.breakEndsAt)}` : onBreakUntil(courier.breakEndsAt)}
+      </p>
+    );
+  }
+  if (status === 'OFFLINE') {
+    return courier.closedAutomatically ? (
+      <p className="text-status-warning-fg">Left open, closed at night</p>
+    ) : null;
+  }
+  return courier.startedLate ? (
+    <p className="text-status-warning-fg">Started late, {colomboClock(courier.shiftStartedAt)}</p>
+  ) : null;
 }

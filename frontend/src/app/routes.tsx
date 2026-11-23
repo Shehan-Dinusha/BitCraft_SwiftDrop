@@ -33,6 +33,7 @@ import { MerchantApprovalsPage } from '@/features/admin-ops/pages/MerchantApprov
 import { NotificationConsolePage } from '@/features/admin-ops/pages/NotificationConsolePage';
 import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
 import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
+import { WorkingDaysPage } from '@/features/admin-ops/pages/WorkingDaysPage';
 import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
 import { LandingPage } from '@/features/landing/pages/LandingPage';
 import { ProfilePage } from '@/features/profile/ProfilePage';
@@ -331,6 +332,14 @@ export const routes: RouteObject[] = [
         element: (
           <RoleGuard roles={['ADMIN_OPS']}>
             <UserManagementPage />
+          </RoleGuard>
+        )
+      },
+      {
+        path: '/ops/working-days',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <WorkingDaysPage />
           </RoleGuard>
         )
       }

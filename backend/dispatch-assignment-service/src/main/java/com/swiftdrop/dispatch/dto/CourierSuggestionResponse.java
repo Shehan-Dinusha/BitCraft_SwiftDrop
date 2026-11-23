@@ -6,9 +6,11 @@ import com.swiftdrop.dispatch.domain.enums.CourierBlock;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.service.CourierLoad;
+import com.swiftdrop.dispatch.service.WorkingDay;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Schema(description = "A courier on shift, and whether they can take the order.")
@@ -56,7 +58,11 @@ public record CourierSuggestionResponse(
         boolean eligible,
 
         @Schema(description = "Why not, when it cannot; null otherwise")
-        CourierBlock ineligibleReason
+        CourierBlock ineligibleReason,
+
+        @Schema(description = "While the courier is on their lunch break, when it should end; null otherwise. "
+                + "They can still be given the order and see it when they are back.")
+        Instant breakEndsAt
 ) {
     public static CourierSuggestionResponse of(CourierShift courier, CourierLoad load, CourierBlock block,
                                                SriLankanDistrict orderDistrict) {
@@ -76,7 +82,14 @@ public record CourierSuggestionResponse(
                 vehicle.maxVolumeLitres(),
                 vehicle.maxSideCm(),
                 block == null,
-                block
+                block,
+                breakEndsAt(courier)
         );
+    }
+
+    /** When the courier's break should end, while they are on it. */
+    public static Instant breakEndsAt(CourierShift courier) {
+        return courier.getShiftStatus() == ShiftStatus.ON_BREAK
+                ? WorkingDay.breakEndsAt(courier.getBreakStartedAt()) : null;
     }
 }

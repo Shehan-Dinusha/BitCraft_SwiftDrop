@@ -3,8 +3,6 @@ package com.swiftdrop.dispatch.domain.enums;
 /** Why a courier cannot take a parcel. */
 public enum CourierBlock {
     OFF_SHIFT,
-    ON_BREAK,
-    BUSY,
     /** The parcel's longest side does not fit the vehicle. */
     TOO_LONG,
     /** The parcel alone is heavier than the vehicle carries. */

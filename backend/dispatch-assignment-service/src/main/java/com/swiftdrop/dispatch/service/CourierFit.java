@@ -3,6 +3,7 @@ package com.swiftdrop.dispatch.service;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
 import com.swiftdrop.dispatch.domain.enums.CourierBlock;
+import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 
 import java.math.BigDecimal;
@@ -12,8 +13,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Whether a courier can take a parcel: on shift and free, the parcel fits the vehicle, and there is room
- * left for it (parcels, weight and volume). The suggestions and the assign and reassign checks all use this,
+ * Whether a courier can take a parcel: on shift, the parcel fits the vehicle, and there is room left for it
+ * (parcels, weight and volume). A courier on their lunch break keeps their parcels and can be given more; the
+ * suggestions list them after the couriers who are working. The suggestions and the assign and reassign checks all use this,
  * so what a dispatcher is offered is what the server accepts.
  *
  * <p>An order from before sizes were recorded has no size, so only the shift and parcel count apply to it.</p>
@@ -25,16 +27,8 @@ public final class CourierFit {
 
     /** The first reason the courier cannot take the parcel, or empty when they can. */
     public static Optional<CourierBlock> block(CourierShift courier, CourierLoad load, DispatchAssignment parcel) {
-        switch (courier.getShiftStatus()) {
-            case OFFLINE -> {
-                return Optional.of(CourierBlock.OFF_SHIFT);
-            }
-            case ON_BREAK -> {
-                return Optional.of(CourierBlock.ON_BREAK);
-            }
-            default -> {
-                // AVAILABLE and BUSY are checked below, after the vehicle: "too long" is the better reason.
-            }
+        if (courier.getShiftStatus() == ShiftStatus.OFFLINE) {
+            return Optional.of(CourierBlock.OFF_SHIFT);
         }
         VehicleType vehicle = courier.getVehicleType();
         BigDecimal weight = parcel.getWeightKg();
@@ -50,9 +44,6 @@ public final class CourierFit {
         }
         if (courier.getActiveParcelsCount() >= courier.getMaxCapacity()) {
             return Optional.of(CourierBlock.PARCEL_LIMIT);
-        }
-        if (!courier.canAcceptParcel()) {
-            return Optional.of(CourierBlock.BUSY);
         }
         if (weight != null && exceeds(load.weightKg().add(weight), vehicle.maxWeightKg())) {
             return Optional.of(CourierBlock.WEIGHT_LIMIT);
@@ -97,7 +88,7 @@ public final class CourierFit {
         String takes = "; a " + vehicle.label() + " takes up to ";
         return switch (block) {
             case OFF_SHIFT -> name + " is currently OFFLINE";
-            case ON_BREAK, BUSY, PARCEL_LIMIT -> name + " is not available or has reached capacity";
+            case PARCEL_LIMIT -> name + " already carries " + courier.getMaxCapacity() + " parcels";
             case TOO_LONG -> "The parcel is " + plain(parcel.getLongestSideCm()) + " cm long" + takes
                     + vehicle.maxSideCm() + " cm";
             case TOO_HEAVY -> "The parcel weighs " + plain(parcel.getWeightKg()) + " kg" + takes

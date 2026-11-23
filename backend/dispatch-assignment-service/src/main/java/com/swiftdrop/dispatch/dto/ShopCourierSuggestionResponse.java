@@ -3,6 +3,7 @@ package com.swiftdrop.dispatch.dto;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,6 +15,8 @@ public record ShopCourierSuggestionResponse(
         @Schema(description = "Parcels held now", example = "3") int activeParcels,
         @Schema(description = "Parcels the courier can hold", example = "25") int maxCapacity,
         @Schema(description = "The parcels that fit together, longest waiting first; empty when none do")
-        List<UUID> fittingOrderIds
+        List<UUID> fittingOrderIds,
+        @Schema(description = "While the courier is on their lunch break, when it should end; null otherwise")
+        Instant breakEndsAt
 ) {
 }

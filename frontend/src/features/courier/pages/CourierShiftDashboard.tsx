@@ -6,7 +6,8 @@ import {
   dispatchApi,
   type CourierProfileResponse,
   type CourierShiftResponse,
-  type ShiftStatus
+  type ShiftStatus,
+  type WorkdayResponse
 } from '@/services/api/dispatchApi';
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { fetchCurrentUser } from '@/services/api/authApi';
@@ -16,6 +17,7 @@ import { lkr } from '@/features/cash/cashDisplay';
 import { cashApi } from '@/services/api/cashApi';
 import { vehicleLabel } from '@/utils/vehicles';
 import { districtLabel } from '@/features/profile/profileFormat';
+import { colomboClock, colomboTimeNow, dayLabel, hhmm } from '@/utils/colomboDate';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
@@ -24,14 +26,21 @@ import {
   Bike,
   Coffee,
   MapPin,
+  Play,
   Package,
   Store,
   Power,
   RefreshCw,
-  CheckCircle2,
   Clock,
   ChevronRight
 } from 'lucide-react';
+
+const STATUS_LABEL: Record<string, string> = {
+  AVAILABLE: 'Available',
+  BUSY: 'Full',
+  ON_BREAK: 'On break',
+  OFFLINE: 'Off shift'
+};
 
 /** A merchant's parcel still at the shop: collected with the shop's others. */
 const isShopStop = (job: DeliverySessionResponse) =>
@@ -72,6 +81,7 @@ export function CourierShiftDashboard() {
   );
   // undefined while loading; null when the courier has not registered a vehicle yet.
   const [vehicle, setVehicle] = useState<CourierProfileResponse | null | undefined>(undefined);
+  const [workday, setWorkday] = useState<WorkdayResponse | null>(null);
 
   const fetchShiftData = useCallback(async () => {
     if (!courierId) return;
@@ -84,6 +94,13 @@ export function CourierShiftDashboard() {
         setVehicle(await dispatchApi.getMyProfile());
       } catch {
         setVehicle(undefined);
+      }
+
+      // Hours, closed days and the lunch break; the server enforces them either way.
+      try {
+        setWorkday(await dispatchApi.getWorkday());
+      } catch {
+        setWorkday(null);
       }
 
       // Fetch courier shift data
@@ -153,10 +170,13 @@ export function CourierShiftDashboard() {
         status: newStatus
       });
       setShift(res);
-      setSuccessMsg(`Status updated to ${newStatus}`);
+      setSuccessMsg(
+        newStatus === 'ON_BREAK'
+          ? `Enjoy your lunch. Back by ${colomboClock(res.breakEndsAt)}.`
+          : 'Welcome back.'
+      );
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to update shift status';
-      setErrorMsg(msg);
+      setErrorMsg(parseApiError(err).message ?? 'Your break could not be updated');
     } finally {
       setUpdating(false);
     }
@@ -185,6 +205,29 @@ export function CourierShiftDashboard() {
   const capacityUsed = shift ? (shift.activeParcelsCount ?? 0) : 0;
   const maxCap = shift?.maxCapacity || 5;
   const capacityPct = Math.min(100, Math.round((capacityUsed / maxCap) * 100));
+
+  const status = shift?.shiftStatus ?? 'OFFLINE';
+  const onBreak = status === 'ON_BREAK';
+  const working = isOnline && status !== 'ON_BREAK';
+  const now = colomboTimeNow();
+  const closedToday = workday ? !workday.open : false;
+  const cannotStart = workday ? !workday.shiftCanStart : false;
+  const breakTaken = Boolean(shift?.breakStartedAt);
+  const inBreakWindow = workday
+    ? now >= hhmm(workday.breakFrom) && now <= hhmm(workday.breakUntil)
+    : true;
+  const breakOver = onBreak && Boolean(shift?.breakEndsAt) && Date.now() > Date.parse(shift?.breakEndsAt ?? '');
+  const tone = !isOnline
+    ? 'border-l-border-strong bg-canvas'
+    : status === 'AVAILABLE'
+      ? 'border-l-status-success bg-status-success-bg'
+      : 'border-l-status-warning bg-status-warning-bg';
+  const iconTone = !isOnline ? 'bg-muted' : status === 'AVAILABLE' ? 'bg-status-success' : 'bg-status-warning';
+  const pillTone = !isOnline
+    ? 'bg-border-subtle text-primary'
+    : status === 'AVAILABLE'
+      ? 'bg-status-success-bg text-status-success-fg'
+      : 'bg-status-warning-bg text-status-warning-fg';
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-6" data-density="touch">
@@ -215,26 +258,11 @@ export function CourierShiftDashboard() {
       )}
 
       {/* Online / Offline Status Banner Card */}
-      <SurfaceCard
-        variant="elevated"
-        className={`border-l-4 p-5 ${
-          isOnline
-            ? shift?.shiftStatus === 'AVAILABLE'
-              ? 'border-l-emerald-500 bg-status-success-bg'
-              : 'border-l-amber-500 bg-status-warning-bg'
-            : 'border-l-slate-400 bg-canvas'
-        }`}
-      >
+      <SurfaceCard variant="elevated" className={`border-l-4 p-5 ${tone}`}>
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
             <div
-              className={`flex h-12 w-12 items-center justify-center rounded-xl text-brand-on ${
-                isOnline
-                  ? shift?.shiftStatus === 'AVAILABLE'
-                    ? 'bg-status-success'
-                    : 'bg-status-warning'
-                  : 'bg-muted'
-              }`}
+              className={`flex h-12 w-12 items-center justify-center rounded-xl text-brand-on ${iconTone}`}
             >
               <Bike className="h-6 w-6" />
             </div>
@@ -244,15 +272,9 @@ export function CourierShiftDashboard() {
                   {user?.username || shift?.courierName || 'Courier'}
                 </span>
                 <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                    isOnline
-                      ? shift?.shiftStatus === 'AVAILABLE'
-                        ? 'bg-status-success-bg text-status-success-fg'
-                        : 'bg-status-warning-bg text-status-warning-fg'
-                      : 'bg-border-subtle text-primary'
-                  }`}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${pillTone}`}
                 >
-                  {shift?.shiftStatus || 'OFFLINE'}
+                  {STATUS_LABEL[status] ?? status}
                 </span>
               </div>
               <p className="flex items-center gap-1.5 text-xs text-secondary">
@@ -274,40 +296,45 @@ export function CourierShiftDashboard() {
                 Add your vehicle to start
               </Button>
             ) : !isOnline ? (
-              <Button
-                variant="primary"
-                onClick={handleStartShift}
-                disabled={updating}
-                className="min-h-target w-full px-6 font-semibold shadow-md sm:w-auto"
-              >
-                <Power className="mr-2 h-5 w-5" />
-                Start shift
-              </Button>
+              closedToday ? null : (
+                <Button
+                  variant="primary"
+                  onClick={handleStartShift}
+                  disabled={updating || cannotStart}
+                  className="min-h-target w-full px-6 font-semibold shadow-md sm:w-auto"
+                >
+                  <Power className="mr-2 h-5 w-5" />
+                  Start shift
+                </Button>
+              )
             ) : (
               <>
-                <Button
-                  variant={shift?.shiftStatus === 'AVAILABLE' ? 'primary' : 'outline'}
-                  onClick={() => handleUpdateStatus('AVAILABLE')}
-                  disabled={updating}
-                  className="min-h-[44px]"
-                >
-                  <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                  Available
-                </Button>
-                <Button
-                  variant={shift?.shiftStatus === 'ON_BREAK' ? 'secondary' : 'outline'}
-                  onClick={() => handleUpdateStatus('ON_BREAK')}
-                  disabled={updating}
-                  className="min-h-[44px]"
-                >
-                  <Coffee className="mr-1.5 h-4 w-4" />
-                  Break
-                </Button>
+                {onBreak ? (
+                  <Button
+                    variant="primary"
+                    onClick={() => handleUpdateStatus('AVAILABLE')}
+                    disabled={updating}
+                    className="min-h-target"
+                  >
+                    <Play className="mr-1.5 h-4 w-4" />
+                    End break
+                  </Button>
+                ) : breakTaken ? null : (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleUpdateStatus('ON_BREAK')}
+                    disabled={updating || !inBreakWindow}
+                    className="min-h-target"
+                  >
+                    <Coffee className="mr-1.5 h-4 w-4" />
+                    Lunch break
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
                   onClick={handleEndShift}
                   disabled={updating || capacityUsed > 0 || cashInHand > 0}
-                  className="min-h-[44px]"
+                  className="min-h-target"
                   title={
                     capacityUsed > 0
                       ? 'Deliver active parcels before ending shift'
@@ -324,6 +351,37 @@ export function CourierShiftDashboard() {
           </div>
         </div>
       </SurfaceCard>
+
+      {!isOnline && workday && closedToday && (
+        <StatusBanner tone="info" title={`Closed today (${workday.closedReason ?? 'holiday'})`}>
+          Next working day: {dayLabel(workday.nextWorkingDay)}.
+        </StatusBanner>
+      )}
+      {!isOnline && workday && !closedToday && cannotStart && (
+        <StatusBanner tone="info" title="Outside working hours">
+          {now < hhmm(workday.shiftFrom)
+            ? `Shifts start at ${hhmm(workday.shiftFrom)}.`
+            : `The working day ended at ${hhmm(workday.closesAt)}. Next working day: ${dayLabel(workday.nextWorkingDay)}.`}
+        </StatusBanner>
+      )}
+      {onBreak && (
+        <StatusBanner
+          tone={breakOver ? 'warning' : 'info'}
+          title={
+            breakOver
+              ? `Your break ended at ${colomboClock(shift?.breakEndsAt)}`
+              : `On lunch break until ${colomboClock(shift?.breakEndsAt)}`
+          }
+        >
+          New jobs can still come in. You will see them here.
+        </StatusBanner>
+      )}
+      {working && workday && !breakTaken && !inBreakWindow && now < hhmm(workday.breakUntil) && (
+        <p className="text-caption text-secondary">
+          Lunch break from {hhmm(workday.breakFrom)} to {hhmm(workday.breakUntil)}, up to{' '}
+          {workday.breakMinutes} minutes.
+        </p>
+      )}
 
       {cashInHand > 0 && (
         <StatusBanner tone="warning" title={`${lkr(cashInHand)} in hand`}>

@@ -15,6 +15,7 @@ import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.support.TestCallers;
+import com.swiftdrop.dispatch.support.WorkingHoursClock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -64,6 +66,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * a row lock (no sleeps): PostgreSQL releases blocked writers in arrival order.
  */
 @SpringBootTest(classes = DispatchAssignmentApplication.class)
+@Import(WorkingHoursClock.class)
 @AutoConfigureMockMvc
 @Testcontainers(disabledWithoutDocker = true)
 @ExtendWith(OutputCaptureExtension.class)
