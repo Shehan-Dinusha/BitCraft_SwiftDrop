@@ -75,6 +75,33 @@ class TrackingDataSanitizerProxyTest {
     }
 
     @Test
+    void internalStepsWithTheSamePublicStatusAreOneLine() {
+        Instant start = Instant.parse("2026-11-22T18:10:00Z");
+        List<InternalQueueStatus> steps = List.of(
+                InternalQueueStatus.OUT_FOR_DELIVERY,
+                InternalQueueStatus.RETURN_TO_HUB, InternalQueueStatus.HELD_AT_HUB,
+                InternalQueueStatus.INCOMING, InternalQueueStatus.OUT_FOR_DELIVERY,
+                InternalQueueStatus.RETURN_TO_HUB, InternalQueueStatus.HELD_AT_HUB,
+                InternalQueueStatus.RETURN_OUTBOUND, InternalQueueStatus.RETURN_AT_HUB, InternalQueueStatus.OUT_FOR_RETURN,
+                InternalQueueStatus.FAILED_RETURN);
+        PublicTrackingViewDto view = null;
+        for (int i = 0; i < steps.size(); i++) {
+            view = sanitizer.append(view, new ParcelStatusChangedEvent(null, null, "SD-1", null, null, null,
+                    steps.get(i).toPublicStatus(), steps.get(i), SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY,
+                    null, start.plusSeconds(i)));
+        }
+
+        // The second attempt is a new line: the parcel was on its way in between.
+        assertThat(view.statusTimeline()).extracting(entry -> entry.status()).containsExactly(
+                PublicOrderStatus.OUT_FOR_DELIVERY, PublicOrderStatus.DELIVERY_ATTEMPTED,
+                PublicOrderStatus.IN_TRANSIT, PublicOrderStatus.OUT_FOR_DELIVERY,
+                PublicOrderStatus.DELIVERY_ATTEMPTED, PublicOrderStatus.RETURNING,
+                PublicOrderStatus.RETURNED_TO_SENDER);
+        assertThat(view.statusTimeline().get(1).timestamp()).isEqualTo(start.plusSeconds(1));
+        assertThat(view.currentPublicStatus()).isEqualTo(PublicOrderStatus.RETURNED_TO_SENDER);
+    }
+
+    @Test
     void dropsUnknownPiiFieldsFromRawEventJson() throws Exception {
         String raw = """
                 {
