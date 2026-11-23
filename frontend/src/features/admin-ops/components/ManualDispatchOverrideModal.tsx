@@ -8,7 +8,7 @@ import type {
 import { vehicleLabel } from '@/utils/vehicles';
 import { cn } from '@/utils/cn';
 import { Badge, RouteCell, TableSkeleton, TrackingCell } from './dispatch/DispatchTable';
-import { amount, blockedBecause, parcelSize } from './dispatch/courierFit';
+import { amount, blockedBecause, onBreakUntil, parcelSize } from './dispatch/courierFit';
 
 interface Props {
   order: DispatchAssignmentResponse | null;
@@ -183,6 +183,7 @@ function CourierOption({
         <span className="flex flex-wrap items-center gap-2 font-semibold text-primary">
           {courier.courierName ?? courier.courierId}
           {recommended ? <Badge tone="success">Best match</Badge> : null}
+          {courier.breakEndsAt ? <Badge tone="info">{onBreakUntil(courier.breakEndsAt)}</Badge> : null}
         </span>
         <span className="text-secondary">{vehicleLabel(courier.vehicleType)}</span>
       </span>

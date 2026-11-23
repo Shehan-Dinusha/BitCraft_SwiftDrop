@@ -68,6 +68,13 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(409, "Shift Conflict", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(ShiftRuleException.class)
+    public ResponseEntity<ApiErrorResponse> handleShiftRule(ShiftRuleException ex, HttpServletRequest request) {
+        log.warn("Shift rule on {}: {}", LogSanitizer.clean(request.getRequestURI()), LogSanitizer.clean(ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(409, "Shift Conflict", ex.getMessage(), request.getRequestURI()));
+    }
+
     /**
      * Only a unique-key violation is a genuine conflict with an existing record
      * (for example two first-time shift starts for the same courier). Any other

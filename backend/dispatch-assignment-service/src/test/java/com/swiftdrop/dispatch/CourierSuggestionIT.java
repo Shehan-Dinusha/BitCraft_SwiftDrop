@@ -71,21 +71,21 @@ class CourierSuggestionIT {
     }
 
     @Test
-    @DisplayName("Only AVAILABLE couriers below capacity are eligible; ON_BREAK, BUSY and full say why, OFFLINE is left out")
-    void onlyAvailableCouriersBelowCapacityAreSuggested() {
-        UUID eligible = courier(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE, 4, 5, null);
+    @DisplayName("Couriers on shift with room are eligible, those on their lunch break last; full say why, OFFLINE is left out")
+    void couriersOnShiftWithRoomAreSuggested() {
+        UUID almostFull = courier(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE, 4, 5, null);
         courier(SriLankanDistrict.COLOMBO, ShiftStatus.OFFLINE, 0, 5, null);
-        courier(SriLankanDistrict.COLOMBO, ShiftStatus.ON_BREAK, 0, 5, null);
-        courier(SriLankanDistrict.COLOMBO, ShiftStatus.BUSY, 2, 5, null);
+        UUID onBreak = courier(SriLankanDistrict.COLOMBO, ShiftStatus.ON_BREAK, 0, 5, null);
+        UUID stillBusy = courier(SriLankanDistrict.COLOMBO, ShiftStatus.BUSY, 2, 5, null); // a stale BUSY
         courier(SriLankanDistrict.COLOMBO, ShiftStatus.AVAILABLE, 5, 5, null); // full but still AVAILABLE
         UUID orderId = order(AssignmentStatus.UNASSIGNED, null, SriLankanDistrict.COLOMBO);
 
         List<CourierSuggestionResponse> suggestions = dispatchAssignmentService.getSuggestions(orderId);
         assertThat(suggestions).filteredOn(CourierSuggestionResponse::eligible)
-                .extracting(CourierSuggestionResponse::courierId).containsExactly(eligible);
+                .extracting(CourierSuggestionResponse::courierId).containsExactly(stillBusy, almostFull, onBreak);
         assertThat(suggestions).filteredOn(s -> !s.eligible())
                 .extracting(CourierSuggestionResponse::ineligibleReason)
-                .containsExactlyInAnyOrder(CourierBlock.ON_BREAK, CourierBlock.BUSY, CourierBlock.PARCEL_LIMIT);
+                .containsExactly(CourierBlock.PARCEL_LIMIT);
     }
 
     @Test

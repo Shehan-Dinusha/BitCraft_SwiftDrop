@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bell,
   BookOpen,
+  CalendarDays,
   Calculator,
   ChevronDown,
   ChevronRight,
@@ -63,7 +64,8 @@ export const navIcons = {
   logout: LogOut,
   chevronRight: ChevronRight,
   sparkles: Sparkles,
-  book: BookOpen
+  book: BookOpen,
+  calendar: CalendarDays
 } as const satisfies Record<string, LucideIcon>;
 
 export type NavIconName = keyof typeof navIcons;

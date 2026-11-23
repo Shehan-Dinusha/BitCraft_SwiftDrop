@@ -248,7 +248,8 @@ public class ManualOverrideService {
     private void incrementWorkload(CourierShift courier) {
         int newCount = courier.getActiveParcelsCount() + 1;
         courier.setActiveParcelsCount(newCount);
-        if (newCount >= courier.getMaxCapacity()) {
+        // A courier on their break stays on it; they see the new parcel when they are back.
+        if (courier.getShiftStatus() == ShiftStatus.AVAILABLE && newCount >= courier.getMaxCapacity()) {
             courier.setShiftStatus(ShiftStatus.BUSY);
         }
         courierShiftRepository.save(courier);

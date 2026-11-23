@@ -813,7 +813,10 @@ paths:
         A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their
         district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and
         parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier
-        Not Available.
+        Not Available. A shift starts only on a working day (Monday to Saturday, not a listed holiday) from
+        7:30 until 17:00 Sri Lanka time; otherwise 409 Shift Conflict says when the next working day is. A
+        shift started after 9:00 is marked startedLate. Starting a shift that is already running returns it
+        unchanged.
       operationId: startShift
       requestBody:
         required: true
@@ -916,9 +919,14 @@ paths:
     put:
       tags:
         - CourierAvailability
-      summary: Update courier shift status
+      summary: Start or end the lunch break
       description: >-
-        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+        ON_BREAK starts the one lunch break of the shift (started between 12:00 and 14:30 Sri Lanka time, up to
+        45 minutes); AVAILABLE ends it, and the courier becomes BUSY again if every parcel place is taken.
+        OFFLINE and BUSY are refused with 409 Shift Conflict: a shift ends through End shift, which checks
+        parcels and cash, and BUSY follows the parcels held. A courier on break keeps their parcels and can
+        be given more. A COURIER may use only their own courier ID (their user ID); DISPATCHER and
+        SYSTEM_ADMIN may use any.
       operationId: updateShiftStatus
       requestBody:
         required: true
@@ -941,6 +949,107 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
           description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "409":
+          description: >-
+            Shift Conflict: OFFLINE or BUSY asked for, the shift has not started, the break is outside 12:00 to
+            14:30, or the shift's break was already taken.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
+  /api/v1/dispatch/calendar/today:
+    get:
+      tags:
+        - WorkingDay
+      summary: Today's working day
+      description: >-
+        Whether today is open, the hours, the lunch break and the coming holidays, in Sri Lanka time.
+        Couriers work Monday to Saturday, 8:00 to 17:00; Sundays and listed holidays are closed. For COURIER,
+        DISPATCHER and SYSTEM_ADMIN.
+      operationId: getWorkingDay
+      responses:
+        "200":
+          description: Today's working day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseWorkdayResponse"
+        "403":
+          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
+  /api/v1/dispatch/calendar/closed-days:
+    post:
+      tags:
+        - WorkingDay
+      summary: Close a holiday
+      description: >-
+        Nobody works that day: shifts cannot start. Today or later, and not a Sunday (always closed).
+        SYSTEM_ADMIN only. Returns the holidays from today on.
+      operationId: addClosedDay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClosedDayRequest"
+      responses:
+        "200":
+          description: Holiday closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListClosedDayResponse"
+        "400":
+          description: A past day, a Sunday, a day already closed, or a missing name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
+  /api/v1/dispatch/calendar/closed-days/{day}:
+    delete:
+      tags:
+        - WorkingDay
+      summary: Reopen a holiday
+      description: Today or later only. SYSTEM_ADMIN only. Returns the holidays from today on.
+      operationId: removeClosedDay
+      parameters:
+        - name: day
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Holiday reopened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListClosedDayResponse"
+        "400":
+          description: A past day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a SYSTEM_ADMIN
           content:
             application/json:
               schema:
@@ -1070,9 +1179,10 @@ components:
       type: string
       description: >-
         Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all.
-        PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds.
+        PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds. A courier on
+        their lunch break is not blocked.
       enum:
-        [OFF_SHIFT, ON_BREAK, BUSY, TOO_LONG, TOO_HEAVY, TOO_BIG, PARCEL_LIMIT, WEIGHT_LIMIT, VOLUME_LIMIT]
+        [OFF_SHIFT, TOO_LONG, TOO_HEAVY, TOO_BIG, PARCEL_LIMIT, WEIGHT_LIMIT, VOLUME_LIMIT]
 
     OrderSpeed:
       type: string
@@ -1283,6 +1393,10 @@ components:
           items:
             type: string
             format: uuid
+        breakEndsAt:
+          description: While the courier is on their lunch break, when it should end.
+          type: [string, "null"]
+          format: date-time
 
     AssignShopPickupRequest:
       type: object
@@ -1447,6 +1561,24 @@ components:
           type: number
         maxVolumeLitres:
           type: integer
+        breakStartedAt:
+          description: When the lunch break of this shift started.
+          type: [string, "null"]
+          format: date-time
+        breakEndsAt:
+          description: When that break should end, 45 minutes after it started.
+          type: [string, "null"]
+          format: date-time
+        breakEndedAt:
+          description: When that break ended.
+          type: [string, "null"]
+          format: date-time
+        startedLate:
+          description: Whether the shift started after 9:00.
+          type: boolean
+        closedAutomatically:
+          description: Whether the courier left the shift open and it was closed at night.
+          type: boolean
 
     CourierWorkloadResponse:
       type: object
@@ -1503,6 +1635,123 @@ components:
           type: boolean
         ineligibleReason:
           $ref: "#/components/schemas/CourierBlock"
+        breakEndsAt:
+          description: >-
+            While the courier is on their lunch break, when it should end. They can still be given the order
+            and see it when they are back.
+          type: [string, "null"]
+          format: date-time
+
+    WorkdayResponse:
+      type: object
+      description: Today's working day, in Sri Lanka time.
+      required:
+        - date
+        - open
+        - nextWorkingDay
+        - shiftCanStart
+        - opensAt
+        - closesAt
+        - shiftFrom
+        - breakFrom
+        - breakUntil
+        - breakMinutes
+        - closedDays
+      properties:
+        date:
+          type: string
+          format: date
+        open:
+          description: Whether today is a working day.
+          type: boolean
+        closedReason:
+          description: Why today is closed, "Sunday" or the holiday's name.
+          type: [string, "null"]
+        nextWorkingDay:
+          type: string
+          format: date
+        shiftCanStart:
+          description: Whether a courier can start a shift right now.
+          type: boolean
+        opensAt:
+          type: string
+          example: "08:00"
+        closesAt:
+          type: string
+          example: "17:00"
+        shiftFrom:
+          type: string
+          example: "07:30"
+        breakFrom:
+          type: string
+          example: "12:00"
+        breakUntil:
+          type: string
+          example: "14:30"
+        breakMinutes:
+          type: integer
+          example: 45
+        closedDays:
+          description: Listed holidays from today on.
+          type: array
+          items:
+            $ref: "#/components/schemas/ClosedDayResponse"
+
+    ClosedDayResponse:
+      type: object
+      required:
+        - day
+        - name
+      properties:
+        day:
+          type: string
+          format: date
+        name:
+          type: string
+          example: Unduvap Poya Day
+
+    ClosedDayRequest:
+      type: object
+      required:
+        - day
+        - name
+      properties:
+        day:
+          description: Today or later, and not a Sunday.
+          type: string
+          format: date
+        name:
+          type: string
+          maxLength: 64
+          example: Unduvap Poya Day
+
+    ApiResponseWorkdayResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/WorkdayResponse"
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponseListClosedDayResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClosedDayResponse"
+        timestamp:
+          type: string
+          format: date-time
 
     ApiErrorResponse:
       type: object

@@ -62,6 +62,17 @@ public class CourierShift {
     @Column(name = "last_heartbeat_at")
     private Instant lastHeartbeatAt;
 
+    /** The lunch break of the current shift: one per shift. */
+    @Column(name = "break_started_at")
+    private Instant breakStartedAt;
+
+    @Column(name = "break_ended_at")
+    private Instant breakEndedAt;
+
+    /** The courier left the shift open and it was closed at night. */
+    @Column(name = "closed_automatically", nullable = false)
+    private boolean closedAutomatically;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -101,8 +112,14 @@ public class CourierShift {
         updatedAt = Instant.now();
     }
 
+    /** On shift (a courier on break keeps their parcels and can be given more) with a parcel place free. */
     public boolean canAcceptParcel() {
-        return shiftStatus == ShiftStatus.AVAILABLE && activeParcelsCount < maxCapacity;
+        return shiftStatus != ShiftStatus.OFFLINE && activeParcelsCount < maxCapacity;
+    }
+
+    /** The status a working courier has: BUSY when every parcel place is taken, AVAILABLE otherwise. */
+    public ShiftStatus workingStatus() {
+        return activeParcelsCount >= maxCapacity ? ShiftStatus.BUSY : ShiftStatus.AVAILABLE;
     }
 
     public Long getId() { return id; }
@@ -140,6 +157,15 @@ public class CourierShift {
 
     public Instant getLastHeartbeatAt() { return lastHeartbeatAt; }
     public void setLastHeartbeatAt(Instant lastHeartbeatAt) { this.lastHeartbeatAt = lastHeartbeatAt; }
+
+    public Instant getBreakStartedAt() { return breakStartedAt; }
+    public void setBreakStartedAt(Instant breakStartedAt) { this.breakStartedAt = breakStartedAt; }
+
+    public Instant getBreakEndedAt() { return breakEndedAt; }
+    public void setBreakEndedAt(Instant breakEndedAt) { this.breakEndedAt = breakEndedAt; }
+
+    public boolean isClosedAutomatically() { return closedAutomatically; }
+    public void setClosedAutomatically(boolean closedAutomatically) { this.closedAutomatically = closedAutomatically; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

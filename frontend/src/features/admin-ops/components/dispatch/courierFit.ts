@@ -3,6 +3,7 @@ import type {
   DispatchAssignmentResponse
 } from '@/services/api/dispatchApi';
 import { vehicleLabel } from '@/utils/vehicles';
+import { colomboClock } from '@/utils/colomboDate';
 
 /** `12`, `2.5`: one decimal at most, with thousands separators. */
 export const amount = (value?: number) =>
@@ -15,6 +16,10 @@ export function parcelSize(order: DispatchAssignmentResponse): string | undefine
   return `${amount(lengthCm)} × ${amount(widthCm)} × ${amount(heightCm)} cm · ${amount(weightKg)} kg`;
 }
 
+/** `On break until 13:15` while a courier is on lunch, otherwise undefined. They can still be given parcels. */
+export const onBreakUntil = (breakEndsAt?: string | null) =>
+  breakEndsAt ? `On break until ${colomboClock(breakEndsAt)}` : undefined;
+
 /** Why a courier cannot take the parcel, in the dispatcher's words. Undefined when they can. */
 export function blockedBecause(courier: CourierSuggestionResponse): string | undefined {
   const vehicle = vehicleLabel(courier.vehicleType).toLowerCase();
@@ -24,10 +29,6 @@ export function blockedBecause(courier: CourierSuggestionResponse): string | und
       return courier.eligible === false ? 'Not available' : undefined;
     case 'OFF_SHIFT':
       return 'Off shift';
-    case 'ON_BREAK':
-      return 'On break';
-    case 'BUSY':
-      return 'Busy';
     case 'TOO_LONG':
       return `Too long for a ${vehicle} (up to ${amount(courier.maxSideCm)} cm)`;
     case 'TOO_HEAVY':

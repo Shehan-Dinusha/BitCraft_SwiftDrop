@@ -5,6 +5,7 @@ import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.service.CourierLoad;
+import com.swiftdrop.dispatch.service.WorkingDay;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -56,7 +57,22 @@ public record CourierShiftResponse(
         BigDecimal activeVolumeLitres,
 
         @Schema(description = "Volume the vehicle carries, in litres")
-        Integer maxVolumeLitres
+        Integer maxVolumeLitres,
+
+        @Schema(description = "When the lunch break of this shift started; null before it")
+        Instant breakStartedAt,
+
+        @Schema(description = "When that break should end, 45 minutes after it started; null before it")
+        Instant breakEndsAt,
+
+        @Schema(description = "When that break ended; null while on it or before it")
+        Instant breakEndedAt,
+
+        @Schema(description = "Whether the shift started after 9:00")
+        boolean startedLate,
+
+        @Schema(description = "Whether the courier left the shift open and it was closed at night")
+        boolean closedAutomatically
 ) {
     public static CourierShiftResponse fromEntity(CourierShift entity, CourierLoad load) {
         return new CourierShiftResponse(
@@ -74,7 +90,12 @@ public record CourierShiftResponse(
                 load.weightKg(),
                 entity.getVehicleType().maxWeightKg(),
                 load.volumeLitres(),
-                entity.getVehicleType().maxVolumeLitres()
+                entity.getVehicleType().maxVolumeLitres(),
+                entity.getBreakStartedAt(),
+                WorkingDay.breakEndsAt(entity.getBreakStartedAt()),
+                entity.getBreakEndedAt(),
+                WorkingDay.startedLate(entity.getShiftStartedAt()),
+                entity.isClosedAutomatically()
         );
     }
 }

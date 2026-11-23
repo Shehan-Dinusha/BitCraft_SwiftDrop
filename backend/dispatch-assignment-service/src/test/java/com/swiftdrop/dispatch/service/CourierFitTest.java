@@ -40,14 +40,17 @@ class CourierFitTest {
     }
 
     @Test
-    @DisplayName("Off shift, on break and busy couriers cannot take anything")
+    @DisplayName("An off-shift courier cannot take anything; one on their lunch break can, with room left")
     void shiftStatus() {
-        for (var expected : java.util.Map.of(ShiftStatus.OFFLINE, CourierBlock.OFF_SHIFT,
-                ShiftStatus.ON_BREAK, CourierBlock.ON_BREAK, ShiftStatus.BUSY, CourierBlock.BUSY).entrySet()) {
-            CourierShift courier = courier(VehicleType.LORRY, 0);
-            courier.setShiftStatus(expected.getKey());
-            assertThat(CourierFit.block(courier, CourierLoad.NONE, parcel("10", "10", "10", "1"))).contains(expected.getValue());
-        }
+        CourierShift courier = courier(VehicleType.LORRY, 0);
+        courier.setShiftStatus(ShiftStatus.OFFLINE);
+        assertThat(CourierFit.block(courier, CourierLoad.NONE, parcel("10", "10", "10", "1"))).contains(CourierBlock.OFF_SHIFT);
+
+        courier.setShiftStatus(ShiftStatus.ON_BREAK);
+        assertThat(CourierFit.block(courier, CourierLoad.NONE, parcel("10", "10", "10", "1"))).isEmpty();
+        CourierShift full = courier(VehicleType.MOTORCYCLE, 5);
+        full.setShiftStatus(ShiftStatus.ON_BREAK);
+        assertThat(CourierFit.block(full, CourierLoad.NONE, parcel("10", "10", "10", "1"))).contains(CourierBlock.PARCEL_LIMIT);
     }
 
     @Test
