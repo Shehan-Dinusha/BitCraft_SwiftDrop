@@ -33,7 +33,10 @@ const open = () =>
     </MemoryRouter>
   );
 
-const pickupButtons = () => screen.queryAllByRole('button', { name: 'Confirm pickup' });
+/** The one control for the next step is a slide; Enter confirms it, as for a keyboard user. */
+const pickupSlides = () => screen.queryAllByRole('button', { name: 'Slide to confirm pickup' });
+const confirm = (slide: HTMLElement) => fireEvent.keyDown(slide, { key: 'Enter' });
+const locked = (slide: HTMLElement) => expect(slide).toHaveAttribute('aria-disabled', 'true');
 
 describe('ActiveDeliveryExecutionPage cash', () => {
   beforeEach(() => {
@@ -59,11 +62,12 @@ describe('ActiveDeliveryExecutionPage cash', () => {
     open();
 
     const box = await screen.findByRole('checkbox');
-    pickupButtons().forEach((button) => expect(button).toBeDisabled());
+    expect(pickupSlides()).toHaveLength(1);
+    locked(pickupSlides()[0]);
 
     fireEvent.click(box);
-    await waitFor(() => expect(pickupButtons()[0]).toBeEnabled());
-    fireEvent.click(pickupButtons()[0]);
+    await waitFor(() => expect(pickupSlides()[0]).not.toHaveAttribute('aria-disabled'));
+    confirm(pickupSlides()[0]);
 
     await waitFor(() =>
       expect(transition).toHaveBeenCalledWith(
@@ -80,9 +84,9 @@ describe('ActiveDeliveryExecutionPage cash', () => {
       .mockResolvedValue({ ...session, currentState: 'PICKED_UP' });
     open();
 
-    await waitFor(() => expect(pickupButtons()[0]).toBeEnabled());
+    await waitFor(() => expect(pickupSlides()[0]).not.toHaveAttribute('aria-disabled'));
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-    fireEvent.click(pickupButtons()[0]);
+    confirm(pickupSlides()[0]);
 
     await waitFor(() => expect(transition).toHaveBeenCalled());
     expect(transition.mock.calls[0][1].cashCollected).toBeUndefined();
@@ -93,7 +97,7 @@ describe('ActiveDeliveryExecutionPage cash', () => {
     open();
 
     expect(await screen.findByText('Addresses not loaded')).toBeInTheDocument();
-    pickupButtons().forEach((button) => expect(button).toBeDisabled());
+    pickupSlides().forEach(locked);
   });
 
   it('offers no pickup for a cancelled order', async () => {
@@ -101,7 +105,7 @@ describe('ActiveDeliveryExecutionPage cash', () => {
     open();
 
     expect(await screen.findByText('This order was cancelled')).toBeInTheDocument();
-    expect(pickupButtons()).toHaveLength(0);
+    expect(pickupSlides()).toHaveLength(0);
   });
 });
 
@@ -148,8 +152,16 @@ describe('ActiveDeliveryExecutionPage failed deliveries and returns', () => {
       )
     );
     expect(
-      await screen.findByRole('button', { name: 'Handed in at the Colombo hub' })
+      await screen.findByRole('button', { name: 'Slide when handed in at the Colombo hub' })
     ).toBeInTheDocument();
+  });
+
+  it('offers one control for the step, not a slide and buttons doing the same', async () => {
+    show({ currentState: 'PICKED_UP' });
+
+    expect(await screen.findByRole('button', { name: 'Slide to start the trip' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start trip/i })).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: /trip/i })).toHaveLength(1);
   });
 
   it('is done with the parcel once it is handed in', async () => {
@@ -160,7 +172,7 @@ describe('ActiveDeliveryExecutionPage failed deliveries and returns', () => {
       courierId: undefined
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Handed in at the Colombo hub' }));
+    confirm(await screen.findByRole('button', { name: 'Slide when handed in at the Colombo hub' }));
 
     expect(await screen.findByRole('heading', { name: 'Handed in at the hub' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Lost or damaged' })).not.toBeInTheDocument();
@@ -177,7 +189,7 @@ describe('ActiveDeliveryExecutionPage failed deliveries and returns', () => {
 
     expect(await screen.findByText('Return to the sender')).toBeInTheDocument();
     expect(screen.getByText('Nimal Perera')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Complete return' }));
+    confirm(screen.getByRole('button', { name: 'Slide to take the photo and return it' }));
     expect(await screen.findByRole('dialog', { name: 'Proof of return' })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
 

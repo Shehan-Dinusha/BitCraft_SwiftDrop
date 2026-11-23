@@ -7,6 +7,8 @@ import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.dispatch.client.CourierCashClient;
 import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
+import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
+import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierProfileRepository;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
@@ -99,6 +101,7 @@ public class CourierShiftService {
         shift.setLastHeartbeatAt(now);
         shift.setBreakStartedAt(null);
         shift.setBreakEndedAt(null);
+        shift.setRunStartedAt(null);
         shift.setClosedAutomatically(false);
 
         shift = courierShiftRepository.save(shift);
@@ -132,6 +135,39 @@ public class CourierShiftService {
         close(shift);
         shift = courierShiftRepository.save(shift);
         return toResponse(shift);
+    }
+
+    /**
+     * The courier leaves the hub on their run. Everything waiting for them at the hub must be loaded first:
+     * once they are on the road they get only pickups. Leaving again changes nothing.
+     */
+    @Transactional
+    public CourierShiftResponse startRun(UUID courierId) {
+        CourierShift shift = courierShiftRepository.findByCourierId(courierId)
+                .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
+        if (shift.getShiftStatus() == ShiftStatus.OFFLINE) {
+            throw new ShiftRuleException("Start the shift first.");
+        }
+        if (shift.isOnRun()) {
+            return toResponse(shift);
+        }
+        if (shift.getShiftStatus() == ShiftStatus.ON_BREAK) {
+            throw new ShiftRuleException("End your break first.");
+        }
+        List<String> toLoad = assignmentRepository.findByCourierId(courierId).stream()
+                .filter(parcel -> (parcel.getStatus() == AssignmentStatus.ASSIGNED
+                        || parcel.getStatus() == AssignmentStatus.REASSIGNED)
+                        && parcel.startsAtHub() && parcel.getPickedUpAt() == null)
+                .map(DispatchAssignment::getTrackingNumber)
+                .toList();
+        if (!toLoad.isEmpty()) {
+            throw new ShiftRuleException("Load these parcels first: " + String.join(", ", toLoad) + ".");
+        }
+        Instant now = workingDay.now();
+        shift.setRunStartedAt(now);
+        shift.setLastHeartbeatAt(now);
+        log.info("Courier {} left on their run", courierId);
+        return toResponse(courierShiftRepository.save(shift));
     }
 
     /**

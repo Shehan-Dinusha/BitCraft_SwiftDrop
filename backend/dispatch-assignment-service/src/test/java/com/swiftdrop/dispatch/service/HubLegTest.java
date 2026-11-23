@@ -43,6 +43,7 @@ class HubLegTest {
     @Mock private DispatchAssignmentRepository assignments;
     @Mock private CourierShiftRepository couriers;
     @Mock private DispatchEventPublisher eventPublisher;
+    @Mock private WorkingDay workingDay;
 
     private DispatchAssignmentService dispatchService;
     private ManualOverrideService overrideService;
@@ -53,8 +54,8 @@ class HubLegTest {
 
     @BeforeEach
     void colomboToKandyPickedUp() {
-        dispatchService = new DispatchAssignmentService(assignments, couriers);
-        overrideService = new ManualOverrideService(assignments, couriers, eventPublisher);
+        dispatchService = new DispatchAssignmentService(assignments, couriers, workingDay);
+        overrideService = new ManualOverrideService(assignments, couriers, eventPublisher, workingDay);
         order = new DispatchAssignment();
         order.setOrderId(orderId);
         order.setTrackingNumber("SD-7K2P-Q9XM");

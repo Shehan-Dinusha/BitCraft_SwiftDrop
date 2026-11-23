@@ -43,6 +43,9 @@ public record WorkdayResponse(
         @Schema(description = "Lunch break length in minutes", example = "45")
         int breakMinutes,
 
+        @Schema(description = "New pickups are given out until", type = "string", example = "15:00")
+        LocalTime pickupCutoff,
+
         @Schema(description = "Listed holidays from today on")
         List<ClosedDayResponse> closedDays
 ) {

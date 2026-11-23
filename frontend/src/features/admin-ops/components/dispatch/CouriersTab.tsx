@@ -79,7 +79,10 @@ export function CouriersTab({
   );
 }
 
-/** What the dispatcher should know about the shift: the break, a late start, a shift left open overnight. */
+/**
+ * What the dispatcher should know about the shift: at the hub or on the road (hub parcels go only to couriers at
+ * the hub), the break, a late start, a shift left open overnight.
+ */
 function ShiftNote({ courier }: { courier: CourierShiftResponse }) {
   const status = courier.shiftStatus;
   if (status === 'ON_BREAK') {
@@ -95,7 +98,14 @@ function ShiftNote({ courier }: { courier: CourierShiftResponse }) {
       <p className="text-status-warning-fg">Left open, closed at night</p>
     ) : null;
   }
-  return courier.startedLate ? (
-    <p className="text-status-warning-fg">Started late, {colomboClock(courier.shiftStartedAt)}</p>
-  ) : null;
+  return (
+    <>
+      <p className="text-secondary">
+        {courier.runStartedAt ? `On the road since ${colomboClock(courier.runStartedAt)}` : 'At the hub'}
+      </p>
+      {courier.startedLate ? (
+        <p className="text-status-warning-fg">Started late, {colomboClock(courier.shiftStartedAt)}</p>
+      ) : null}
+    </>
+  );
 }

@@ -442,6 +442,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/couriers/shifts/{courierId}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leave the hub on the run
+         * @description Refused while parcels waiting at the hub for the courier are not loaded, while on break, or off shift. Afterwards hub parcels go only to couriers still at the hub, and this courier gets only pickups, until 15:00. Leaving again changes nothing. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.
+         */
+        post: operations["startRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatch/couriers/shifts/status": {
         parameters: {
             query?: never;
@@ -588,10 +608,10 @@ export interface components {
          */
         VehicleType: "MOTORCYCLE" | "THREE_WHEELER" | "VAN" | "LORRY";
         /**
-         * @description Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all. PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds. A courier on their lunch break is not blocked.
+         * @description Why a courier cannot take a parcel. TOO_LONG, TOO_HEAVY and TOO_BIG: it does not fit the vehicle at all. PARCEL_LIMIT, WEIGHT_LIMIT and VOLUME_LIMIT: no room left beside what the courier holds. A courier on their lunch break is not blocked. ON_RUN: the parcel waits at a hub and the courier has left on their run. PICKUPS_CLOSED: a pickup, and pickups are given out only until 15:00.
          * @enum {string}
          */
-        CourierBlock: "OFF_SHIFT" | "TOO_LONG" | "TOO_HEAVY" | "TOO_BIG" | "PARCEL_LIMIT" | "WEIGHT_LIMIT" | "VOLUME_LIMIT";
+        CourierBlock: "OFF_SHIFT" | "ON_RUN" | "PICKUPS_CLOSED" | "TOO_LONG" | "TOO_HEAVY" | "TOO_BIG" | "PARCEL_LIMIT" | "WEIGHT_LIMIT" | "VOLUME_LIMIT";
         /** @enum {string} */
         OrderSpeed: "STANDARD" | "EXPRESS" | "SAME_DAY";
         /** @enum {string} */
@@ -803,6 +823,11 @@ export interface components {
             breakEndedAt?: string | null;
             /** @description Whether the shift started after 9:00. */
             startedLate?: boolean;
+            /**
+             * Format: date-time
+             * @description When the courier left the hub on their run; null while at the hub.
+             */
+            runStartedAt?: string | null;
             /** @description Whether the courier left the shift open and it was closed at night. */
             closedAutomatically?: boolean;
         };
@@ -866,6 +891,11 @@ export interface components {
             breakUntil: string;
             /** @example 45 */
             breakMinutes: number;
+            /**
+             * @description New pickups are given out until this time.
+             * @example 15:00
+             */
+            pickupCutoff: string;
             /** @description Listed holidays from today on. */
             closedDays: components["schemas"]["ClosedDayResponse"][];
         };
@@ -2022,6 +2052,46 @@ export interface operations {
                 };
             };
             /** @description Shift Conflict: the courier still has active parcels, so the shift is left unchanged. Also returned as Courier Not Available for an unknown courier, or Conflict when the courier's record was changed by a concurrent operation. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    startRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Run started */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Shift Conflict, naming the parcels still to load, or saying to end the break or start the shift */
             409: {
                 headers: {
                     [name: string]: unknown;

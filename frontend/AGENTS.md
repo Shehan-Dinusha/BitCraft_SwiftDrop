@@ -12,7 +12,7 @@ The live density mapping is defined in [density.ts](src/design-system/tokens/den
 
 | Persona folder        | Density       | Required interaction model                                                                    |
 | --------------------- | ------------- | --------------------------------------------------------------------------------------------- |
-| `features/courier/`   | `kinetic`     | Fitts-friendly controls, minimum 56px tap targets, and bottom thumb-zone `ErgonomicActionBar` |
+| `features/courier/`   | `kinetic`     | Fitts-friendly controls, minimum 56px tap targets, and a bottom thumb-zone action: **one** `SlideToTransitionBar` per delivery step (`courierStep`), never a slide plus buttons for the same step |
 | `features/customer/`  | `comfortable` | Hick’s Law progressive disclosure; reveal complexity progressively                            |
 | `features/admin-ops/` | `compact`     | High-density scannable operational grids                                                      |
 | `features/merchant/`  | `compact`     | High-density scannable business grids                                                         |
@@ -54,7 +54,7 @@ The app is an installable PWA built with `vite-plugin-pwa` (config in `vite.conf
 
 - The service worker precaches the app's own build output only. **Never cache API responses**: they hold addresses, phone numbers and orders, and a shared phone must not show the previous user's data. `/api`, `/ws` and the gateway docs paths are on the navigation-fallback denylist.
 - `registerType: 'prompt'`: a new version waits until the user taps "Reload", so a courier is never reloaded mid-delivery.
-- `PwaLayer` (mounted in `main.tsx`) shows the offline banner, update prompt and install prompt, pinned to the **top** of the screen so they never cover the bottom navigation or the courier's `ErgonomicActionBar`. The install prompt is for signed-in couriers and customers only.
+- `PwaLayer` (mounted in `main.tsx`) shows the offline banner, update prompt and install prompt, pinned to the **top** of the screen so they never cover the bottom navigation or the courier's step slide. The install prompt is for signed-in couriers and customers only.
 - Never ask for a browser permission (notifications, camera) on page load; only from a user tap. Device location is not used at all.
 - nginx serves `sw.js`, `manifest.webmanifest` and `index.html` with `Cache-Control: no-cache` through a `map`. The nginx config exists twice, `frontend/nginx.conf` (Docker) and `frontend.nginxConfig` in `infra/helm/swiftdrop/values.yaml` (Kubernetes); change both. In nginx, an `add_header` inside a `location` drops every server-level security header, so do not add one there.
 - PWA features only run in a production build: `npm run build && npm run preview`, not `npm run dev`.

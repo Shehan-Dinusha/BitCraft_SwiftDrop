@@ -7,7 +7,6 @@ import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.dto.UpdateShiftStatusRequest;
 import com.swiftdrop.dispatch.support.TestCallers;
-import com.swiftdrop.dispatch.support.WorkingHoursClock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -40,7 +38,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 /** The working calendar and the shift rules over HTTP, against the real schema. Today is Tuesday 24 November 2026. */
 @SpringBootTest(classes = DispatchAssignmentApplication.class)
-@Import(WorkingHoursClock.class)
 @AutoConfigureMockMvc
 @Testcontainers(disabledWithoutDocker = true)
 class WorkingDayIT {

@@ -51,6 +51,10 @@ class ManualOverrideServiceTest {
     @Mock
     private DispatchEventPublisher eventPublisher;
 
+    /** Pickups still open: the mock answers false to pickupsClosed(). */
+    @Mock
+    private WorkingDay workingDay;
+
     @InjectMocks
     private ManualOverrideService manualOverrideService;
 

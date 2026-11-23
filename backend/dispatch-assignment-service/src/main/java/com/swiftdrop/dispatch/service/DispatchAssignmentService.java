@@ -48,12 +48,15 @@ public class DispatchAssignmentService {
 
     private final DispatchAssignmentRepository assignmentRepository;
     private final CourierShiftRepository courierShiftRepository;
+    private final WorkingDay workingDay;
 
     public DispatchAssignmentService(
             DispatchAssignmentRepository assignmentRepository,
-            CourierShiftRepository courierShiftRepository) {
+            CourierShiftRepository courierShiftRepository,
+            WorkingDay workingDay) {
         this.assignmentRepository = assignmentRepository;
         this.courierShiftRepository = courierShiftRepository;
+        this.workingDay = workingDay;
     }
 
     @Transactional(readOnly = true)
@@ -177,6 +180,7 @@ public class DispatchAssignmentService {
         Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
                 candidates.stream().map(CourierShift::getCourierId).toList());
         boolean sized = assignment.getVolumeLitres() != null;
+        boolean pickupsClosed = workingDay.pickupsClosed();
 
         record Option(CourierShift courier, CourierLoad load, CourierBlock block) {}
         // Couriers at work come before those on their lunch break, who can still be given it.
@@ -191,7 +195,7 @@ public class DispatchAssignmentService {
         return candidates.stream()
                 .map(courier -> {
                     CourierLoad load = loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE);
-                    return new Option(courier, load, CourierFit.block(courier, load, assignment).orElse(null));
+                    return new Option(courier, load, CourierFit.block(courier, load, assignment, pickupsClosed).orElse(null));
                 })
                 .sorted(ranking)
                 .map(option -> CourierSuggestionResponse.of(option.courier(), option.load(), option.block(), district))

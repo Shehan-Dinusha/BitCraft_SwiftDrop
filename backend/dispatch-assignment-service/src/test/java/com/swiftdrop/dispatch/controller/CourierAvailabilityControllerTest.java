@@ -89,6 +89,7 @@ class CourierAvailabilityControllerTest {
                 null,
                 null,
                 false,
+                null,
                 false
         );
 
@@ -129,6 +130,7 @@ class CourierAvailabilityControllerTest {
                 null,
                 null,
                 false,
+                null,
                 false
         );
 

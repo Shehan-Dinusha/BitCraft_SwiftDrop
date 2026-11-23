@@ -69,6 +69,10 @@ public class CourierShift {
     @Column(name = "break_ended_at")
     private Instant breakEndedAt;
 
+    /** When the courier left the hub on their run; null while they are at the hub. */
+    @Column(name = "run_started_at")
+    private Instant runStartedAt;
+
     /** The courier left the shift open and it was closed at night. */
     @Column(name = "closed_automatically", nullable = false)
     private boolean closedAutomatically;
@@ -163,6 +167,12 @@ public class CourierShift {
 
     public Instant getBreakEndedAt() { return breakEndedAt; }
     public void setBreakEndedAt(Instant breakEndedAt) { this.breakEndedAt = breakEndedAt; }
+
+    public Instant getRunStartedAt() { return runStartedAt; }
+    public void setRunStartedAt(Instant runStartedAt) { this.runStartedAt = runStartedAt; }
+
+    /** Left the hub: hub parcels can no longer be loaded, only pickups added. */
+    public boolean isOnRun() { return runStartedAt != null; }
 
     public boolean isClosedAutomatically() { return closedAutomatically; }
     public void setClosedAutomatically(boolean closedAutomatically) { this.closedAutomatically = closedAutomatically; }

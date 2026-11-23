@@ -10,6 +10,9 @@ import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.domain.entity.ClosedDay;
+import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
+import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
+import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.repository.ClosedDayRepository;
 import com.swiftdrop.dispatch.domain.repository.CourierProfileRepository;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
@@ -195,6 +198,43 @@ class CourierShiftServiceTest {
         assertThatThrownBy(() -> courierShiftService.updateStatus(courierId, ShiftStatus.AVAILABLE))
                 .isInstanceOf(ShiftRuleException.class).hasMessageContaining("Start the shift");
         verify(courierShiftRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Start run: only once the hub parcels are loaded, not on break; afterwards it changes nothing")
+    void startRun() {
+        CourierShift shift = onShift(2);
+        when(courierShiftRepository.findByCourierId(courierId)).thenReturn(Optional.of(shift));
+        when(courierShiftRepository.save(any(CourierShift.class))).thenAnswer(inv -> inv.getArgument(0));
+        DispatchAssignment waiting = held("SD-HUB-0001", AssignmentLeg.LAST_MILE, null);
+        DispatchAssignment loaded = held("SD-HUB-0002", AssignmentLeg.LAST_MILE, Instant.parse("2026-11-24T03:00:00Z"));
+        DispatchAssignment pickup = held("SD-PICK-0003", AssignmentLeg.FIRST_MILE, null);
+        when(assignmentRepository.findByCourierId(courierId)).thenReturn(List.of(waiting, loaded, pickup));
+
+        assertThatThrownBy(() -> courierShiftService.startRun(courierId))
+                .isInstanceOf(ShiftRuleException.class).hasMessageContaining("SD-HUB-0001")
+                .hasMessageNotContaining("SD-HUB-0002").hasMessageNotContaining("SD-PICK-0003");
+
+        waiting.setPickedUpAt(Instant.parse("2026-11-24T03:10:00Z"));
+        shift.setShiftStatus(ShiftStatus.ON_BREAK);
+        assertThatThrownBy(() -> courierShiftService.startRun(courierId))
+                .isInstanceOf(ShiftRuleException.class).hasMessageContaining("break");
+
+        shift.setShiftStatus(ShiftStatus.AVAILABLE);
+        CourierShiftResponse left = courierShiftService.startRun(courierId);
+        assertThat(left.runStartedAt()).isEqualTo(LocalDateTime.parse("2026-11-24T10:00").atZone(WorkingDay.ZONE).toInstant());
+        assertThat(courierShiftService.startRun(courierId).runStartedAt()).isEqualTo(left.runStartedAt());
+        verify(courierShiftRepository, times(1)).save(shift);
+    }
+
+    private DispatchAssignment held(String tracking, AssignmentLeg leg, Instant pickedUpAt) {
+        DispatchAssignment parcel = new DispatchAssignment();
+        parcel.setTrackingNumber(tracking);
+        parcel.setCourierId(courierId);
+        parcel.setStatus(AssignmentStatus.ASSIGNED);
+        parcel.setLeg(leg);
+        parcel.setPickedUpAt(pickedUpAt);
+        return parcel;
     }
 
     @Test
