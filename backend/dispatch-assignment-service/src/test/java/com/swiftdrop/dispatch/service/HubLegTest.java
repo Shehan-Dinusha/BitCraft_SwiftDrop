@@ -263,6 +263,24 @@ class HubLegTest {
     }
 
     @Test
+    @DisplayName("Brought back, not delivered today: the courier is freed and it waits at the hub, with no attempt counted")
+    void broughtBackToTheHub() {
+        CourierShift courier = courierIn(colomboCourier, SriLankanDistrict.COLOMBO);
+        courier.setActiveParcelsCount(1);
+        when(couriers.findByCourierId(colomboCourier)).thenReturn(Optional.of(courier));
+        order.setDeliveryDistrict(SriLankanDistrict.COLOMBO);
+
+        dispatchService.handleParcelStatusChanged(hubEvent(InternalQueueStatus.INCOMING));
+
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(order.getLeg()).isEqualTo(AssignmentLeg.LAST_MILE);
+        assertThat(order.getCourierId()).isNull();
+        assertThat(order.getPickedUpAt()).isNull();
+        assertThat(order.getDeliveryAttempts()).isZero();
+        assertThat(courier.getActiveParcelsCount()).isZero();
+    }
+
+    @Test
     @DisplayName("A same-district courier on the way still counts as the normal pickup boundary")
     void sameDistrictOutboundIsNotAHubStep() {
         order.setDeliveryDistrict(SriLankanDistrict.COLOMBO);

@@ -18,6 +18,7 @@ import com.swiftdrop.delivery.exception.InvalidStateTransitionException;
 import com.swiftdrop.delivery.messaging.publisher.DeliveryEventPublisher;
 import com.swiftdrop.delivery.security.DeliveryAccessPolicy;
 import com.swiftdrop.delivery.statemachine.DeliveryStateMachine;
+import com.swiftdrop.delivery.statemachine.HubRoute;
 import com.swiftdrop.delivery.statemachine.ReturnRoute;
 import com.swiftdrop.delivery.statemachine.actions.AuditTransitionAction;
 import com.swiftdrop.delivery.statemachine.actions.PublishStateTransitionAction;
@@ -193,7 +194,12 @@ public class DeliveryExecutionService {
             return;
         }
         boolean outbound = from == DeliveryState.AT_ORIGIN_HUB && to == DeliveryState.IN_TRANSIT;
-        boolean accept = from == DeliveryState.IN_TRANSIT && to == DeliveryState.AT_DESTINATION_HUB;
+        boolean accept = from == DeliveryState.IN_TRANSIT && to == DeliveryState.AT_DESTINATION_HUB
+                && HubRoute.crossesDistricts(session);
+        if (HubRoute.broughtBack(from, to, session) && caller.role() == UserRole.DISPATCHER
+                && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
+            throw new ForbiddenException("Only the courier's own hub can take this parcel back");
+        }
         boolean handIn = from == DeliveryState.PICKED_UP && to == DeliveryState.AT_ORIGIN_HUB;
         boolean sorted = from == DeliveryState.AT_ORIGIN_HUB && to == DeliveryState.AT_DESTINATION_HUB;
         if (sorted && !isDispatcherOf(caller, session.getDeliveryDistrict())) {
@@ -300,6 +306,16 @@ public class DeliveryExecutionService {
             session.setStatus("RETURNED");
         } else if (toState == DeliveryState.CANCELLED) {
             session.setStatus("CANCELLED");
+        } else if (HubRoute.broughtBack(fromState, toState, session)) {
+            // Not delivered today: back at the hub for another run, not counted as an attempt. A Same day parcel
+            // still with the courier who collected it ends their part, as a hand-in does.
+            if (fromState != DeliveryState.OUT_FOR_DELIVERY) {
+                session.setFirstMileCourierId(session.getCourierId());
+                session.setHandedInAt(Instant.now());
+            }
+            session.setCourierId(null);
+            session.setCourierName(null);
+            session.setProofSince(Instant.now());
         } else if (toState == DeliveryState.AT_ORIGIN_HUB) {
             // The first courier's part ends at the hub: the parcel leaves their workload.
             session.setFirstMileCourierId(session.getCourierId());

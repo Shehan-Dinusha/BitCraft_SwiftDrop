@@ -462,6 +462,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/couriers/shifts/{courierId}/back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Back at the hub
+         * @description Ends the courier's run: they can hand in what they carry and load again, and hub parcels can be given to them again. Not on a run, nothing changes. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.
+         */
+        post: operations["backAtHub"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatch/couriers/shifts/status": {
         parameters: {
             query?: never;
@@ -828,6 +848,11 @@ export interface components {
              * @description When the courier left the hub on their run; null while at the hub.
              */
             runStartedAt?: string | null;
+            /**
+             * Format: date-time
+             * @description When the courier last came back to the hub from a run this shift.
+             */
+            lastRunEndedAt?: string | null;
             /** @description Whether the courier left the shift open and it was closed at night. */
             closedAutomatically?: boolean;
         };
@@ -2051,7 +2076,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Shift Conflict: the courier still has active parcels, so the shift is left unchanged. Also returned as Courier Not Available for an unknown courier, or Conflict when the courier's record was changed by a concurrent operation. */
+            /** @description Shift Conflict: the courier still carries parcels (picked up, not delivered or handed in), so the shift is left unchanged. A pickup not made yet does not count: it stays assigned for tomorrow. Also returned as Courier Not Available for an unknown courier, or Conflict when the courier's record was changed by a concurrent operation. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2092,6 +2117,46 @@ export interface operations {
                 };
             };
             /** @description Shift Conflict, naming the parcels still to load, or saying to end the break or start the shift */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    backAtHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                courierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Back at the hub */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
+                };
+            };
+            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Shift Conflict, the shift has not started */
             409: {
                 headers: {
                     [name: string]: unknown;

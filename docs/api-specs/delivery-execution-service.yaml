@@ -607,7 +607,7 @@ paths:
   /api/v1/deliveries/load:
     post:
       tags:
-        - HubLoad
+        - HubDesk
       summary: Load the chosen parcels at the hub
       description: >-
         COURIER only. Each parcel must be waiting at the hub for this courier: a delivery
@@ -633,6 +633,37 @@ paths:
           description: The caller is not a COURIER
         "409":
           description: One of the parcels is not waiting at the hub for this courier; nothing was loaded
+
+  /api/v1/deliveries/hand-in:
+    post:
+      tags:
+        - HubDesk
+      summary: Hand in the chosen parcels at the courier's hub
+      description: >-
+        COURIER only, for parcels they carry. A pickup going through the hub is handed in (AT_ORIGIN_HUB); a
+        failed attempt is held (HELD_AT_HUB); a return the sender could not take goes back (RETURN_AT_HUB); a
+        parcel not delivered today goes back for another run (AT_DESTINATION_HUB), which is not an attempt.
+        All of them, or none.
+      operationId: handInAtHub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoadParcelsRequest"
+      responses:
+        "200":
+          description: Parcels handed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDeliverySessionResponse"
+        "400":
+          description: No parcels, or more than 200
+        "403":
+          description: The caller is not a COURIER
+        "409":
+          description: One of the parcels is not with this courier; nothing was handed in
 
   /api/v1/cash/payments:
     get:
@@ -1475,7 +1506,7 @@ components:
         - deliveryIds
       properties:
         deliveryIds:
-          description: Delivery session UUIDs waiting at the hub for this courier.
+          description: Delivery session UUIDs to load at, or hand in to, the courier's hub.
           type: array
           minItems: 1
           maxItems: 200

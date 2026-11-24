@@ -412,6 +412,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deliveries/hand-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hand in the chosen parcels at the courier's hub
+         * @description COURIER only, for parcels they carry. A pickup going through the hub is handed in (AT_ORIGIN_HUB); a failed attempt is held (HELD_AT_HUB); a return the sender could not take goes back (RETURN_AT_HUB); a parcel not delivered today goes back for another run (AT_DESTINATION_HUB), which is not an attempt. All of them, or none.
+         */
+        post: operations["handInAtHub"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash/payments": {
         parameters: {
             query?: never;
@@ -805,7 +825,7 @@ export interface components {
             addresses: components["schemas"]["ShopStopAddress"][];
         };
         LoadParcelsRequest: {
-            /** @description Delivery session UUIDs waiting at the hub for this courier. */
+            /** @description Delivery session UUIDs to load at, or hand in to, the courier's hub. */
             deliveryIds: string[];
         };
         CollectShopRequest: {
@@ -1753,6 +1773,51 @@ export interface operations {
                 content?: never;
             };
             /** @description One of the parcels is not waiting at the hub for this courier; nothing was loaded */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    handInAtHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoadParcelsRequest"];
+            };
+        };
+        responses: {
+            /** @description Parcels handed in */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDeliverySessionResponse"];
+                };
+            };
+            /** @description No parcels, or more than 200 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not a COURIER */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description One of the parcels is not with this courier; nothing was handed in */
             409: {
                 headers: {
                     [name: string]: unknown;

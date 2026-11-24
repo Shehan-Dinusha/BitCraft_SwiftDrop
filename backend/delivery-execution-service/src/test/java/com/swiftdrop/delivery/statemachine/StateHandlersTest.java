@@ -51,13 +51,14 @@ class StateHandlersTest {
     }
 
     @Test
-    @DisplayName("PickedUpState allows IN_TRANSIT, AT_ORIGIN_HUB, a failed attempt and FAILED")
+    @DisplayName("PickedUpState allows IN_TRANSIT, AT_ORIGIN_HUB, back at the hub (Same day), a failed attempt and FAILED")
     void testPickedUpState() {
         PickedUpState state = new PickedUpState();
         assertThat(state.state()).isEqualTo(DeliveryState.PICKED_UP);
         assertThat(state.allowedNext()).containsExactlyInAnyOrder(
                 DeliveryState.IN_TRANSIT,
                 DeliveryState.AT_ORIGIN_HUB,
+                DeliveryState.AT_DESTINATION_HUB,
                 DeliveryState.ATTEMPT_FAILED,
                 DeliveryState.FAILED
         );
@@ -77,12 +78,13 @@ class StateHandlersTest {
     }
 
     @Test
-    @DisplayName("OutForDeliveryState allows DELIVERED, a failed attempt and FAILED")
+    @DisplayName("OutForDeliveryState allows DELIVERED, a failed attempt, FAILED and back at the hub (not an attempt)")
     void testOutForDeliveryStateAllowedTransitions() {
         OutForDeliveryState state = new OutForDeliveryState();
         assertThat(state.state()).isEqualTo(DeliveryState.OUT_FOR_DELIVERY);
         assertThat(state.allowedNext()).containsExactlyInAnyOrder(
                 DeliveryState.DELIVERED,
+                DeliveryState.AT_DESTINATION_HUB,
                 DeliveryState.ATTEMPT_FAILED,
                 DeliveryState.FAILED
         );

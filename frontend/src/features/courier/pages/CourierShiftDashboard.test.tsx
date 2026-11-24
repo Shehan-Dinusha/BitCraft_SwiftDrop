@@ -70,4 +70,31 @@ describe('CourierShiftDashboard: the morning at the hub', () => {
     expect(await screen.findByText(/On the road since 09:10/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Start run' })).not.toBeInTheDocument();
   });
+
+  it('comes back to the hub and hands in: pickups ticked, a parcel not delivered offered unticked', async () => {
+    vi.spyOn(dispatchApi, 'getCourier').mockResolvedValue({
+      ...shift,
+      runStartedAt: '2026-11-24T03:40:00Z'
+    });
+    const jobs = [
+      { ...job('P', 'PICKED_UP'), speed: 'STANDARD', viaHub: true },
+      job('F', 'ATTEMPT_FAILED'),
+      { ...job('D', 'OUT_FOR_DELIVERY'), viaHub: true }
+    ] as DeliverySessionResponse[];
+    vi.spyOn(deliveryApi, 'getMyDeliveries').mockResolvedValue(jobs);
+    const back = vi
+      .spyOn(dispatchApi, 'backAtHub')
+      .mockResolvedValue({ ...shift, lastRunEndedAt: '2026-11-24T11:00:00Z' });
+    const handIn = vi.spyOn(deliveryApi, 'handIn').mockResolvedValue([]);
+    open();
+
+    expect(await screen.findByRole('button', { name: 'End shift' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Back at the hub' }));
+    await waitFor(() => expect(back).toHaveBeenCalledWith('c1'));
+
+    expect(await screen.findByRole('checkbox', { name: /SD-D/ })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /SD-P/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Hand in 2 parcels' }));
+    await waitFor(() => expect(handIn).toHaveBeenCalledWith(['P', 'F']));
+  });
 });

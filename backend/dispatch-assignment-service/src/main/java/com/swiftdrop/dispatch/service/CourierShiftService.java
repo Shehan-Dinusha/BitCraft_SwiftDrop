@@ -102,6 +102,7 @@ public class CourierShiftService {
         shift.setBreakStartedAt(null);
         shift.setBreakEndedAt(null);
         shift.setRunStartedAt(null);
+        shift.setLastRunEndedAt(null);
         shift.setClosedAutomatically(false);
 
         shift = courierShiftRepository.save(shift);
@@ -119,9 +120,15 @@ public class CourierShiftService {
         CourierShift shift = courierShiftRepository.findByCourierId(courierId)
                 .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
 
-        if (shift.getActiveParcelsCount() > 0) {
-            throw new ShiftEndNotAllowedException("Cannot end shift: the courier still has "
-                    + shift.getActiveParcelsCount() + " active parcel(s). Complete or reassign them first.");
+        // Parcels the courier carries must be delivered or handed in. A pickup not made today stays with them
+        // for tomorrow, and their dispatcher can still give it to someone else.
+        long onBoard = assignmentRepository.findByCourierId(courierId).stream()
+                .filter(parcel -> (parcel.getStatus() == AssignmentStatus.ASSIGNED
+                        || parcel.getStatus() == AssignmentStatus.REASSIGNED) && parcel.getPickedUpAt() != null)
+                .count();
+        if (onBoard > 0) {
+            throw new ShiftEndNotAllowedException("Cannot end shift: the courier still carries " + onBoard
+                    + " parcel(s). Deliver them or hand them in at the hub first.");
         }
 
         if (caller.role() == UserRole.COURIER) {
@@ -167,6 +174,28 @@ public class CourierShiftService {
         shift.setRunStartedAt(now);
         shift.setLastHeartbeatAt(now);
         log.info("Courier {} left on their run", courierId);
+        return toResponse(courierShiftRepository.save(shift));
+    }
+
+    /**
+     * The courier is back at the hub: their run ends, so they can hand in what they carry and load again. Hub
+     * parcels can be given to them again from now on. Coming back when not on a run changes nothing.
+     */
+    @Transactional
+    public CourierShiftResponse backAtHub(UUID courierId) {
+        CourierShift shift = courierShiftRepository.findByCourierId(courierId)
+                .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
+        if (shift.getShiftStatus() == ShiftStatus.OFFLINE) {
+            throw new ShiftRuleException("Start the shift first.");
+        }
+        if (!shift.isOnRun()) {
+            return toResponse(shift);
+        }
+        Instant now = workingDay.now();
+        shift.setRunStartedAt(null);
+        shift.setLastRunEndedAt(now);
+        shift.setLastHeartbeatAt(now);
+        log.info("Courier {} is back at the hub", courierId);
         return toResponse(courierShiftRepository.save(shift));
     }
 
