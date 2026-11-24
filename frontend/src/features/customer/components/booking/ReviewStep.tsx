@@ -14,12 +14,14 @@ import { PAYMENT_NOTE, SPEED_LABEL, toSpeed } from '../orders/orderDisplay';
 import { addressLine1, addressLine2, placeLabel, type BookingForm } from './bookingForm';
 import type { BookingErrors, BookingStepId } from './validation';
 import type { FeeEstimateStatus } from './useFeeEstimate';
+import { dayLabel } from '@/utils/colomboDate';
 
 interface ReviewStepProps {
   form: BookingForm;
   errors: BookingErrors;
   estimate: FeeEstimateResponse | null;
   estimateStatus: FeeEstimateStatus;
+  estimateProblem?: string;
   onRetryEstimate: () => void;
   onDeclare: (value: boolean) => void;
   onEdit: (step: BookingStepId) => void;
@@ -33,6 +35,7 @@ export function ReviewStep({
   errors,
   estimate,
   estimateStatus,
+  estimateProblem,
   onRetryEstimate,
   onDeclare,
   onEdit
@@ -112,6 +115,7 @@ export function ReviewStep({
             status={estimateStatus}
             onRetry={onRetryEstimate}
             speedLabel={SPEED_LABEL[form.speed]}
+            problem={estimateProblem}
           />
         </div>
       </div>
@@ -143,15 +147,25 @@ export function FeePanel({
   estimate,
   status,
   onRetry,
-  speedLabel
+  speedLabel,
+  problem
 }: {
   estimate: FeeEstimateResponse | null;
   status: FeeEstimateStatus;
   onRetry: () => void;
   speedLabel: string;
+  /** Why these choices cannot be booked, e.g. Same day after 11:00. */
+  problem?: string;
 }) {
   if (status === 'loading' || status === 'idle') {
     return <Skeleton preset="card" className="w-full" />;
+  }
+  if (status === 'refused') {
+    return (
+      <Alert tone="warning" title={`${speedLabel} is not available`}>
+        {problem}
+      </Alert>
+    );
   }
   if (status === 'unavailable' || status === 'error' || !estimate) {
     return (
@@ -178,23 +192,28 @@ export function FeePanel({
   const surcharge = estimate.speedSurcharge ?? 0;
 
   return (
-    <PriceBreakdown
-      type="customer"
-      title="Estimated fee"
-      currency={estimate.currency ?? 'LKR'}
-      lines={[
-        { label: 'Base fee', note: 'First 1 kg included', amount: base },
-        {
-          label: 'Weight fee',
-          note: `Charged as ${estimate.chargeableWeightKg ?? '–'} kg`,
-          amount: weight
-        }
-      ]}
-      subtotal={base + weight}
-      surcharge={surcharge > 0 ? { label: speedLabel, amount: surcharge } : undefined}
-      total={estimate.estimatedFee ?? base + weight + surcharge}
-      footnote={`${PAYMENT_NOTE} If the courier's measurements differ at pickup, we ask before changing the fee.`}
-    />
+    <div className="flex flex-col gap-2">
+      {estimate.deliverBy ? (
+        <p className="text-body-strong text-primary">Delivery by {dayLabel(estimate.deliverBy)}</p>
+      ) : null}
+      <PriceBreakdown
+        type="customer"
+        title="Estimated fee"
+        currency={estimate.currency ?? 'LKR'}
+        lines={[
+          { label: 'Base fee', note: 'First 1 kg included', amount: base },
+          {
+            label: 'Weight fee',
+            note: `Charged as ${estimate.chargeableWeightKg ?? '–'} kg`,
+            amount: weight
+          }
+        ]}
+        subtotal={base + weight}
+        surcharge={surcharge > 0 ? { label: speedLabel, amount: surcharge } : undefined}
+        total={estimate.estimatedFee ?? base + weight + surcharge}
+        footnote={`${PAYMENT_NOTE} If the courier's measurements differ at pickup, we ask before changing the fee.`}
+      />
+    </div>
   );
 }
 

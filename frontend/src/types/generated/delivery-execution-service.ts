@@ -526,6 +526,13 @@ export interface components {
              * @description When the sender got the parcel back.
              */
             returnedAt?: string | null;
+            /**
+             * @description The order's speed; null on older deliveries.
+             * @enum {string|null}
+             */
+            speed?: "STANDARD" | "EXPRESS" | "SAME_DAY" | null;
+            /** @description Whether the courier hands it in at the hub after pickup (Standard or Express, or another district) instead of taking it straight to the recipient (Same day within one district). */
+            viaHub?: boolean;
         };
         /** @description A contact and address the courier visits. */
         CourierJobStop: {

@@ -2,6 +2,7 @@ package com.swiftdrop.contracts.events.dispatch;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 
 import java.time.Instant;
@@ -61,7 +62,14 @@ public record CourierAssignedEvent(
 
         /** The shop's name, for a merchant order collected with the shop's other parcels; null otherwise. */
         @JsonProperty("merchantName")
-        String merchantName
+        String merchantName,
+
+        /**
+         * The order's speed, which decides the route: Same day goes straight to the recipient, Standard and Express
+         * through the hub. Null from older publishers, which then follow the district-only route.
+         */
+        @JsonProperty("speed")
+        OrderSpeed speed
 
 ) {
     public CourierAssignedEvent {
@@ -70,6 +78,27 @@ public record CourierAssignedEvent(
         if (timestamp == null) timestamp = Instant.now();
         if (assignedAt == null) assignedAt = Instant.now();
         // trackingNumber, merchantId, customerId and the districts are intentionally nullable
+    }
+
+    /** For callers without the speed. */
+    public CourierAssignedEvent(
+            UUID eventId,
+            UUID correlationId,
+            UUID orderId,
+            UUID courierId,
+            String courierName,
+            int estimatedPickupMinutes,
+            Instant assignedAt,
+            Instant timestamp,
+            String trackingNumber,
+            UUID merchantId,
+            UUID customerId,
+            SriLankanDistrict pickupDistrict,
+            SriLankanDistrict deliveryDistrict,
+            String merchantName
+    ) {
+        this(eventId, correlationId, orderId, courierId, courierName, estimatedPickupMinutes, assignedAt, timestamp,
+                trackingNumber, merchantId, customerId, pickupDistrict, deliveryDistrict, merchantName, null);
     }
 
     /** For callers without a merchant name. */

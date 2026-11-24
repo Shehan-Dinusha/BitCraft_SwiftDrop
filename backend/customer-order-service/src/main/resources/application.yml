@@ -35,6 +35,10 @@ springdoc:
     path: /swagger-ui.html
 swiftdrop:
   public-tracking-base-url: ${PUBLIC_TRACKING_BASE_URL:https://swiftdrop.lk}
+dispatch:
+  service:
+    # The working calendar (holidays) the delivery promise counts.
+    url: ${DISPATCH_SERVICE_URL:http://localhost:8084}
 pricing:
   service:
     url: ${PRICING_SERVICE_URL:http://localhost:8083}

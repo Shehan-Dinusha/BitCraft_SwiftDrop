@@ -9,4 +9,6 @@ import java.util.List;
 public interface ClosedDayRepository extends JpaRepository<ClosedDay, LocalDate> {
 
     List<ClosedDay> findByDayGreaterThanEqualOrderByDay(LocalDate from);
+
+    List<ClosedDay> findByDayBetweenOrderByDay(LocalDate from, LocalDate to);
 }

@@ -189,6 +189,7 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
   const {
     estimate,
     status: estimateStatus,
+    problem: estimateProblem,
     retry: retryEstimate
   } = useFeeEstimate(estimateRequest);
 
@@ -451,6 +452,7 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
                 status={estimateStatus}
                 onRetry={retryEstimate}
                 speedLabel={SPEED_LABEL[form.speed]}
+                problem={estimateProblem}
               />
             ) : (
               <p className="text-body text-secondary">
@@ -465,6 +467,7 @@ export function OrderBookingWizard({ onOrderCreated, onViewOrders }: WizardProps
             errors={errors}
             estimate={estimate}
             estimateStatus={estimateStatus}
+            estimateProblem={estimateProblem}
             onRetryEstimate={retryEstimate}
             onDeclare={(value) => updateField('prohibitedItemsDeclared', value)}
             onEdit={goTo}

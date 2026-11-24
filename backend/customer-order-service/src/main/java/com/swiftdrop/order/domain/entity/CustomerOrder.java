@@ -202,4 +202,8 @@ public class CustomerOrder {
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
     private Instant updatedAt = Instant.now();
+
+    /** The promised delivery day ({@code DeliveryPromise}); null on orders from before it was recorded. */
+    @Column(name = "deliver_by")
+    private java.time.LocalDate deliverBy;
 }

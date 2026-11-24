@@ -190,6 +190,7 @@ Fields: `eventId`, `correlationId`, `orderId`, `trackingNumber`, `pickupDistrict
 | `pickupDistrict` | `SriLankanDistrict` | Yes | Pickup district | Safe |
 | `deliveryDistrict` | `SriLankanDistrict` | Yes | Delivery district | Safe |
 | `merchantName` | `String` | Yes | Shop name, for a merchant order collected with the shop's other parcels | Business name |
+| `speed` | `OrderSpeed` | Yes | `STANDARD`, `EXPRESS` or `SAME_DAY`. Decides the route: Same day within one district goes straight to the recipient, the rest through the hub. Null from older publishers | Safe |
 
 #### Example JSON Payload
 ```json
@@ -206,7 +207,8 @@ Fields: `eventId`, `correlationId`, `orderId`, `trackingNumber`, `pickupDistrict
   "merchantId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
   "customerId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
   "pickupDistrict": "COLOMBO",
-  "deliveryDistrict": "KANDY"
+  "deliveryDistrict": "KANDY",
+  "speed": "EXPRESS"
 }
 ```
 

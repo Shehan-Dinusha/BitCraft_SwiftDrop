@@ -3,7 +3,7 @@ import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmSta
 import { Button } from '@/design-system/primitives/Button';
 import { failureLabel } from '@/utils/failureReasons';
 import type { DeliverySessionResponse, DeliveryState, DeliveryFailureReason } from '@/services/api/deliveryApi';
-import { crossesDistricts } from '@/types/fsm';
+import { crossesDistricts, goesViaHub } from '@/types/fsm';
 import { districtLabel } from '@/features/profile/profileFormat';
 import { CheckCircle2, AlertTriangle, FileCheck, Warehouse } from 'lucide-react';
 
@@ -30,15 +30,18 @@ export function OneTapStateTransitionCard({
 }: OneTapStateTransitionCardProps) {
   const currentState = session.currentState as DeliveryState;
   const isPending = pendingState !== null;
-  const viaHubs = crossesDistricts(session);
+  const viaHubs = goesViaHub(session);
+  const otherDistrict = crossesDistricts(session);
   const pickupHub = districtLabel(session.pickupDistrict);
   const deliveryHub = districtLabel(session.deliveryDistrict);
 
   const instruction: Partial<Record<DeliveryState, string>> = {
     ASSIGNED: 'Go to the pickup point and collect the parcel.',
-    PICKED_UP: viaHubs
+    PICKED_UP: otherDistrict
       ? `This parcel goes to ${deliveryHub}. Take it to the ${pickupHub} hub.`
-      : 'Head to the delivery address.',
+      : viaHubs
+        ? `Take it to the ${pickupHub} hub. It goes out on a delivery run from there.`
+        : 'Same day: head to the delivery address.',
     IN_TRANSIT: viaHubs ? '' : 'Confirm when you reach the recipient.',
     AT_DESTINATION_HUB: `Collect the parcel from the ${deliveryHub} hub, then take it to the recipient.`,
     ATTEMPT_FAILED: `${failureLabel(session.failedReason)}. Bring it to the ${deliveryHub} hub.`,

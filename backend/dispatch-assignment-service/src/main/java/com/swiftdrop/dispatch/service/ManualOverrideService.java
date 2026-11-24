@@ -328,7 +328,8 @@ public class ManualOverrideService {
                 assignment.getCustomerId(),
                 assignment.getPickupDistrict(),
                 assignment.getDeliveryDistrict(),
-                assignment.getMerchantName()
+                assignment.getMerchantName(),
+                assignment.getOrderSpeed()
         );
         eventPublisher.publishCourierAssigned(assignedEvent);
     }

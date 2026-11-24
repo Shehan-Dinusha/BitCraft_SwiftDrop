@@ -1,8 +1,10 @@
 package com.swiftdrop.delivery.dto;
 
 import com.swiftdrop.contracts.enums.DeliveryState;
+import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.delivery.domain.entity.DeliverySession;
+import com.swiftdrop.delivery.statemachine.HubRoute;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -65,7 +67,14 @@ public record DeliverySessionResponse(
         Instant proofSince,
 
         @Schema(description = "When the sender got the parcel back")
-        Instant returnedAt
+        Instant returnedAt,
+
+        @Schema(description = "The order's speed; null on older deliveries")
+        OrderSpeed speed,
+
+        @Schema(description = "Whether the courier hands it in at the hub after pickup (Standard, Express, or another "
+                + "district) instead of taking it straight to the recipient (Same day in one district)")
+        boolean viaHub
 ) {
     /** For callers without a shop. */
     public DeliverySessionResponse(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, String courierName,
@@ -74,7 +83,8 @@ public record DeliverySessionResponse(
                                    Integer attemptCount, Instant pickupAt, Instant deliveredAt, Instant createdAt,
                                    Instant updatedAt) {
         this(deliveryId, orderId, trackingNumber, courierId, courierName, pickupDistrict, deliveryDistrict, currentState,
-                previousState, failedReason, attemptCount, pickupAt, deliveredAt, createdAt, updatedAt, null, null, null, null);
+                previousState, failedReason, attemptCount, pickupAt, deliveredAt, createdAt, updatedAt, null, null, null, null,
+                null, pickupDistrict != null && deliveryDistrict != null && pickupDistrict != deliveryDistrict);
     }
 
     /**
@@ -109,7 +119,9 @@ public record DeliverySessionResponse(
                 entity.getMerchantId(),
                 entity.getMerchantName(),
                 entity.getProofSince(),
-                entity.getReturnedAt()
+                entity.getReturnedAt(),
+                entity.getOrderSpeed(),
+                HubRoute.goesViaHub(entity)
         );
     }
 }
