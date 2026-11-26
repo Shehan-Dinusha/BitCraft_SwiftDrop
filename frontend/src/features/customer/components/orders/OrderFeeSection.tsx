@@ -36,7 +36,7 @@ export function OrderFeeSection({ order }: { order: CustomerOrderResponse }) {
             ) : null}
             <div className="flex items-center justify-between gap-4">
               <dt className="text-body-strong text-primary">
-                {changed ? 'Updated fee' : 'Delivery fee'}
+                {changed ? 'Updated fee' : 'To pay'}
               </dt>
               <dd>
                 <MoneyAmount amount={current} size="lg" currency={currency} />

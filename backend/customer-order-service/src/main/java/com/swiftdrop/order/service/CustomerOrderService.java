@@ -177,7 +177,10 @@ public class CustomerOrderService {
     public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByTrackingNumber(trackingNumber)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
-        assertCallerCanAccess(order, callerId, callerRole);
+        // The sender sees their own parcel in full on the tracking page; a shop sees its own orders.
+        if (!isOwnMerchantOrder(order, callerRole)) {
+            assertCallerCanAccess(order, callerId, callerRole);
+        }
         return CustomerOrderResponse.fromEntity(order);
     }
 
@@ -216,6 +219,13 @@ public class CustomerOrderService {
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
         assertCallerCanAccess(order, callerId, callerRole);
         return order;
+    }
+
+    /** A merchant's own shop order: placed through the merchant service for the caller's company. */
+    private static boolean isOwnMerchantOrder(CustomerOrder order, String callerRole) {
+        return UserRole.fromClaim(callerRole) == UserRole.MERCHANT
+                && order.getSource() == OrderSource.MERCHANT
+                && order.getMerchantId() != null && order.getMerchantId().equals(CallerMerchant.current());
     }
 
     private void assertCallerCanAccess(CustomerOrder order, UUID callerId, String callerRole) {
@@ -408,10 +418,7 @@ public class CustomerOrderService {
         List<CustomerOrder> orders = orderIds.stream().distinct().map(orderId -> {
             CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
                     .orElseThrow(() -> new OrderNotFoundException("Order not found"));
-            boolean ownMerchantOrder = UserRole.fromClaim(callerRole) == UserRole.MERCHANT
-                    && order.getSource() == OrderSource.MERCHANT
-                    && order.getMerchantId() != null && order.getMerchantId().equals(CallerMerchant.current());
-            if (!ownMerchantOrder) {
+            if (!isOwnMerchantOrder(order, callerRole)) {
                 assertCallerCanAccess(order, callerId, callerRole);
             }
             return order;

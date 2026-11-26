@@ -1,6 +1,9 @@
 package com.swiftdrop.notification.service.email;
 
+import com.swiftdrop.notification.service.RecipientEmailStopService;
 import com.swiftdrop.notification.util.SensitiveTemplates;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 
@@ -33,6 +36,51 @@ import java.util.regex.Pattern;
  */
 @Component
 public class EmailHtmlRenderer {
+
+    /** The same public site the shipping label's QR code points to. */
+    static final String DEFAULT_TRACKING_BASE_URL = "http://localhost:5173"; // local frontend; AKS sets the real site
+    private static final Pattern SAFE_BASE_URL = Pattern.compile("(?i)^https?://[^\\s/\"'<>]+(/[^\\s\"'<>]*)?$");
+
+    private final String trackingBaseUrl;
+
+    public EmailHtmlRenderer() {
+        this(DEFAULT_TRACKING_BASE_URL);
+    }
+
+    @Autowired
+    public EmailHtmlRenderer(@Value("${notification.email.tracking-base-url:" + DEFAULT_TRACKING_BASE_URL + "}") String trackingBaseUrl) {
+        String base = trackingBaseUrl == null ? "" : trackingBaseUrl.trim().replaceAll("/+$", "");
+        if (!SAFE_BASE_URL.matcher(base).matches()) {
+            throw new IllegalArgumentException("notification.email.tracking-base-url must be an http(s) URL");
+        }
+        this.trackingBaseUrl = base;
+    }
+
+    /**
+     * The public tracking page of a parcel email, or null for any other email. Everyone can open it; a signed-in
+     * sender sees their own parcel there in full.
+     */
+    String trackingUrl(String templateCode, String trackingNumber) {
+        String code = templateCode == null ? "" : templateCode.trim().toUpperCase(Locale.ROOT);
+        boolean parcel = code.startsWith("PARCEL_") || code.startsWith("RECIPIENT_");
+        if (!parcel || trackingNumber == null || !SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches()) {
+            return null;
+        }
+        return trackingBaseUrl + "/track/" + trackingNumber;
+    }
+
+    /**
+     * The "Stop these emails" page of a recipient email, or null for any other email. The token is in the
+     * fragment, so it never reaches a server log; the page asks before it stops anything.
+     */
+    String stopUrl(String templateCode, Map<String, String> params) {
+        String code = templateCode == null ? "" : templateCode.trim().toUpperCase(Locale.ROOT);
+        String token = params == null ? null : params.get("stopToken");
+        if (!code.startsWith("RECIPIENT_") || token == null || !RecipientEmailStopService.TOKEN.matcher(token).matches()) {
+            return null;
+        }
+        return trackingBaseUrl + "/stop-emails#token=" + token;
+    }
 
     private static final Pattern SAFE_TRACKING_NUMBER = Pattern.compile("[A-Za-z0-9-]{4,40}");
     private static final Pattern SAFE_CODE = Pattern.compile("[0-9]{4,10}");
@@ -90,6 +138,38 @@ public class EmailHtmlRenderer {
                     "We could not deliver your parcel, so it is on its way back to you. The return is free.",
                     "A courier will bring it to your pickup address.",
                     "#92400e", "#fef3c7", "#fde68a", 0, false)),
+            Map.entry("PARCEL_PICKUP_ASSIGNED", new Style("Courier assigned", "A courier is coming for your parcel",
+                    "A courier has been assigned to collect your parcel.",
+                    "Please have it packed and labelled, with the delivery fee ready in cash.",
+                    "#1d4ed8", "#eff6ff", "#bfdbfe", 1, false)),
+            Map.entry("RECIPIENT_PARCEL_CREATED", new Style("On its way to you", "A parcel is on its way to you",
+                    "Someone is sending you a parcel with SwiftDrop. You can follow it with the tracking number below.",
+                    "There is nothing to pay on delivery. We will email you as it moves.",
+                    "#3730a3", "#eef2ff", "#c7d2fe", 1, false)),
+            Map.entry("RECIPIENT_PICKED_UP", new Style("Picked up", "Your parcel has been picked up",
+                    "The courier has collected your parcel from the sender and it is moving through the SwiftDrop network.",
+                    "We will email you again when it is out for delivery.",
+                    "#075985", "#e0f2fe", "#bae6fd", 2, false)),
+            Map.entry("RECIPIENT_OUT_FOR_DELIVERY", new Style("Arriving today", "Your parcel arrives today",
+                    "A courier is bringing your parcel to you today.",
+                    "Please make sure someone is there to receive it. There is nothing to pay.",
+                    "#5b21b6", "#f3e8ff", "#e9d5ff", 3, false)),
+            Map.entry("RECIPIENT_DELIVERED", new Style("Delivered", "Your parcel has been delivered",
+                    "Your parcel was delivered.",
+                    "If you did not receive it, please contact the sender.",
+                    "#065f46", "#d1fae5", "#a7f3d0", 4, false)),
+            Map.entry("RECIPIENT_FAILED", new Style("Delivery attempt failed", "We could not deliver your parcel",
+                    "We were not able to deliver your parcel.",
+                    "Please contact the sender if you have questions.",
+                    "#991b1b", "#fee2e2", "#fecaca", 4, true)),
+            Map.entry("RECIPIENT_RETURNING", new Style("Going back", "Your parcel is going back to the sender",
+                    "Your parcel will not be delivered and is on its way back to the sender.",
+                    "Please contact the sender if you have questions.",
+                    "#92400e", "#fef3c7", "#fde68a", 0, false)),
+            Map.entry("RECIPIENT_CANCELLED", new Style("Cancelled", "A parcel to you was cancelled",
+                    "The sender cancelled this parcel, so it will not be delivered.",
+                    "Please contact the sender if you have questions.",
+                    "#334155", "#f1f5f9", "#cbd5e1", 0, false)),
             Map.entry("PARCEL_RETURNED", new Style("Returned", "Your parcel has been returned",
                     "Your parcel was handed back to you.",
                     "If you did not receive it, contact SwiftDrop.",
@@ -143,13 +223,29 @@ public class EmailHtmlRenderer {
             + "business account.";
     private static final String SIGN_IN_REASON = "Sign-in alerts help keep your SwiftDrop account safe. They are always "
             + "sent and cannot be turned off.";
+    private static final String RECIPIENT_REASON = "You are receiving this email because the sender of this parcel "
+            + "entered your email address for delivery updates.";
     private static final String COURIER_REASON = "You are receiving this email because you are a SwiftDrop courier. "
             + "You can turn off delivery emails in your SwiftDrop notification settings.";
 
     /** Plain-text alternative: the template text and the automated-message notice. */
     public String renderText(String body, String trackingNumber) {
+        return renderText(null, body, trackingNumber);
+    }
+
+    /** Plain-text alternative, with the tracking link for a parcel email. */
+    public String renderText(String templateCode, String body, String trackingNumber) {
+        return renderText(templateCode, body, trackingNumber, Map.of());
+    }
+
+    /** Plain-text alternative, with the tracking link and, for a recipient, the stop link. */
+    public String renderText(String templateCode, String body, String trackingNumber, Map<String, String> params) {
+        String url = trackingUrl(templateCode, trackingNumber);
+        String stop = stopUrl(templateCode, params);
         return (body == null ? "" : body.trim())
-                + "\n\n--\nSwiftDrop Courier & Logistics. This is an automated message; please do not reply.";
+                + (url == null ? "" : "\n\nTrack your parcel: " + url)
+                + "\n\n--\nSwiftDrop Courier & Logistics. This is an automated message; please do not reply."
+                + (stop == null ? "" : "\nNot your parcel, or no more updates wanted? Stop these emails: " + stop);
     }
 
     public String renderHtml(String templateCode, String subject, String body, String trackingNumber) {
@@ -185,9 +281,12 @@ public class EmailHtmlRenderer {
                 content.append(progress(style));
             }
             content.append(details(code, tracking, p));
+            content.append(trackButton(trackingUrl(code, tracking)));
         }
-        if (style.next() != null) {
-            content.append(row("padding:20px 40px 0 40px;font-size:14px;line-height:22px;color:#475569;", esc(style.next())));
+        // A failed delivery says what happens next for this parcel (tried again, or returned).
+        String next = code.endsWith("_FAILED") && clean(p.get("nextStep")) != null ? clean(p.get("nextStep")) : style.next();
+        if (next != null) {
+            content.append(row("padding:20px 40px 0 40px;font-size:14px;line-height:22px;color:#475569;", esc(next)));
         }
 
         String preheader = esc(preheader(code, style, tracking));
@@ -223,7 +322,7 @@ public class EmailHtmlRenderer {
                       %6$s
                       <tr><td style="padding:32px 40px 0 40px;"><div style="border-top:1px solid #e2e8f0;"></div></td></tr>
                       <tr><td style="padding:18px 40px 30px 40px;font-size:12px;line-height:18px;color:#64748b;">
-                        %7$s<br><br>
+                        %7$s%9$s<br><br>
                         This mailbox is not monitored. Please do not reply to this email.<br>
                         &copy; %8$s SwiftDrop &middot; Courier &amp; Logistics &middot; Sri Lanka
                       </td></tr>
@@ -234,7 +333,8 @@ public class EmailHtmlRenderer {
                 </html>
                 """.formatted(safeSubject, preheader, BRAND, esc(security ? "Account security" : "COURIER_ASSIGNED".equals(code) ? "Delivery job"
                         : code.startsWith("MERCHANT_") ? "Business account" : "Parcel update"),
-                style.accent(), content, esc(reason(code, security, oneTimeCode)), Year.now().getValue());
+                style.accent(), content, esc(reason(code, security, oneTimeCode)), Year.now().getValue(),
+                stopLink(stopUrl(code, p)));
     }
 
     private static String reason(String code, boolean security, boolean oneTimeCode) {
@@ -249,6 +349,9 @@ public class EmailHtmlRenderer {
         }
         if (code.startsWith("MERCHANT_")) {
             return MERCHANT_REASON;
+        }
+        if (code.startsWith("RECIPIENT_")) {
+            return RECIPIENT_REASON;
         }
         return "COURIER_ASSIGNED".equals(code) ? COURIER_REASON : PARCEL_REASON;
     }
@@ -320,6 +423,31 @@ public class EmailHtmlRenderer {
                     rows.add(new String[]{"Courier", courier, null});
                 }
             }
+            case "RECIPIENT_PARCEL_CREATED" -> {
+                from(rows, p);
+                String fromDistrict = district(p.get("pickupDistrict"));
+                String toDistrict = district(p.get("deliveryDistrict"));
+                if (fromDistrict != null && toDistrict != null) {
+                    rows.add(new String[]{"Route", fromDistrict + " → " + toDistrict, null});
+                }
+                String speed = title(p.get("speed"));
+                if (speed != null) {
+                    rows.add(new String[]{"Service", speed, null});
+                }
+                String by = clean(p.get("deliverBy"));
+                if (by != null) {
+                    rows.add(new String[]{"Expected by", by, null});
+                }
+            }
+            case "RECIPIENT_PICKED_UP", "RECIPIENT_OUT_FOR_DELIVERY", "RECIPIENT_RETURNING", "RECIPIENT_CANCELLED" ->
+                    from(rows, p);
+            case "RECIPIENT_DELIVERED" -> {
+                from(rows, p);
+                String when = when(p.get("deliveredAt"));
+                if (when != null) {
+                    rows.add(new String[]{"Delivered on", when, null});
+                }
+            }
             case "PARCEL_DELIVERED" -> {
                 String when = when(p.get("deliveredAt"));
                 if (when != null) {
@@ -371,7 +499,7 @@ public class EmailHtmlRenderer {
                     rows.add(new String[]{"Returned", when, null});
                 }
             }
-            case "PARCEL_FAILED" -> {
+            case "PARCEL_FAILED", "RECIPIENT_FAILED" -> {
                 String reason = clean(p.get("failureReason"));
                 if (reason != null) {
                     rows.add(new String[]{"Reason", reason.substring(0, 1).toUpperCase(Locale.ROOT) + reason.substring(1), null});
@@ -402,6 +530,14 @@ public class EmailHtmlRenderer {
                 + table + "</table></td></tr>\n";
     }
 
+    /** Who sent the parcel, so the recipient knows it is expected. */
+    private static void from(List<String[]> rows, Map<String, String> p) {
+        String sender = clean(p.get("senderName"));
+        if (sender != null && !"The sender".equals(sender)) {
+            rows.add(new String[]{"From", sender, null});
+        }
+    }
+
     private static String codeBox(String code, String minutes) {
         if (code == null || !SAFE_CODE.matcher(code).matches()) {
             return "";
@@ -419,6 +555,24 @@ public class EmailHtmlRenderer {
     }
 
     /** The invite button, the same link as text for clients that block buttons, and the expiry. */
+    private static String stopLink(String url) {
+        if (url == null) {
+            return "";
+        }
+        return " Not your parcel, or no more updates wanted? <a href=\"" + esc(url) + "\" style=\"color:#475569;text-decoration:underline;\">Stop these emails</a>";
+    }
+
+    /** The tracking number stays once in the visible email: the button names no number, the text part has the URL. */
+    private static String trackButton(String url) {
+        if (url == null) {
+            return "";
+        }
+        return "<tr><td align=\"center\" style=\"padding:24px 40px 0 40px;\">"
+                + "<a href=\"" + esc(url) + "\" style=\"display:inline-block;padding:14px 28px;border-radius:10px;background:"
+                + BRAND + ";color:#ffffff;font-size:15px;line-height:20px;font-weight:700;text-decoration:none;\">"
+                + "Track your parcel</a></td></tr>\n";
+    }
+
     private static String inviteButton(String url, String hours) {
         if (url == null || !SAFE_INVITE_URL.matcher(url).matches()) {
             return "";

@@ -21,6 +21,8 @@ import {
   type PublicTrackingView,
   type SriLankanDistrict
 } from '@/services/api/trackingHubApi';
+import { formatPhone } from '@/utils/phone';
+import type { OwnParcelContacts } from '../useOwnParcel';
 
 const STATUS_LABELS: Record<PublicOrderStatus, string> = {
   CREATED: 'Created',
@@ -86,21 +88,25 @@ const TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('en-LK', {
 export interface TrackingDetailsProps {
   view: PublicTrackingView;
   connection: LiveIndicatorState;
+  /** The sender's own parcel: full names and phones instead of the masked ones. */
+  contacts?: OwnParcelContacts | null;
   className?: string;
 }
 
-export function TrackingDetails({ view, connection, className }: TrackingDetailsProps) {
+export function TrackingDetails({ view, connection, contacts, className }: TrackingDetailsProps) {
   const isWide = useMediaQuery('(min-width: 640px)');
   const isTerminal = isTerminalPublicStatus(view.currentPublicStatus);
   const progressStatus = toProgressStatus(view.currentPublicStatus);
   const statusAlert = STATUS_ALERTS[view.currentPublicStatus];
   const timeline = buildTimeline(view);
-  const hasMaskedContact = Boolean(
-    view.senderNameMasked ||
-      view.senderPhoneMasked ||
-      view.receiverNameMasked ||
-      view.receiverPhoneMasked
-  );
+  const hasMaskedContact =
+    !contacts &&
+    Boolean(
+      view.senderNameMasked ||
+        view.senderPhoneMasked ||
+        view.receiverNameMasked ||
+        view.receiverPhoneMasked
+    );
 
   return (
     <div className={cn('flex flex-col gap-5', className)}>
@@ -126,15 +132,15 @@ export function TrackingDetails({ view, connection, className }: TrackingDetails
               label="Sender"
               city={view.originCity}
               district={view.originDistrict}
-              nameMasked={view.senderNameMasked}
-              phoneMasked={view.senderPhoneMasked}
+              name={contacts?.senderName ?? view.senderNameMasked}
+              phone={contacts?.senderPhone ? formatPhone(contacts.senderPhone) : view.senderPhoneMasked}
             />
             <PartySummary
               label="Receiver"
               city={view.destinationCity}
               district={view.destinationDistrict}
-              nameMasked={view.receiverNameMasked}
-              phoneMasked={view.receiverPhoneMasked}
+              name={contacts?.receiverName ?? view.receiverNameMasked}
+              phone={contacts?.receiverPhone ? formatPhone(contacts.receiverPhone) : view.receiverPhoneMasked}
             />
           </div>
 
@@ -164,28 +170,26 @@ function PartySummary({
   label,
   city,
   district,
-  nameMasked,
-  phoneMasked
+  name,
+  phone
 }: {
   label: string;
   city?: string;
   district: SriLankanDistrict | undefined;
-  nameMasked?: string;
-  phoneMasked?: string;
+  name?: string;
+  phone?: string;
 }) {
   const location = city?.trim() ? city.trim() : formatDistrict(district);
-  const hasContact = Boolean(nameMasked || phoneMasked);
+  const hasContact = Boolean(name || phone);
 
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <span className="text-overline text-secondary">{label}</span>
-      <span className="truncate text-body-strong text-primary">{location}</span>
+      <span className="break-words text-body-strong text-primary">{location}</span>
       {hasContact ? (
         <div className="flex min-w-0 flex-col gap-0.5 text-caption text-muted">
-          {nameMasked ? <span className="truncate">{nameMasked}</span> : null}
-          {phoneMasked ? (
-            <span className="font-mono tabular-nums">{phoneMasked}</span>
-          ) : null}
+          {name ? <span className="break-words">{name}</span> : null}
+          {phone ? <span className="font-mono tabular-nums">{phone}</span> : null}
         </div>
       ) : null}
     </div>

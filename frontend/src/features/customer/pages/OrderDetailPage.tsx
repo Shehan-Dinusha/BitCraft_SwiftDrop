@@ -361,7 +361,7 @@ export function OrderDetailPage() {
             <p className="text-body text-secondary">
               You can cancel until pickup.
             </p>
-            <Button type="button" variant="outline" onClick={() => openDialog(setCancelOpen)}>
+            <Button type="button" variant="destructive" onClick={() => openDialog(setCancelOpen)}>
               Cancel parcel
             </Button>
           </div>

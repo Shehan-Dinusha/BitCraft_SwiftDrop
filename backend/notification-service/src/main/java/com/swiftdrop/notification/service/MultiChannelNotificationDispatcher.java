@@ -238,7 +238,8 @@ public class MultiChannelNotificationDispatcher {
                 }
                 String trackingNumber = trackingNumberOf(request);
                 emailSender.send(destination, rendered.subject(),
-                        emailHtmlRenderer.renderText(rendered.body(), trackingNumber),
+                        emailHtmlRenderer.renderText(request.templateCode(), rendered.body(), trackingNumber,
+                                request.templateParams()),
                         emailHtmlRenderer.renderHtml(request.templateCode(), rendered.subject(), rendered.body(), trackingNumber,
                                 request.templateParams()));
             }

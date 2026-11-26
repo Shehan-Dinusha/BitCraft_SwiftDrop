@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   Bell,
+  CalendarClock,
   ClipboardCheck,
   FileWarning,
   Store,
@@ -24,6 +25,7 @@ import { publicStatusColors } from '@/design-system/tokens/colors';
 /** Notification types sent by notification-service (the type stored with each inbox row). */
 export type NotificationType =
   | 'PARCEL_CREATED'
+  | 'PARCEL_PICKUP_ASSIGNED'
   | 'PARCEL_PICKED_UP'
   | 'PARCEL_OUT_FOR_DELIVERY'
   | 'PARCEL_DELIVERED'
@@ -58,6 +60,13 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
     description: 'When we receive your booking',
     Icon: ClipboardCheck,
     status: 'CREATED',
+    emailed: true
+  },
+  PARCEL_PICKUP_ASSIGNED: {
+    label: 'Courier assigned',
+    description: 'When a courier is coming to collect your parcel',
+    Icon: CalendarClock,
+    status: 'PICKUP_ASSIGNED',
     emailed: true
   },
   PARCEL_PICKED_UP: {
@@ -171,6 +180,7 @@ export const NOTIFICATION_TYPES: Record<NotificationType, NotificationTypeMeta> 
 export const NOTIFICATION_TYPES_BY_ROLE: Record<PersonaRole, NotificationType[]> = {
   CUSTOMER: [
     'PARCEL_CREATED',
+    'PARCEL_PICKUP_ASSIGNED',
     'PARCEL_PICKED_UP',
     'PARCEL_OUT_FOR_DELIVERY',
     'PARCEL_DELIVERED',

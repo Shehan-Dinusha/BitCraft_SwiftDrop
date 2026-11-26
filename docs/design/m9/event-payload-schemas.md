@@ -91,8 +91,8 @@ Fields: `eventId`, `correlationId`, `orderId`, `trackingNumber`, `pickupDistrict
 
 * **Producer:** `customer-order-service` (:8082)
 * **Routing Key:** `order.cancelled`
-* **Destination Queues:** `dispatch.order-cancelled.queue`, `order.events.queue`
-* **Consumers:** `dispatch-assignment-service`, `customer-order-service`
+* **Destination Queues:** `dispatch.order-cancelled.queue`, `order.events.queue`, `notification.events.queue`
+* **Consumers:** `dispatch-assignment-service`, `customer-order-service`, `notification-service` (emails the recipient that the parcel will not come)
 
 #### Field Specification
 

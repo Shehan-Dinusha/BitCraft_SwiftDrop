@@ -3,12 +3,14 @@ import { Alert, Button, EmptyState, PageHeader, Skeleton, SurfaceCard } from '@/
 import { TrackingDetails } from '@/features/public-tracking/components/TrackingDetails';
 import { TrackingSearchForm } from '@/features/public-tracking/components/TrackingSearchForm';
 import { useTrackingStream } from '@/hooks/useTrackingStream';
+import { useOwnParcel } from '@/features/public-tracking/useOwnParcel';
 import { isTerminalPublicStatus, TrackingApiError } from '@/services/api/trackingHubApi';
 
 export function LiveTrackingPage() {
   const { trackingNumber } = useParams<{ trackingNumber: string }>();
   const navigate = useNavigate();
   const { view, connection, error, isLoading, retry } = useTrackingStream(trackingNumber);
+  const contacts = useOwnParcel(trackingNumber);
 
   const openTracking = (value: string) => {
     const next = value.trim();
@@ -98,7 +100,7 @@ export function LiveTrackingPage() {
               We&apos;re trying to reconnect. The latest status may be a few minutes old.
             </Alert>
           ) : null}
-          <TrackingDetails view={view} connection={connection} />
+          <TrackingDetails view={view} connection={connection} contacts={contacts} />
         </>
       )}
     </main>
