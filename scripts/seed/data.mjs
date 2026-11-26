@@ -107,33 +107,36 @@ export const CANCEL_REASONS = [
   'Found a cheaper option', 'No longer needed',
 ];
 
-// Valid DeliveryFailureReason codes, grouped by the leg on which they make sense.
+// Why a delivery attempt failed (DeliveryFailureReason codes). A parcel is tried again only after a
+// reason it can be retried for; a refusal goes straight back to the sender.
 export const FAILURES = {
-  OUT_FOR_DELIVERY: ['CUSTOMER_UNAVAILABLE', 'RECIPIENT_UNAVAILABLE', 'WRONG_ADDRESS',
-    'REFUSED_BY_CUSTOMER', 'ACCESS_RESTRICTED'],
-  IN_TRANSIT: ['ADVERSE_WEATHER'],
-  PICKED_UP: ['DAMAGED_IN_TRANSIT'],
+  RETRY: ['CUSTOMER_UNAVAILABLE', 'RECIPIENT_UNAVAILABLE', 'ACCESS_RESTRICTED', 'WRONG_ADDRESS'],
+  REFUSED: ['REFUSED_BY_CUSTOMER', 'RECIPIENT_REJECTED'],
 };
 
-// Couriers use their own vehicle (no bicycles): motorcycle, three-wheeler, van or lorry.
+// Couriers use their own vehicle (no bicycles): motorcycle, three-wheeler, van or lorry. A motorcycle
+// takes parcels up to 50 cm, so each district's second courier has a bigger vehicle for the large boxes.
 export const VEHICLES = [['MOTORCYCLE', 60], ['THREE_WHEELER', 20], ['VAN', 15], ['LORRY', 5]];
+export const LARGE_VEHICLES = [['THREE_WHEELER', 55], ['VAN', 35], ['LORRY', 10]];
 
 // Fictional businesses (names invented for the demo). All are approved: their e-mail addresses are
 // not real, so the approval/rejection e-mails could not be read anyway. To demo the review flow,
 // sign up a business with a real address at /register/business and approve it as the district
-// dispatcher. Approved merchants get an API key and send B2B orders.
+// dispatcher. Approved merchants get an API key and send B2B orders. category and volume are the
+// application's BusinessCategory and MonthlyParcelVolume; a shop with ready: false has not packed its
+// parcels yet, so the dispatcher sees it waiting at the shop.
 export const MERCHANTS = [
-  { slug: 'kandy-valley-spice', business: 'Kandy Valley Spice Co.', district: 'KANDY', outcome: 'APPROVED', orders: 12,
+  { slug: 'kandy-valley-spice', category: 'FOOD_AND_GROCERY', volume: 'FROM_51_TO_200', ready: true, business: 'Kandy Valley Spice Co.', district: 'KANDY', outcome: 'APPROVED', orders: 12,
     items: ['Ceylon cinnamon quills', 'Black pepper pack', 'Cardamom pods', 'Spice gift box', 'Curry powder set'] },
-  { slug: 'wayamba-handloom', business: 'Wayamba Handloom Studio', district: 'KURUNEGALA', outcome: 'APPROVED', orders: 10,
+  { slug: 'wayamba-handloom', category: 'FASHION_AND_CLOTHING', volume: 'UP_TO_50', ready: true, business: 'Wayamba Handloom Studio', district: 'KURUNEGALA', outcome: 'APPROVED', orders: 10,
     items: ['Handloom saree', 'Handloom shirt', 'Cushion covers', 'Table runner'] },
-  { slug: 'southern-lantern-crafts', business: 'Southern Lantern Crafts', district: 'GALLE', outcome: 'APPROVED', orders: 10,
+  { slug: 'southern-lantern-crafts', category: 'GIFTS_AND_CRAFTS', volume: 'UP_TO_50', ready: true, business: 'Southern Lantern Crafts', district: 'GALLE', outcome: 'APPROVED', orders: 10,
     items: ['Wooden mask', 'Lacquerware bowl', 'Batik wall hanging', 'Brass oil lamp'] },
-  { slug: 'nallur-palmyrah-works', business: 'Nallur Palmyrah Works', district: 'JAFFNA', outcome: 'APPROVED', orders: 8,
+  { slug: 'nallur-palmyrah-works', category: 'GIFTS_AND_CRAFTS', volume: 'UP_TO_50', ready: true, business: 'Nallur Palmyrah Works', district: 'JAFFNA', outcome: 'APPROVED', orders: 8,
     items: ['Palmyrah basket', 'Palmyrah jaggery', 'Woven mat', 'Palmyrah fan'] },
-  { slug: 'pettah-gadget-hub', business: 'Pettah Gadget Hub', district: 'COLOMBO', outcome: 'APPROVED', orders: 10,
+  { slug: 'pettah-gadget-hub', category: 'ELECTRONICS', volume: 'FROM_201_TO_1000', ready: true, business: 'Pettah Gadget Hub', district: 'COLOMBO', outcome: 'APPROVED', orders: 10,
     items: ['Phone case', 'USB-C charger', 'Bluetooth earbuds', 'Power bank', 'Screen protector'] },
   // Dried and packed goods only: fresh seafood is perishable and not accepted as a parcel.
-  { slug: 'lagoon-catch-exports', business: 'Lagoon Catch Exports', district: 'GAMPAHA', outcome: 'APPROVED', orders: 8,
+  { slug: 'lagoon-catch-exports', category: 'FOOD_AND_GROCERY', volume: 'FROM_51_TO_200', ready: false, business: 'Lagoon Catch Exports', district: 'GAMPAHA', outcome: 'APPROVED', orders: 8,
     items: ['Dried fish pack', 'Maldive fish flakes', 'Dried prawns', 'Seafood spice mix'] },
 ];

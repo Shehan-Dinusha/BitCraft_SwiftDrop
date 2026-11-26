@@ -114,11 +114,15 @@ stage_orders() {
 }
 
 stage_assign() {
-  log "Assign: dispatch files the bookings, couriers start shifts, dispatchers assign"
+  log "Assign: dispatch files the bookings, shops mark parcels ready, couriers start shifts, dispatchers assign"
   up customer-order-service dispatch-assignment-service
   # Shifts must start only after dispatch has filed every booking as UNASSIGNED,
   # otherwise its auto-engine assigns them all and the dispatcher board stays empty.
   drain dispatch.order-created.queue
+  # A shop's "ready" goes through the merchant service to dispatch, which marks the orders it has filed.
+  up merchant-b2b-service
+  seed ready
+  down merchant-b2b-service
   seed shifts cancel
   drain dispatch.order-cancelled.queue
   seed assign
@@ -126,11 +130,13 @@ stage_assign() {
 }
 
 stage_deliver() {
-  log "Deliver: couriers move parcels along, with proof-of-delivery photos"
-  up delivery-execution-service
+  log "Deliver: pickups with cash, hub to hub, deliveries with photos, failed attempts and returns, then the cash"
+  # Pickups ask the order service for the fee, and every hub step needs dispatch to have caught up,
+  # so order, dispatch and delivery run together here (pricing, merchant and the rest stay off).
+  up customer-order-service dispatch-assignment-service delivery-execution-service
   drain delivery.dispatch-assigned.queue
-  seed deliver
-  down delivery-execution-service
+  seed deliver cash
+  down delivery-execution-service dispatch-assignment-service customer-order-service
 }
 
 stage_catchup() {
