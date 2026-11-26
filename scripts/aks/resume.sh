@@ -104,7 +104,8 @@ for item in "${stale[@]}"; do
   IFS=/ read -r ns claim pv <<< "$item"
   kubectl wait --for=delete "pvc/$claim" -n "$ns" --timeout=120s >/dev/null 2>&1 || true
   if [ -f "$TMP/pvc-$claim.json" ]; then
-    kubectl apply -f "$TMP/pvc-$claim.json" >/dev/null
+    # Through stdin: with MSYS_NO_PATHCONV a Windows kubectl cannot open a Git Bash /tmp path.
+    kubectl apply -f - < "$TMP/pvc-$claim.json" >/dev/null
     rm -f "$TMP/pvc-$claim.json"
   fi
 done

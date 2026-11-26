@@ -169,6 +169,19 @@ More symptoms are in the [deployment guide's troubleshooting table](AKS-HELM-DEP
 
 If the data is gone and there is no backup, rebuild a month of realistic demo data through the public APIs. Follow [scripts/seed/README.md → A cluster that runs everything (AKS)](../../scripts/seed/README.md). It switches e-mail to mock while seeding so nobody receives real mail. Take a backup straight after it finishes.
 
+The seed must run **on a working day morning (Sri Lanka time)**: dispatch checks the real clock, so shifts start only Monday to Saturday from 07:30 and pickups are given out only until 15:00. Check `/ops/working-days` that the day is not a holiday. It takes under an hour; `timeshift.mjs` then spreads the history over the past month.
+
+### Starting over with fresh demo data
+
+To replace old demo data (for example after the product rules changed), empty the cluster first:
+
+```bash
+kubectl config current-context        # must be swiftdrop-aks
+bash scripts/db/wipe-aks.sh           # backs up all 9 databases, asks you to type "wipe", empties them
+```
+
+It deletes **everything**, including real people's accounts; the backup it prints is the only way back (`restore-aks.sh`). Services restart on empty databases, Flyway rebuilds the schemas, and auth-iam-service recreates the bootstrap admin. Then seed as above.
+
 ## Before a demo
 
 1. Resume the cluster about an hour early (`resume.sh`).
