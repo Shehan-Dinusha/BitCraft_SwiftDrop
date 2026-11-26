@@ -273,11 +273,10 @@ class WebhookIngestionIT {
         UUID a001 = UUID.randomUUID();
         UUID a002 = UUID.randomUUID();
         UUID a003 = UUID.randomUUID();
-        // One bulk submission: three orders, three different customers, one merchant.
+        // One bulk submission: three orders of one merchant. Each shop order carries the shop as its customer
+        // (the order service stores it so), and each resolves on its own.
         for (UUID order : List.of(a001, a002, a003)) {
-            ObjectNode created = orderCreated(order, merchantA);
-            created.put("customerId", UUID.randomUUID().toString());
-            publish(CREATED, created);
+            publish(CREATED, orderCreated(order, merchantA));
         }
         ObjectNode pickedUp = status(a001, "PICKED_UP");
         ObjectNode inTransit = status(a002, "IN_TRANSIT");
@@ -407,6 +406,40 @@ class WebhookIngestionIT {
     }
 
     // --- H. Database failure ------------------------------------------------------------------------------------
+
+    @Test
+    void hubStepsInsideTheSameStatusSendNothing() {
+        UUID merchant = UUID.randomUUID();
+        endpoint(merchant, STATUS, true);
+        UUID orderId = UUID.randomUUID();
+        ingest(CREATED, orderCreated(orderId, merchant));
+
+        ObjectNode handedIn = status(orderId, "IN_TRANSIT");
+        handedIn.put("previousPublicStatus", "PICKED_UP");
+        ObjectNode outbound = status(orderId, "IN_TRANSIT");
+        outbound.put("previousPublicStatus", "IN_TRANSIT");
+
+        assertThat(ingest(STATUS, handedIn).deliveriesCreated()).isEqualTo(1);
+        IngestionResult repeat = ingest(STATUS, outbound);
+
+        assertThat(repeat.outcome()).isEqualTo(IngestionResult.Outcome.NO_CHANGE);
+        assertThat(repeat.deliveriesCreated()).isZero();
+        assertThat(deliveryEndpoints(outbound)).isEmpty();
+    }
+
+    @Test
+    void customerOrderThatNamesAShopNeverReachesTheShop() {
+        UUID shop = UUID.randomUUID();
+        endpoint(shop, STATUS, true);
+        UUID orderId = UUID.randomUUID();
+        ObjectNode created = orderCreated(orderId, null);
+        created.put("merchantId", shop.toString()); // a customer's own order that names the shop
+
+        assertThat(ingest(CREATED, created).outcome()).isEqualTo(IngestionResult.Outcome.NO_MERCHANT);
+        ObjectNode status = status(orderId, "PICKED_UP");
+        assertThat(ingest(STATUS, status).deliveriesCreated()).isZero();
+        assertThat(deliveryEndpoints(status)).isEmpty();
+    }
 
     @Test
     void transientDatabaseFailureIsRetriedAndPersistedOnce() {
@@ -571,6 +604,8 @@ class WebhookIngestionIT {
         ObjectNode tree = base(orderId);
         tree.put("trackingNumber", "SD-COL-20261110-" + (1000 + (int) (Math.random() * 9000)));
         if (merchantId != null) {
+            // A shop's order names the shop as its customer.
+            tree.put("customerId", merchantId.toString());
             tree.put("merchantId", merchantId.toString());
         }
         tree.put("pickupDistrict", "COLOMBO");

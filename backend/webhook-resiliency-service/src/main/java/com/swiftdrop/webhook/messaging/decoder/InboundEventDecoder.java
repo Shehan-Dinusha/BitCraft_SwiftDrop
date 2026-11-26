@@ -92,7 +92,10 @@ public class InboundEventDecoder {
         switch (event) {
             case OrderCreatedEvent created -> {
                 if (object.hasNonNull("merchantId")) {
-                    claimedMerchantId = requiredUuid(object, "merchantId", type);
+                    UUID named = requiredUuid(object, "merchantId", type);
+                    // A shop's order carries the shop as its customer. A customer's own order that merely names a
+                    // shop is not the shop's: its updates must never reach that shop's endpoint.
+                    claimedMerchantId = created.customerId() == null || named.equals(created.customerId()) ? named : null;
                 }
                 trackingNumber = created.trackingNumber();
                 occurredAt = created.timestamp();

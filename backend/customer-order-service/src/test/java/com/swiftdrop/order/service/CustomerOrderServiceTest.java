@@ -215,10 +215,14 @@ class CustomerOrderServiceTest {
                 .build());
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        customerOrderService.createOrder(validCreateRequest(), customerId, UUID.randomUUID());
+        CreateOrderRequest request = validCreateRequest();
+        // A customer's booking that names a shop is still the customer's own order, never the shop's.
+        request.setMerchantId(UUID.randomUUID());
+        customerOrderService.createOrder(request, customerId, UUID.randomUUID());
 
         ArgumentCaptor<CustomerOrder> saved = ArgumentCaptor.forClass(CustomerOrder.class);
         verify(customerOrderRepository).save(saved.capture());
+        assertThat(saved.getValue().getMerchantId()).isNull();
         assertThat(saved.getValue().getEstimatedFee()).isEqualByComparingTo("790.00");
         assertThat(saved.getValue().getFinalFee()).isEqualByComparingTo("790.00");
         assertThat(saved.getValue().getChargeableWeightKg()).isEqualByComparingTo("2.00");
