@@ -42,7 +42,7 @@ notification:
     # mock (default, sends nothing) or azure (Azure Communication Services Email)
     provider: ${NOTIFICATION_EMAIL_PROVIDER:mock}
     # "Track your parcel" links in parcel emails: the same public site as the label's QR code.
-    tracking-base-url: ${PUBLIC_TRACKING_BASE_URL:https://swiftdrop.lk}
+    tracking-base-url: ${PUBLIC_TRACKING_BASE_URL:http://localhost:5173}
     azure:
       endpoint: ${ACS_EMAIL_ENDPOINT:}
       access-key: ${ACS_EMAIL_ACCESS_KEY:}

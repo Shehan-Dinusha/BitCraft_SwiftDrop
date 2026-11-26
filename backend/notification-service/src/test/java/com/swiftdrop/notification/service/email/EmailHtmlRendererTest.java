@@ -53,7 +53,7 @@ class EmailHtmlRendererTest {
                 .contains("Parcel update")
                 .contains("Please do not reply")
                 // One link, to the public tracking page, so a recipient without an account can follow the parcel.
-                .contains("href=\"https://swiftdrop.lk/track/" + TRK + "\"")
+                .contains("href=\"http://localhost:5173/track/" + TRK + "\"")
                 .contains("Track your parcel")
                 .doesNotContain("Track live")
                 .doesNotContain("<img")

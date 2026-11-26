@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
 public class EmailHtmlRenderer {
 
     /** The same public site the shipping label's QR code points to. */
-    static final String DEFAULT_TRACKING_BASE_URL = "https://swiftdrop.lk";
+    static final String DEFAULT_TRACKING_BASE_URL = "http://localhost:5173"; // local frontend; AKS sets the real site
     private static final Pattern SAFE_BASE_URL = Pattern.compile("(?i)^https?://[^\\s/\"'<>]+(/[^\\s\"'<>]*)?$");
 
     private final String trackingBaseUrl;

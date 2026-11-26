@@ -92,7 +92,7 @@ public class OrderPdfGeneratorService {
     private final BaseFont monoBold;
 
     public OrderPdfGeneratorService(
-            @Value("${swiftdrop.public-tracking-base-url:https://swiftdrop.lk}") String publicTrackingBaseUrl) {
+            @Value("${swiftdrop.public-tracking-base-url:http://localhost:5173}") String publicTrackingBaseUrl) {
         String base = publicTrackingBaseUrl == null ? "" : publicTrackingBaseUrl.trim().replaceAll("/+$", "");
         if (!base.matches("(?i)^https?://[^\\s/]+(/\\S*)?$")) {
             throw new IllegalArgumentException("swiftdrop.public-tracking-base-url must be an http(s) URL");
