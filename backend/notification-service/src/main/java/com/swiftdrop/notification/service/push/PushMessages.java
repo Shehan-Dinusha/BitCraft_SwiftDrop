@@ -29,6 +29,7 @@ public final class PushMessages {
     }
 
     private static final Map<String, Kind> KINDS = Map.of(
+            "PARCEL_PICKUP_ASSIGNED", new Kind("Courier assigned", "%s · a courier is coming to collect it", false),
             "PARCEL_PICKED_UP", new Kind("Picked up", "%s has been collected", false),
             "PARCEL_OUT_FOR_DELIVERY", new Kind("Out for delivery", "%s is on its way", false),
             "PARCEL_DELIVERED", new Kind("Delivered", "%s has been delivered", false),

@@ -163,6 +163,29 @@ class OrderOwnershipTest {
     }
 
     @Test
+    @DisplayName("The sender reads their own parcel by tracking number; a shop its own shop orders; nobody else")
+    void ownerReadsByTrackingNumber() {
+        when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.of(orderOfA));
+
+        assertThat(customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerA, "CUSTOMER").getTrackingNumber())
+                .isEqualTo("SD-7K4M-9QX2");
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        UUID shop = UUID.randomUUID();
+        orderOfA.setMerchantId(shop);
+        callerMerchant(shop);
+        // A customer order that names a shop is still not the shop's.
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", UUID.randomUUID(), "MERCHANT"))
+                .isInstanceOf(OrderNotFoundException.class);
+        orderOfA.setSource(OrderSource.MERCHANT);
+        assertThat(customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", UUID.randomUUID(), "MERCHANT")).isNotNull();
+        callerMerchant(UUID.randomUUID());
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", UUID.randomUUID(), "MERCHANT"))
+                .isInstanceOf(OrderNotFoundException.class);
+    }
+
+    @Test
     @DisplayName("A shop's id on a customer's own order gives the shop no label")
     void merchantIdOnACustomerOrderGivesNoLabel() {
         UUID shop = UUID.randomUUID();

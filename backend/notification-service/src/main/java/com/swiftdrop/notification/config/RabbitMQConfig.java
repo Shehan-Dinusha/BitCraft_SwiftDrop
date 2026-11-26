@@ -61,6 +61,12 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with("order.created");
     }
 
+    /** The recipient is told when the sender cancels a parcel that was on its way to them. */
+    @Bean
+    public Binding bindNotificationEventsOrderCancelled(Queue notificationEventsQueue, TopicExchange eventsExchange) {
+        return BindingBuilder.bind(notificationEventsQueue).to(eventsExchange).with("order.cancelled");
+    }
+
     /** Couriers are told about new assignments; merchants see "courier assigned" in their team inbox. */
     @Bean
     public Binding bindNotificationEventsCourierAssigned(Queue notificationEventsQueue, TopicExchange eventsExchange) {

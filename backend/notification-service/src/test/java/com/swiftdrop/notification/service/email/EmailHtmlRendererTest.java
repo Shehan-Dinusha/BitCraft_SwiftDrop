@@ -89,6 +89,29 @@ class EmailHtmlRendererTest {
     }
 
     @Test
+    @DisplayName("Recipient emails show who sent the parcel and why the recipient gets them, never account settings")
+    void recipientEmails() {
+        String created = renderer.renderHtml("RECIPIENT_PARCEL_CREATED", "s", "b", TRK, Map.of(
+                "senderName", "Nimal Perera", "pickupDistrict", "COLOMBO", "deliveryDistrict", "KANDY",
+                "deliverBy", "Saturday, 28 Nov"));
+        String failed = renderer.renderHtml("RECIPIENT_FAILED", "s", "b", TRK, Map.of(
+                "failureReason", "the recipient was not available", "nextStep", "It goes back to the sender."));
+
+        assertThat(created).contains("A parcel is on its way to you", ">From<", "Nimal Perera", "Expected by",
+                        "Saturday, 28 Nov", "nothing to pay", "the sender of this parcel entered your email address")
+                .doesNotContain("notification settings");
+        assertThat(failed).contains("It goes back to the sender.").doesNotContain("Please contact the sender if you have questions.");
+    }
+
+    @Test
+    @DisplayName("The sender is told a courier is coming, with the fee ready in cash")
+    void pickupAssigned() {
+        String html = renderer.renderHtml("PARCEL_PICKUP_ASSIGNED", "s", "b", TRK, Map.of());
+
+        assertThat(html).contains("A courier is coming for your parcel", "delivery fee ready in cash", TRK);
+    }
+
+    @Test
     @DisplayName("Trigger placeholders such as 'our courier' or 'just now' are not shown as details")
     void hidesPlaceholders() {
         String out = renderer.renderHtml("PARCEL_OUT_FOR_DELIVERY", "s", "b", TRK, Map.of("courierName", "our courier"));

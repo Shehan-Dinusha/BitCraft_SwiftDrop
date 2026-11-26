@@ -90,6 +90,38 @@ public class EmailHtmlRenderer {
                     "We could not deliver your parcel, so it is on its way back to you. The return is free.",
                     "A courier will bring it to your pickup address.",
                     "#92400e", "#fef3c7", "#fde68a", 0, false)),
+            Map.entry("PARCEL_PICKUP_ASSIGNED", new Style("Courier assigned", "A courier is coming for your parcel",
+                    "A courier has been assigned to collect your parcel.",
+                    "Please have it packed and labelled, with the delivery fee ready in cash.",
+                    "#1d4ed8", "#eff6ff", "#bfdbfe", 1, false)),
+            Map.entry("RECIPIENT_PARCEL_CREATED", new Style("On its way to you", "A parcel is on its way to you",
+                    "Someone is sending you a parcel with SwiftDrop. You can follow it with the tracking number below.",
+                    "There is nothing to pay on delivery. We will email you as it moves.",
+                    "#3730a3", "#eef2ff", "#c7d2fe", 1, false)),
+            Map.entry("RECIPIENT_PICKED_UP", new Style("Picked up", "Your parcel has been picked up",
+                    "The courier has collected your parcel from the sender and it is moving through the SwiftDrop network.",
+                    "We will email you again when it is out for delivery.",
+                    "#075985", "#e0f2fe", "#bae6fd", 2, false)),
+            Map.entry("RECIPIENT_OUT_FOR_DELIVERY", new Style("Arriving today", "Your parcel arrives today",
+                    "A courier is bringing your parcel to you today.",
+                    "Please make sure someone is there to receive it. There is nothing to pay.",
+                    "#5b21b6", "#f3e8ff", "#e9d5ff", 3, false)),
+            Map.entry("RECIPIENT_DELIVERED", new Style("Delivered", "Your parcel has been delivered",
+                    "Your parcel was delivered.",
+                    "If you did not receive it, please contact the sender.",
+                    "#065f46", "#d1fae5", "#a7f3d0", 4, false)),
+            Map.entry("RECIPIENT_FAILED", new Style("Delivery attempt failed", "We could not deliver your parcel",
+                    "We were not able to deliver your parcel.",
+                    "Please contact the sender if you have questions.",
+                    "#991b1b", "#fee2e2", "#fecaca", 4, true)),
+            Map.entry("RECIPIENT_RETURNING", new Style("Going back", "Your parcel is going back to the sender",
+                    "Your parcel will not be delivered and is on its way back to the sender.",
+                    "Please contact the sender if you have questions.",
+                    "#92400e", "#fef3c7", "#fde68a", 0, false)),
+            Map.entry("RECIPIENT_CANCELLED", new Style("Cancelled", "A parcel to you was cancelled",
+                    "The sender cancelled this parcel, so it will not be delivered.",
+                    "Please contact the sender if you have questions.",
+                    "#334155", "#f1f5f9", "#cbd5e1", 0, false)),
             Map.entry("PARCEL_RETURNED", new Style("Returned", "Your parcel has been returned",
                     "Your parcel was handed back to you.",
                     "If you did not receive it, contact SwiftDrop.",
@@ -143,6 +175,8 @@ public class EmailHtmlRenderer {
             + "business account.";
     private static final String SIGN_IN_REASON = "Sign-in alerts help keep your SwiftDrop account safe. They are always "
             + "sent and cannot be turned off.";
+    private static final String RECIPIENT_REASON = "You are receiving this email because the sender of this parcel "
+            + "entered your email address for delivery updates. If the parcel is not for you, you can ignore this email.";
     private static final String COURIER_REASON = "You are receiving this email because you are a SwiftDrop courier. "
             + "You can turn off delivery emails in your SwiftDrop notification settings.";
 
@@ -186,8 +220,10 @@ public class EmailHtmlRenderer {
             }
             content.append(details(code, tracking, p));
         }
-        if (style.next() != null) {
-            content.append(row("padding:20px 40px 0 40px;font-size:14px;line-height:22px;color:#475569;", esc(style.next())));
+        // A failed delivery says what happens next for this parcel (tried again, or returned).
+        String next = code.endsWith("_FAILED") && clean(p.get("nextStep")) != null ? clean(p.get("nextStep")) : style.next();
+        if (next != null) {
+            content.append(row("padding:20px 40px 0 40px;font-size:14px;line-height:22px;color:#475569;", esc(next)));
         }
 
         String preheader = esc(preheader(code, style, tracking));
@@ -249,6 +285,9 @@ public class EmailHtmlRenderer {
         }
         if (code.startsWith("MERCHANT_")) {
             return MERCHANT_REASON;
+        }
+        if (code.startsWith("RECIPIENT_")) {
+            return RECIPIENT_REASON;
         }
         return "COURIER_ASSIGNED".equals(code) ? COURIER_REASON : PARCEL_REASON;
     }
@@ -320,6 +359,31 @@ public class EmailHtmlRenderer {
                     rows.add(new String[]{"Courier", courier, null});
                 }
             }
+            case "RECIPIENT_PARCEL_CREATED" -> {
+                from(rows, p);
+                String fromDistrict = district(p.get("pickupDistrict"));
+                String toDistrict = district(p.get("deliveryDistrict"));
+                if (fromDistrict != null && toDistrict != null) {
+                    rows.add(new String[]{"Route", fromDistrict + " → " + toDistrict, null});
+                }
+                String speed = title(p.get("speed"));
+                if (speed != null) {
+                    rows.add(new String[]{"Service", speed, null});
+                }
+                String by = clean(p.get("deliverBy"));
+                if (by != null) {
+                    rows.add(new String[]{"Expected by", by, null});
+                }
+            }
+            case "RECIPIENT_PICKED_UP", "RECIPIENT_OUT_FOR_DELIVERY", "RECIPIENT_RETURNING", "RECIPIENT_CANCELLED" ->
+                    from(rows, p);
+            case "RECIPIENT_DELIVERED" -> {
+                from(rows, p);
+                String when = when(p.get("deliveredAt"));
+                if (when != null) {
+                    rows.add(new String[]{"Delivered on", when, null});
+                }
+            }
             case "PARCEL_DELIVERED" -> {
                 String when = when(p.get("deliveredAt"));
                 if (when != null) {
@@ -371,7 +435,7 @@ public class EmailHtmlRenderer {
                     rows.add(new String[]{"Returned", when, null});
                 }
             }
-            case "PARCEL_FAILED" -> {
+            case "PARCEL_FAILED", "RECIPIENT_FAILED" -> {
                 String reason = clean(p.get("failureReason"));
                 if (reason != null) {
                     rows.add(new String[]{"Reason", reason.substring(0, 1).toUpperCase(Locale.ROOT) + reason.substring(1), null});
@@ -400,6 +464,14 @@ public class EmailHtmlRenderer {
                 + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" "
                 + "style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;\">"
                 + table + "</table></td></tr>\n";
+    }
+
+    /** Who sent the parcel, so the recipient knows it is expected. */
+    private static void from(List<String[]> rows, Map<String, String> p) {
+        String sender = clean(p.get("senderName"));
+        if (sender != null && !"The sender".equals(sender)) {
+            rows.add(new String[]{"From", sender, null});
+        }
     }
 
     private static String codeBox(String code, String minutes) {

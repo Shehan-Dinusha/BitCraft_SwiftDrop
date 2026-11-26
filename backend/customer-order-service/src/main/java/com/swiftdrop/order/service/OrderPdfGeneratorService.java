@@ -57,7 +57,8 @@ import java.util.Map;
  * </ul>
  *
  * <p>The label is printed and stuck on the parcel, so it carries only what the courier needs: the
- * recipient's name, phone and address, and the sender's name and address (no sender phone, no emails).
+ * recipient's name, phone and address, and the sender's name, address and phone, so a parcel that cannot be
+ * delivered or returned can always be sorted out by calling the sender (no emails).
  * The receipts are for the customer and carry no phone numbers or street addresses.</p>
  *
  * <p>Text uses the built-in Helvetica/Courier fonts (WinAnsi), so only characters from that set are
@@ -380,7 +381,7 @@ public class OrderPdfGeneratorService {
         text(cb, "1 of 1", sansBold, 12, CONTENT_LEFT, top - 47, Element.ALIGN_LEFT);
     }
 
-    /** Return address on one or two compact lines: the sender's name in bold, then the address. No phone. */
+    /** Return address on one or two compact lines: the sender's name and phone in bold, then the address. */
     private void drawReturnTo(PdfContentByte cb, CustomerOrder order) throws IOException, WriterException {
         float top = Z_PARCEL;
         text(cb, "IF UNDELIVERED, RETURN TO", sansBold, 6.5f, CONTENT_LEFT, top - 9.5f, Element.ALIGN_LEFT);
@@ -389,21 +390,28 @@ public class OrderPdfGeneratorService {
         float boxTop = top - 11.5f;
         float boxBottom = Z_RETURN + 2;
         for (float size = 8; ; size -= 0.5f) {
-            ColumnText probe = returnColumn(cb, order.getPickupContactName(), address, size, boxTop, boxBottom);
+            ColumnText probe = returnColumn(cb, order.getPickupContactName(), address, order.getPickupContactPhone(),
+                    size, boxTop, boxBottom);
             if (!ColumnText.hasMoreText(probe.go(true)) || size <= 6.5f) {
-                returnColumn(cb, order.getPickupContactName(), address, size, boxTop, boxBottom).go();
+                returnColumn(cb, order.getPickupContactName(), address, order.getPickupContactPhone(),
+                        size, boxTop, boxBottom).go();
                 return;
             }
         }
     }
 
-    private ColumnText returnColumn(PdfContentByte cb, String name, String address, float size, float top, float bottom) {
+    private ColumnText returnColumn(PdfContentByte cb, String name, String address, String phone, float size,
+                                    float top, float bottom) {
         ColumnText ct = new ColumnText(cb);
         ct.setSimpleColumn(CONTENT_LEFT, bottom, CONTENT_RIGHT, top);
         ct.setLeading(size * 1.2f);
         Phrase phrase = new Phrase();
         if (has(name)) {
             phrase.add(new Chunk(name.trim() + ", ", font(sansBold, size, BLACK)));
+        }
+        // The phone comes before the address: if a long address does not fit, the end of it is cut, never the phone.
+        if (has(phone)) {
+            phrase.add(new Chunk("Tel " + formatPhone(phone) + ", ", font(sansBold, size, BLACK)));
         }
         phrase.add(new Chunk(address, font(sans, size, BLACK)));
         ct.addText(phrase);

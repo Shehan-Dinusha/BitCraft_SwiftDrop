@@ -1,6 +1,7 @@
 package com.swiftdrop.notification.util;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -11,6 +12,7 @@ public final class DisplayText {
 
     private static final ZoneId SRI_LANKA = ZoneId.of("Asia/Colombo");
     private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE, d MMM", Locale.ENGLISH);
 
     private DisplayText() {
     }
@@ -38,6 +40,18 @@ public final class DisplayText {
             return WHEN.format(Instant.parse(value.trim()).atZone(SRI_LANKA)).replace("AM", "a.m.").replace("PM", "p.m.");
         } catch (DateTimeParseException e) {
             return value.trim();
+        }
+    }
+
+    /** ISO date -> "Saturday, 28 Nov"; null, blank or not a date -> null. */
+    public static String day(String isoDate) {
+        if (isoDate == null || isoDate.isBlank()) {
+            return null;
+        }
+        try {
+            return DAY.format(LocalDate.parse(isoDate.trim()));
+        } catch (DateTimeParseException e) {
+            return null;
         }
     }
 
