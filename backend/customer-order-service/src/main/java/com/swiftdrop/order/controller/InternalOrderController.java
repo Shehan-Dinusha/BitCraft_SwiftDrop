@@ -6,6 +6,7 @@ import com.swiftdrop.order.dto.CustomerOrderResponse;
 import com.swiftdrop.order.dto.InternalCourierJobView;
 import com.swiftdrop.order.dto.InternalCourierJobsRequest;
 import com.swiftdrop.order.dto.InternalCreateOrderRequest;
+import com.swiftdrop.order.dto.InternalRecipientContact;
 import com.swiftdrop.order.dto.InternalTrackingView;
 import com.swiftdrop.order.dto.ValidationPatterns;
 import com.swiftdrop.order.service.InternalCourierJobService;
@@ -62,6 +63,14 @@ public class InternalOrderController {
                     + "Carries full contact details. Internal, no user context: must never be exposed through the API gateway.")
     public ApiResponse<InternalCourierJobView> getCourierJob(@PathVariable("orderId") UUID orderId) {
         return ApiResponse.success(internalCourierJobService.getCourierJob(orderId), "Courier job retrieved successfully");
+    }
+
+    @GetMapping("/{orderId}/recipient-contact")
+    @Operation(summary = "The recipient's email and the names shown in their parcel emails",
+            description = "For the notification service, which emails the recipient as the parcel moves. Carries an email "
+                    + "address. Internal, no user context: must never be exposed through the API gateway.")
+    public ApiResponse<InternalRecipientContact> getRecipientContact(@PathVariable("orderId") UUID orderId) {
+        return ApiResponse.success(internalCourierJobService.getRecipientContact(orderId), "Recipient contact retrieved successfully");
     }
 
     @PostMapping("/courier-jobs")

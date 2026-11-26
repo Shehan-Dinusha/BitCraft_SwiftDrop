@@ -13,6 +13,7 @@ import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.dto.InternalMerchantParcel;
 import com.swiftdrop.dispatch.dto.ManualAssignRequest;
 import com.swiftdrop.dispatch.dto.MerchantPickupState;
+import com.swiftdrop.dispatch.dto.CourierSuggestionResponse;
 import com.swiftdrop.dispatch.dto.ShopCourierSuggestionResponse;
 import com.swiftdrop.dispatch.exception.AssignmentConflictException;
 import com.swiftdrop.dispatch.security.DistrictScope;
@@ -36,13 +37,16 @@ public class MerchantPickupService {
     private final DispatchAssignmentRepository assignmentRepository;
     private final CourierShiftRepository courierShiftRepository;
     private final ManualOverrideService manualOverrideService;
+    private final WorkingDay workingDay;
 
     public MerchantPickupService(DispatchAssignmentRepository assignmentRepository,
                                  CourierShiftRepository courierShiftRepository,
-                                 ManualOverrideService manualOverrideService) {
+                                 ManualOverrideService manualOverrideService,
+                                 WorkingDay workingDay) {
         this.assignmentRepository = assignmentRepository;
         this.courierShiftRepository = courierShiftRepository;
         this.manualOverrideService = manualOverrideService;
+        this.workingDay = workingDay;
     }
 
     /** What the shop still holds. */
@@ -81,13 +85,18 @@ public class MerchantPickupService {
                 .findByCurrentDistrictAndShiftStatusNot(district, ShiftStatus.OFFLINE);
         Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
                 couriers.stream().map(CourierShift::getCourierId).toList());
+        boolean pickupsClosed = workingDay.pickupsClosed();
         return couriers.stream()
                 .map(courier -> new ShopCourierSuggestionResponse(courier.getCourierId(), courier.getCourierName(),
                         courier.getVehicleType(), courier.getActiveParcelsCount(), courier.getMaxCapacity(),
-                        CourierFit.fitting(courier, loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE), ready)
-                                .stream().map(DispatchAssignment::getOrderId).toList()))
-                // Most of the shop's parcels first, then the smallest vehicle that takes them.
+                        CourierFit.fitting(courier, loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE), ready,
+                                        pickupsClosed)
+                                .stream().map(DispatchAssignment::getOrderId).toList(),
+                        CourierSuggestionResponse.breakEndsAt(courier)))
+                // Most of the shop's parcels first, couriers at work before those on their break, then the
+                // smallest vehicle that takes them.
                 .sorted(Comparator.comparingInt((ShopCourierSuggestionResponse option) -> -option.fittingOrderIds().size())
+                        .thenComparing(option -> option.breakEndsAt() != null)
                         .thenComparingInt(option -> option.vehicleType().ordinal())
                         .thenComparingInt(ShopCourierSuggestionResponse::activeParcels)
                         .thenComparing(ShopCourierSuggestionResponse::courierId))

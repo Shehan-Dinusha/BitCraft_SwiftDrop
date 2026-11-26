@@ -27,6 +27,7 @@ import com.swiftdrop.order.exception.ParcelTooLargeException;
 import com.swiftdrop.order.messaging.publisher.OrderEventPublisher;
 import com.swiftdrop.order.service.pricing.PricingClient;
 import lombok.RequiredArgsConstructor;
+import com.swiftdrop.order.service.promise.DeliveryPromise;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,9 +50,15 @@ public class CustomerOrderService {
     private final OrderPdfGeneratorService orderPdfGeneratorService;
     private final OrderEventPublisher orderEventPublisher;
     private final OrderStatusHistoryService orderStatusHistoryService;
+    private final DeliveryPromise deliveryPromise;
 
+    /** The fee and the promised day; Same day between districts or too late in the day is refused. */
     public FeeEstimateResponse calculateEstimate(FeeEstimateRequest request) {
-        return pricingClient.estimate(request);
+        OrderSpeed speed = request.getSpeed() != null ? request.getSpeed() : OrderSpeed.STANDARD;
+        var deliverBy = deliveryPromise.deliverBy(speed, request.getPickupDistrict(), request.getDeliveryDistrict());
+        FeeEstimateResponse estimate = pricingClient.estimate(request);
+        estimate.setDeliverBy(deliverBy);
+        return estimate;
     }
 
     @Transactional
@@ -77,6 +84,8 @@ public class CustomerOrderService {
     private CustomerOrderResponse persistNewOrder(CreateOrderRequest request, UUID customerId, OrderSource source,
                                                   String externalRef, UUID correlationId) {
         requireAcceptedVolume(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
+        OrderSpeed speed = request.getSpeed() != null ? request.getSpeed() : OrderSpeed.STANDARD;
+        var deliverBy = deliveryPromise.deliverBy(speed, request.getPickupDistrict(), request.getDeliveryDistrict());
 
         // 1. Calculate price and chargeable weight
         FeeEstimateRequest estimateReq = FeeEstimateRequest.builder()
@@ -86,7 +95,7 @@ public class CustomerOrderService {
                 .lengthCm(request.getLengthCm())
                 .widthCm(request.getWidthCm())
                 .heightCm(request.getHeightCm())
-                .speed(request.getSpeed() != null ? request.getSpeed() : OrderSpeed.STANDARD)
+                .speed(speed)
                 .build();
         FeeEstimateResponse estimate = pricingClient.estimate(estimateReq);
 
@@ -98,7 +107,8 @@ public class CustomerOrderService {
                 .orderId(UUID.randomUUID())
                 .trackingNumber(trackingNumber)
                 .customerId(customerId)
-                .merchantId(request.getMerchantId())
+                // Only the merchant service creates a shop's order; a customer's booking never names a shop.
+                .merchantId(source == OrderSource.MERCHANT ? request.getMerchantId() : null)
                 .source(source)
                 .externalRef(externalRef)
                 .clientRequestId(source == OrderSource.CUSTOMER ? request.getClientRequestId() : null)
@@ -136,6 +146,7 @@ public class CustomerOrderService {
                 .finalFee(estimate.getEstimatedFee())
                 .currency("LKR")
                 .feeRevisionStatus(FeeRevisionStatus.APPROVED)
+                .deliverBy(deliverBy)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
@@ -167,7 +178,10 @@ public class CustomerOrderService {
     public CustomerOrderResponse getOrderByTrackingNumber(String trackingNumber, UUID callerId, String callerRole) {
         CustomerOrder order = customerOrderRepository.findByTrackingNumber(trackingNumber)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
-        assertCallerCanAccess(order, callerId, callerRole);
+        // The sender sees their own parcel in full on the tracking page; a shop sees its own orders.
+        if (!isOwnMerchantOrder(order, callerRole)) {
+            assertCallerCanAccess(order, callerId, callerRole);
+        }
         return CustomerOrderResponse.fromEntity(order);
     }
 
@@ -206,6 +220,13 @@ public class CustomerOrderService {
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
         assertCallerCanAccess(order, callerId, callerRole);
         return order;
+    }
+
+    /** A merchant's own shop order: placed through the merchant service for the caller's company. */
+    private static boolean isOwnMerchantOrder(CustomerOrder order, String callerRole) {
+        return UserRole.fromClaim(callerRole) == UserRole.MERCHANT
+                && order.getSource() == OrderSource.MERCHANT
+                && order.getMerchantId() != null && order.getMerchantId().equals(CallerMerchant.current());
     }
 
     private void assertCallerCanAccess(CustomerOrder order, UUID callerId, String callerRole) {
@@ -277,6 +298,11 @@ public class CustomerOrderService {
         if (request.getHeightCm() != null) { order.setHeightCm(request.getHeightCm()); dimsOrSpeedChanged = true; }
         if (request.getActualWeightKg() != null) { order.setActualWeightKg(request.getActualWeightKg()); dimsOrSpeedChanged = true; }
         if (request.getSpeed() != null) { order.setOrderSpeed(request.getSpeed()); dimsOrSpeedChanged = true; }
+        // The promise follows the speed and the districts; Same day is checked again when either changes.
+        if (request.getSpeed() != null || request.getPickupDistrict() != null || request.getDeliveryDistrict() != null) {
+            order.setDeliverBy(deliveryPromise.deliverBy(order.getOrderSpeed(), order.getPickupDistrict(),
+                    order.getDeliveryDistrict()));
+        }
 
         if (dimsOrSpeedChanged) {
             requireAcceptedVolume(order.getLengthCm(), order.getWidthCm(), order.getHeightCm());
@@ -393,10 +419,7 @@ public class CustomerOrderService {
         List<CustomerOrder> orders = orderIds.stream().distinct().map(orderId -> {
             CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
                     .orElseThrow(() -> new OrderNotFoundException("Order not found"));
-            boolean ownMerchantOrder = UserRole.fromClaim(callerRole) == UserRole.MERCHANT
-                    && order.getSource() == OrderSource.MERCHANT
-                    && order.getMerchantId() != null && order.getMerchantId().equals(CallerMerchant.current());
-            if (!ownMerchantOrder) {
+            if (!isOwnMerchantOrder(order, callerRole)) {
                 assertCallerCanAccess(order, callerId, callerRole);
             }
             return order;

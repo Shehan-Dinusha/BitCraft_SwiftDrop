@@ -133,6 +133,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <Search className={cn('shrink-0 text-muted', recipe.icon)} aria-hidden="true" />
       ) : null;
 
+    // The reveal and clear buttons keep a full tap target, but the icon sits at the field's right edge,
+    // level with the text's left inset, and centred on the line rather than on the text baseline.
     const variantTrailing =
       variant === 'password' ? (
         <button
@@ -141,7 +143,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           aria-label={revealed ? 'Hide password' : 'Show password'}
           aria-pressed={revealed}
           className={cn(
-            'shrink-0 rounded text-muted transition-colors hover:text-primary',
+            'flex shrink-0 items-center justify-end rounded text-muted transition-colors hover:text-primary',
             recipe.target
           )}
         >
@@ -157,7 +159,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           onClick={onClear}
           aria-label="Clear search"
           className={cn(
-            'shrink-0 rounded text-muted transition-colors hover:text-primary',
+            'flex shrink-0 items-center justify-end rounded text-muted transition-colors hover:text-primary',
             recipe.target
           )}
         >

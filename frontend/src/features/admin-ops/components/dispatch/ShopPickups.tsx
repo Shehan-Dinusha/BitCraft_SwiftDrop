@@ -12,7 +12,7 @@ import {
 import { districtLabel } from '@/features/profile/profileFormat';
 import { vehicleLabel } from '@/utils/vehicles';
 import { cn } from '@/utils/cn';
-import { amount } from './courierFit';
+import { amount, onBreakUntil } from './courierFit';
 import { Badge, CELL, DispatchTable, TableSkeleton } from './DispatchTable';
 import { formatAge, type ShopGroup } from './dispatchQueues';
 
@@ -210,6 +210,9 @@ function AssignShop({
                     <span className="flex flex-wrap items-center gap-2 font-semibold text-primary">
                       {courier.courierName}
                       {index === 0 ? <Badge tone="success">Best match</Badge> : null}
+                      {courier.breakEndsAt ? (
+                        <Badge tone="info">{onBreakUntil(courier.breakEndsAt)}</Badge>
+                      ) : null}
                     </span>
                     <span className="text-secondary">
                       {vehicleLabel(courier.vehicleType)} · {courier.activeParcels} of{' '}

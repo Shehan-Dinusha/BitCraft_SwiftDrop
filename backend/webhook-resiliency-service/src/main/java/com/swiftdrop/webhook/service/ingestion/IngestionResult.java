@@ -14,7 +14,9 @@ public record IngestionResult(Outcome outcome, int deliveriesCreated, int releas
         DUPLICATE,
         RESOLVED,
         AWAITING_MERCHANT,
-        NO_MERCHANT
+        NO_MERCHANT,
+        /** A status event inside the same public status (a hub step): nothing stored, nothing sent. */
+        NO_CHANGE
     }
 
     static IngestionResult duplicate() {

@@ -104,16 +104,17 @@ class OrderPdfGeneratorServiceTest {
     }
 
     @Test
-    @DisplayName("Label shows what the courier needs and nothing more")
+    @DisplayName("Label shows what the courier needs, the sender's phone for returns, and nothing more")
     void labelCarriesOnlyCourierDetails() throws Exception {
         String label = pageText(new PdfReader(pdfGeneratorService.generateShippingLabelAndReceiptPdf(sampleOrder)), 1);
 
         assertThat(label)
                 .contains("Test Recipient", "+94 71 987 6543", "No. 12, Kandy Road", "Peradeniya", "20400")
                 .contains("NUWARA ELIYA", "EXPRESS", "25.5 x 20 x 10 cm", "1 of 1");
+        // Return address: the sender's name and phone, so an undeliverable parcel can be sorted out by phone.
+        assertThat(label).contains("Pickup Contact", "Tel +94 77 123 4567", "No. 50, Galle Road");
         assertThat(label)
                 .doesNotContain("LKR", "CASH")
-                .doesNotContain(PICKUP_PHONE, "+94 77 123 4567")
                 .doesNotContain(RECIPIENT_EMAIL)
                 .doesNotContain(sampleOrder.getOrderId().toString());
     }

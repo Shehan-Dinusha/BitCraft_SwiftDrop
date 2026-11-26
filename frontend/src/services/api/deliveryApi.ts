@@ -46,6 +46,24 @@ export const deliveryApi = {
     return data.data;
   },
 
+  /** Load, in one go, the parcels waiting at the hub for this courier. All of them or none. */
+  loadAtHub: async (deliveryIds: string[]) => {
+    const { data } = await apiClient.post<{ success: boolean; data: DeliverySessionResponse[] }>(
+      '/v1/deliveries/load',
+      { deliveryIds }
+    );
+    return data.data;
+  },
+
+  /** Hand in, in one go, parcels the courier carries at their hub. All of them or none. */
+  handIn: async (deliveryIds: string[]) => {
+    const { data } = await apiClient.post<{ success: boolean; data: DeliverySessionResponse[] }>(
+      '/v1/deliveries/hand-in',
+      { deliveryIds }
+    );
+    return data.data;
+  },
+
   getDeliveryByOrderId: async (orderId: string) => {
     const { data } = await apiClient.get<{ success: boolean; data: DeliverySessionResponse }>(
       `/v1/deliveries/order/${orderId}`

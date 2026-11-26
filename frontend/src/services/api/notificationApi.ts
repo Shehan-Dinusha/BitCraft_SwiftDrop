@@ -10,6 +10,12 @@ export type PushPublicKeyResponse = components['schemas']['PushPublicKeyResponse
 export type PushSubscriptionRequest = components['schemas']['PushSubscriptionRequest'];
 
 export const notificationApi = {
+  /** Public: a parcel's recipient stops the emails about that parcel with the token from the link. */
+  stopRecipientEmails: async (token: string) => {
+    const request: components['schemas']['StopEmailsRequest'] = { token };
+    await apiClient.post('/v1/notifications/email-stops', request);
+  },
+
   getCurrentPreferences: async (recipientId?: string) => {
     const params = recipientId ? { recipientId } : {};
     const { data } = await apiClient.get<{ success: boolean; data: RecipientPreferenceResponse }>(

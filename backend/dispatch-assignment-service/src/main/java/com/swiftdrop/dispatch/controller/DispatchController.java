@@ -186,6 +186,21 @@ public class DispatchController {
         return ApiResponse.success(dispatchAssignmentService.getReadyToSend(scope), "Parcels ready to send retrieved");
     }
 
+    @GetMapping("/sent")
+    @Operation(summary = "List parcels this district marked Outbound that the drop-off hub has not accepted yet",
+            description = "Read-only: the drop-off district accepts them. Once accepted they leave this list. A "
+                    + "DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district.")
+    public ApiResponse<List<DispatchAssignmentResponse>> getSent(
+            @RequestParam(required = false) SriLankanDistrict district,
+            HttpServletRequest httpRequest) {
+        CallerContext caller = DispatchAccess.requireOperations(httpRequest);
+        SriLankanDistrict scope = DistrictScope.listDistrict(caller, district);
+        if (scope == null) {
+            throw new IllegalArgumentException("Choose a district");
+        }
+        return ApiResponse.success(dispatchAssignmentService.getSent(scope), "Sent parcels retrieved");
+    }
+
     @GetMapping("/incoming")
     @Operation(summary = "List open orders coming into a district from another one",
             description = "Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own "

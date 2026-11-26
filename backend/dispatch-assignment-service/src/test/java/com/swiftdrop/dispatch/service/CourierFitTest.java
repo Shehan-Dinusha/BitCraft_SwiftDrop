@@ -3,6 +3,7 @@ package com.swiftdrop.dispatch.service;
 import com.swiftdrop.contracts.parcel.ParcelLimits;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
+import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
 import com.swiftdrop.dispatch.domain.enums.CourierBlock;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
@@ -40,14 +41,40 @@ class CourierFitTest {
     }
 
     @Test
-    @DisplayName("Off shift, on break and busy couriers cannot take anything")
+    @DisplayName("An off-shift courier cannot take anything; one on their lunch break can, with room left")
     void shiftStatus() {
-        for (var expected : java.util.Map.of(ShiftStatus.OFFLINE, CourierBlock.OFF_SHIFT,
-                ShiftStatus.ON_BREAK, CourierBlock.ON_BREAK, ShiftStatus.BUSY, CourierBlock.BUSY).entrySet()) {
-            CourierShift courier = courier(VehicleType.LORRY, 0);
-            courier.setShiftStatus(expected.getKey());
-            assertThat(CourierFit.block(courier, CourierLoad.NONE, parcel("10", "10", "10", "1"))).contains(expected.getValue());
-        }
+        CourierShift courier = courier(VehicleType.LORRY, 0);
+        courier.setShiftStatus(ShiftStatus.OFFLINE);
+        assertThat(CourierFit.block(courier, CourierLoad.NONE, parcel("10", "10", "10", "1"))).contains(CourierBlock.OFF_SHIFT);
+
+        courier.setShiftStatus(ShiftStatus.ON_BREAK);
+        assertThat(CourierFit.block(courier, CourierLoad.NONE, parcel("10", "10", "10", "1"))).isEmpty();
+        CourierShift full = courier(VehicleType.MOTORCYCLE, 5);
+        full.setShiftStatus(ShiftStatus.ON_BREAK);
+        assertThat(CourierFit.block(full, CourierLoad.NONE, parcel("10", "10", "10", "1"))).contains(CourierBlock.PARCEL_LIMIT);
+    }
+
+    @Test
+    @DisplayName("Hub parcels go only to a courier still at the hub; pickups only until the cut-off")
+    void theRunAndThePickupCutoff() {
+        DispatchAssignment pickup = parcel("10", "10", "10", "1");
+        DispatchAssignment fromHub = parcel("10", "10", "10", "1");
+        fromHub.setLeg(AssignmentLeg.LAST_MILE);
+        DispatchAssignment returnFromHub = parcel("10", "10", "10", "1");
+        returnFromHub.setLeg(AssignmentLeg.RETURN);
+        CourierShift atHub = courier(VehicleType.VAN, 0);
+        CourierShift onRun = courier(VehicleType.VAN, 0);
+        onRun.setRunStartedAt(java.time.Instant.parse("2026-11-24T03:40:00Z"));
+
+        assertThat(CourierFit.block(atHub, CourierLoad.NONE, fromHub, false)).isEmpty();
+        assertThat(CourierFit.block(onRun, CourierLoad.NONE, fromHub, false)).contains(CourierBlock.ON_RUN);
+        assertThat(CourierFit.block(onRun, CourierLoad.NONE, returnFromHub, false)).contains(CourierBlock.ON_RUN);
+        assertThat(CourierFit.block(onRun, CourierLoad.NONE, pickup, false)).isEmpty();
+
+        assertThat(CourierFit.block(atHub, CourierLoad.NONE, pickup, true)).contains(CourierBlock.PICKUPS_CLOSED);
+        assertThat(CourierFit.block(atHub, CourierLoad.NONE, fromHub, true)).isEmpty();
+        assertThat(CourierFit.fitting(atHub, CourierLoad.NONE, java.util.List.of(pickup, fromHub), true))
+                .containsExactly(fromHub);
     }
 
     @Test

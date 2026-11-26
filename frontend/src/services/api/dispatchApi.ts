@@ -16,6 +16,9 @@ export type VehicleType = components['schemas']['VehicleType'];
 export type CourierProfileResponse = components['schemas']['CourierProfileResponse'];
 export type CourierVehicleRequest = components['schemas']['CourierVehicleRequest'];
 export type OrderCourierResponse = components['schemas']['OrderCourierResponse'];
+export type WorkdayResponse = components['schemas']['WorkdayResponse'];
+export type ClosedDayResponse = components['schemas']['ClosedDayResponse'];
+export type ClosedDayRequest = components['schemas']['ClosedDayRequest'];
 
 export interface PagedDispatchResult {
   content: DispatchAssignmentResponse[];
@@ -76,6 +79,15 @@ export const dispatchApi = {
   },
 
   /** Open orders delivered into the district from elsewhere; read-only for its dispatcher. */
+  /** Marked Outbound by the district and not yet accepted by the drop-off hub. Read-only. */
+  getSent: async (district?: SriLankanDistrict) => {
+    const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
+      '/v1/dispatch/sent',
+      { params: { district } }
+    );
+    return data.data;
+  },
+
   getIncoming: async (district?: SriLankanDistrict) => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
       '/v1/dispatch/incoming',
@@ -232,6 +244,47 @@ export const dispatchApi = {
     const { data } = await apiClient.put<{ success: boolean; data: CourierShiftResponse }>(
       '/v1/dispatch/couriers/shifts/status',
       request
+    );
+    return data.data;
+  },
+
+  /** The courier leaves the hub on their run; refused while hub parcels are still to load. */
+  startRun: async (courierId: string) => {
+    const { data } = await apiClient.post<{ success: boolean; data: CourierShiftResponse }>(
+      `/v1/dispatch/couriers/shifts/${courierId}/run`
+    );
+    return data.data;
+  },
+
+  /** The courier is back at the hub: the run ends, so they can hand in and load again. */
+  backAtHub: async (courierId: string) => {
+    const { data } = await apiClient.post<{ success: boolean; data: CourierShiftResponse }>(
+      `/v1/dispatch/couriers/shifts/${courierId}/back`
+    );
+    return data.data;
+  },
+
+  /** Today's working day, hours, lunch break and coming holidays (Sri Lanka time). */
+  getWorkday: async () => {
+    const { data } = await apiClient.get<{ success: boolean; data: WorkdayResponse }>(
+      '/v1/dispatch/calendar/today'
+    );
+    return data.data;
+  },
+
+  /** System admin: close a holiday. Returns the holidays from today on. */
+  addClosedDay: async (request: ClosedDayRequest) => {
+    const { data } = await apiClient.post<{ success: boolean; data: ClosedDayResponse[] }>(
+      '/v1/dispatch/calendar/closed-days',
+      request
+    );
+    return data.data;
+  },
+
+  /** System admin: reopen a holiday (`YYYY-MM-DD`). Returns the holidays from today on. */
+  removeClosedDay: async (day: string) => {
+    const { data } = await apiClient.delete<{ success: boolean; data: ClosedDayResponse[] }>(
+      `/v1/dispatch/calendar/closed-days/${day}`
     );
     return data.data;
   }

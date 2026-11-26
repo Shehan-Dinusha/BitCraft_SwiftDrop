@@ -9,19 +9,19 @@ const SPEEDS: { value: OrderSpeed; title: string; caption: string; icon: JSX.Ele
   {
     value: 'STANDARD',
     title: 'Standard',
-    caption: 'Our regular delivery service',
+    caption: '2 to 3 working days',
     icon: <Package />
   },
   {
     value: 'EXPRESS',
     title: 'Express',
-    caption: 'Faster delivery for a higher fee',
+    caption: 'Next working day',
     icon: <Zap />
   },
   {
     value: 'SAME_DAY',
     title: 'Same day',
-    caption: 'Our fastest service, for a higher fee',
+    caption: 'Today, within one district, if booked by 11:00',
     icon: <Timer />
   }
 ];

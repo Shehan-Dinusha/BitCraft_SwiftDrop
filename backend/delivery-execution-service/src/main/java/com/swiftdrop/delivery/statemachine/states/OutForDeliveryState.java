@@ -13,8 +13,9 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * OUT_FOR_DELIVERY: the courier is on the way to the recipient. The only exits are DELIVERED
- * (which needs verified proof of delivery) and FAILED (which needs a reason code).
+ * OUT_FOR_DELIVERY: the courier is on the way to the recipient. It ends DELIVERED (which needs verified proof of
+ * delivery), as a failed attempt or FAILED (which needs a reason code), or back at the hub (AT_DESTINATION_HUB)
+ * when the courier did not get to it today, which is not an attempt.
  */
 @Component
 public class OutForDeliveryState implements DeliveryStateHandler {
@@ -41,7 +42,8 @@ public class OutForDeliveryState implements DeliveryStateHandler {
 
     @Override
     public Set<DeliveryState> allowedNext() {
-        return EnumSet.of(DeliveryState.DELIVERED, DeliveryState.ATTEMPT_FAILED, DeliveryState.FAILED);
+        return EnumSet.of(DeliveryState.DELIVERED, DeliveryState.ATTEMPT_FAILED, DeliveryState.FAILED,
+                DeliveryState.AT_DESTINATION_HUB);
     }
 
     @Override

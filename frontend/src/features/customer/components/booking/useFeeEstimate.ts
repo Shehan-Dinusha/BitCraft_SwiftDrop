@@ -6,7 +6,8 @@ import {
   type FeeEstimateResponse
 } from '@/services/api/orderApi';
 
-export type FeeEstimateStatus = 'idle' | 'loading' | 'ready' | 'unavailable' | 'error';
+/** `refused`: the order service will not take these choices (Same day between districts or too late). */
+export type FeeEstimateStatus = 'idle' | 'loading' | 'ready' | 'unavailable' | 'refused' | 'error';
 
 const DEBOUNCE_MS = 400;
 
@@ -18,6 +19,7 @@ const DEBOUNCE_MS = 400;
 export function useFeeEstimate(request: FeeEstimateRequest | null) {
   const [estimate, setEstimate] = useState<FeeEstimateResponse | null>(null);
   const [status, setStatus] = useState<FeeEstimateStatus>('idle');
+  const [problem, setProblem] = useState<string | undefined>(undefined);
   const [attempt, setAttempt] = useState(0);
   const latest = useRef(0);
   const key = request ? JSON.stringify(request) : null;
@@ -38,12 +40,15 @@ export function useFeeEstimate(request: FeeEstimateRequest | null) {
         .then((result) => {
           if (id !== latest.current) return;
           setEstimate(result);
+          setProblem(undefined);
           setStatus('ready');
         })
         .catch((error: unknown) => {
           if (id !== latest.current) return;
           setEstimate(null);
-          setStatus(readOrderApiError(error).status === 503 ? 'unavailable' : 'error');
+          const { status: code, message } = readOrderApiError(error);
+          setProblem(code === 400 ? message : undefined);
+          setStatus(code === 503 ? 'unavailable' : code === 400 && message ? 'refused' : 'error');
         });
     }, DEBOUNCE_MS);
 
@@ -52,5 +57,5 @@ export function useFeeEstimate(request: FeeEstimateRequest | null) {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
-  return { estimate, status, retry };
+  return { estimate, status, problem, retry };
 }

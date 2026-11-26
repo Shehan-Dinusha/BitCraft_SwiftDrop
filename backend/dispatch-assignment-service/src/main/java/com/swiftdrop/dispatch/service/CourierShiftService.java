@@ -7,6 +7,8 @@ import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.dispatch.client.CourierCashClient;
 import com.swiftdrop.dispatch.domain.entity.CourierProfile;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
+import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
+import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.repository.CourierProfileRepository;
 import com.swiftdrop.dispatch.domain.repository.CourierShiftRepository;
@@ -16,9 +18,11 @@ import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
 import com.swiftdrop.dispatch.dto.StartShiftRequest;
 import com.swiftdrop.dispatch.exception.CourierNotAvailableException;
 import com.swiftdrop.dispatch.exception.ShiftEndNotAllowedException;
+import com.swiftdrop.dispatch.exception.ShiftRuleException;
 import com.swiftdrop.dispatch.security.DistrictScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -37,20 +42,24 @@ public class CourierShiftService {
     private final CourierProfileRepository courierProfileRepository;
     private final DispatchAssignmentRepository assignmentRepository;
     private final CourierCashClient courierCashClient;
+    private final WorkingDay workingDay;
 
     public CourierShiftService(CourierShiftRepository courierShiftRepository,
                                CourierProfileRepository courierProfileRepository,
                                DispatchAssignmentRepository assignmentRepository,
-                               CourierCashClient courierCashClient) {
+                               CourierCashClient courierCashClient,
+                               WorkingDay workingDay) {
         this.courierShiftRepository = courierShiftRepository;
         this.courierProfileRepository = courierProfileRepository;
         this.assignmentRepository = assignmentRepository;
         this.courierCashClient = courierCashClient;
+        this.workingDay = workingDay;
     }
 
     /**
      * Starts the courier's shift in their home district, never one named in the request: the parcels they
-     * carry and the cash they collect belong to that district's dispatcher.
+     * carry and the cash they collect belong to that district's dispatcher. Only on a working day, from 7:30
+     * until closing ({@link WorkingDay}). Starting a shift that is already running changes nothing.
      */
     @Transactional
     public CourierShiftResponse startShift(StartShiftRequest request, CallerContext caller) {
@@ -66,7 +75,13 @@ public class CourierShiftService {
         DistrictScope.requireCourier(caller, profile.getDistrict());
         log.info("Starting shift for courier: {} in district: {}", request.courierId(), profile.getDistrict());
 
-        CourierShift shift = courierShiftRepository.findByCourierId(request.courierId())
+        Optional<CourierShift> existing = courierShiftRepository.findByCourierId(request.courierId());
+        if (existing.isPresent() && existing.get().getShiftStatus() != ShiftStatus.OFFLINE) {
+            return toResponse(existing.get());
+        }
+        workingDay.requireShiftCanStart();
+
+        CourierShift shift = existing
                 .orElseGet(() -> {
                     CourierShift newShift = new CourierShift();
                     newShift.setCourierId(request.courierId());
@@ -79,10 +94,16 @@ public class CourierShiftService {
         shift.setVehicleType(profile.getVehicleType());
         shift.setMaxCapacity(profile.getMaxCapacity());
         shift.setCurrentDistrict(profile.getDistrict());
-        shift.setShiftStatus(ShiftStatus.AVAILABLE);
-        shift.setShiftStartedAt(Instant.now());
+        shift.setShiftStatus(shift.workingStatus());
+        Instant now = workingDay.now();
+        shift.setShiftStartedAt(now);
         shift.setShiftEndedAt(null);
-        shift.setLastHeartbeatAt(Instant.now());
+        shift.setLastHeartbeatAt(now);
+        shift.setBreakStartedAt(null);
+        shift.setBreakEndedAt(null);
+        shift.setRunStartedAt(null);
+        shift.setLastRunEndedAt(null);
+        shift.setClosedAutomatically(false);
 
         shift = courierShiftRepository.save(shift);
         return toResponse(shift);
@@ -99,9 +120,15 @@ public class CourierShiftService {
         CourierShift shift = courierShiftRepository.findByCourierId(courierId)
                 .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
 
-        if (shift.getActiveParcelsCount() > 0) {
-            throw new ShiftEndNotAllowedException("Cannot end shift: the courier still has "
-                    + shift.getActiveParcelsCount() + " active parcel(s). Complete or reassign them first.");
+        // Parcels the courier carries must be delivered or handed in. A pickup not made today stays with them
+        // for tomorrow, and their dispatcher can still give it to someone else.
+        long onBoard = assignmentRepository.findByCourierId(courierId).stream()
+                .filter(parcel -> (parcel.getStatus() == AssignmentStatus.ASSIGNED
+                        || parcel.getStatus() == AssignmentStatus.REASSIGNED) && parcel.getPickedUpAt() != null)
+                .count();
+        if (onBoard > 0) {
+            throw new ShiftEndNotAllowedException("Cannot end shift: the courier still carries " + onBoard
+                    + " parcel(s). Deliver them or hand them in at the hub first.");
         }
 
         if (caller.role() == UserRole.COURIER) {
@@ -112,23 +139,126 @@ public class CourierShiftService {
             }
         }
 
-        shift.setShiftStatus(ShiftStatus.OFFLINE);
-        shift.setShiftEndedAt(Instant.now());
+        close(shift);
         shift = courierShiftRepository.save(shift);
         return toResponse(shift);
     }
 
+    /**
+     * The courier leaves the hub on their run. Everything waiting for them at the hub must be loaded first:
+     * once they are on the road they get only pickups. Leaving again changes nothing.
+     */
+    @Transactional
+    public CourierShiftResponse startRun(UUID courierId) {
+        CourierShift shift = courierShiftRepository.findByCourierId(courierId)
+                .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
+        if (shift.getShiftStatus() == ShiftStatus.OFFLINE) {
+            throw new ShiftRuleException("Start the shift first.");
+        }
+        if (shift.isOnRun()) {
+            return toResponse(shift);
+        }
+        if (shift.getShiftStatus() == ShiftStatus.ON_BREAK) {
+            throw new ShiftRuleException("End your break first.");
+        }
+        List<String> toLoad = assignmentRepository.findByCourierId(courierId).stream()
+                .filter(parcel -> (parcel.getStatus() == AssignmentStatus.ASSIGNED
+                        || parcel.getStatus() == AssignmentStatus.REASSIGNED)
+                        && parcel.startsAtHub() && parcel.getPickedUpAt() == null)
+                .map(DispatchAssignment::getTrackingNumber)
+                .toList();
+        if (!toLoad.isEmpty()) {
+            throw new ShiftRuleException("Load these parcels first: " + String.join(", ", toLoad) + ".");
+        }
+        Instant now = workingDay.now();
+        shift.setRunStartedAt(now);
+        shift.setLastHeartbeatAt(now);
+        log.info("Courier {} left on their run", courierId);
+        return toResponse(courierShiftRepository.save(shift));
+    }
+
+    /**
+     * The courier is back at the hub: their run ends, so they can hand in what they carry and load again. Hub
+     * parcels can be given to them again from now on. Coming back when not on a run changes nothing.
+     */
+    @Transactional
+    public CourierShiftResponse backAtHub(UUID courierId) {
+        CourierShift shift = courierShiftRepository.findByCourierId(courierId)
+                .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
+        if (shift.getShiftStatus() == ShiftStatus.OFFLINE) {
+            throw new ShiftRuleException("Start the shift first.");
+        }
+        if (!shift.isOnRun()) {
+            return toResponse(shift);
+        }
+        Instant now = workingDay.now();
+        shift.setRunStartedAt(null);
+        shift.setLastRunEndedAt(now);
+        shift.setLastHeartbeatAt(now);
+        log.info("Courier {} is back at the hub", courierId);
+        return toResponse(courierShiftRepository.save(shift));
+    }
+
+    /**
+     * Starts the lunch break (ON_BREAK) or ends it (AVAILABLE). A shift ends only through {@link #endShift},
+     * which checks parcels and cash, and BUSY follows the parcel count, so neither can be set here. A courier on
+     * break keeps their parcels and can still be given more.
+     */
     @Transactional
     public CourierShiftResponse updateStatus(UUID courierId, ShiftStatus status) {
         log.info("Updating shift status for courier: {} to {}", courierId, status);
 
         CourierShift shift = courierShiftRepository.findByCourierId(courierId)
                 .orElseThrow(() -> new CourierNotAvailableException("Courier not found: " + courierId));
+        if (status == ShiftStatus.OFFLINE) {
+            throw new ShiftRuleException("End the shift instead.");
+        }
+        if (status == ShiftStatus.BUSY) {
+            throw new ShiftRuleException("Busy follows the parcels a courier holds and cannot be set.");
+        }
+        if (shift.getShiftStatus() == ShiftStatus.OFFLINE) {
+            throw new ShiftRuleException("Start the shift first.");
+        }
 
-        shift.setShiftStatus(status);
-        shift.setLastHeartbeatAt(Instant.now());
+        Instant now = workingDay.now();
+        if (status == ShiftStatus.ON_BREAK && shift.getShiftStatus() != ShiftStatus.ON_BREAK) {
+            workingDay.requireBreakCanStart(shift);
+            shift.setBreakStartedAt(now);
+            shift.setShiftStatus(ShiftStatus.ON_BREAK);
+        } else if (status == ShiftStatus.AVAILABLE && shift.getShiftStatus() == ShiftStatus.ON_BREAK) {
+            shift.setBreakEndedAt(now);
+            shift.setShiftStatus(shift.workingStatus());
+        }
+        shift.setLastHeartbeatAt(now);
         shift = courierShiftRepository.save(shift);
         return toResponse(shift);
+    }
+
+    /**
+     * Nobody works at night: a shift still open is closed and flagged, so the courier does not look available
+     * and the dispatcher sees who did not close properly. Runs every hour from 20:00 to 6:00, so a missed run
+     * is caught by the next one; parcels and cash still held stay listed under the courier.
+     */
+    @Scheduled(cron = "0 0 20-23,0-6 * * *", zone = "Asia/Colombo")
+    @Transactional
+    public int closeForgottenShifts() {
+        List<CourierShift> open = courierShiftRepository.findByShiftStatusNot(ShiftStatus.OFFLINE);
+        for (CourierShift shift : open) {
+            close(shift);
+            shift.setClosedAutomatically(true);
+            log.warn("Closed the shift courier {} left open", shift.getCourierId());
+        }
+        courierShiftRepository.saveAll(open);
+        return open.size();
+    }
+
+    private void close(CourierShift shift) {
+        Instant now = workingDay.now();
+        if (shift.getShiftStatus() == ShiftStatus.ON_BREAK) {
+            shift.setBreakEndedAt(now);
+        }
+        shift.setShiftStatus(ShiftStatus.OFFLINE);
+        shift.setShiftEndedAt(now);
     }
 
     @Transactional(readOnly = true)

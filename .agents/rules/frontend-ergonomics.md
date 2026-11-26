@@ -8,7 +8,7 @@ globs:
 
 Before editing a view, inspect its persona folder, `src/design-system`, `density.ts`, `colors.ts`, and the relevant generated OpenAPI declarations.
 
-- `features/courier/` uses `kinetic` density (`touch` is a deprecated alias), minimum 56px targets, and bottom thumb-zone `ErgonomicActionBar`.
+- `features/courier/` uses `kinetic` density (`touch` is a deprecated alias), minimum 56px targets, and a bottom thumb-zone action: **one** `SlideToTransitionBar` per delivery step (`courierStep`), never a slide plus buttons for the same step.
 - `features/customer/` uses `comfortable` density and progressive disclosure.
 - `features/admin-ops/` and `features/merchant/` use `compact` density and scannable grids.
 - Use `tabular-nums` for tracking IDs, ETAs, and currency.

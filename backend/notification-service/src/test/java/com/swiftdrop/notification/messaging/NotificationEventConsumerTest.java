@@ -55,6 +55,41 @@ class NotificationEventConsumerTest {
     }
 
     @Test
+    @DisplayName("A recipient without an account is emailed at their own address, with no inbox row")
+    void recipientEmailHasNoInboxRow() {
+        UUID customerId = UUID.randomUUID();
+        UUID recipientKey = UUID.randomUUID();
+        NotificationTrigger recipientTrigger = new NotificationTrigger() {
+            @Override
+            public boolean matches(EventEnvelope envelope) {
+                return true;
+            }
+
+            @Override
+            public List<DispatchNotificationRequest> build(EventEnvelope envelope) {
+                return List.of(new DispatchNotificationRequest(recipientKey, "EMAIL", "RECIPIENT_PICKED_UP",
+                        "kamal@example.com", java.util.Map.of("trackingNumber", "SD-2222"), "SD-2222"));
+            }
+        };
+        consumer = new NotificationEventConsumer(objectMapper, dispatcher, List.of(new PickedUpTrigger(), recipientTrigger),
+                processedEventRepository, inAppNotificationService);
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("parcel.status.changed");
+        String json = """
+                {"customerId":"%s","trackingNumber":"SD-2222","newPublicStatus":"PICKED_UP"}
+                """.formatted(customerId);
+
+        consumer.onNotificationEvent(new Message(json.getBytes(StandardCharsets.UTF_8), props));
+
+        ArgumentCaptor<DispatchNotificationRequest> captor = ArgumentCaptor.forClass(DispatchNotificationRequest.class);
+        verify(dispatcher, times(2)).dispatch(captor.capture());
+        assertThat(captor.getAllValues()).extracting(DispatchNotificationRequest::templateCode)
+                .containsExactly("PARCEL_PICKED_UP", "RECIPIENT_PICKED_UP");
+        verify(inAppNotificationService).saveNotification(eq(customerId), any(), any(), any(), any());
+        verify(inAppNotificationService, never()).saveNotification(eq(recipientKey), any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("Should consume parcel status changed event and dispatch EMAIL notification for PICKED_UP")
     void testConsumePickedUpEvent() {
         UUID customerId = UUID.randomUUID();

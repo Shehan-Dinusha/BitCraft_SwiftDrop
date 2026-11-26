@@ -84,7 +84,14 @@ class CourierAvailabilityControllerTest {
                 java.math.BigDecimal.ZERO,
                 25,
                 java.math.BigDecimal.ZERO,
-                100
+                100,
+                null,
+                null,
+                null,
+                false,
+                null,
+                null,
+                false
         );
 
         when(courierShiftService.startShift(any(StartShiftRequest.class), any(CallerContext.class))).thenReturn(response);
@@ -119,7 +126,14 @@ class CourierAvailabilityControllerTest {
                 java.math.BigDecimal.ZERO,
                 25,
                 java.math.BigDecimal.ZERO,
-                100
+                100,
+                null,
+                null,
+                null,
+                false,
+                null,
+                null,
+                false
         );
 
         when(courierShiftService.updateStatus(eq(courierId), eq(ShiftStatus.ON_BREAK))).thenReturn(response);

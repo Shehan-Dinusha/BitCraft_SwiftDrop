@@ -4,6 +4,7 @@ import com.swiftdrop.contracts.enums.PublicOrderStatus;
 import com.swiftdrop.order.domain.entity.CustomerOrder;
 import com.swiftdrop.order.domain.repository.CustomerOrderRepository;
 import com.swiftdrop.order.dto.InternalCourierJobView;
+import com.swiftdrop.order.dto.InternalRecipientContact;
 import com.swiftdrop.order.exception.OrderNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,21 @@ public class InternalCourierJobService {
     public InternalCourierJobView getCourierJob(UUID orderId) {
         return view(customerOrderRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found")));
+    }
+
+    /** The recipient's email, for their parcel updates. */
+    @Transactional(readOnly = true)
+    public InternalRecipientContact getRecipientContact(UUID orderId) {
+        CustomerOrder order = customerOrderRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+        String email = order.getRecipientEmail();
+        return new InternalRecipientContact(
+                order.getOrderId(),
+                order.getTrackingNumber(),
+                email == null || email.isBlank() ? null : email.trim(),
+                order.getRecipientName(),
+                order.getPickupContactName(),
+                order.getDeliverBy());
     }
 
     /** Unknown orders are left out. */

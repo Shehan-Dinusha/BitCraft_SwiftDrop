@@ -35,9 +35,14 @@ notification:
     mode: ${CONTACT_MODE:iam}
     iam-base-url: ${AUTH_SERVICE_URL:http://localhost:8081}
     cache-ttl-minutes: ${CONTACT_CACHE_TTL_MINUTES:10}
+  orders:
+    # The recipient's email for their parcel updates (GET /internal/v1/orders/{id}/recipient-contact).
+    base-url: ${ORDER_SERVICE_URL:http://localhost:8082}
   email:
     # mock (default, sends nothing) or azure (Azure Communication Services Email)
     provider: ${NOTIFICATION_EMAIL_PROVIDER:mock}
+    # "Track your parcel" links in parcel emails: the same public site as the label's QR code.
+    tracking-base-url: ${PUBLIC_TRACKING_BASE_URL:http://localhost:5173}
     azure:
       endpoint: ${ACS_EMAIL_ENDPOINT:}
       access-key: ${ACS_EMAIL_ACCESS_KEY:}

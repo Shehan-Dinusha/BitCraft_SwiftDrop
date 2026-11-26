@@ -33,7 +33,9 @@ import { MerchantApprovalsPage } from '@/features/admin-ops/pages/MerchantApprov
 import { NotificationConsolePage } from '@/features/admin-ops/pages/NotificationConsolePage';
 import { AnalyticsDashboardPage } from '@/features/admin-ops/pages/AnalyticsDashboardPage';
 import { UserManagementPage } from '@/features/admin-ops/pages/UserManagementPage';
+import { WorkingDaysPage } from '@/features/admin-ops/pages/WorkingDaysPage';
 import { PublicTrackingPage } from '@/features/public-tracking/pages/PublicTrackingPage';
+import { StopEmailsPage } from '@/features/recipient-emails/pages/StopEmailsPage';
 import { LandingPage } from '@/features/landing/pages/LandingPage';
 import { ProfilePage } from '@/features/profile/ProfilePage';
 import { NotificationsPage } from '@/features/notifications/NotificationsPage';
@@ -333,6 +335,14 @@ export const routes: RouteObject[] = [
             <UserManagementPage />
           </RoleGuard>
         )
+      },
+      {
+        path: '/ops/working-days',
+        element: (
+          <RoleGuard roles={['ADMIN_OPS']}>
+            <WorkingDaysPage />
+          </RoleGuard>
+        )
       }
     ]
   },
@@ -343,6 +353,11 @@ export const routes: RouteObject[] = [
   {
     path: '/track/:trackingNumber',
     element: <PublicTrackingPage />
+  },
+  // A parcel recipient (no account) stops that parcel's emails from the link in them.
+  {
+    path: '/stop-emails',
+    element: <StopEmailsPage />
   },
   // The design catalog is public: no login, no role, no app shell.
   ...catalogRoutes,

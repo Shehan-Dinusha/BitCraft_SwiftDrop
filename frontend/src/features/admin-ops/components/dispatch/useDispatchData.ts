@@ -56,6 +56,12 @@ export function useDispatchData(
     enabled: hubLists,
     ...options
   });
+  const sent = useQuery({
+    queryKey: key('sent'),
+    queryFn: () => dispatchApi.getSent(scope),
+    enabled: hubLists,
+    ...options
+  });
   const incoming = useQuery({
     queryKey: key('incoming'),
     queryFn: () => dispatchApi.getIncoming(scope),
@@ -75,5 +81,5 @@ export function useDispatchData(
   });
 
   const refresh = useCallback(() => client.invalidateQueries({ queryKey: [ROOT] }), [client]);
-  return { unassigned, assigned, ready, incoming, returns, couriers, refresh };
+  return { unassigned, assigned, ready, sent, incoming, returns, couriers, refresh };
 }

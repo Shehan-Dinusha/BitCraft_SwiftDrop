@@ -43,6 +43,7 @@ class HubLegTest {
     @Mock private DispatchAssignmentRepository assignments;
     @Mock private CourierShiftRepository couriers;
     @Mock private DispatchEventPublisher eventPublisher;
+    @Mock private WorkingDay workingDay;
 
     private DispatchAssignmentService dispatchService;
     private ManualOverrideService overrideService;
@@ -53,8 +54,8 @@ class HubLegTest {
 
     @BeforeEach
     void colomboToKandyPickedUp() {
-        dispatchService = new DispatchAssignmentService(assignments, couriers);
-        overrideService = new ManualOverrideService(assignments, couriers, eventPublisher);
+        dispatchService = new DispatchAssignmentService(assignments, couriers, workingDay);
+        overrideService = new ManualOverrideService(assignments, couriers, eventPublisher, workingDay);
         order = new DispatchAssignment();
         order.setOrderId(orderId);
         order.setTrackingNumber("SD-7K2P-Q9XM");
@@ -241,6 +242,42 @@ class HubLegTest {
         assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
         assertThat(order.getLeg()).isEqualTo(AssignmentLeg.LAST_MILE);
         assertThat(order.getResponsibleDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+    }
+
+    @Test
+    @DisplayName("One district, Standard: handed in at its hub, then sorted there as its last-mile order")
+    void sameDistrictThroughItsHub() {
+        CourierShift courier = courierIn(colomboCourier, SriLankanDistrict.COLOMBO);
+        when(couriers.findByCourierId(colomboCourier)).thenReturn(Optional.of(courier));
+        order.setDeliveryDistrict(SriLankanDistrict.COLOMBO);
+
+        dispatchService.handleParcelStatusChanged(hubEvent(InternalQueueStatus.AT_HUB));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.IN_TRANSFER);
+        assertThat(order.getFirstMileCourierId()).isEqualTo(colomboCourier);
+        assertThat(courier.getActiveParcelsCount()).isZero();
+
+        dispatchService.handleParcelStatusChanged(hubEvent(InternalQueueStatus.INCOMING));
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(order.getLeg()).isEqualTo(AssignmentLeg.LAST_MILE);
+        assertThat(order.getResponsibleDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
+    }
+
+    @Test
+    @DisplayName("Brought back, not delivered today: the courier is freed and it waits at the hub, with no attempt counted")
+    void broughtBackToTheHub() {
+        CourierShift courier = courierIn(colomboCourier, SriLankanDistrict.COLOMBO);
+        courier.setActiveParcelsCount(1);
+        when(couriers.findByCourierId(colomboCourier)).thenReturn(Optional.of(courier));
+        order.setDeliveryDistrict(SriLankanDistrict.COLOMBO);
+
+        dispatchService.handleParcelStatusChanged(hubEvent(InternalQueueStatus.INCOMING));
+
+        assertThat(order.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);
+        assertThat(order.getLeg()).isEqualTo(AssignmentLeg.LAST_MILE);
+        assertThat(order.getCourierId()).isNull();
+        assertThat(order.getPickedUpAt()).isNull();
+        assertThat(order.getDeliveryAttempts()).isZero();
+        assertThat(courier.getActiveParcelsCount()).isZero();
     }
 
     @Test

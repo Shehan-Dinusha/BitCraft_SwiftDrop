@@ -604,6 +604,67 @@ paths:
         "409":
           description: A different amount, a cancelled parcel, or one that is no longer the courier's
 
+  /api/v1/deliveries/load:
+    post:
+      tags:
+        - HubDesk
+      summary: Load the chosen parcels at the hub
+      description: >-
+        COURIER only. Each parcel must be waiting at the hub for this courier: a delivery
+        (AT_DESTINATION_HUB) goes out for delivery, a return (RETURN_AT_HUB) goes out to the sender.
+        All of them, or none.
+      operationId: loadAtHub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoadParcelsRequest"
+      responses:
+        "200":
+          description: Parcels loaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDeliverySessionResponse"
+        "400":
+          description: No parcels, or more than 200
+        "403":
+          description: The caller is not a COURIER
+        "409":
+          description: One of the parcels is not waiting at the hub for this courier; nothing was loaded
+
+  /api/v1/deliveries/hand-in:
+    post:
+      tags:
+        - HubDesk
+      summary: Hand in the chosen parcels at the courier's hub
+      description: >-
+        COURIER only, for parcels they carry. A pickup going through the hub is handed in (AT_ORIGIN_HUB); a
+        failed attempt is held (HELD_AT_HUB); a return the sender could not take goes back (RETURN_AT_HUB); a
+        parcel not delivered today goes back for another run (AT_DESTINATION_HUB), which is not an attempt.
+        All of them, or none.
+      operationId: handInAtHub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoadParcelsRequest"
+      responses:
+        "200":
+          description: Parcels handed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDeliverySessionResponse"
+        "400":
+          description: No parcels, or more than 200
+        "403":
+          description: The caller is not a COURIER
+        "409":
+          description: One of the parcels is not with this courier; nothing was handed in
+
   /api/v1/cash/payments:
     get:
       tags:
@@ -838,6 +899,15 @@ components:
           type: [string, "null"]
           format: date-time
           description: When the sender got the parcel back.
+        speed:
+          description: The order's speed; null on older deliveries.
+          type: [string, "null"]
+          enum: [STANDARD, EXPRESS, SAME_DAY, null]
+        viaHub:
+          description: >-
+            Whether the courier hands it in at the hub after pickup (Standard or Express, or another district)
+            instead of taking it straight to the recipient (Same day within one district).
+          type: boolean
 
     CourierJobStop:
       type: object
@@ -1429,6 +1499,20 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ShopStopAddress"
+
+    LoadParcelsRequest:
+      type: object
+      required:
+        - deliveryIds
+      properties:
+        deliveryIds:
+          description: Delivery session UUIDs to load at, or hand in to, the courier's hub.
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: string
+            format: uuid
 
     CollectShopRequest:
       type: object

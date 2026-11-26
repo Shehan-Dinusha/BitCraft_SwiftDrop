@@ -11,6 +11,7 @@ import {
 import { TrackingSearchForm } from '../components/TrackingSearchForm';
 import { TrackingDetails } from '../components/TrackingDetails';
 import { useTrackingStream } from '@/hooks/useTrackingStream';
+import { useOwnParcel } from '@/features/public-tracking/useOwnParcel';
 import { isTerminalPublicStatus, TrackingApiError } from '@/services/api/trackingHubApi';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -18,6 +19,7 @@ export function PublicTrackingPage() {
   const { trackingNumber } = useParams<{ trackingNumber: string }>();
   const navigate = useNavigate();
   const { view, connection, error, retry } = useTrackingStream(trackingNumber);
+  const contacts = useOwnParcel(trackingNumber);
   const signedIn = useAuthStore((state) => Boolean(state.token));
 
   const openTracking = (value: string) => {
@@ -114,7 +116,7 @@ export function PublicTrackingPage() {
                   We&apos;re trying to reconnect. The latest status may be a few minutes old.
                 </Alert>
               ) : null}
-              <TrackingDetails view={view} connection={connection} />
+              <TrackingDetails view={view} connection={connection} contacts={contacts} />
             </>
           )}
         </main>

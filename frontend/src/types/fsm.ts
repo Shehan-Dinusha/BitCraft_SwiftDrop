@@ -28,6 +28,19 @@ export const canTransition = (a: DeliveryState, b: DeliveryState) =>
   allowedTransitions[a].includes(b);
 
 /** Picked up in one district and delivered in another, so it goes through both districts' hubs. */
+/**
+ * Handed in at a hub after pickup: Standard and Express, and anything going to another district. Only Same day
+ * within one district goes straight to the recipient. The server says which (`viaHub`); older records fall back
+ * to the districts.
+ */
+export function goesViaHub(route: {
+  viaHub?: boolean | null;
+  pickupDistrict?: string | null;
+  deliveryDistrict?: string | null;
+}): boolean {
+  return route.viaHub ?? crossesDistricts(route);
+}
+
 export function crossesDistricts(route: {
   pickupDistrict?: string | null;
   deliveryDistrict?: string | null;

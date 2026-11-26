@@ -69,6 +69,13 @@ class OrderOwnershipTest {
     @Mock
     private OrderStatusHistoryService orderStatusHistoryService;
 
+    /** Returns no promised day unless a test asks: the promise itself is tested in DeliveryPromiseTest. */
+
+    @Mock
+
+    private com.swiftdrop.order.service.promise.DeliveryPromise deliveryPromise;
+
+
     @InjectMocks
     private CustomerOrderService customerOrderService;
 
@@ -152,6 +159,29 @@ class OrderOwnershipTest {
                 .isInstanceOf(OrderNotFoundException.class);
         callerMerchant(shop);
         assertThatThrownBy(() -> customerOrderService.getShippingLabelsPdf(List.of(orderId), user, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("The sender reads their own parcel by tracking number; a shop its own shop orders; nobody else")
+    void ownerReadsByTrackingNumber() {
+        when(customerOrderRepository.findByTrackingNumber("SD-7K4M-9QX2")).thenReturn(Optional.of(orderOfA));
+
+        assertThat(customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerA, "CUSTOMER").getTrackingNumber())
+                .isEqualTo("SD-7K4M-9QX2");
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", customerB, "CUSTOMER"))
+                .isInstanceOf(OrderNotFoundException.class);
+
+        UUID shop = UUID.randomUUID();
+        orderOfA.setMerchantId(shop);
+        callerMerchant(shop);
+        // A customer order that names a shop is still not the shop's.
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", UUID.randomUUID(), "MERCHANT"))
+                .isInstanceOf(OrderNotFoundException.class);
+        orderOfA.setSource(OrderSource.MERCHANT);
+        assertThat(customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", UUID.randomUUID(), "MERCHANT")).isNotNull();
+        callerMerchant(UUID.randomUUID());
+        assertThatThrownBy(() -> customerOrderService.getOrderByTrackingNumber("SD-7K4M-9QX2", UUID.randomUUID(), "MERCHANT"))
                 .isInstanceOf(OrderNotFoundException.class);
     }
 

@@ -23,6 +23,8 @@ public record DispatchNotificationRequest(
         @Schema(description = "Template code identifier", example = "PARCEL_OUT_FOR_DELIVERY")
         String templateCode,
 
+        // An event-driven request with its own address is for someone without an account (a parcel's
+        // recipient): it is emailed only, with no inbox row and no device push.
         @Schema(description = "Override destination email address (optional)")
         String destination,
 

@@ -2,10 +2,8 @@ import { forwardRef } from 'react';
 import {
   Alert,
   STATUS_PROGRESS_STEPS,
-  StatusProgress,
   StatusTimeline,
   SurfaceCard,
-  useMediaQuery,
   type StatusTimelineEntry
 } from '@/design-system';
 import type { CustomerOrderResponse, OrderStatusHistoryEntry } from '@/services/api/orderApi';
@@ -18,40 +16,67 @@ interface OrderStatusSectionProps {
 }
 
 /**
- * Where the parcel is and what happens next, plus the real history once it has loaded. The
- * horizontal progress bar needs room for five labels, so narrow screens get the same steps as a
- * vertical timeline.
+ * Where the parcel is and what happens next, in one timeline: the steps it has been through, with their
+ * times, then the steps still to come. Until the history has loaded, the planned steps stand in for it.
  */
 export const OrderStatusSection = forwardRef<HTMLDivElement, OrderStatusSectionProps>(
   function OrderStatusSection({ order, history }, ref) {
-    const wide = useMediaQuery('(min-width: 640px)');
     const step = progressStep(orderStatus(order));
     const next = nextStep(order);
+    const reached = reachedSteps(history);
+    const steps =
+      reached.length > 0 ? [...reached, ...upcomingSteps(step, reached)] : step ? timelineSteps(step, order) : [];
 
     return (
       <div ref={ref} tabIndex={-1} className="outline-none">
         <SurfaceCard title="Status">
-          {step ? (
-            <div className="flex flex-col gap-4">
-              {next ? <p className="text-body-strong text-primary">{next}</p> : null}
-              {wide ? (
-                <StatusProgress current={step} />
-              ) : (
-                <StatusTimeline bare steps={timelineSteps(step, order)} />
-              )}
-              <p className="text-caption text-secondary">
-                Updated {formatDate(order.updatedAt, true)}
-              </p>
-            </div>
-          ) : (
-            <TerminalStatus order={order} />
-          )}
-          <StatusHistory history={history} />
+          <div className="flex flex-col gap-4">
+            {step ? (
+              next ? <p className="text-body-strong text-primary">{next}</p> : null
+            ) : (
+              <TerminalStatus order={order} />
+            )}
+            {steps.length > 0 ? <StatusTimeline bare steps={steps} /> : null}
+          </div>
         </SurfaceCard>
       </div>
     );
   }
 );
+
+const FAILURE_STATUSES = new Set(['DELIVERY_ATTEMPTED', 'FAILED', 'CANCELLED']);
+
+/** Every status the parcel has reached, with the time; the latest is the current one. */
+function reachedSteps(history?: OrderStatusHistoryEntry[]): StatusTimelineEntry[] {
+  const entries = (history ?? []).filter((entry) => entry.status && entry.occurredAt);
+  return entries.map((entry, index) => {
+    const latest = index === entries.length - 1;
+    const status = String(entry.status);
+    return {
+      key: `${status}-${entry.occurredAt}-${index}`,
+      title: STATUS_LABEL[entry.status as keyof typeof STATUS_LABEL] ?? status,
+      state: FAILURE_STATUSES.has(status)
+        ? 'failed'
+        : latest && status !== 'DELIVERED'
+          ? 'current'
+          : 'done',
+      meta: formatDate(entry.occurredAt, true)
+    };
+  });
+}
+
+/** The delivery steps after the current one that have not happened yet, greyed out. */
+function upcomingSteps(
+  current: (typeof STATUS_PROGRESS_STEPS)[number]['status'] | null,
+  reached: StatusTimelineEntry[]
+): StatusTimelineEntry[] {
+  if (!current) return [];
+  const seen = new Set(reached.map((entry) => entry.title));
+  const from = STATUS_PROGRESS_STEPS.findIndex((item) => item.status === current);
+  return STATUS_PROGRESS_STEPS.slice(from + 1)
+    .map((item) => ({ key: `next-${item.status}`, title: STATUS_LABEL[item.status], state: 'upcoming' as const }))
+    .filter((entry) => !seen.has(entry.title));
+}
 
 function timelineSteps(
   current: (typeof STATUS_PROGRESS_STEPS)[number]['status'],
@@ -61,7 +86,7 @@ function timelineSteps(
   const delivered = current === 'DELIVERED';
   return STATUS_PROGRESS_STEPS.map((item, index) => ({
     key: item.status,
-    title: item.label,
+    title: STATUS_LABEL[item.status],
     state:
       index < currentIndex || delivered ? 'done' : index === currentIndex ? 'current' : 'upcoming',
     meta:
@@ -71,26 +96,6 @@ function timelineSteps(
           ? formatDate(order.updatedAt, true)
           : undefined
   }));
-}
-
-/** Every status the parcel has reached, with the time. Hidden when there is nothing to show. */
-function StatusHistory({ history }: { history?: OrderStatusHistoryEntry[] }) {
-  const entries = (history ?? []).filter((entry) => entry.status && entry.occurredAt);
-  if (entries.length === 0) return null;
-
-  const steps: StatusTimelineEntry[] = entries.map((entry, index) => ({
-    key: `${entry.status}-${entry.occurredAt}-${index}`,
-    title: STATUS_LABEL[entry.status as keyof typeof STATUS_LABEL] ?? String(entry.status),
-    state: index === entries.length - 1 ? 'current' : 'done',
-    meta: formatDate(entry.occurredAt, true)
-  }));
-
-  return (
-    <div className="mt-5 flex flex-col gap-2 border-t border-border-subtle pt-4">
-      <h3 className="text-label font-semibold text-primary">History</h3>
-      <StatusTimeline bare steps={steps} />
-    </div>
-  );
 }
 
 /** Wording matches the public tracking page; the customer here is the sender. */

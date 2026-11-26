@@ -9,20 +9,40 @@ import type {
   DeliveryState,
   DeliveryFailureReason
 } from '@/services/api/deliveryApi';
-import { courierNextStep, crossesDistricts, isFinished } from '@/types/fsm';
+import { goesViaHub, isFinished } from '@/types/fsm';
 import { failureReasons, failureTarget, failureTitle } from '@/utils/failureReasons';
 import { DeliveryProgressStepper } from '@/design-system/components/DeliveryProgressStepper/DeliveryProgressStepper';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { Button } from '@/design-system/primitives/Button';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
-import { ErgonomicActionBar } from '@/design-system/components/ErgonomicActionBar/ErgonomicActionBar';
+import { SlideToTransitionBar } from '@/design-system/components/SlideToTransitionBar/SlideToTransitionBar';
 import { FsmStatusBadge } from '@/design-system/components/FsmStatusBadge/FsmStatusBadge';
 import { cn } from '@/utils/cn';
 import { JobDetailsCard } from '../components/JobDetailsCard';
 import { OneTapStateTransitionCard } from '../components/OneTapStateTransitionCard';
+import { courierStep, type CourierStepIcon } from '../components/courierStep';
 import { ProofOfDeliveryCaptureModal } from '../components/ProofOfDeliveryCaptureModal';
 import { DeliveryFailureReportModal } from '../components/DeliveryFailureReportModal';
-import { ArrowLeft, RefreshCw, Package, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft,
+  RefreshCw,
+  Package,
+  AlertTriangle,
+  PackageCheck,
+  Truck,
+  MapPin,
+  Warehouse,
+  CheckCircle2
+} from 'lucide-react';
+
+const STEP_ICON: Record<CourierStepIcon, typeof Truck> = {
+  pickup: PackageCheck,
+  trip: Truck,
+  arrive: MapPin,
+  hub: Warehouse,
+  collect: PackageCheck,
+  done: CheckCircle2
+};
 
 const STEP_SAVED: Partial<Record<DeliveryState, string>> = {
   ATTEMPT_FAILED: 'Recorded. Bring the parcel to your hub.',
@@ -62,11 +82,9 @@ export function ActiveDeliveryExecutionPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // A parcel going to another district goes through both hubs; the courier's next step depends on it.
-  const viaHubs = session ? crossesDistricts(session) : false;
-  const allowedNextStates = useMemo(() => {
-    const next = courierNextStep(session?.currentState as DeliveryState | undefined, viaHubs);
-    return next ? [next] : ([] as DeliveryState[]);
-  }, [session?.currentState, viaHubs]);
+  const viaHubs = session ? goesViaHub(session) : false;
+  // The one step the courier takes next: a single slide at the bottom of the screen.
+  const step = useMemo(() => (session ? courierStep(session) : null), [session]);
 
   const proofKey = `${session?.deliveryId}:${session?.proofSince ?? ''}`;
   const isPoDVerified = proofFor === proofKey;
@@ -425,35 +443,40 @@ export function ActiveDeliveryExecutionPage() {
             />
           )}
 
-          {/* Primary Action Transition Card */}
           {!orderCancelled && (
             <OneTapStateTransitionCard
               session={session}
               onTransition={handleTransition}
-              onOpenPoD={() => setIsPoDModalOpen(true)}
-              blocked={cashBlocked}
               handedIn={!mine}
               isPoDVerified={isPoDVerified}
               pendingState={pendingState}
             />
           )}
 
-          {/* Ergonomic Action Bar: thumb-friendly sticky bar for next allowed action */}
-          {!orderCancelled && !cashBlocked && mine && allowedNextStates.length > 0 && (
-            <div className="sticky bottom-[76px] z-20 pt-2 md:bottom-4">
-              <ErgonomicActionBar
-                next={allowedNextStates}
-                onTransition={(target) => {
-                  if ((target === 'DELIVERED' || target === 'RETURNED') && !isPoDVerified) {
+          {/* The one control for the next step, in the thumb zone. */}
+          {!orderCancelled && mine && step && (
+            <div className="sticky bottom-[76px] z-20 rounded-2xl border border-border-subtle bg-card p-3 shadow-ambient md:bottom-4">
+              <SlideToTransitionBar
+                key={`${session.deliveryId}:${session.currentState}`}
+                label={step.label}
+                confirmLabel={step.confirm}
+                density="touch"
+                disabled={pendingState !== null || (step.target === 'PICKED_UP' && cashBlocked)}
+                icon={(() => {
+                  const Icon = STEP_ICON[step.icon];
+                  return <Icon className="h-5 w-5" />;
+                })()}
+                onConfirm={() => {
+                  if (step.photo && !isPoDVerified) {
                     setIsPoDModalOpen(true);
                     return;
                   }
-                  handleTransition(target);
+                  void handleTransition(step.target, undefined, step.note);
                 }}
-                pendingState={pendingState}
-                density="touch"
-                label="Courier next actions"
               />
+              {step.target === 'PICKED_UP' && cashBlocked && shownJob ? (
+                <p className="mt-2 text-center text-caption text-secondary">{CASH_FIRST}</p>
+              ) : null}
             </div>
           )}
 

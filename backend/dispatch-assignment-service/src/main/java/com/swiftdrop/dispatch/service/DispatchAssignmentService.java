@@ -48,12 +48,15 @@ public class DispatchAssignmentService {
 
     private final DispatchAssignmentRepository assignmentRepository;
     private final CourierShiftRepository courierShiftRepository;
+    private final WorkingDay workingDay;
 
     public DispatchAssignmentService(
             DispatchAssignmentRepository assignmentRepository,
-            CourierShiftRepository courierShiftRepository) {
+            CourierShiftRepository courierShiftRepository,
+            WorkingDay workingDay) {
         this.assignmentRepository = assignmentRepository;
         this.courierShiftRepository = courierShiftRepository;
+        this.workingDay = workingDay;
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +85,14 @@ public class DispatchAssignmentService {
     @Transactional(readOnly = true)
     public List<DispatchAssignmentResponse> getReadyToSend(SriLankanDistrict district) {
         return assignmentRepository.findReadyToSend(district).stream()
+                .map(DispatchAssignmentResponse::fromEntity)
+                .toList();
+    }
+
+    /** Sent from {@code district}'s hub and not yet accepted by the drop-off hub: shown read-only. */
+    @Transactional(readOnly = true)
+    public List<DispatchAssignmentResponse> getSent(SriLankanDistrict district) {
+        return assignmentRepository.findSent(district).stream()
                 .map(DispatchAssignmentResponse::fromEntity)
                 .toList();
     }
@@ -149,7 +160,8 @@ public class DispatchAssignmentService {
      * currently holding it is left out. Those who can take it come first, best first; the rest carry the
      * reason they cannot. A COMPLETED or CANCELLED order cannot be (re)assigned, so it gets none.
      *
-     * <p>Best is the smallest vehicle the parcel fits, so bigger ones stay free for bigger parcels, then the
+     * <p>A courier on their lunch break can take it but comes after those at work. Best is the smallest
+     * vehicle the parcel fits, so bigger ones stay free for bigger parcels, then the
      * emptiest courier. Without a recorded size the vehicle says nothing, so only the load counts.</p>
      */
     @Transactional(readOnly = true)
@@ -176,9 +188,12 @@ public class DispatchAssignmentService {
         Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
                 candidates.stream().map(CourierShift::getCourierId).toList());
         boolean sized = assignment.getVolumeLitres() != null;
+        boolean pickupsClosed = workingDay.pickupsClosed();
 
         record Option(CourierShift courier, CourierLoad load, CourierBlock block) {}
+        // Couriers at work come before those on their lunch break, who can still be given it.
         Comparator<Option> ranking = Comparator.comparing((Option option) -> option.block() != null)
+                .thenComparing(option -> option.courier().getShiftStatus() == ShiftStatus.ON_BREAK)
                 .thenComparing(option -> sized ? option.courier().getVehicleType().ordinal() : 0)
                 .thenComparingDouble(option -> CourierFit.fullness(option.courier(), option.load()))
                 .thenComparing(option -> option.courier().getLastHeartbeatAt(),
@@ -188,7 +203,7 @@ public class DispatchAssignmentService {
         return candidates.stream()
                 .map(courier -> {
                     CourierLoad load = loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE);
-                    return new Option(courier, load, CourierFit.block(courier, load, assignment).orElse(null));
+                    return new Option(courier, load, CourierFit.block(courier, load, assignment, pickupsClosed).orElse(null));
                 })
                 .sorted(ranking)
                 .map(option -> CourierSuggestionResponse.of(option.courier(), option.load(), option.block(), district))
@@ -336,9 +351,11 @@ public class DispatchAssignmentService {
      */
     private boolean handleHubStep(ParcelStatusChangedEvent event) {
         Optional<DispatchAssignment> found = find(event);
-        // INCOMING is also how any parcel, same-district ones too, goes out again after a failed attempt.
+        // A same-district parcel goes through its own hub too (Standard and Express): handed in (AT_HUB), then
+        // sorted for delivery (INCOMING). INCOMING is also how any parcel goes out again after a failed attempt.
         boolean hubStep = found.isPresent() && (found.get().crossesDistricts()
-                || event.internalSubStatus() == InternalQueueStatus.INCOMING);
+                || event.internalSubStatus() == InternalQueueStatus.INCOMING
+                || event.internalSubStatus() == InternalQueueStatus.AT_HUB);
         if (!hubStep || found.get().getStatus().isTerminal()) {
             return hubStep;
         }
@@ -374,6 +391,12 @@ public class DispatchAssignmentService {
                 return true;
             }
             case INCOMING -> {
+                // Brought back by its courier, not delivered today: they are free of it, and it waits at the hub
+                // for another run as a last-mile order. Not a delivery attempt.
+                if (assignment.getStatus() == AssignmentStatus.ASSIGNED
+                        || assignment.getStatus() == AssignmentStatus.REASSIGNED) {
+                    releaseAtHub(assignment);
+                }
                 // Accepted at the drop-off district's hub, or tried again from there: that district's
                 // last-mile order.
                 if (assignment.getStatus() == AssignmentStatus.IN_TRANSFER) {

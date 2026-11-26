@@ -66,12 +66,12 @@
         <!-- Transitive via spring-cloud-starter (api-gateway). -->
         <bouncycastle.version>1.87</bouncycastle.version>
         <springdoc.version>2.10.0</springdoc.version>
-        <swagger-core.version>2.2.55</swagger-core.version>
+        <swagger-core.version>2.2.56</swagger-core.version>
         <openapi.server.port>8080</openapi.server.port>
 
         <!-- Database -->
         <postgresql.version>42.7.14</postgresql.version>
-        <flyway.version>10.20.1</flyway.version>
+        <flyway.version>13.13.0</flyway.version>
 
         <!-- Messaging -->
         <spring-amqp.version>3.1.7</spring-amqp.version>

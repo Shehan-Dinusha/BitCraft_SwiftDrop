@@ -51,6 +51,10 @@ class ManualOverrideServiceTest {
     @Mock
     private DispatchEventPublisher eventPublisher;
 
+    /** Pickups still open: the mock answers false to pickupsClosed(). */
+    @Mock
+    private WorkingDay workingDay;
+
     @InjectMocks
     private ManualOverrideService manualOverrideService;
 
@@ -504,7 +508,7 @@ class ManualOverrideServiceTest {
         assertThatThrownBy(() -> manualOverrideService.manualAssign(
                 new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_ONE", null)))
                 .isInstanceOf(CourierNotAvailableException.class)
-                .hasMessageContaining("reached capacity");
+                .hasMessageContaining("already carries 5 parcels");
 
         assertThat(full.getActiveParcelsCount()).isEqualTo(5);
         assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.UNASSIGNED);

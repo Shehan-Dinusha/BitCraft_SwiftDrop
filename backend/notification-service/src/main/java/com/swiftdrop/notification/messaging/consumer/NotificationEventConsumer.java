@@ -143,6 +143,9 @@ public class NotificationEventConsumer {
                         if (SensitiveTemplates.isSecurity(request.templateCode())) {
                             continue; // security mail (codes, sign-in alerts) is email only, never in the inbox
                         }
+                        if (request.destination() != null) {
+                            continue; // its own address: someone without an account (a recipient), email only
+                        }
                         if (request.recipientId() != null) {
                             String title = dispatchLog != null && dispatchLog.subject() != null
                                     ? dispatchLog.subject()

@@ -17,81 +17,94 @@ export interface StatusProgressProps {
   className?: string;
 }
 
-/** Figma StatusProgress: the five public steps with connectors. Customer parcel hero and mobile sheet. */
+/**
+ * Figma StatusProgress: the five public steps with connectors. Customer parcel hero and mobile sheet.
+ * Five labels side by side need about 500px; on a phone they wrap into each other, so below `sm` the
+ * dots stay and one line under them names the current step.
+ */
 export function StatusProgress({ current, className }: StatusProgressProps) {
   const currentIndex = STATUS_PROGRESS_STEPS.findIndex((step) => step.status === current);
   const lastIndex = STATUS_PROGRESS_STEPS.length - 1;
+  const finished = currentIndex === lastIndex;
 
   return (
-    <ol
-      aria-label={`Parcel progress, step ${currentIndex + 1} of ${STATUS_PROGRESS_STEPS.length}`}
-      className={cn('grid w-full grid-cols-5', className)}
-    >
-      {STATUS_PROGRESS_STEPS.map((step, index) => {
-        const isDone = index < currentIndex || (index === currentIndex && index === lastIndex);
-        const isCurrent = index === currentIndex && !isDone;
-        const leftColoured = index <= currentIndex;
-        const rightColoured = index < currentIndex;
+    <div className={cn('flex w-full flex-col gap-2', className)}>
+      <ol
+        aria-label={`Parcel progress, step ${currentIndex + 1} of ${STATUS_PROGRESS_STEPS.length}`}
+        className="grid w-full grid-cols-5"
+      >
+        {STATUS_PROGRESS_STEPS.map((step, index) => {
+          const isDone = index < currentIndex || (index === currentIndex && index === lastIndex);
+          const isCurrent = index === currentIndex && !isDone;
+          const leftColoured = index <= currentIndex;
+          const rightColoured = index < currentIndex;
 
-        return (
-          <li
-            key={step.status}
-            data-state={isDone ? 'done' : isCurrent ? 'current' : 'upcoming'}
-            aria-current={isCurrent ? 'step' : undefined}
-            className="flex flex-col items-center gap-2"
-          >
-            <div className="flex w-full items-center">
+          return (
+            <li
+              key={step.status}
+              data-state={isDone ? 'done' : isCurrent ? 'current' : 'upcoming'}
+              aria-current={isCurrent ? 'step' : undefined}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="flex w-full items-center">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'h-[3px] flex-1',
+                    index === 0
+                      ? 'invisible'
+                      : leftColoured
+                        ? 'bg-fsm-delivered-fg'
+                        : 'bg-border-subtle'
+                  )}
+                />
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'flex size-6 shrink-0 items-center justify-center rounded-full',
+                    isDone && 'bg-fsm-delivered-fg text-brand-on',
+                    isCurrent && 'border-2 border-brand-primary bg-brand-subtle',
+                    !isDone && !isCurrent && 'border-2 border-border-subtle bg-card'
+                  )}
+                >
+                  {isDone ? <Check className="size-3.5" strokeWidth={3} /> : null}
+                  {isCurrent ? <span className="size-2.5 rounded-full bg-brand-primary" /> : null}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'h-[3px] flex-1',
+                    index === lastIndex
+                      ? 'invisible'
+                      : rightColoured
+                        ? 'bg-fsm-delivered-fg'
+                        : 'bg-border-subtle'
+                  )}
+                />
+              </div>
               <span
-                aria-hidden="true"
                 className={cn(
-                  'h-[3px] flex-1',
-                  index === 0
-                    ? 'invisible'
-                    : leftColoured
-                      ? 'bg-fsm-delivered-fg'
-                      : 'bg-border-subtle'
-                )}
-              />
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'flex size-6 shrink-0 items-center justify-center rounded-full',
-                  isDone && 'bg-fsm-delivered-fg text-brand-on',
-                  isCurrent && 'border-2 border-brand-primary bg-brand-subtle',
-                  !isDone && !isCurrent && 'border-2 border-border-subtle bg-card'
+                  'hidden text-center sm:block',
+                  isCurrent
+                    ? 'text-body-strong text-brand-pressed'
+                    : isDone
+                      ? 'text-caption text-primary'
+                      : 'text-caption text-muted'
                 )}
               >
-                {isDone ? <Check className="size-3.5" strokeWidth={3} /> : null}
-                {isCurrent ? <span className="size-2.5 rounded-full bg-brand-primary" /> : null}
+                {step.label}
               </span>
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'h-[3px] flex-1',
-                  index === lastIndex
-                    ? 'invisible'
-                    : rightColoured
-                      ? 'bg-fsm-delivered-fg'
-                      : 'bg-border-subtle'
-                )}
-              />
-            </div>
-            <span
-              className={cn(
-                'text-center',
-                isCurrent
-                  ? 'text-body-strong text-brand-pressed'
-                  : isDone
-                    ? 'text-caption text-primary'
-                    : 'text-caption text-muted'
-              )}
-            >
-              {step.label}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+            </li>
+          );
+        })}
+      </ol>
+      <p aria-hidden="true" className="text-center text-caption text-secondary sm:hidden">
+        {finished ? null : `Step ${currentIndex + 1} of ${STATUS_PROGRESS_STEPS.length} · `}
+        <span className="text-body-strong text-brand-pressed">
+          {STATUS_PROGRESS_STEPS[currentIndex]?.label}
+        </span>
+      </p>
+    </div>
   );
 }
 

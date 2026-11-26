@@ -306,6 +306,7 @@ services:
     hpa: { minReplicas: 2, maxReplicas: 12, scaleUpPods: 3 }
     config:
       PRICING_SERVICE_URL: "http://pricing-zone-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
+      DISPATCH_SERVICE_URL: "http://dispatch-assignment-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
       PRICING_CONNECT_TIMEOUT_MS: "1000"
       PRICING_READ_TIMEOUT_MS: "5000"
       PUBLIC_TRACKING_BASE_URL: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}'
@@ -390,6 +391,10 @@ services:
     hpa: { minReplicas: 2, maxReplicas: 8, scaleUpPods: 2 }
     config:
       AUTH_SERVICE_URL: "http://auth-iam-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
+      # The recipient's email for their parcel updates.
+      ORDER_SERVICE_URL: "http://customer-order-service.{{ .Values.namespaces.apps }}.svc.cluster.local:8080"
+      # "Track your parcel" links in parcel emails.
+      PUBLIC_TRACKING_BASE_URL: '{{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.hosts.app }}'
       CONTACT_MODE: iam
       CONTACT_CACHE_TTL_MINUTES: "10"
       # Real e-mail (OTP codes, order notices) once secrets.acsEmail.accessKey is set.

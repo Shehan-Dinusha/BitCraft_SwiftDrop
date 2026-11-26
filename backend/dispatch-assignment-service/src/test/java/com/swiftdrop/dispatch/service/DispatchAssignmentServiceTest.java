@@ -44,6 +44,10 @@ class DispatchAssignmentServiceTest {
     @Mock
     private CourierShiftRepository courierShiftRepository;
 
+    /** Pickups still open: the mock answers false to pickupsClosed(). */
+    @Mock
+    private WorkingDay workingDay;
+
     @InjectMocks
     private DispatchAssignmentService dispatchAssignmentService;
 

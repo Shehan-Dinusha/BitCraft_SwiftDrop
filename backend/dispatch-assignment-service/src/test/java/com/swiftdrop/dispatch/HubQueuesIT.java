@@ -9,6 +9,7 @@ import com.swiftdrop.dispatch.domain.enums.AssignmentStatus;
 import com.swiftdrop.dispatch.domain.repository.DispatchAssignmentRepository;
 import com.swiftdrop.dispatch.dto.DispatchAssignmentResponse;
 import com.swiftdrop.dispatch.service.DispatchAssignmentService;
+import com.swiftdrop.dispatch.service.WorkingDay;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(DispatchAssignmentService.class)
+@Import({DispatchAssignmentService.class, WorkingDay.class})
 @Testcontainers(disabledWithoutDocker = true)
 class HubQueuesIT {
 
@@ -96,6 +97,10 @@ class HubQueuesIT {
 
         assertThat(tracking(service.getReadyToSend(C))).containsExactly(atColomboHub);
         assertThat(service.getReadyToSend(K)).isEmpty();
+
+        // Colombo still sees what it sent until Kandy accepts it; Kandy's accepted parcel is no longer listed.
+        assertThat(tracking(service.getSent(C))).containsExactly(onTheWay);
+        assertThat(service.getSent(K)).isEmpty();
 
         // Coming into Kandy until its hub accepts it; then it is Kandy's own order.
         assertThat(tracking(service.getIncoming(K))).containsExactlyInAnyOrder(colomboToKandyNew, atColomboHub, onTheWay);

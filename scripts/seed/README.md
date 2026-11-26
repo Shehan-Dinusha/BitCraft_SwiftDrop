@@ -6,15 +6,21 @@ Fills SwiftDrop with realistic demo data **through the public APIs**, the way re
 |---|---|
 | System admin (bootstrap account) | Creates 25 dispatchers (one per district), 50 couriers (two per district), 40 customers and 6 merchant owners |
 | 40 customers | Book 4–6 parcels each (≈200 orders, real towns and postcodes) |
-| 6 merchant businesses | Apply, and the admin approves all 6 (their e-mail addresses are not real, so decision e-mails could not be read). Each creates an API key and sends 8–12 B2B orders (≈58) through the B2B API. To demo the review flow, sign up a business with a real address at `/register/business` and approve it as that district's dispatcher |
-| Couriers | Are created ready to work (active, no invite), register their own vehicle, get capacity 20 from their dispatcher, and start their shifts. To demo the invite flow, register a courier with a real address as a dispatcher on **Couriers** |
+| 6 merchant businesses | Apply (category, monthly volume and pickup location), and the admin approves all 6 (their e-mail addresses are not real, so decision e-mails could not be read). Each creates an API key and sends 8–12 B2B orders (≈58) through the B2B API, then marks its parcels ready; one shop is left unpacked. To demo the review flow, sign up a business with a real address at `/register/business` and approve it as that district's dispatcher |
+| Couriers | Are created ready to work (active, no invite), register their own vehicle (each district's second courier has a three-wheeler, van or lorry for the large boxes), get capacity 20 from their dispatcher, and start their shifts. To demo the invite flow, register a courier with a real address as a dispatcher on **Couriers** |
 | Customers | Cancel ~10% of parcels before dispatch |
-| Dispatchers | Assign ~80% of parcels to a courier in the pickup district; ~10% stay unassigned so the board has work |
-| Couriers | Move parcels along: ~58% delivered (photo proof of delivery), ~7% out for delivery, ~10% failed with a reason, the rest picked up / in transit |
+| Dispatchers | Each works their own district: ~80% of parcels go to the courier dispatch suggests (one whose vehicle fits), a shop's packed parcels to one courier in one visit; ~10% stay unassigned so the board has work |
+| Couriers and hubs | Couriers collect the fee in cash (a shop pays once per visit), hand parcels in at their hub; the hub marks them outbound (or sorts its own), the drop-off hub accepts them and gives them to a courier, who loads them and leaves on a run. ~60% end delivered with a photo; the rest are spread over every step: not collected yet, waiting to be sent, on the way, at the drop-off hub, out for delivery, a failed attempt held at the hub, delivered on a second attempt, waiting at the sender's hub to go back, and returned to the sender with a photo |
+| Cash | Couriers hand over their cash, dispatchers count it and bank the hub's cash, the admin confirms the deposits (revenue on the Analytics page comes from this). A few districts stop earlier, so the cash pages show cash with couriers, at the hub and banked but not yet confirmed |
 | Customers | Read the older ~60% of their in-app notifications |
 
 Nothing is written with SQL. Dispatch, delivery, notification and analytics fill themselves from the
 RabbitMQ events these actions publish, so every database stays consistent with the others.
+
+**Run it on a working day.** Dispatch checks the real clock: a shift starts only Monday to Saturday
+(not on a holiday) from 07:30, and pickups are given out only until 15:00 Sri Lanka time. The `shifts`,
+`assign` and `deliver` stages stop with a message outside that window; run them again then, the stages
+before them are kept. Start the seed in the morning so `assign` is done before 15:00.
 
 Accounts are provisioned by the admin: since email verification was added, a self-registered
 account cannot sign in until it confirms a code sent by e-mail, which a script cannot read.
@@ -44,8 +50,8 @@ It takes 20–40 minutes on a laptop. The stages, which you can also run one at 
 | `warmup` | each consumer, briefly | Makes sure every consumer queue exists (events sent to a missing queue are lost) |
 | `users` | none | Staff accounts and customer sign-ups |
 | `orders` | order, pricing (+ merchant) | Customer bookings, then merchant applications, approvals, API keys and B2B orders; dispatch is off, so `order.created` events queue up |
-| `assign` | order, dispatch | Dispatch files the bookings as unassigned, then shifts, cancellations, assignments |
-| `deliver` | delivery | Courier transitions and proof-of-delivery uploads |
+| `assign` | order, dispatch (+ merchant) | Dispatch files the bookings, shops mark their parcels ready, then shifts, cancellations, assignments |
+| `deliver` | order, dispatch, delivery | Pickups with cash, hand-in, outbound, accept, hub assignments, loading, runs, deliveries with photos, failed attempts and returns (two rounds, so retries and returns finish); then the cash is handed over, counted, banked and confirmed |
 | `catchup` | order, dispatch, notification, analytics | They process the queued events; notifications are marked read; summary |
 | `timeshift` | none (databases only) | Spreads the history over the past 30 days; see below |
 
@@ -75,18 +81,23 @@ charts show a single spike. `timeshift.mjs` runs **once, after the last stage**,
   |---|---|
   | booked → courier assigned | 10 min – 3 h (dispatchers work 07:00–21:00) |
   | assigned → picked up | 30 min – 4 h |
-  | picked up → in transit (to the hub) | 15 – 90 min |
-  | in transit → out for delivery | express 1–4 h; same district 2–6 h; other district: overnight, out next morning 08:00–10:00 |
-  | out for delivery → delivered / failed | 30 min – 5 h / 1 – 6 h |
+  | picked up → handed in at the hub | 1 – 5 h |
+  | hub steps (outbound, accepted) | 1 – 4 h each |
+  | at the hub → out for delivery | next morning 08:00–10:00 (same district handed in before 11:00: that afternoon; Standard to another district: sometimes a day later) |
+  | out for delivery → delivered / attempt failed | 30 min – 5 h / 1 – 6 h |
+  | attempt failed → returning → returned | 1 – 8 h, then the next day or so |
   | booked → cancelled | 10 min – 4 h |
 
   Courier steps happen 08:00–19:30 Colombo time; bookings 07:00–23:00. Finished orders are booked
   0–29 days ago (more in recent days, so charts show growth); orders still in progress end a
   realistic time before now (a parcel is never "out for delivery" for days);
 - rows that stand for a step take that step's new time in every database: delivery's audit
-  trail and pickup/delivered times, the proof photo (minutes before delivery), dispatch's
-  assignment time, analytics events and projection fields, and notifications; any other
-  timestamp is placed between the new step times;
+  trail and pickup/hand-in/delivered/returned times, the proof photo (minutes before delivery), dispatch's
+  assignment and pickup times, analytics events and projection fields, and notifications; any other
+  timestamp is placed between the new step times; the promised delivery day moves with the booking day;
+- the cash follows: each fee at its pickup, a shop's payment when its parcels were collected, a
+  courier's handover at the end of that round, its count, the deposit later that day and the admin's
+  confirmation the next day, so revenue on the Analytics page spreads over the month too;
 - merchants get a story built backwards from their first B2B order: the owner signs up, the business
   applies, the admin approves it in office hours, an API key is created, then the orders arrive; the
   pending application is a day or two old and the rejected one a couple of weeks;
@@ -119,8 +130,8 @@ Every service runs at once, so no switching is needed. Open a port-forward or us
 
 > [!IMPORTANT]
 > **Switch e-mail to mock while seeding.** When `secrets.acsEmail` is set, notification-service
-> e-mails the customer at every order step. The seed creates about 240 orders for
-> `@example.com` addresses, which cannot receive mail: that is roughly 700–900 bounced e-mails.
+> e-mails the sender and the recipient at every order step. The seed creates about 240 orders for
+> `@example.com` addresses, which cannot receive mail: that is roughly 2,000–2,500 bounced e-mails.
 > They use up the Azure managed domain's small sending quota, and a high bounce rate can get ACS
 > sending throttled or suspended, which would also stop real sign-up verification codes.
 > In-app notifications are unaffected by the switch.

@@ -392,6 +392,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deliveries/load": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Load the chosen parcels at the hub
+         * @description COURIER only. Each parcel must be waiting at the hub for this courier: a delivery (AT_DESTINATION_HUB) goes out for delivery, a return (RETURN_AT_HUB) goes out to the sender. All of them, or none.
+         */
+        post: operations["loadAtHub"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deliveries/hand-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hand in the chosen parcels at the courier's hub
+         * @description COURIER only, for parcels they carry. A pickup going through the hub is handed in (AT_ORIGIN_HUB); a failed attempt is held (HELD_AT_HUB); a return the sender could not take goes back (RETURN_AT_HUB); a parcel not delivered today goes back for another run (AT_DESTINATION_HUB), which is not an attempt. All of them, or none.
+         */
+        post: operations["handInAtHub"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash/payments": {
         parameters: {
             query?: never;
@@ -506,6 +546,13 @@ export interface components {
              * @description When the sender got the parcel back.
              */
             returnedAt?: string | null;
+            /**
+             * @description The order's speed; null on older deliveries.
+             * @enum {string|null}
+             */
+            speed?: "STANDARD" | "EXPRESS" | "SAME_DAY" | null;
+            /** @description Whether the courier hands it in at the hub after pickup (Standard or Express, or another district) instead of taking it straight to the recipient (Same day within one district). */
+            viaHub?: boolean;
         };
         /** @description A contact and address the courier visits. */
         CourierJobStop: {
@@ -776,6 +823,10 @@ export interface components {
             merchantName?: string | null;
             currency: string;
             addresses: components["schemas"]["ShopStopAddress"][];
+        };
+        LoadParcelsRequest: {
+            /** @description Delivery session UUIDs to load at, or hand in to, the courier's hub. */
+            deliveryIds: string[];
         };
         CollectShopRequest: {
             deliveryIds: string[];
@@ -1677,6 +1728,96 @@ export interface operations {
                 content?: never;
             };
             /** @description A different amount, a cancelled parcel, or one that is no longer the courier's */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    loadAtHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoadParcelsRequest"];
+            };
+        };
+        responses: {
+            /** @description Parcels loaded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDeliverySessionResponse"];
+                };
+            };
+            /** @description No parcels, or more than 200 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not a COURIER */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description One of the parcels is not waiting at the hub for this courier; nothing was loaded */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    handInAtHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoadParcelsRequest"];
+            };
+        };
+        responses: {
+            /** @description Parcels handed in */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDeliverySessionResponse"];
+                };
+            };
+            /** @description No parcels, or more than 200 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not a COURIER */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description One of the parcels is not with this courier; nothing was handed in */
             409: {
                 headers: {
                     [name: string]: unknown;

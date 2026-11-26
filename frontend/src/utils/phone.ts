@@ -24,3 +24,10 @@ export function phoneProblem(digits: string): string | undefined {
 }
 
 export const toE164 = (digits: string) => `+94${digits}`;
+
+/** A stored number for reading: +94 77 123 4567. Anything that is not a phone number is shown as it is. */
+export function formatPhone(value: string): string {
+  const digits = phoneDigits(value);
+  if (!DIGITS.test(digits)) return value;
+  return `+94 ${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
+}

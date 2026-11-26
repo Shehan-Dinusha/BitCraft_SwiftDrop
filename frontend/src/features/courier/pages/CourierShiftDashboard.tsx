@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { phoneDigits, phoneProblem, toE164 } from '@/utils/phone';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -6,16 +6,19 @@ import {
   dispatchApi,
   type CourierProfileResponse,
   type CourierShiftResponse,
-  type ShiftStatus
+  type ShiftStatus,
+  type WorkdayResponse
 } from '@/services/api/dispatchApi';
 import { deliveryApi, type DeliverySessionResponse } from '@/services/api/deliveryApi';
 import { fetchCurrentUser } from '@/services/api/authApi';
 import { parseApiError } from '@/services/api/apiError';
-import { isOpenForCourier } from '@/types/fsm';
+import { goesViaHub, isOpenForCourier } from '@/types/fsm';
 import { lkr } from '@/features/cash/cashDisplay';
 import { cashApi } from '@/services/api/cashApi';
 import { vehicleLabel } from '@/utils/vehicles';
 import { districtLabel } from '@/features/profile/profileFormat';
+import { colomboClock, colomboTimeNow, dayLabel, hhmm } from '@/utils/colomboDate';
+import { SPEED_RANK } from '@/features/admin-ops/components/dispatch/dispatchQueues';
 import { Button } from '@/design-system/primitives/Button';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
 import { StatusBanner } from '@/design-system/components/StatusBanner/StatusBanner';
@@ -24,14 +27,40 @@ import {
   Bike,
   Coffee,
   MapPin,
+  Play,
+  Truck,
+  Warehouse,
   Package,
   Store,
   Power,
   RefreshCw,
-  CheckCircle2,
   Clock,
   ChevronRight
 } from 'lucide-react';
+
+const STATUS_LABEL: Record<string, string> = {
+  AVAILABLE: 'Available',
+  BUSY: 'Full',
+  ON_BREAK: 'On break',
+  OFFLINE: 'Off shift'
+};
+
+/** Waiting at the hub for this courier: a delivery to take out, or a return to bring to the sender. */
+const isAtHub = (job: DeliverySessionResponse) =>
+  job.currentState === 'AT_DESTINATION_HUB' || job.currentState === 'RETURN_AT_HUB';
+
+/** States in which the courier physically carries the parcel. */
+const CARRIED = ['PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'ATTEMPT_FAILED', 'OUT_FOR_RETURN'];
+
+/** Belongs at the hub now: a pickup that goes through it, or a failed attempt. */
+const isHubBound = (job: DeliverySessionResponse) =>
+  (job.currentState === 'PICKED_UP' && goesViaHub(job)) || job.currentState === 'ATTEMPT_FAILED';
+
+/** Still on its way to the recipient or the sender: brought back only if the courier did not get to it today. */
+const isStillOut = (job: DeliverySessionResponse) =>
+  job.currentState === 'OUT_FOR_DELIVERY' ||
+  job.currentState === 'OUT_FOR_RETURN' ||
+  ((job.currentState === 'PICKED_UP' || job.currentState === 'IN_TRANSIT') && !goesViaHub(job));
 
 /** A merchant's parcel still at the shop: collected with the shop's others. */
 const isShopStop = (job: DeliverySessionResponse) =>
@@ -72,6 +101,11 @@ export function CourierShiftDashboard() {
   );
   // undefined while loading; null when the courier has not registered a vehicle yet.
   const [vehicle, setVehicle] = useState<CourierProfileResponse | null | undefined>(undefined);
+  const [workday, setWorkday] = useState<WorkdayResponse | null>(null);
+  // Hub parcels the courier unticked; new ones arrive ticked.
+  const [leftBehind, setLeftBehind] = useState<Set<string>>(new Set());
+  // What the courier changed in the hand-in list; untouched rows follow their default.
+  const [handInChoice, setHandInChoice] = useState<Record<string, boolean>>({});
 
   const fetchShiftData = useCallback(async () => {
     if (!courierId) return;
@@ -84,6 +118,13 @@ export function CourierShiftDashboard() {
         setVehicle(await dispatchApi.getMyProfile());
       } catch {
         setVehicle(undefined);
+      }
+
+      // Hours, closed days and the lunch break; the server enforces them either way.
+      try {
+        setWorkday(await dispatchApi.getWorkday());
+      } catch {
+        setWorkday(null);
       }
 
       // Fetch courier shift data
@@ -153,10 +194,72 @@ export function CourierShiftDashboard() {
         status: newStatus
       });
       setShift(res);
-      setSuccessMsg(`Status updated to ${newStatus}`);
+      setSuccessMsg(
+        newStatus === 'ON_BREAK'
+          ? `Enjoy your lunch. Back by ${colomboClock(res.breakEndsAt)}.`
+          : 'Welcome back.'
+      );
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to update shift status';
-      setErrorMsg(msg);
+      setErrorMsg(parseApiError(err).message ?? 'Your break could not be updated');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleLoad = async (deliveryIds: string[]) => {
+    try {
+      setUpdating(true);
+      setErrorMsg(null);
+      const loaded = await deliveryApi.loadAtHub(deliveryIds);
+      setSuccessMsg(`Loaded ${loaded.length} ${loaded.length === 1 ? 'parcel' : 'parcels'}.`);
+      setLeftBehind(new Set());
+      await fetchShiftData();
+    } catch (err: unknown) {
+      setErrorMsg(parseApiError(err).message ?? 'The parcels could not be loaded');
+      await fetchShiftData();
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleHandIn = async (deliveryIds: string[]) => {
+    try {
+      setUpdating(true);
+      setErrorMsg(null);
+      const done = await deliveryApi.handIn(deliveryIds);
+      setSuccessMsg(`Handed in ${done.length} ${done.length === 1 ? 'parcel' : 'parcels'}.`);
+      setHandInChoice({});
+      await fetchShiftData();
+    } catch (err: unknown) {
+      setErrorMsg(parseApiError(err).message ?? 'The parcels could not be handed in');
+      await fetchShiftData();
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleBackAtHub = async () => {
+    if (!courierId) return;
+    try {
+      setUpdating(true);
+      setErrorMsg(null);
+      setShift(await dispatchApi.backAtHub(courierId));
+    } catch (err: unknown) {
+      setErrorMsg(parseApiError(err).message ?? 'Could not record that you are back');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleStartRun = async () => {
+    if (!courierId) return;
+    try {
+      setUpdating(true);
+      setErrorMsg(null);
+      setShift(await dispatchApi.startRun(courierId));
+      setSuccessMsg('On your way. New pickups can still come in.');
+    } catch (err: unknown) {
+      setErrorMsg(parseApiError(err).message ?? 'The run could not be started');
     } finally {
       setUpdating(false);
     }
@@ -177,20 +280,64 @@ export function CourierShiftDashboard() {
     }
   };
 
-  const openJobs = todayDeliveries.filter((job) => isOpenForCourier(job.currentState));
-  // A shop's parcels still to collect are one stop; everything else is a job of its own.
+  // Same day first, then Express: the order a courier should work through.
+  const openJobs = todayDeliveries
+    .filter((job) => isOpenForCourier(job.currentState))
+    .sort((a, b) => (SPEED_RANK[a.speed ?? ''] ?? 2) - (SPEED_RANK[b.speed ?? ''] ?? 2));
+  // At the hub first, then pickups (a shop's parcels are one stop), then what is on board.
+  const atHub = openJobs.filter(isAtHub);
   const shops = groupShops(openJobs);
-  const jobs = openJobs.filter((job) => !isShopStop(job));
+  const pickups = openJobs.filter((job) => job.currentState === 'ASSIGNED' && !isShopStop(job));
+  const onBoard = openJobs.filter((job) => job.currentState !== 'ASSIGNED' && !isAtHub(job));
+  const toLoad = atHub.filter((job) => job.deliveryId && !leftBehind.has(job.deliveryId));
+  const onRun = Boolean(shift?.runStartedAt);
+  // Back from a run: hub-bound parcels are ticked; ones still out are offered unticked, to bring back for
+  // another day (not an attempt). In the morning only what belongs at the hub is offered.
+  const cameBack = Boolean(shift?.lastRunEndedAt);
+  const handInList = openJobs.filter((job) => isHubBound(job) || (cameBack && isStillOut(job)));
+  const handInTicked = (job: DeliverySessionResponse) =>
+    handInChoice[job.deliveryId ?? ''] ?? isHubBound(job);
+  const toHandIn = handInList.filter(handInTicked);
+  const carried = openJobs.filter((job) => CARRIED.includes(job.currentState ?? '')).length;
+  const pickupsLeft = shops.reduce((sum, shop) => sum + shop.count, 0) + pickups.length;
   const isOnline = shift && shift.shiftStatus !== 'OFFLINE';
   const capacityUsed = shift ? (shift.activeParcelsCount ?? 0) : 0;
   const maxCap = shift?.maxCapacity || 5;
   const capacityPct = Math.min(100, Math.round((capacityUsed / maxCap) * 100));
 
+  const status = shift?.shiftStatus ?? 'OFFLINE';
+  const onBreak = status === 'ON_BREAK';
+  const working = isOnline && status !== 'ON_BREAK';
+  const now = colomboTimeNow();
+  const closedToday = workday ? !workday.open : false;
+  const cannotStart = workday ? !workday.shiftCanStart : false;
+  const breakTaken = Boolean(shift?.breakStartedAt);
+  const inBreakWindow = workday
+    ? now >= hhmm(workday.breakFrom) && now <= hhmm(workday.breakUntil)
+    : true;
+  const breakOver =
+    onBreak && Boolean(shift?.breakEndsAt) && Date.now() > Date.parse(shift?.breakEndsAt ?? '');
+  const tone = !isOnline
+    ? 'border-l-border-strong bg-canvas'
+    : status === 'AVAILABLE'
+      ? 'border-l-status-success bg-status-success-bg'
+      : 'border-l-status-warning bg-status-warning-bg';
+  const iconTone = !isOnline
+    ? 'bg-muted'
+    : status === 'AVAILABLE'
+      ? 'bg-status-success'
+      : 'bg-status-warning';
+  const pillTone = !isOnline
+    ? 'bg-border-subtle text-primary'
+    : status === 'AVAILABLE'
+      ? 'bg-status-success-bg text-status-success-fg'
+      : 'bg-status-warning-bg text-status-warning-fg';
+
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-6" data-density="touch">
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">My shift</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Today</h1>
         </div>
         <Button
           variant="outline"
@@ -215,26 +362,11 @@ export function CourierShiftDashboard() {
       )}
 
       {/* Online / Offline Status Banner Card */}
-      <SurfaceCard
-        variant="elevated"
-        className={`border-l-4 p-5 ${
-          isOnline
-            ? shift?.shiftStatus === 'AVAILABLE'
-              ? 'border-l-emerald-500 bg-status-success-bg'
-              : 'border-l-amber-500 bg-status-warning-bg'
-            : 'border-l-slate-400 bg-canvas'
-        }`}
-      >
+      <SurfaceCard variant="elevated" className={`border-l-4 p-5 ${tone}`}>
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
             <div
-              className={`flex h-12 w-12 items-center justify-center rounded-xl text-brand-on ${
-                isOnline
-                  ? shift?.shiftStatus === 'AVAILABLE'
-                    ? 'bg-status-success'
-                    : 'bg-status-warning'
-                  : 'bg-muted'
-              }`}
+              className={`flex h-12 w-12 items-center justify-center rounded-xl text-brand-on ${iconTone}`}
             >
               <Bike className="h-6 w-6" />
             </div>
@@ -244,15 +376,9 @@ export function CourierShiftDashboard() {
                   {user?.username || shift?.courierName || 'Courier'}
                 </span>
                 <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                    isOnline
-                      ? shift?.shiftStatus === 'AVAILABLE'
-                        ? 'bg-status-success-bg text-status-success-fg'
-                        : 'bg-status-warning-bg text-status-warning-fg'
-                      : 'bg-border-subtle text-primary'
-                  }`}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${pillTone}`}
                 >
-                  {shift?.shiftStatus || 'OFFLINE'}
+                  {STATUS_LABEL[status] ?? status}
                 </span>
               </div>
               <p className="flex items-center gap-1.5 text-xs text-secondary">
@@ -274,43 +400,48 @@ export function CourierShiftDashboard() {
                 Add your vehicle to start
               </Button>
             ) : !isOnline ? (
-              <Button
-                variant="primary"
-                onClick={handleStartShift}
-                disabled={updating}
-                className="min-h-target w-full px-6 font-semibold shadow-md sm:w-auto"
-              >
-                <Power className="mr-2 h-5 w-5" />
-                Start shift
-              </Button>
+              closedToday ? null : (
+                <Button
+                  variant="primary"
+                  onClick={handleStartShift}
+                  disabled={updating || cannotStart}
+                  className="min-h-target w-full px-6 font-semibold shadow-md sm:w-auto"
+                >
+                  <Power className="mr-2 h-5 w-5" />
+                  Start shift
+                </Button>
+              )
             ) : (
               <>
-                <Button
-                  variant={shift?.shiftStatus === 'AVAILABLE' ? 'primary' : 'outline'}
-                  onClick={() => handleUpdateStatus('AVAILABLE')}
-                  disabled={updating}
-                  className="min-h-[44px]"
-                >
-                  <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                  Available
-                </Button>
-                <Button
-                  variant={shift?.shiftStatus === 'ON_BREAK' ? 'secondary' : 'outline'}
-                  onClick={() => handleUpdateStatus('ON_BREAK')}
-                  disabled={updating}
-                  className="min-h-[44px]"
-                >
-                  <Coffee className="mr-1.5 h-4 w-4" />
-                  Break
-                </Button>
+                {onBreak ? (
+                  <Button
+                    variant="primary"
+                    onClick={() => handleUpdateStatus('AVAILABLE')}
+                    disabled={updating}
+                    className="min-h-target"
+                  >
+                    <Play className="mr-1.5 h-4 w-4" />
+                    End break
+                  </Button>
+                ) : breakTaken ? null : (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleUpdateStatus('ON_BREAK')}
+                    disabled={updating || !inBreakWindow}
+                    className="min-h-target"
+                  >
+                    <Coffee className="mr-1.5 h-4 w-4" />
+                    Lunch break
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
                   onClick={handleEndShift}
-                  disabled={updating || capacityUsed > 0 || cashInHand > 0}
-                  className="min-h-[44px]"
+                  disabled={updating || carried > 0 || cashInHand > 0}
+                  className="min-h-target"
                   title={
-                    capacityUsed > 0
-                      ? 'Deliver active parcels before ending shift'
+                    carried > 0
+                      ? 'Deliver or hand in the parcels you carry before ending shift'
                       : cashInHand > 0
                         ? 'Hand over your cash before ending shift'
                         : 'End shift'
@@ -324,6 +455,59 @@ export function CourierShiftDashboard() {
           </div>
         </div>
       </SurfaceCard>
+
+      {!isOnline && workday && closedToday && (
+        <StatusBanner tone="info" title={`Closed today (${workday.closedReason ?? 'holiday'})`}>
+          Next working day: {dayLabel(workday.nextWorkingDay)}.
+        </StatusBanner>
+      )}
+      {!isOnline && workday && !closedToday && cannotStart && (
+        <StatusBanner tone="info" title="Outside working hours">
+          {now < hhmm(workday.shiftFrom)
+            ? `Shifts start at ${hhmm(workday.shiftFrom)}.`
+            : `The working day ended at ${hhmm(workday.closesAt)}. Next working day: ${dayLabel(workday.nextWorkingDay)}.`}
+        </StatusBanner>
+      )}
+      {onBreak && (
+        <StatusBanner
+          tone={breakOver ? 'warning' : 'info'}
+          title={
+            breakOver
+              ? `Your break ended at ${colomboClock(shift?.breakEndsAt)}`
+              : `On lunch break until ${colomboClock(shift?.breakEndsAt)}`
+          }
+        >
+          New jobs can still come in. You will see them here.
+        </StatusBanner>
+      )}
+      {isOnline && onRun && (
+        <SurfaceCard className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <p className="flex items-center gap-1.5 text-body text-secondary">
+            <Truck aria-hidden="true" className="h-4 w-4" />
+            On the road since {colomboClock(shift?.runStartedAt)}. Only pickups can be added now.
+          </p>
+          <Button
+            variant="outline"
+            className="min-h-target"
+            disabled={updating}
+            onClick={handleBackAtHub}
+          >
+            <Warehouse className="mr-2 h-5 w-5" />
+            Back at the hub
+          </Button>
+        </SurfaceCard>
+      )}
+      {isOnline && !onRun && carried === 0 && pickupsLeft > 0 && cameBack && (
+        <p className="text-caption text-secondary">
+          Pickups you have not made stay with you for tomorrow.
+        </p>
+      )}
+      {working && workday && !breakTaken && !inBreakWindow && now < hhmm(workday.breakUntil) && (
+        <p className="text-caption text-secondary">
+          Lunch break from {hhmm(workday.breakFrom)} to {hhmm(workday.breakUntil)}, up to{' '}
+          {workday.breakMinutes} minutes.
+        </p>
+      )}
 
       {cashInHand > 0 && (
         <StatusBanner tone="warning" title={`${lkr(cashInHand)} in hand`}>
@@ -343,7 +527,7 @@ export function CourierShiftDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <SurfaceCard className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-secondary">Parcels on Board</span>
+              <span className="text-xs font-medium text-secondary">Parcels assigned</span>
               <Package className="h-4 w-4 text-brand-primary" />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
@@ -390,99 +574,227 @@ export function CourierShiftDashboard() {
         </div>
       )}
 
-      {/* Stage 14: Today's Deliveries List (/deliveries/me) with Touch Density (56px rows) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
+      {isOnline && !onRun && (
+        <SurfaceCard className="space-y-3 p-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-primary">Jobs to do</h2>
-            <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
-              {shops.length + jobs.length}
-            </span>
+            <Warehouse aria-hidden="true" className="h-5 w-5 text-brand-primary" />
+            <h2 className="text-lg font-bold text-primary">At the hub</h2>
           </div>
-        </div>
-
-        {openJobs.length === 0 ? (
-          <SurfaceCard className="p-6 text-center">
-            <Package className="mx-auto h-8 w-8 text-muted" />
-            <p className="mt-2 text-sm font-medium text-primary">
-              {isOnline ? 'New jobs appear here' : 'Start your shift to get jobs'}
-            </p>
-          </SurfaceCard>
-        ) : (
-          <div className="space-y-2">
-            {shops.map((shop) => (
-              <button
-                key={shop.merchantId}
-                type="button"
-                onClick={() => navigate(`/courier/shops/${shop.merchantId}`)}
-                className="flex min-h-target w-full items-center justify-between gap-3 rounded-xl border border-border-subtle bg-card px-4 py-2 text-left hover:border-brand-primary hover:bg-canvas"
+          {atHub.length > 0 ? (
+            <>
+              <ul className="divide-y divide-border-subtle" aria-label="Parcels to load">
+                {atHub.map((job) => {
+                  const id = job.deliveryId ?? '';
+                  return (
+                    <li key={id}>
+                      <label className="flex min-h-target cursor-pointer items-center gap-3 py-1">
+                        <span className="sr-only">Load</span>
+                        <input
+                          type="checkbox"
+                          className="size-5 accent-brand-primary"
+                          checked={!leftBehind.has(id)}
+                          disabled={updating}
+                          onChange={(event) => {
+                            const next = new Set(leftBehind);
+                            if (event.target.checked) next.delete(id);
+                            else next.add(id);
+                            setLeftBehind(next);
+                          }}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-mono text-sm font-bold tabular-nums text-primary">
+                            {job.trackingNumber}
+                          </span>
+                          <span className="block text-caption text-secondary">
+                            {job.currentState === 'RETURN_AT_HUB'
+                              ? `Return to the sender, ${districtLabel(job.pickupDistrict)}`
+                              : `Deliver in ${districtLabel(job.deliveryDistrict)}`}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Button
+                variant="primary"
+                className="min-h-target w-full"
+                disabled={updating || toLoad.length === 0}
+                onClick={() => handleLoad(toLoad.map((job) => job.deliveryId ?? ''))}
               >
-                <span className="flex min-w-0 items-center gap-3">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-subtle text-brand-primary">
-                    <Store aria-hidden="true" className="size-5" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-body-strong text-primary">
-                      {shop.name}
-                    </span>
-                    <span className="block text-caption text-secondary">
-                      Pick up {shop.count} {shop.count === 1 ? 'parcel' : 'parcels'}
-                    </span>
-                  </span>
+                <Package className="mr-2 h-5 w-5" />
+                Load {toLoad.length} {toLoad.length === 1 ? 'parcel' : 'parcels'}
+              </Button>
+            </>
+          ) : (
+            <p className="text-body text-secondary">Nothing waiting for you at the hub.</p>
+          )}
+          {handInList.length > 0 ? (
+            <div className="space-y-2 border-t border-border-subtle pt-3">
+              <h3 className="text-body-strong text-primary">Hand in</h3>
+              <ul className="divide-y divide-border-subtle" aria-label="Parcels to hand in">
+                {handInList.map((job) => {
+                  const id = job.deliveryId ?? '';
+                  return (
+                    <li key={id}>
+                      <label className="flex min-h-target cursor-pointer items-center gap-3 py-1">
+                        <span className="sr-only">Hand in</span>
+                        <input
+                          type="checkbox"
+                          className="size-5 accent-brand-primary"
+                          checked={handInTicked(job)}
+                          disabled={updating}
+                          onChange={(event) =>
+                            setHandInChoice({ ...handInChoice, [id]: event.target.checked })
+                          }
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-mono text-sm font-bold tabular-nums text-primary">
+                            {job.trackingNumber}
+                          </span>
+                          <span className="block text-caption text-secondary">
+                            {job.currentState === 'ATTEMPT_FAILED'
+                              ? 'Delivery failed'
+                              : isHubBound(job)
+                                ? 'Picked up'
+                                : 'Not delivered today, out again on another run'}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Button
+                variant="primary"
+                className="min-h-target w-full"
+                disabled={updating || toHandIn.length === 0}
+                onClick={() => handleHandIn(toHandIn.map((job) => job.deliveryId ?? ''))}
+              >
+                <Warehouse className="mr-2 h-5 w-5" />
+                Hand in {toHandIn.length} {toHandIn.length === 1 ? 'parcel' : 'parcels'}
+              </Button>
+            </div>
+          ) : null}
+          <Button
+            variant={atHub.length > 0 ? 'outline' : 'primary'}
+            className="min-h-target w-full"
+            disabled={updating || onBreak || atHub.length > 0}
+            onClick={handleStartRun}
+          >
+            <Truck className="mr-2 h-5 w-5" />
+            Start run
+          </Button>
+        </SurfaceCard>
+      )}
+
+      <JobList
+        title="Pickups"
+        empty={isOnline ? 'No pickups yet' : 'Start your shift to get jobs'}
+        count={shops.length + pickups.length}
+      >
+        {shops.map((shop) => (
+          <button
+            key={shop.merchantId}
+            type="button"
+            onClick={() => navigate(`/courier/shops/${shop.merchantId}`)}
+            className="flex min-h-target w-full items-center justify-between gap-3 rounded-xl border border-border-subtle bg-card px-4 py-2 text-left hover:border-brand-primary hover:bg-canvas"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-subtle text-brand-primary">
+                <Store aria-hidden="true" className="size-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-body-strong text-primary">{shop.name}</span>
+                <span className="block text-caption text-secondary">
+                  Pick up {shop.count} {shop.count === 1 ? 'parcel' : 'parcels'}
                 </span>
-                <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted" />
-              </button>
-            ))}
-            {jobs.map((delivery) => (
-              <div
-                key={delivery.deliveryId}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/courier/delivery/${delivery.deliveryId}`)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    navigate(`/courier/delivery/${delivery.deliveryId}`);
-                  }
-                }}
-                className="group flex min-h-[56px] h-14 items-center justify-between rounded-xl border border-border-subtle bg-card px-4 py-2 shadow-sm transition-all hover:border-brand-primary hover:bg-canvas active:scale-[0.99] touch-manipulation cursor-pointer"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand-primary group-hover:bg-brand-subtle">
-                    <Package className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-primary truncate">
-                        {delivery.trackingNumber}
-                      </span>
-                      <FsmStatusBadge
-                        state={delivery.currentState || 'ASSIGNED'}
-                        density="touch"
-                        size="sm"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-secondary truncate">
-                      <span>{districtLabel(delivery.pickupDistrict)}</span>
-                      <span>&rarr;</span>
-                      <span className="font-medium text-primary">
-                        {districtLabel(delivery.deliveryDistrict)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+              </span>
+            </span>
+            <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted" />
+          </button>
+        ))}
+        {pickups.map((job) => (
+          <JobRow
+            key={job.deliveryId}
+            job={job}
+            onOpen={() => navigate(`/courier/delivery/${job.deliveryId}`)}
+          />
+        ))}
+      </JobList>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="hidden sm:inline text-xs font-medium text-brand-primary group-hover:underline">
-                    View
-                  </span>
-                  <ChevronRight className="h-5 w-5 text-muted group-hover:text-brand-primary transition-colors" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {onBoard.length > 0 && (
+        <JobList title="On board" count={onBoard.length}>
+          {onBoard.map((job) => (
+            <JobRow
+              key={job.deliveryId}
+              job={job}
+              onOpen={() => navigate(`/courier/delivery/${job.deliveryId}`)}
+            />
+          ))}
+        </JobList>
+      )}
     </main>
+  );
+}
+
+function JobList({
+  title,
+  count,
+  empty,
+  children
+}: {
+  title: string;
+  count: number;
+  empty?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-3" aria-label={title}>
+      <div className="flex items-center gap-2">
+        <h2 className="text-lg font-bold text-primary">{title}</h2>
+        <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
+          {count}
+        </span>
+      </div>
+      {count === 0 && empty ? (
+        <SurfaceCard className="p-6 text-center">
+          <Package className="mx-auto h-8 w-8 text-muted" />
+          <p className="mt-2 text-sm font-medium text-primary">{empty}</p>
+        </SurfaceCard>
+      ) : (
+        <div className="space-y-2">{children}</div>
+      )}
+    </section>
+  );
+}
+
+function JobRow({ job, onOpen }: { job: DeliverySessionResponse; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex min-h-[56px] w-full items-center justify-between rounded-xl border border-border-subtle bg-card px-4 py-2 text-left shadow-sm transition-all hover:border-brand-primary hover:bg-canvas active:scale-[0.99] touch-manipulation"
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand-primary">
+          <Package className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="truncate font-mono text-sm font-bold tabular-nums text-primary">
+              {job.trackingNumber}
+            </span>
+            <FsmStatusBadge state={job.currentState || 'ASSIGNED'} density="touch" size="sm" />
+          </span>
+          <span className="flex items-center gap-1.5 truncate text-xs text-secondary">
+            <span>{districtLabel(job.pickupDistrict)}</span>
+            <span>&rarr;</span>
+            <span className="font-medium text-primary">{districtLabel(job.deliveryDistrict)}</span>
+          </span>
+        </span>
+      </span>
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted transition-colors group-hover:text-brand-primary" />
+    </button>
   );
 }

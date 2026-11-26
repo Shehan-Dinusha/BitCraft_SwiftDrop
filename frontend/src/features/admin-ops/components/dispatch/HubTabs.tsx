@@ -1,9 +1,9 @@
-import { Send, Warehouse } from 'lucide-react';
+import { PackageCheck, Send, Warehouse } from 'lucide-react';
 import type { DispatchAssignmentResponse } from '@/services/api/dispatchApi';
 import { districtLabel } from '@/features/profile/profileFormat';
 import { Badge, CELL, DispatchTable, TabEmpty, TrackingCell } from './DispatchTable';
 import { HubParcelTable } from './HubParcelTable';
-import { orderKey } from './dispatchQueues';
+import { bySpeed, formatAge, orderKey } from './dispatchQueues';
 
 interface HubTabProps {
   orders: DispatchAssignmentResponse[];
@@ -13,23 +13,86 @@ interface HubTabProps {
   onRun: (orders: DispatchAssignmentResponse[]) => void;
 }
 
-/** Handed in at this district's hub, waiting to leave for the drop-off district. */
-export function ReadyToSendTab({ orders, searching, ...rest }: HubTabProps) {
-  if (orders.length === 0) {
+const staysInDistrict = (order: DispatchAssignmentResponse) =>
+  Boolean(order.pickupDistrict) && order.pickupDistrict === order.deliveryDistrict;
+
+/**
+ * Handed in at this district's hub. Parcels for another district are marked Outbound; those staying in the
+ * district (Standard and Express go through the hub too) are sorted for delivery, for a courier's next run.
+ * Below them, read-only, what was sent and is not yet accepted by the drop-off hub.
+ */
+export function ReadyToSendTab({
+  orders,
+  sent,
+  searching,
+  onRun,
+  onSort,
+  ...rest
+}: HubTabProps & {
+  sent: DispatchAssignmentResponse[];
+  onSort: (orders: DispatchAssignmentResponse[]) => void;
+}) {
+  if (orders.length === 0 && sent.length === 0) {
     return <TabEmpty searching={searching} title="No parcels waiting at the hub" />;
   }
+  const local = orders.filter(staysInDistrict);
+  const leaving = orders.filter((order) => !staysInDistrict(order));
   return (
-    <HubParcelTable
-      label="Ready to send"
-      orders={orders}
-      groupField="deliveryDistrict"
-      groupPrefix="To"
-      timeLabel="Handed in"
-      actionLabel="Mark outbound"
-      busyLabel="Sending"
-      actionIcon={<Send />}
-      {...rest}
-    />
+    <>
+      {local.length ? (
+        <HubParcelTable
+          label="For this district"
+          orders={local}
+          groupField="deliveryDistrict"
+          groupPrefix="In"
+          timeLabel="Handed in"
+          actionLabel="Sort for delivery"
+          busyLabel="Sorting"
+          actionIcon={<PackageCheck />}
+          onRun={onSort}
+          {...rest}
+        />
+      ) : null}
+      {leaving.length ? (
+        <HubParcelTable
+          label="Ready to send"
+          orders={leaving}
+          groupField="deliveryDistrict"
+          groupPrefix="To"
+          timeLabel="Handed in"
+          actionLabel="Mark outbound"
+          busyLabel="Sending"
+          actionIcon={<Send />}
+          onRun={onRun}
+          {...rest}
+        />
+      ) : null}
+      {sent.length ? <SentTable orders={sent} now={rest.now} /> : null}
+    </>
+  );
+}
+
+/** Sent from this hub, waiting for the drop-off hub to accept it. Nothing to do here. */
+function SentTable({ orders, now }: { orders: DispatchAssignmentResponse[]; now: number }) {
+  return (
+    <section>
+      <h2 className="px-3 py-3 text-label font-semibold text-primary">
+        Sent, not accepted yet ({orders.length})
+      </h2>
+      <DispatchTable label="Sent, not accepted yet" headers={['Order', 'To', 'Sent']}>
+        {bySpeed(orders).map((order) => (
+          <tr key={orderKey(order)} className="hover:bg-canvas">
+            <td className={CELL}>
+              <TrackingCell order={order} />
+            </td>
+            <td className={CELL}>{districtLabel(order.deliveryDistrict) || 'Unknown'}</td>
+            <td className={`${CELL} whitespace-nowrap text-secondary`}>
+              {`${formatAge(order.updatedAt ?? order.createdAt, now) || '0 min'} ago`}
+            </td>
+          </tr>
+        ))}
+      </DispatchTable>
+    </section>
   );
 }
 

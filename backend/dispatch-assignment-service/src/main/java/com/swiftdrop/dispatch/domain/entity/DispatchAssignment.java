@@ -237,6 +237,14 @@ public class DispatchAssignment {
         return leg == AssignmentLeg.LAST_MILE ? deliveryDistrict : pickupDistrict;
     }
 
+    /**
+     * Collected from a hub rather than from the sender: a delivery from the drop-off hub, or a return from the
+     * sender's hub. Only a courier still at the hub can load it.
+     */
+    public boolean startsAtHub() {
+        return leg != AssignmentLeg.FIRST_MILE;
+    }
+
     /** Picked up in one district and delivered in another, so it goes through both hubs. */
     public boolean crossesDistricts() {
         return pickupDistrict != null && deliveryDistrict != null && pickupDistrict != deliveryDistrict;

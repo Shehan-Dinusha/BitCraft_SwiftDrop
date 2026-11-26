@@ -719,6 +719,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/email-stops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop the emails about one parcel to its recipient
+         * @description Public, no sign-in: the token from the email's "Stop these emails" link is the proof. Using it again succeeds. The sender's own emails are not affected.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StopEmailsRequest"];
+                };
+            };
+            responses: {
+                /** @description No more emails about this parcel go to its recipient */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+                /** @description The token is missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+                /** @description Unknown token */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseString"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -858,6 +919,10 @@ export interface components {
             p256dh: string;
             /** @description Authentication secret (base64url, 16 bytes) */
             auth: string;
+        };
+        StopEmailsRequest: {
+            /** @description Token from the email's "Stop these emails" link */
+            token: string;
         };
         PushUnsubscribeRequest: {
             /** @description Push service URL of the device, from PushSubscription.endpoint */

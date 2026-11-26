@@ -38,6 +38,9 @@ public class FeeEstimateResponse {
     @Schema(description = "Selected speed", example = "STANDARD")
     private OrderSpeed speed;
 
+    @Schema(description = "The day delivery is promised if booked now (Sri Lanka time)", example = "2026-11-26")
+    private java.time.LocalDate deliverBy;
+
     @Schema(description = "Base rate in LKR (first 1 kg included)", example = "550.00")
     private BigDecimal baseFee;
 

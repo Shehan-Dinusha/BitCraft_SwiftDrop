@@ -87,7 +87,9 @@ public class CourierAvailabilityController {
     @PostMapping("/shifts/start")
     @Operation(summary = "Start or register courier shift",
             description = "A COURIER may use only their own courier ID, a DISPATCHER the couriers of their district, "
-                    + "a SYSTEM_ADMIN any. The shift starts in the courier's home district.")
+                    + "a SYSTEM_ADMIN any. The shift starts in the courier's home district, only on a working day "
+                    + "(Monday to Saturday, not a listed holiday) from 7:30 until 17:00 Sri Lanka time. Starting a "
+                    + "shift that is already running returns it unchanged.")
     public ApiResponse<CourierShiftResponse> startShift(
             @Valid @RequestBody StartShiftRequest request,
             HttpServletRequest httpRequest) {
@@ -100,7 +102,9 @@ public class CourierAvailabilityController {
 
     @PostMapping("/shifts/{courierId}/end")
     @Operation(summary = "End courier shift",
-            description = "A COURIER must have handed over all their cash first. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+            description = "Refused while the courier carries parcels (picked up and not delivered or handed in); a "
+                    + "pickup not made today stays assigned to them. A COURIER must have handed over all their cash "
+                    + "first. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
     public ApiResponse<CourierShiftResponse> endShift(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
@@ -111,9 +115,36 @@ public class CourierAvailabilityController {
         );
     }
 
+    @PostMapping("/shifts/{courierId}/run")
+    @Operation(summary = "Leave the hub on the run",
+            description = "Refused while parcels waiting at the hub for the courier are not loaded. Afterwards the "
+                    + "courier gets only pickups, until 15:00; leaving again changes nothing. A COURIER may use only "
+                    + "their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> startRun(
+            @PathVariable UUID courierId,
+            HttpServletRequest httpRequest) {
+        requireCourierAccess(httpRequest, courierId);
+        return ApiResponse.success(courierShiftService.startRun(courierId), "Run started");
+    }
+
+    @PostMapping("/shifts/{courierId}/back")
+    @Operation(summary = "Back at the hub",
+            description = "Ends the courier's run: they can hand in what they carry and load again, and hub parcels "
+                    + "can be given to them again. Not on a run, nothing changes. A COURIER may use only their own "
+                    + "courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    public ApiResponse<CourierShiftResponse> backAtHub(
+            @PathVariable UUID courierId,
+            HttpServletRequest httpRequest) {
+        requireCourierAccess(httpRequest, courierId);
+        return ApiResponse.success(courierShiftService.backAtHub(courierId), "Back at the hub");
+    }
+
     @PutMapping("/shifts/status")
-    @Operation(summary = "Update courier shift status (e.g., AVAILABLE, ON_BREAK, BUSY, OFFLINE)",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+    @Operation(summary = "Start or end the lunch break",
+            description = "ON_BREAK starts the one lunch break of the shift (between 12:00 and 14:30, up to 45 "
+                    + "minutes); AVAILABLE ends it. OFFLINE and BUSY are refused: a shift ends through End shift, "
+                    + "and BUSY follows the parcels held. A courier on break keeps their parcels and can be given "
+                    + "more. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
     public ApiResponse<CourierShiftResponse> updateShiftStatus(
             @Valid @RequestBody UpdateShiftStatusRequest request,
             HttpServletRequest httpRequest) {

@@ -203,9 +203,10 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
       PRICING_SERVICE_URL: http://pricing-zone-service:8083
+      DISPATCH_SERVICE_URL: http://dispatch-assignment-service:8084
       PRICING_CONNECT_TIMEOUT_MS: ${PRICING_CONNECT_TIMEOUT_MS:-1000}
       PRICING_READ_TIMEOUT_MS: ${PRICING_READ_TIMEOUT_MS:-5000}
-      PUBLIC_TRACKING_BASE_URL: ${PUBLIC_TRACKING_BASE_URL:-https://swiftdrop.lk}
+      PUBLIC_TRACKING_BASE_URL: ${PUBLIC_TRACKING_BASE_URL:-http://localhost:5173}
     depends_on:
       order-postgres:
         condition: service_healthy
@@ -392,6 +393,8 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
       AUTH_SERVICE_URL: http://auth-iam-service:8081
+      ORDER_SERVICE_URL: http://customer-order-service:8082
+      PUBLIC_TRACKING_BASE_URL: ${PUBLIC_TRACKING_BASE_URL:-http://localhost:5173}
       CONTACT_MODE: ${CONTACT_MODE:-fake}
       CONTACT_CACHE_TTL_MINUTES: ${CONTACT_CACHE_TTL_MINUTES:-10}
       NOTIFICATION_EMAIL_PROVIDER: ${NOTIFICATION_EMAIL_PROVIDER:-mock}

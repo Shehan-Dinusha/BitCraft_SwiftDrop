@@ -1,4 +1,4 @@
-FROM maven:3-eclipse-temurin-25 AS build
+FROM maven:3-eclipse-temurin-26 AS build
 WORKDIR /workspace
 # Resolve Maven Central through Google's mirror (see docker/maven-settings.xml).
 COPY docker/maven-settings.xml /root/.m2/settings.xml
