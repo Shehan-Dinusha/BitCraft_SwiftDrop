@@ -43,6 +43,10 @@ public class InboundEventIngestionService {
 
     @Transactional
     public IngestionResult ingest(DecodedInboundEvent event) {
+        // Every hub step reports IN_TRANSIT again; merchants are promised a webhook when the status changes.
+        if (event.type() == WebhookEventType.PARCEL_STATUS_CHANGED && unchangedStatus(event)) {
+            return new IngestionResult(IngestionResult.Outcome.NO_CHANGE, 0, 0, 0);
+        }
         // First statement of the transaction: everything below reads state committed by earlier holders.
         ingestionRepository.lockOrder(event.orderId());
 
@@ -105,6 +109,12 @@ public class InboundEventIngestionService {
         }
         ingestionRepository.markResolved(eventId, merchantId);
         return deliveryFanOut.createDeliveries(eventId, eventType, merchantId);
+    }
+
+    private static boolean unchangedStatus(DecodedInboundEvent event) {
+        var previous = event.payload().path("previousPublicStatus");
+        var current = event.payload().path("newPublicStatus");
+        return previous.isTextual() && current.isTextual() && previous.asText().equals(current.asText());
     }
 
     private static IngestionResult.Outcome outcomeFor(UUID merchantId) {

@@ -107,7 +107,8 @@ public class CustomerOrderService {
                 .orderId(UUID.randomUUID())
                 .trackingNumber(trackingNumber)
                 .customerId(customerId)
-                .merchantId(request.getMerchantId())
+                // Only the merchant service creates a shop's order; a customer's booking never names a shop.
+                .merchantId(source == OrderSource.MERCHANT ? request.getMerchantId() : null)
                 .source(source)
                 .externalRef(externalRef)
                 .clientRequestId(source == OrderSource.CUSTOMER ? request.getClientRequestId() : null)

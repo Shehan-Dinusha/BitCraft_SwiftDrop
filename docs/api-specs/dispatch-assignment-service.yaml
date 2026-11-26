@@ -376,6 +376,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
 
+  /api/v1/dispatch/sent:
+    get:
+      tags:
+        - Dispatch
+      summary: List parcels this district marked Outbound that the drop-off hub has not accepted yet
+      description: >-
+        Read-only: the drop-off district accepts them, and they then leave this list. A DISPATCHER gets
+        their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+      operationId: getSent
+      parameters:
+        - name: district
+          in: query
+          required: false
+          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
+          schema:
+            $ref: "#/components/schemas/SriLankanDistrict"
+      responses:
+        "200":
+          description: Sent parcels retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
+        "400":
+          description: A SYSTEM_ADMIN did not give a district
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
   /api/v1/dispatch/incoming:
     get:
       tags:

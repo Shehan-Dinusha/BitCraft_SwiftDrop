@@ -42,7 +42,8 @@ class InboundEventDecoderTest {
         tree.put("correlationId", UUID.randomUUID().toString());
         tree.put("orderId", UUID.randomUUID().toString());
         tree.put("trackingNumber", "SD-COL-20261110-1234");
-        tree.put("customerId", UUID.randomUUID().toString());
+        // A shop's order names the shop as its customer too.
+        tree.put("customerId", (merchantId != null ? merchantId : UUID.randomUUID()).toString());
         if (merchantId != null) {
             tree.put("merchantId", merchantId.toString());
         }
@@ -84,6 +85,14 @@ class InboundEventDecoderTest {
         assertThat(event.claimedMerchantId()).isEqualTo(merchantId);
         assertThat(event.trackingNumber()).isEqualTo("SD-COL-20261110-1234");
         assertThat(event.payload().has("customerId")).isFalse();
+    }
+
+    @Test
+    void customerOrderThatNamesAShopIsNotTheShops() {
+        ObjectNode tree = orderCreated(null);
+        tree.put("merchantId", UUID.randomUUID().toString());
+        DecodedInboundEvent event = decoder.decode(message("order.created", tree.toString()));
+        assertThat(event.claimedMerchantId()).isNull();
     }
 
     @Test
@@ -147,6 +156,7 @@ class InboundEventDecoderTest {
     void invalidMerchantIdIsRejectedRatherThanTreatedAsCustomerOrder() {
         ObjectNode tree = orderCreated(null);
         tree.put("merchantId", "merchant-a");
+        tree.remove("customerId");
         assertThatThrownBy(() -> decoder.decode(message("order.created", tree.toString())))
                 .isInstanceOf(NonRetryableIngestionException.class);
     }

@@ -79,6 +79,15 @@ export const dispatchApi = {
   },
 
   /** Open orders delivered into the district from elsewhere; read-only for its dispatcher. */
+  /** Marked Outbound by the district and not yet accepted by the drop-off hub. Read-only. */
+  getSent: async (district?: SriLankanDistrict) => {
+    const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
+      '/v1/dispatch/sent',
+      { params: { district } }
+    );
+    return data.data;
+  },
+
   getIncoming: async (district?: SriLankanDistrict) => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
       '/v1/dispatch/incoming',
