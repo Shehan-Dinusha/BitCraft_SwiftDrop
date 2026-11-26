@@ -10,10 +10,13 @@
 //   booked → courier assigned      10 min – 3 h   (dispatchers work 07:00–21:00)
 //   reassigned                     20 min – 2 h later
 //   assigned → picked up           30 min – 4 h
-//   picked up → in transit         15 – 90 min    (to the hub)
-//   in transit → out for delivery  express 1–4 h; same district 2–6 h;
-//                                  other district: overnight, out next morning 08:00–10:00
-//   out for delivery → delivered   30 min – 5 h   (→ failed: 1 – 6 h)
+//   picked up → in transit         1 – 5 h        (handed in at the hub at the end of the round)
+//   hub steps (in transit again)   1 – 4 h        (outbound, accepted at the other hub)
+//   in transit → out for delivery  next morning 08:00–10:00 (a courier loads at the hub before the run;
+//                                  same district handed in before 11:00: that afternoon; Standard to
+//                                  another district: sometimes a day later)
+//   out for delivery → delivered   30 min – 5 h   (→ attempt failed: 1 – 6 h)
+//   attempt failed → returning     1 – 8 h; the return reaches the sender the next day or so
 //   booked → cancelled             10 min – 4 h
 //
 // Courier steps happen 08:00–19:30 Colombo time (later ones roll to the next morning).
@@ -100,7 +103,9 @@ function withinHours(t, open, close, r) {
 }
 
 // ── Timeline planning ────────────────────────────────────────────────────────
-const COURIER_STEPS = new Set(['PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED']);
+const COURIER_STEPS = new Set(['PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED',
+  'DELIVERY_ATTEMPTED', 'RETURNING', 'RETURNED_TO_SENDER']);
+const FINISHED = ['DELIVERED', 'FAILED', 'CANCELLED', 'RETURNED_TO_SENDER'];
 
 /** New epoch for `status`, given the previous status and its new time. */
 function nextStep(prevStatus, prevAt, status, o, r) {
@@ -110,16 +115,27 @@ function nextStep(prevStatus, prevAt, status, o, r) {
     return withinHours(t, 7, 21, r);
   }
   if (status === 'CANCELLED') return prevAt + r.between(10, 240) * MIN;
-  if (status === 'OUT_FOR_DELIVERY' && prevStatus === 'IN_TRANSIT'
-      && o.speed !== 'EXPRESS' && o.pickupDistrict !== o.deliveryDistrict) {
-    // Line-haul to the destination hub overnight; out on the morning round.
-    return colomboDayStart(prevAt) + DAY + r.between(8, 10) * HOUR;
+  if (status === 'OUT_FOR_DELIVERY' && prevStatus === 'IN_TRANSIT') {
+    // Every Standard and Express parcel goes through a hub, and couriers load there before their run.
+    const sameDistrict = o.pickupDistrict === o.deliveryDistrict;
+    if (sameDistrict && colomboHour(prevAt) < 11) return colomboDayStart(prevAt) + r.between(13, 15) * HOUR;
+    const extraDay = !sameDistrict && o.speed !== 'EXPRESS' && r.next() < 0.5 ? DAY : 0;
+    return colomboDayStart(prevAt) + DAY + extraDay + r.between(8, 10) * HOUR;
+  }
+  if (status === 'RETURNED_TO_SENDER') {
+    // Back at the sender's hub, then out to the sender on a later run.
+    return withinHours(prevAt + r.between(12, 30) * HOUR, 9, 16, r);
   }
   const minutes = {
     'PICKUP_ASSIGNED>PICKED_UP': [30, 240],
-    'PICKED_UP>IN_TRANSIT': [15, 90],
-    'IN_TRANSIT>OUT_FOR_DELIVERY': o.speed === 'EXPRESS' ? [60, 240] : [120, 360],
+    'PICKED_UP>IN_TRANSIT': [60, 300],
+    'IN_TRANSIT>IN_TRANSIT': [60, 240],
     'OUT_FOR_DELIVERY>DELIVERED': [30, 300],
+    'OUT_FOR_DELIVERY>DELIVERY_ATTEMPTED': [60, 360],
+    'DELIVERY_ATTEMPTED>DELIVERY_ATTEMPTED': [20, 120],
+    'DELIVERY_ATTEMPTED>IN_TRANSIT': [60, 300],
+    'DELIVERY_ATTEMPTED>RETURNING': [60, 480],
+    'RETURNING>RETURNING': [120, 900],
     'OUT_FOR_DELIVERY>FAILED': [60, 360],
     'IN_TRANSIT>FAILED': [120, 600],
     'PICKED_UP>FAILED': [60, 300],
@@ -141,13 +157,14 @@ function buildTimeline(o, start, seed) {
 // The most hours an unfinished order's latest step can realistically be in the past
 // (e.g. a parcel is not "out for delivery" for two days).
 const MAX_AGE_HOURS = {
-  CREATED: 30, PICKUP_ASSIGNED: 14, PICKED_UP: 12, IN_TRANSIT: 18, OUT_FOR_DELIVERY: 16,
+  CREATED: 30, PICKUP_ASSIGNED: 14, PICKED_UP: 12, IN_TRANSIT: 30, OUT_FOR_DELIVERY: 16,
+  DELIVERY_ATTEMPTED: 24, RETURNING: 40,
 };
 const bookingHour = (t) => { const h = colomboHour(t); return h >= 7 && h < 23; };
 
 function planOrder(o, now) {
   const r = rng(`timeshift:${o.orderId}`);
-  const finished = ['DELIVERED', 'FAILED', 'CANCELLED'].includes(o.status);
+  const finished = FINISHED.includes(o.status);
   let start; let times;
   if (finished) {
     let days = Math.floor(HISTORY_DAYS * (1 - Math.sqrt(r.next()))); // 0–29, recent-heavy
@@ -213,9 +230,13 @@ BEGIN
 END $$;
 CREATE FUNCTION pg_temp.status_of(txt text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
   SELECT CASE
-    WHEN txt ~* 'out.for.delivery' THEN 'OUT_FOR_DELIVERY'
+    WHEN txt ~* 'out.for.delivery|arrives today' THEN 'OUT_FOR_DELIVERY'
+    WHEN txt ~* 'courier is coming|courier assigned' THEN 'PICKUP_ASSIGNED'
     WHEN txt ~* 'picked' THEN 'PICKED_UP'
-    WHEN txt ~* 'fail|unsuccessful|could not' THEN 'FAILED'
+    WHEN txt ~* 'returned|handed back' THEN 'RETURNED_TO_SENDER'
+    WHEN txt ~* 'coming back|going back|returning' THEN 'RETURNING'
+    WHEN txt ~* 'could not deliver|not delivered|attempt' THEN 'DELIVERY_ATTEMPTED'
+    WHEN txt ~* 'fail|unsuccessful' THEN 'FAILED'
     WHEN txt ~* 'delivered' THEN 'DELIVERED'
     WHEN txt ~* 'cancel' THEN 'CANCELLED'
     WHEN txt ~* 'assign' THEN 'PICKUP_ASSIGNED'
@@ -252,6 +273,40 @@ function shiftUpdate(cols, table, columns, { from = 'shift s', where = 'x.order_
   if (!present.length) return '';
   const sets = present.map((c) => `${c} = pg_temp.remap(x.${c}, s.o, s.n)`).join(', ');
   return `UPDATE ${table} x SET ${sets} FROM ${from} WHERE ${where};\n`;
+}
+
+// The cash ledger: each fee was recorded at its pickup; a shop's payment when its parcels were
+// collected; a courier hands over at the end of the round, the dispatcher counts it within the hour,
+// banks it later that day, and the admin confirms the deposit the next day. Only seeded orders' cash.
+function cashUpdates(cols) {
+  if (!cols.cash_entries) return '';
+  const capped = (expr) => `LEAST(${expr}, now() - interval '5 minutes')`;
+  let sql = shiftUpdate(cols, 'cash_entries', ['recorded_at']);
+  if (cols.merchant_payments) {
+    sql += `UPDATE merchant_payments x SET paid_at = m.at FROM (
+        SELECT e.payment_id, min(e.recorded_at) AS at FROM cash_entries e JOIN shift s ON s.order_id = e.order_id
+        WHERE e.payment_id IS NOT NULL GROUP BY e.payment_id) m WHERE x.payment_id = m.payment_id;\n`;
+  }
+  if (cols.cash_handovers) {
+    sql += `UPDATE cash_handovers x SET submitted_at = ${capped("m.at + interval '50 minutes'")} FROM (
+        SELECT e.handover_id, max(e.recorded_at) AS at FROM cash_entries e JOIN shift s ON s.order_id = e.order_id
+        WHERE e.handover_id IS NOT NULL GROUP BY e.handover_id) m WHERE x.handover_id = m.handover_id;
+      UPDATE cash_handovers x SET counted_at = ${capped("x.submitted_at + interval '25 minutes'")}
+        WHERE x.counted_at IS NOT NULL AND x.handover_id IN (
+          SELECT e.handover_id FROM cash_entries e JOIN shift s ON s.order_id = e.order_id);\n`;
+  }
+  if (cols.cash_deposits && cols.cash_handovers) {
+    sql += `UPDATE cash_deposits x SET deposited_at = ${capped("m.at + interval '70 minutes'")} FROM (
+        SELECT h.deposit_id, max(h.counted_at) AS at FROM cash_handovers h
+        WHERE h.deposit_id IS NOT NULL AND h.handover_id IN (
+          SELECT e.handover_id FROM cash_entries e JOIN shift s ON s.order_id = e.order_id)
+        GROUP BY h.deposit_id) m WHERE x.deposit_id = m.deposit_id;
+      UPDATE cash_deposits x SET reviewed_at = ${capped("x.deposited_at + interval '20 hours'")}
+        WHERE x.reviewed_at IS NOT NULL AND x.deposit_id IN (
+          SELECT h.deposit_id FROM cash_handovers h JOIN cash_entries e ON e.handover_id = h.handover_id
+          JOIN shift s ON s.order_id = e.order_id);\n`;
+  }
+  return sql;
 }
 
 const fmt = (t) => new Date((t + COLOMBO) * 1000).toISOString().slice(5, 16).replace('T', ' ');
@@ -316,13 +371,19 @@ function main() {
 
   // Order service.
   let cols = columnsOf('order');
-  psql('order', `BEGIN;\n${header}${shiftUpdate(cols, 'customer_orders', ['created_at', 'updated_at', 'cancelled_at'])}`
+  // The promised day moves with the booking day (whole days, Colombo time).
+  const promise = cols.customer_orders?.has('deliver_by')
+    ? `UPDATE customer_orders x SET deliver_by = x.deliver_by
+         + ((to_timestamp(s.n[1]) AT TIME ZONE 'Asia/Colombo')::date - (to_timestamp(s.o[1]) AT TIME ZONE 'Asia/Colombo')::date)
+       FROM shift s WHERE x.order_id = s.order_id AND x.deliver_by IS NOT NULL;\n`
+    : '';
+  psql('order', `BEGIN;\n${header}${promise}${shiftUpdate(cols, 'customer_orders', ['created_at', 'updated_at', 'cancelled_at'])}`
     + `${shiftUpdate(cols, 'order_status_history', ['occurred_at', 'created_at'])}COMMIT;`);
   console.log('   order: done');
 
   // Dispatch.
   cols = columnsOf('dispatch');
-  psql('dispatch', `BEGIN;\n${header}${shiftUpdate(cols, 'dispatch_assignments', ['created_at', 'updated_at', 'assigned_at'])}`
+  psql('dispatch', `BEGIN;\n${header}${shiftUpdate(cols, 'dispatch_assignments', ['created_at', 'updated_at', 'assigned_at', 'picked_up_at', 'ready_at'])}`
     + stepUpdate(cols, 'dispatch_assignments', 'created_at', "'CREATED'", { offset: 3 })
     + stepUpdate(cols, 'dispatch_assignments', 'assigned_at', "'PICKUP_ASSIGNED'", { onlyIfSet: true })
     + 'COMMIT;');
@@ -332,7 +393,8 @@ function main() {
   cols = columnsOf('delivery');
   const viaSession = { from: 'delivery_sessions d JOIN shift s ON s.order_id = d.order_id', where: 'x.delivery_id = d.delivery_id' };
   psql('delivery', `BEGIN;\n${header}`
-    + shiftUpdate(cols, 'delivery_sessions', ['created_at', 'updated_at', 'pickup_at', 'delivered_at'])
+    + shiftUpdate(cols, 'delivery_sessions', ['created_at', 'updated_at', 'pickup_at', 'delivered_at', 'handed_in_at',
+      'returned_at', 'proof_since'])
     + shiftUpdate(cols, 'state_transition_audits', ['created_at'])
     + shiftUpdate(cols, 'proof_of_delivery', ['created_at', 'verified_at'], viaSession)
     + stepUpdate(cols, 'state_transition_audits', 'created_at',
@@ -340,13 +402,15 @@ function main() {
     + stepUpdate(cols, 'delivery_sessions', 'created_at', "'PICKUP_ASSIGNED'")
     + stepUpdate(cols, 'delivery_sessions', 'pickup_at', "'PICKED_UP'", { onlyIfSet: true })
     + stepUpdate(cols, 'delivery_sessions', 'delivered_at', "'DELIVERED'", { onlyIfSet: true })
+    + stepUpdate(cols, 'delivery_sessions', 'returned_at', "'RETURNED_TO_SENDER'", { onlyIfSet: true })
     + stepUpdate(cols, 'delivery_sessions', 'updated_at', "'END'")
     + stepUpdate(cols, 'proof_of_delivery', 'created_at', "'DELIVERED'",
       { offset: -240, from: 'delivery_sessions d JOIN step s ON s.order_id = d.order_id', join: 'x.delivery_id = d.delivery_id' })
     + stepUpdate(cols, 'proof_of_delivery', 'verified_at', "'DELIVERED'",
       { offset: -60, onlyIfSet: true, from: 'delivery_sessions d JOIN step s ON s.order_id = d.order_id', join: 'x.delivery_id = d.delivery_id' })
+    + cashUpdates(cols)
     + 'COMMIT;');
-  console.log('   delivery: done');
+  console.log('   delivery: done (with the cash ledger)');
 
   // Notifications: a minute or two after the status they announce; the order's last
   // step is the fallback when the status cannot be recognised from the text.

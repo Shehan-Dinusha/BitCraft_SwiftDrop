@@ -3,13 +3,19 @@
 //
 // Drives the system through its public APIs (via the gateway), exactly like real users:
 // the admin provisions staff, customers and merchant owners, customers book parcels,
-// merchants are approved and send B2B orders with an API key, dispatchers assign
-// them, couriers deliver them with proof-of-delivery photos. Every downstream service
+// merchants are approved, send B2B orders with an API key and mark their parcels ready,
+// dispatchers assign them, couriers collect the fee in cash, hand parcels in at the hub,
+// hubs send them on and accept them, couriers load and deliver them with photo proof, and
+// the cash is handed over, counted, banked and confirmed. Every downstream service
 // (dispatch, delivery, notifications, analytics) fills itself from the events this
 // produces — no SQL, no cross-database IDs to keep in sync.
 //
+// Shifts start only on a working day (Monday to Saturday, not a holiday) from 07:30, and
+// pickups are given out only until 15:00 Sri Lanka time, so run shifts/assign/deliver in
+// that window.
+//
 // Usage:  node scripts/seed/seed.mjs <stage> [<stage> ...]
-//   stages: users orders merchants shifts cancel assign deliver notifications summary
+//   stages: users orders merchants ready shifts cancel assign deliver cash notifications summary
 //           all  (every stage in order — for a cluster that runs all services at once)
 //           vehicles  (not part of all: registers vehicles for couriers seeded before they existed)
 //
@@ -30,7 +36,7 @@ import readline from 'node:readline/promises';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
-  DISTRICTS, STREETS, NAMES, ITEMS, NOTES, CANCEL_REASONS, FAILURES, VEHICLES, MERCHANTS,
+  DISTRICTS, STREETS, NAMES, ITEMS, NOTES, CANCEL_REASONS, FAILURES, VEHICLES, LARGE_VEHICLES, MERCHANTS,
 } from './data.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -45,9 +51,10 @@ const CONCURRENCY = Math.max(1, Number(process.env.SEED_CONCURRENCY || 3));
 // ── Outcome mix (by a stable hash of the order id) ──────────────────────────
 //   0– 9  cancelled by the customer before dispatch
 //  10–19  left unassigned, so the dispatcher board has work waiting
-//  20–99  assigned; the courier then takes it to a deliveryPlan() outcome
+//  20–99  assigned; it then goes as far as its deliveryPlan() says
 // (Mostly finished orders: after timeshift.mjs spreads them over a month, a large
-// in-progress share would pile up on the last two days.)
+// in-progress share would pile up on the last two days.) A shop's parcels are collected
+// in one visit, so they are all assigned once the shop has marked them ready.
 const CANCEL_BELOW = 10;
 const ASSIGN_FROM = 20;
 
@@ -220,7 +227,9 @@ function planPeople() {
       const cn = personName(r, d);
       staff.push({
         role: 'COURIER', username: `courier.${slug(d.code)}.${i}`, ...cn, district: d,
-        town: d.towns[(i - 1) % d.towns.length], phone: uniquePhone(r), vehicle: r.weighted(VEHICLES),
+        town: d.towns[(i - 1) % d.towns.length], phone: uniquePhone(r),
+        // The second courier has room for the boxes a motorcycle cannot take (over 50 cm).
+        vehicle: r.weighted(i === 1 ? VEHICLES : LARGE_VEHICLES),
       });
     }
   }
@@ -320,9 +329,20 @@ function orderBody(customer, r, k) {
     itemDescription: r.pick(ITEMS),
     customerNotes: r.chance(0.5) ? r.pick(NOTES) : undefined,
     declaredValue: declared,
-    codAmount: r.chance(0.3) ? declared : 0,
     prohibitedItemsDeclared: true,
+    // One per booking, so a retried request returns the same order instead of a second one.
+    clientRequestId: uuidFrom(`booking:${customer.username}:${k}`),
   };
+}
+
+/** A stable UUID (version-4 layout) from a string, so re-runs send the same request id. */
+function uuidFrom(text) {
+  const r = rng(text);
+  const hex = Array.from({ length: 32 }, () => Math.floor(r.next() * 16).toString(16));
+  hex[12] = '4';
+  hex[16] = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  const h = hex.join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 async function stageOrders() {
@@ -356,6 +376,9 @@ function merchantOrderBody(m, r, k) {
   const [destCity, destPostal] = r.pick(dest.towns);
   const recipient = personName(r, dest);
   const declared = r.int(15, 250) * 100;
+  // Shops ship small and medium boxes; merchants must give all three sides.
+  const [l, w, h] = r.weighted([[PACKAGES[0], 20], [PACKAGES[1], 50], [PACKAGES[2], 30]]);
+  const side = (v) => Math.round(v * (0.85 + r.next() * 0.3) * 10) / 10;
   return {
     externalRef: `SO-${plan.slug.split('-')[0].toUpperCase()}-${1001 + k}`,
     pickup: {
@@ -368,14 +391,21 @@ function merchantOrderBody(m, r, k) {
     },
     parcel: {
       actualWeightKg: Math.round(r.between(0.3, 6) * 100) / 100,
+      lengthCm: side(l), widthCm: side(w), heightCm: side(h),
       prohibitedItemsDeclared: true,
       itemDescription: r.pick(plan.items),
       declaredValue: declared,
-      codAmount: r.chance(0.5) ? declared : 0,
     },
     speed: r.chance(0.2) ? 'EXPRESS' : 'STANDARD',
   };
 }
+
+/** The business application: what it sells, rough volume, and its one pickup location. */
+const applicationOf = (m) => ({
+  businessName: m.plan.business, businessCategory: m.plan.category, monthlyParcelVolume: m.plan.volume,
+  businessRegNo: m.regNo, contactEmail: m.email, contactPhone: m.phone,
+  pickupAddress: m.street, pickupCity: m.town[0], pickupPostalCode: m.town[1], operatingDistrict: m.plan.district,
+});
 
 async function stageMerchants() {
   if (!ADMIN_PASSWORD) throw new Error('SEED_ADMIN_PASSWORD is required for the merchants stage');
@@ -387,25 +417,13 @@ async function stageMerchants() {
     // 1. The owner applies (once).
     let app = applications.find((a) => a.ownerUserId === owner.userId);
     if (!app) {
-      app = await api('POST', '/api/v1/merchants/register', {
-        token: owner.token,
-        body: {
-          businessName: plan.business, businessRegNo: m.regNo, contactEmail: m.email, contactPhone: m.phone,
-          pickupAddress: `${m.street}, ${m.town[0]} ${m.town[1]}`, operatingDistrict: plan.district,
-        },
-      });
+      app = await api('POST', '/api/v1/merchants/register', { token: owner.token, body: applicationOf(m) });
       count('businesses applied');
     }
     // A database seeded before every demo merchant was approved may hold a rejected application:
     // the owner corrects and resubmits it (allowed after a rejection), so it can be approved below.
     if (app.status === 'REJECTED' && plan.outcome === 'APPROVED') {
-      app = await api('POST', '/api/v1/merchants/register', {
-        token: owner.token,
-        body: {
-          businessName: plan.business, businessRegNo: m.regNo, contactEmail: m.email, contactPhone: m.phone,
-          pickupAddress: `${m.street}, ${m.town[0]} ${m.town[1]}`, operatingDistrict: plan.district,
-        },
-      });
+      app = await api('POST', '/api/v1/merchants/register', { token: owner.token, body: applicationOf(m) });
       count('resubmitted');
     }
     // 2. The admin decides (in production the district dispatcher does; the admin can for any district).
@@ -450,6 +468,28 @@ async function stageMerchants() {
   report('merchants');
 }
 
+// ── Stage: ready ────────────────────────────────────────────────────────────
+// The shops have packed their parcels, so their Standard ones can be collected in one visit. Dispatch
+// marks the orders it has filed, so this runs once it has processed the bookings. One shop is left
+// unpacked, so the dispatcher sees a shop still waiting.
+async function stageReady() {
+  for (const m of PEOPLE.merchants.filter((x) => x.plan.outcome === 'APPROVED')) {
+    if (!m.plan.ready) { count('shops not packed yet'); continue; }
+    const s = await login(m.username);
+    const merchantId = jwtClaims(s.token).merchantId;
+    if (!merchantId) { count('shops not approved yet'); continue; }
+    try {
+      await api('POST', `/api/v1/merchants/${merchantId}/pickup/ready`, { token: s.token });
+      count('shops ready for pickup');
+    } catch (e) {
+      // Refused when nothing is left to collect (a re-run after the courier came): nothing to do then.
+      if (![400, 409, 422].includes(e.status)) throw e;
+      count('shops with nothing to collect');
+    }
+  }
+  report('ready');
+}
+
 // ── Stage: shifts ───────────────────────────────────────────────────────────
 // A shift takes its vehicle and capacity from the courier's registered vehicle, so each courier
 // first registers theirs (409 on a re-run: already registered). The district dispatcher then raises
@@ -465,7 +505,22 @@ function vehicleOf(c, index) {
   };
 }
 
+// ── Working day ─────────────────────────────────────────────────────────────
+// Dispatch checks the real clock: a shift starts only Monday to Saturday (not on a holiday) from
+// 07:30, and pickups are given out only until 15:00 Sri Lanka time. Stop early with a clear message
+// rather than half-way through a stage.
+function requireWorkingHours(stage, untilHour) {
+  const local = new Date(Date.now() + 5.5 * 3600 * 1000);
+  const day = local.getUTCDay();
+  const hour = local.getUTCHours() + local.getUTCMinutes() / 60;
+  if (day !== 0 && hour >= 7.5 && hour < untilHour) return;
+  const at = local.toISOString().slice(0, 16).replace('T', ' ');
+  throw new Error(`The ${stage} stage needs a working day: Monday to Saturday, 07:30 to ${untilHour}:00 Sri Lanka time `
+    + `(it is ${at} there now). Run it again then; the stages before it are kept.`);
+}
+
 async function stageShifts() {
+  requireWorkingHours('shifts', 17);
   const couriers = PEOPLE.staff.filter((p) => p.role === 'COURIER');
   await mapLimit(couriers, CONCURRENCY, async (c) => {
     const s = await login(c.username);
@@ -475,12 +530,10 @@ async function stageShifts() {
     await api('PUT', `/api/v1/dispatch/couriers/${s.userId}/profile`, {
       token: d.token, body: { ...vehicle, maxCapacity: 20 },
     });
+    // The shift starts in the courier's own district; starting it again returns the running one.
     await api('POST', '/api/v1/dispatch/couriers/shifts/start', {
       token: s.token,
-      body: {
-        courierId: s.userId, courierName: `${c.first} ${c.last}`, phone: c.phone,
-        initialDistrict: c.district.code,
-      },
+      body: { courierId: s.userId, courierName: `${c.first} ${c.last}`, phone: c.phone },
     });
     count('shifts started');
   });
@@ -540,79 +593,83 @@ async function stageCancel() {
   report('cancel');
 }
 
-// ── Stage: assign ───────────────────────────────────────────────────────────
-// Older dispatch databases may still hold the four demo courier shifts from the V2
-// migration (ids 1111…, 2222…) that have no user account; V8 removes them unless an
-// assignment references them. Any order still assigned to one is reassigned to a real
-// courier (allowed until pickup), and the demo couriers are taken offline.
-async function rescueFromGhostCouriers(anyDispatcher) {
-  const real = new Set();
-  for (const c of PEOPLE.staff.filter((p) => p.role === 'COURIER')) real.add((await login(c.username)).userId);
-  const shifts = (await api('GET', '/api/v1/dispatch/couriers', { token: anyDispatcher.token })) || [];
-  for (const ghost of shifts.filter((s) => !real.has(s.courierId))) {
-    const stuck = (await api('GET', `/api/v1/dispatch/couriers/${ghost.courierId}/assignments`, { token: anyDispatcher.token })) || [];
-    for (const a of stuck.filter((x) => ['ASSIGNED', 'REASSIGNED'].includes(x.status))) {
-      const district = a.pickupDistrict || 'COLOMBO';
-      const dispatcher = dispatcherOf(district);
-      const d = await login(dispatcher.username);
-      const pool = couriersIn(district);
-      const c = await login(pool[hash(a.orderId) % pool.length].username);
-      try {
-        await api('POST', '/api/v1/dispatch/reassign', {
-          token: d.token,
-          body: {
-            orderId: a.orderId, expectedCurrentCourierId: ghost.courierId, newCourierId: c.userId,
-            assignedBy: dispatcher.username, reason: `Reassigned: ${ghost.courierName} is not an active courier`,
-          },
-        });
-        count('reassigned from demo couriers');
-      } catch (e) {
-        if (e.status !== 409 && e.status !== 422) throw e; // e.g. already picked up
-        count('could not reassign (already picked up)');
-      }
-    }
-    if (ghost.shiftStatus !== 'OFFLINE') {
-      await api('PUT', '/api/v1/dispatch/couriers/shifts/status', {
-        token: anyDispatcher.token, body: { courierId: ghost.courierId, status: 'OFFLINE' },
+// ── Dispatch helpers ────────────────────────────────────────────────────────
+// A dispatcher only ever sees their own district, so every district's dispatcher works their own
+// lists; districts run in parallel, each dispatcher one order at a time, as a person would.
+async function forEachDistrict(fn) {
+  await mapLimit(DISTRICTS, CONCURRENCY, async (d) => {
+    const dispatcher = dispatcherOf(d.code);
+    await fn(d.code, await login(dispatcher.username), dispatcher);
+  });
+}
+
+const allCouriers = () => PEOPLE.staff.filter((p) => p.role === 'COURIER');
+async function forEachCourier(fn) {
+  await mapLimit(allCouriers(), CONCURRENCY, async (c) => fn(c, await login(c.username)));
+}
+
+const list = async (token, urlPath) => (await api('GET', urlPath, { token })) || [];
+
+/** Sums one dispatch list over every district, for waiting until the events have been applied. */
+async function districtTotal(urlPath) {
+  let total = 0;
+  for (const d of DISTRICTS) total += (await list((await login(dispatcherOf(d.code).username)).token, urlPath)).length;
+  return total;
+}
+
+/** The courier dispatch suggests first among those whose vehicle and load fit, or null. */
+async function bestCourier(token, orderId) {
+  const options = await list(token, `/api/v1/dispatch/orders/${orderId}/suggestions`);
+  return options.find((c) => c.eligible)?.courierId ?? null;
+}
+
+/** Assigns, retrying a 409 conflict ("refresh and retry", as the API asks). False when refused. */
+async function assignCourier(token, dispatcher, orderId, courierId, reason) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await api('POST', '/api/v1/dispatch/assign', {
+        token, body: { orderId, courierId, assignedBy: dispatcher.username, reason },
       });
-      count('demo couriers taken offline');
+      return true;
+    } catch (e) {
+      if (e.status === 409 && attempt < 5) { count('retried after conflict'); await sleep(300 * attempt); continue; }
+      if ([400, 409, 422].includes(e.status)) { count('assignments refused'); return false; }
+      throw e;
     }
   }
 }
 
+// ── Stage: assign ───────────────────────────────────────────────────────────
+// First-leg orders: each one to the best-fitting courier of its pickup district; a shop's packed
+// parcels to one courier, all of them or none. Hub parcels are assigned in the deliver stage.
 async function stageAssign() {
-  const anyDispatcher = await login(dispatcherOf('COLOMBO').username);
-  await rescueFromGhostCouriers(anyDispatcher);
-  const unassigned = await api('GET', '/api/v1/dispatch/unassigned', { token: anyDispatcher.token });
-  // Each district's dispatcher works through their own queue one order at a time, as a
-  // person would; districts run in parallel. Assigning updates the courier's shift row,
-  // which dispatch protects with optimistic locking, so parallel assigns to the same
-  // courier would conflict (409).
-  const byDistrict = {};
-  for (const a of unassigned || []) {
-    if (hash(a.orderId) % 100 < ASSIGN_FROM) { count('left unassigned'); continue; }
-    (byDistrict[a.pickupDistrict || 'COLOMBO'] ||= []).push(a);
-  }
-  await mapLimit(Object.entries(byDistrict), CONCURRENCY, async ([district, orders]) => {
-    const dispatcher = dispatcherOf(district);
-    const d = await login(dispatcher.username);
-    const pool = couriersIn(district);
-    let turn = hash(district);
-    for (const a of orders) {
-      const c = await login(pool[turn++ % pool.length].username);
-      for (let attempt = 1; ; attempt++) {
-        try {
-          await api('POST', '/api/v1/dispatch/assign', {
-            token: d.token,
-            body: { orderId: a.orderId, courierId: c.userId, assignedBy: dispatcher.username, reason: 'Nearest available courier in the pickup district' },
-          });
-          count('assigned');
-          break;
-        } catch (e) {
-          if (e.status !== 409 || attempt >= 5) throw e;
-          count('retried after conflict');
-          await sleep(300 * attempt); // "refresh and retry", as the API asks
-        }
+  requireWorkingHours('assign', 15);
+  await forEachDistrict(async (code, d, dispatcher) => {
+    const shops = new Map();
+    for (const a of await list(d.token, '/api/v1/dispatch/unassigned')) {
+      if (a.leg && a.leg !== 'FIRST_MILE') continue;
+      if (a.shopPickup) {
+        if (!a.readyForPickup) { count('shop parcels not packed yet'); continue; }
+        if (!shops.has(a.merchantId)) shops.set(a.merchantId, []);
+        shops.get(a.merchantId).push(a.orderId);
+        continue;
+      }
+      if (hash(a.orderId) % 100 < ASSIGN_FROM) { count('left unassigned'); continue; }
+      const courierId = await bestCourier(d.token, a.orderId);
+      if (!courierId) { count('no courier fits (left in the queue)'); continue; }
+      if (await assignCourier(d.token, dispatcher, a.orderId, courierId, 'Best match in the pickup district')) count('assigned');
+    }
+    for (const [merchantId, orderIds] of shops) {
+      const options = await list(d.token, `/api/v1/dispatch/shops/${merchantId}/couriers`);
+      const courier = options.find((o) => orderIds.every((id) => (o.fittingOrderIds || []).includes(id)));
+      if (!courier) { count('shops no courier can take in one visit'); continue; }
+      try {
+        await api('POST', `/api/v1/dispatch/shops/${merchantId}/assign`, { token: d.token, body: { courierId: courier.courierId } });
+        count('shop visits assigned');
+        count('shop parcels assigned', orderIds.length);
+      } catch (e) {
+        if (![400, 409, 422].includes(e.status)) throw e;
+        count('shop visits refused');
       }
     }
   });
@@ -620,27 +677,294 @@ async function stageAssign() {
 }
 
 // ── Stage: deliver ──────────────────────────────────────────────────────────
-// Share of ASSIGNED parcels (80% of all) → overall: ~58% delivered, ~7% out for
-// delivery, ~5% picked up / in transit, ~10% failed.
+// Where each assigned parcel stops, by a stable hash, so every console tab and both sides of a
+// return have something in them:
 function deliveryPlan(orderId) {
   const x = hash(`${orderId}:delivery`) % 100;
-  if (x < 72) return { target: 'DELIVERED' };
-  if (x < 81) return { target: 'OUT_FOR_DELIVERY' };
-  if (x < 85) return { target: 'IN_TRANSIT' };
-  if (x < 88) return { target: 'PICKED_UP' };
-  const leg = x < 97 ? 'OUT_FOR_DELIVERY' : x < 99 ? 'IN_TRANSIT' : 'PICKED_UP';
-  return { target: 'FAILED', leg };
+  if (x < 4) return 'NOT_COLLECTED';      // Assigned: the courier has not been yet
+  if (x < 8) return 'AT_ORIGIN_HUB';      // Ready to send
+  if (x < 12) return 'SENT';              // Sent, not accepted yet (the drop-off hub's Incoming)
+  if (x < 16) return 'AT_HUB';            // At the drop-off hub, waiting for a courier
+  if (x < 23) return 'OUT_FOR_DELIVERY';
+  if (x < 27) return 'HELD';              // Returns: failed attempt, held at the hub
+  if (x < 30) return 'RETURNING';         // Returns: at the sender's hub, waiting for a courier
+  if (x < 33) return 'RETURNED';          // handed back to the sender
+  if (x < 37) return 'RETRIED';           // delivered on the second attempt
+  return 'DELIVERED';
 }
 
-const FORWARD = ['CREATED', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-function stepsFrom(current, plan) {
-  if (['DELIVERED', 'FAILED', 'CANCELLED'].includes(current)) return [];
-  const from = FORWARD.indexOf(current);
-  const to = FORWARD.indexOf(plan.target === 'FAILED' ? plan.leg : plan.target);
-  if (from < 0) return [];
-  const steps = FORWARD.slice(from + 1, to + 1);
-  if (plan.target === 'FAILED') steps.push('FAILED');
-  return steps;
+async function myParcels(s) {
+  return list(s.token, `/api/v1/deliveries/courier/${s.userId}`);
+}
+
+async function transition(token, deliveryId, targetState, extra = {}) {
+  await api('POST', `/api/v1/deliveries/${deliveryId}/transition`, { token, body: { targetState, ...extra } });
+}
+
+/** A hub step, taken by the dispatcher of that hub on the parcel's delivery record. */
+async function hubStep(token, orderId, targetState, notes) {
+  const delivery = await api('GET', `/api/v1/deliveries/order/${orderId}`, { token });
+  await transition(token, delivery.deliveryId, targetState, { notes });
+}
+
+/** Retries a call the services refuse until the previous step's event has reached them. */
+async function whenCaughtUp(fn, tries = 10) {
+  for (let attempt = 1; ; attempt++) {
+    try { return await fn(); } catch (e) {
+      if (![400, 409, 422].includes(e.status) || attempt >= tries) throw e;
+      await sleep(1500);
+    }
+  }
+}
+
+// Collect: a shop's parcels in one visit with one payment, any other parcel with its exact fee.
+async function collectPickups() {
+  await forEachCourier(async (c, s) => {
+    const waiting = (await myParcels(s)).filter((d) => d.currentState === 'ASSIGNED');
+    for (const merchantId of new Set(waiting.filter((d) => d.merchantId).map((d) => d.merchantId))) {
+      const stop = await api('GET', `/api/v1/deliveries/shops/${merchantId}`, { token: s.token });
+      const parcels = stop?.parcels || [];
+      if (!parcels.length) continue;
+      const fees = parcels.reduce((sum, p) => sum + Math.round(Number(p.fee || 0) * 100), 0) / 100;
+      await api('POST', `/api/v1/deliveries/shops/${merchantId}/collect`, {
+        token: s.token, body: { deliveryIds: parcels.map((p) => p.deliveryId), cashCollected: fees },
+      });
+      count('shop visits made');
+      count('picked up', parcels.length);
+    }
+    for (const d of waiting.filter((x) => !x.merchantId)) {
+      if (deliveryPlan(d.orderId) === 'NOT_COLLECTED') { count('not collected yet'); continue; }
+      const job = await api('GET', `/api/v1/deliveries/${d.deliveryId}/job`, { token: s.token });
+      const fee = Number(job?.feeToCollect || 0);
+      await transition(s.token, d.deliveryId, 'PICKED_UP', fee > 0 ? { cashCollected: fee } : {});
+      count('picked up');
+    }
+  });
+}
+
+async function handIn(states, label) {
+  await forEachCourier(async (c, s) => {
+    const ids = (await myParcels(s)).filter((d) => states.includes(d.currentState)).map((d) => d.deliveryId);
+    if (!ids.length) return;
+    await api('POST', '/api/v1/deliveries/hand-in', { token: s.token, body: { deliveryIds: ids } });
+    count(label, ids.length);
+  });
+}
+
+// The pickup hub sends parcels for other districts Outbound and sorts its own for delivery.
+async function sendFromHub() {
+  await forEachDistrict(async (code, d) => {
+    for (const a of await list(d.token, '/api/v1/dispatch/ready-to-send')) {
+      if (deliveryPlan(a.orderId) === 'AT_ORIGIN_HUB') { count('left at the hub'); continue; }
+      const local = a.pickupDistrict === a.deliveryDistrict;
+      await hubStep(d.token, a.orderId, local ? 'AT_DESTINATION_HUB' : 'IN_TRANSIT',
+        local ? 'Dispatcher: sorted for delivery' : 'Dispatcher: marked outbound');
+      count(local ? 'sorted for delivery' : 'marked outbound');
+    }
+  });
+}
+
+// The drop-off hub accepts what was sent to it.
+async function acceptIncoming() {
+  await forEachDistrict(async (code, d) => {
+    for (const a of (await list(d.token, '/api/v1/dispatch/incoming')).filter((x) => x.hubStage === 'OUTBOUND')) {
+      if (deliveryPlan(a.orderId) === 'SENT') { count('left on the way'); continue; }
+      await hubStep(d.token, a.orderId, 'AT_DESTINATION_HUB', 'Dispatcher: accepted at the hub');
+      count('accepted at the hub');
+    }
+  });
+}
+
+// Each hub gives its waiting parcels to a courier who has not left yet: deliveries (last leg) and
+// returns to the sender.
+async function assignFromHub() {
+  await forEachDistrict(async (code, d, dispatcher) => {
+    const queue = (await list(d.token, '/api/v1/dispatch/unassigned')).filter((a) => a.leg === 'LAST_MILE' || a.leg === 'RETURN');
+    for (const a of queue) {
+      const plan = deliveryPlan(a.orderId);
+      const isReturn = a.leg === 'RETURN';
+      if (isReturn ? plan === 'RETURNING' : ['SENT', 'AT_HUB'].includes(plan)) {
+        count(isReturn ? 'returns waiting for a courier' : 'waiting at the hub for a courier');
+        continue;
+      }
+      const courierId = await bestCourier(d.token, a.orderId);
+      if (!courierId) { count('no courier fits (left at the hub)'); continue; }
+      if (await assignCourier(d.token, dispatcher, a.orderId, courierId, isReturn ? 'Back to the sender' : 'Next run from the hub')) {
+        count(isReturn ? 'returns assigned' : 'hub parcels assigned');
+      }
+    }
+  });
+}
+
+const AT_HUB_FOR_ME = ['AT_DESTINATION_HUB', 'RETURN_AT_HUB'];
+
+async function couriersWaitingParcels() {
+  let total = 0;
+  for (const c of allCouriers()) total += (await myParcels(await login(c.username))).filter((d) => AT_HUB_FOR_ME.includes(d.currentState)).length;
+  return total;
+}
+
+// Couriers load what waits for them at the hub, in one go, and leave on their run.
+async function loadAndLeave() {
+  await forEachCourier(async (c, s) => {
+    const ids = (await myParcels(s)).filter((d) => AT_HUB_FOR_ME.includes(d.currentState)).map((d) => d.deliveryId);
+    if (!ids.length) return;
+    await api('POST', '/api/v1/deliveries/load', { token: s.token, body: { deliveryIds: ids } });
+    count('loaded', ids.length);
+    // Dispatch refuses the run until it has seen every parcel loaded.
+    await whenCaughtUp(() => api('POST', `/api/v1/dispatch/couriers/shifts/${s.userId}/run`, { token: s.token }));
+    count('runs started');
+  });
+}
+
+// On the run: deliver with a photo, or report a failed attempt; returns are handed back to the sender
+// with a photo. Back at the hub, failed attempts are handed in.
+async function onTheRun() {
+  await forEachCourier(async (c, s) => {
+    let failed = 0;
+    for (const d of await myParcels(s)) {
+      const plan = deliveryPlan(d.orderId);
+      if (d.currentState === 'OUT_FOR_RETURN') {
+        await uploadProof(s.token, d, c);
+        await transition(s.token, d.deliveryId, 'RETURNED', { notes: 'Handed back to the sender' });
+        count('returned to the sender');
+        continue;
+      }
+      if (d.currentState !== 'OUT_FOR_DELIVERY') continue;
+      if (plan === 'OUT_FOR_DELIVERY') { count('still out for delivery'); continue; }
+      if (!(d.attemptCount > 0) && ['HELD', 'RETURNING', 'RETURNED', 'RETRIED'].includes(plan)) {
+        const r = rng(`attempt:${d.deliveryId}`);
+        // A refused parcel is never tried again, so only some of the returns are refusals.
+        const reasons = ['HELD', 'RETRIED'].includes(plan) || r.chance(0.5) ? FAILURES.RETRY : FAILURES.REFUSED;
+        await transition(s.token, d.deliveryId, 'ATTEMPT_FAILED', { failureReason: r.pick(reasons), notes: 'Reported by courier' });
+        count('delivery attempts failed');
+        failed++;
+        continue;
+      }
+      await uploadProof(s.token, d, c);
+      await transition(s.token, d.deliveryId, 'DELIVERED');
+      count('delivered');
+    }
+    await api('POST', `/api/v1/dispatch/couriers/shifts/${s.userId}/back`, { token: s.token });
+    if (failed) {
+      const ids = (await myParcels(s)).filter((d) => d.currentState === 'ATTEMPT_FAILED').map((d) => d.deliveryId);
+      if (ids.length) {
+        await api('POST', '/api/v1/deliveries/hand-in', { token: s.token, body: { deliveryIds: ids } });
+        count('failed attempts handed in', ids.length);
+      }
+    }
+  });
+}
+
+// The hub holding a failed parcel tries it again or sends it back to the sender (through the
+// sender's hub when the districts differ).
+async function decideHeld() {
+  await forEachDistrict(async (code, d) => {
+    for (const a of (await list(d.token, '/api/v1/dispatch/returns')).filter((x) => x.hubStage === 'HELD_AT_HUB')) {
+      const plan = deliveryPlan(a.orderId);
+      if (plan === 'HELD') { count('held at the hub'); continue; }
+      if (plan === 'RETRIED' && a.canRetry !== false) {
+        await hubStep(d.token, a.orderId, 'AT_DESTINATION_HUB', 'Dispatcher: try again');
+        count('sent out again');
+        continue;
+      }
+      const local = a.pickupDistrict === a.deliveryDistrict;
+      await hubStep(d.token, a.orderId, local ? 'RETURN_AT_HUB' : 'RETURN_IN_TRANSIT', 'Dispatcher: return to the sender');
+      count('sent back towards the sender');
+    }
+  });
+}
+
+// The sender's hub accepts returns sent to it.
+async function acceptReturns() {
+  await forEachDistrict(async (code, d) => {
+    const coming = (await list(d.token, '/api/v1/dispatch/returns'))
+      .filter((x) => x.hubStage === 'RETURN_OUTBOUND' && x.pickupDistrict === code);
+    for (const a of coming) {
+      await hubStep(d.token, a.orderId, 'RETURN_AT_HUB', 'Dispatcher: return accepted at the hub');
+      count('returns accepted at the hub');
+    }
+  });
+}
+
+/** One working day of hub traffic. A second round delivers the retries and takes the returns back. */
+async function deliveryRound() {
+  await collectPickups();
+  await handIn(['PICKED_UP'], 'handed in at the hub');
+  await settle('ready to send', () => districtTotal('/api/v1/dispatch/ready-to-send'));
+  await sendFromHub();
+  await settle('incoming', () => districtTotal('/api/v1/dispatch/incoming'));
+  await acceptIncoming();
+  await settle('hub queues', () => districtTotal('/api/v1/dispatch/unassigned'));
+  await assignFromHub();
+  await settle('parcels waiting for their courier', couriersWaitingParcels);
+  await loadAndLeave();
+  await onTheRun();
+  await settle('returns', () => districtTotal('/api/v1/dispatch/returns'));
+  await decideHeld();
+  await settle('returns', () => districtTotal('/api/v1/dispatch/returns'));
+  await acceptReturns();
+  await settle('hub queues', () => districtTotal('/api/v1/dispatch/unassigned'));
+}
+
+async function stageDeliver() {
+  requireWorkingHours('deliver', 17);
+  for (const round of [1, 2]) {
+    await deliveryRound();
+    report(`deliver (round ${round} of 2)`);
+  }
+}
+
+// ── Stage: cash ─────────────────────────────────────────────────────────────
+// Most districts close their day: couriers hand over the fees they collected, the dispatcher counts
+// each handover and banks the hub's cash, and the admin confirms the deposit (revenue on the
+// Analytics page comes from this ledger). A few stop earlier, so the cash pages show every state.
+function cashPlan(code) {
+  const x = hash(`cash:${code}`) % 10;
+  return x < 7 ? 'CONFIRMED' : x < 8 ? 'BANKED' : x < 9 ? 'AT_HUB' : 'WITH_COURIERS';
+}
+
+async function stageCash() {
+  await forEachCourier(async (c, s) => {
+    if (cashPlan(c.district.code) === 'WITH_COURIERS') { count('couriers still holding cash'); return; }
+    try {
+      await api('POST', '/api/v1/cash/handovers', { token: s.token });
+      count('cash handed over');
+    } catch (e) {
+      if (![400, 409, 422].includes(e.status)) throw e;
+      count('couriers with no cash');
+    }
+  });
+  await forEachDistrict(async (code, d) => {
+    if (cashPlan(code) === 'WITH_COURIERS') return;
+    for (const h of (await api('GET', '/api/v1/cash/desk', { token: d.token }))?.toCount || []) {
+      await api('POST', `/api/v1/cash/handovers/${h.handoverId}/count`, {
+        token: d.token, body: { countedAmount: Number(h.expectedAmount) },
+      });
+      count('handovers counted');
+    }
+    if (cashPlan(code) === 'AT_HUB') return;
+    const hubCash = Number((await api('GET', '/api/v1/cash/desk', { token: d.token }))?.hubCash || 0);
+    if (hubCash <= 0) return;
+    const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    await api('POST', '/api/v1/cash/deposits', {
+      token: d.token, body: { amount: hubCash, reference: `BOC-${slug(code).toUpperCase()}-${day}` },
+    });
+    count('deposits banked');
+  });
+  if (!ADMIN_PASSWORD) {
+    count('deposits left for the admin (no SEED_ADMIN_PASSWORD)');
+  } else {
+    const admin = await login(ADMIN_USER, ADMIN_PASSWORD);
+    for (const d of DISTRICTS.filter((x) => cashPlan(x.code) === 'CONFIRMED')) {
+      const desk = await api('GET', `/api/v1/cash/desk?district=${d.code}`, { token: admin.token });
+      for (const deposit of (desk?.deposits || []).filter((x) => x.status === 'SUBMITTED')) {
+        await api('POST', `/api/v1/cash/deposits/${deposit.depositId}/confirm`, { token: admin.token });
+        count('deposits confirmed');
+      }
+    }
+  }
+  report('cash');
 }
 
 let PHOTOS;
@@ -657,47 +981,17 @@ function photos() {
   return PHOTOS;
 }
 
-async function ensureProof(token, delivery, courier) {
-  const existing = await api('GET', `/api/v1/deliveries/${delivery.deliveryId}/proof-of-delivery`, { token });
-  if (existing?.verified) return;
-  const r = rng(`pod:${delivery.deliveryId}`);
+/** A photo taken on this trip (the delivery, or the return to the sender) unlocks the final step. */
+async function uploadProof(token, delivery, courier) {
+  const r = rng(`pod:${delivery.deliveryId}:${delivery.currentState}`);
   const photo = photos()[hash(delivery.deliveryId) % photos().length];
   const who = personName(r, courier.district);
   const form = new FormData();
   form.append('photo', new Blob([photo.bytes], { type: photo.type }), photo.name);
   form.append('recipientName', `${who.first} ${who.last}`);
   form.append('signature', `Signed by ${who.first} ${who.last}`);
-  // A successful upload marks the proof verified, which unlocks the DELIVERED transition.
   await api('POST', `/api/v1/deliveries/${delivery.deliveryId}/proof-of-delivery`, { token, form });
   count('proof photos uploaded');
-}
-
-async function stageDeliver() {
-  const couriers = PEOPLE.staff.filter((p) => p.role === 'COURIER');
-  await mapLimit(couriers, CONCURRENCY, async (c) => {
-    const s = await login(c.username);
-    const list = await api('GET', `/api/v1/deliveries/courier/${s.userId}`, { token: s.token });
-    for (const d of list || []) {
-      const plan = deliveryPlan(d.orderId);
-      const steps = stepsFrom(d.currentState, plan);
-      if (!steps.length) { count('already at planned state'); continue; }
-      const r = rng(`route:${d.deliveryId}`);
-      for (const target of steps) {
-        if (target === 'DELIVERED') await ensureProof(s.token, d, c);
-        await api('POST', `/api/v1/deliveries/${d.deliveryId}/transition`, {
-          token: s.token,
-          body: {
-            targetState: target,
-            actorRole: 'COURIER',
-            failureReason: target === 'FAILED' ? r.pick(FAILURES[plan.leg]) : undefined,
-            notes: target === 'FAILED' ? 'Reported by courier' : undefined,
-          },
-        });
-      }
-      count(`now ${plan.target.toLowerCase().replace(/_/g, ' ')}`);
-    }
-  });
-  report('deliver');
 }
 
 // ── Stage: notifications ────────────────────────────────────────────────────
@@ -807,8 +1101,10 @@ function placeholderPhotos() {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 const STAGES = {
-  users: stageUsers, orders: stageOrders, merchants: stageMerchants, shifts: stageShifts, vehicles: stageVehicles,
-  cancel: stageCancel, assign: stageAssign, deliver: stageDeliver, notifications: stageNotifications, summary: stageSummary,
+  users: stageUsers, orders: stageOrders, merchants: stageMerchants, ready: stageReady, shifts: stageShifts,
+  vehicles: stageVehicles,
+  cancel: stageCancel, assign: stageAssign, deliver: stageDeliver, cash: stageCash, notifications: stageNotifications,
+  summary: stageSummary,
 };
 
 async function stageAll() {
@@ -818,8 +1114,9 @@ async function stageAll() {
   await stageUsers();
   await stageOrders();
   await stageMerchants();
-  const anyDispatcher = await login(dispatcherOf('COLOMBO').username);
-  await settle('unassigned queue', async () => (await api('GET', '/api/v1/dispatch/unassigned', { token: anyDispatcher.token })).length);
+  // Every district's queue: a dispatcher sees only their own.
+  await settle('unassigned queue', () => districtTotal('/api/v1/dispatch/unassigned'));
+  await stageReady();
   await stageShifts();
   await stageCancel();
   await sleep(5000);
@@ -833,6 +1130,7 @@ async function stageAll() {
     return total;
   });
   await stageDeliver();
+  await stageCash();
   await sleep(10000); // let notification-service catch up
   await stageNotifications();
   await stageSummary();
