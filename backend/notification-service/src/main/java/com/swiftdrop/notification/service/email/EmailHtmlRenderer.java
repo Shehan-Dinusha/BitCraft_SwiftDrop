@@ -1,5 +1,6 @@
 package com.swiftdrop.notification.service.email;
 
+import com.swiftdrop.notification.service.RecipientEmailStopService;
 import com.swiftdrop.notification.util.SensitiveTemplates;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,6 +67,19 @@ public class EmailHtmlRenderer {
             return null;
         }
         return trackingBaseUrl + "/track/" + trackingNumber;
+    }
+
+    /**
+     * The "Stop these emails" page of a recipient email, or null for any other email. The token is in the
+     * fragment, so it never reaches a server log; the page asks before it stops anything.
+     */
+    String stopUrl(String templateCode, Map<String, String> params) {
+        String code = templateCode == null ? "" : templateCode.trim().toUpperCase(Locale.ROOT);
+        String token = params == null ? null : params.get("stopToken");
+        if (!code.startsWith("RECIPIENT_") || token == null || !RecipientEmailStopService.TOKEN.matcher(token).matches()) {
+            return null;
+        }
+        return trackingBaseUrl + "/stop-emails#token=" + token;
     }
 
     private static final Pattern SAFE_TRACKING_NUMBER = Pattern.compile("[A-Za-z0-9-]{4,40}");
@@ -210,7 +224,7 @@ public class EmailHtmlRenderer {
     private static final String SIGN_IN_REASON = "Sign-in alerts help keep your SwiftDrop account safe. They are always "
             + "sent and cannot be turned off.";
     private static final String RECIPIENT_REASON = "You are receiving this email because the sender of this parcel "
-            + "entered your email address for delivery updates. If the parcel is not for you, you can ignore this email.";
+            + "entered your email address for delivery updates.";
     private static final String COURIER_REASON = "You are receiving this email because you are a SwiftDrop courier. "
             + "You can turn off delivery emails in your SwiftDrop notification settings.";
 
@@ -221,10 +235,17 @@ public class EmailHtmlRenderer {
 
     /** Plain-text alternative, with the tracking link for a parcel email. */
     public String renderText(String templateCode, String body, String trackingNumber) {
+        return renderText(templateCode, body, trackingNumber, Map.of());
+    }
+
+    /** Plain-text alternative, with the tracking link and, for a recipient, the stop link. */
+    public String renderText(String templateCode, String body, String trackingNumber, Map<String, String> params) {
         String url = trackingUrl(templateCode, trackingNumber);
+        String stop = stopUrl(templateCode, params);
         return (body == null ? "" : body.trim())
                 + (url == null ? "" : "\n\nTrack your parcel: " + url)
-                + "\n\n--\nSwiftDrop Courier & Logistics. This is an automated message; please do not reply.";
+                + "\n\n--\nSwiftDrop Courier & Logistics. This is an automated message; please do not reply."
+                + (stop == null ? "" : "\nNot your parcel, or no more updates wanted? Stop these emails: " + stop);
     }
 
     public String renderHtml(String templateCode, String subject, String body, String trackingNumber) {
@@ -301,7 +322,7 @@ public class EmailHtmlRenderer {
                       %6$s
                       <tr><td style="padding:32px 40px 0 40px;"><div style="border-top:1px solid #e2e8f0;"></div></td></tr>
                       <tr><td style="padding:18px 40px 30px 40px;font-size:12px;line-height:18px;color:#64748b;">
-                        %7$s<br><br>
+                        %7$s%9$s<br><br>
                         This mailbox is not monitored. Please do not reply to this email.<br>
                         &copy; %8$s SwiftDrop &middot; Courier &amp; Logistics &middot; Sri Lanka
                       </td></tr>
@@ -312,7 +333,8 @@ public class EmailHtmlRenderer {
                 </html>
                 """.formatted(safeSubject, preheader, BRAND, esc(security ? "Account security" : "COURIER_ASSIGNED".equals(code) ? "Delivery job"
                         : code.startsWith("MERCHANT_") ? "Business account" : "Parcel update"),
-                style.accent(), content, esc(reason(code, security, oneTimeCode)), Year.now().getValue());
+                style.accent(), content, esc(reason(code, security, oneTimeCode)), Year.now().getValue(),
+                stopLink(stopUrl(code, p)));
     }
 
     private static String reason(String code, boolean security, boolean oneTimeCode) {
@@ -533,6 +555,13 @@ public class EmailHtmlRenderer {
     }
 
     /** The invite button, the same link as text for clients that block buttons, and the expiry. */
+    private static String stopLink(String url) {
+        if (url == null) {
+            return "";
+        }
+        return " Not your parcel, or no more updates wanted? <a href=\"" + esc(url) + "\" style=\"color:#475569;text-decoration:underline;\">Stop these emails</a>";
+    }
+
     /** The tracking number stays once in the visible email: the button names no number, the text part has the URL. */
     private static String trackButton(String url) {
         if (url == null) {

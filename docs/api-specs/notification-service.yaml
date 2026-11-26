@@ -369,6 +369,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseString"
 
+  /api/v1/notifications/email-stops:
+    post:
+      tags: [RecipientEmails]
+      summary: Stop the emails about one parcel to its recipient
+      description: >-
+        Public, no sign-in: the token from the email's "Stop these emails" link is the proof. Using it again
+        succeeds. The sender's own emails are not affected.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StopEmailsRequest"
+      responses:
+        "200":
+          description: No more emails about this parcel go to its recipient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+        "400":
+          description: The token is missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+        "404":
+          description: Unknown token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseString"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -623,6 +657,13 @@ components:
           type: string
           maxLength: 64
           description: Authentication secret (base64url, 16 bytes)
+    StopEmailsRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: Token from the email's "Stop these emails" link
     PushUnsubscribeRequest:
       type: object
       required: [endpoint]

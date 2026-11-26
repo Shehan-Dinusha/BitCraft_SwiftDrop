@@ -5,6 +5,7 @@ import com.swiftdrop.notification.client.ContactClient;
 import com.swiftdrop.notification.client.OrderRecipientClient;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.service.RecipientEmailStopService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,9 @@ class RecipientUpdatesTriggerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OrderRecipientClient orders = mock(OrderRecipientClient.class);
     private final ContactClient accounts = mock(ContactClient.class);
-    private final RecipientUpdatesTrigger trigger = new RecipientUpdatesTrigger(orders, accounts);
+    private final RecipientEmailStopService stops = mock(RecipientEmailStopService.class);
+    private final RecipientUpdatesTrigger trigger = new RecipientUpdatesTrigger(orders, accounts, stops);
+    private static final String TOKEN = "q3kN0e6Zb2v8Yx1RjT5wL9mPa4sDc7Hf0uGi3KoBnEz";
     private final PickupAssignedTrigger pickupAssigned = new PickupAssignedTrigger();
 
     private final UUID orderId = UUID.randomUUID();
@@ -39,6 +42,17 @@ class RecipientUpdatesTriggerTest {
         when(orders.lookup(orderId)).thenReturn(Optional.of(new OrderRecipientClient.RecipientContact(
                 "SD-7K4M-9QX2", "kamal@example.com", "Kamal Silva", "Nimal Perera", "2026-11-28")));
         when(accounts.lookupContact(customerId)).thenReturn(Optional.of(new RecipientContact("nimal@example.com")));
+        when(stops.tokenFor(orderId)).thenReturn(TOKEN);
+    }
+
+    @Test
+    @DisplayName("Every recipient email carries this parcel's stop token; once stopped, nothing more is sent")
+    void stopLink() {
+        assertThat(trigger.build(status("CREATED", "PICKED_UP", null)).getFirst().templateParams())
+                .containsEntry("stopToken", TOKEN);
+
+        when(stops.isStopped(orderId)).thenReturn(true);
+        assertThat(trigger.build(status("IN_TRANSIT", "OUT_FOR_DELIVERY", null))).isEmpty();
     }
 
     private EventEnvelope envelope(String routingKey, String json) {

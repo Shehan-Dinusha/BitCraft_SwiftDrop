@@ -24,6 +24,8 @@ final class GatewayPathPolicy {
             "/api/v1/public/tracking",
             "/api/v1/tracking",
             "/ws/tracking",
+            // A parcel recipient (no account) stops that parcel's emails with the token from the link.
+            "/api/v1/notifications/email-stops",
             "/actuator/health",
             "/actuator/health/readiness",
             "/actuator/health/liveness",

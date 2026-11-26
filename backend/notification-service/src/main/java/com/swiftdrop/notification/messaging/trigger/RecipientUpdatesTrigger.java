@@ -6,6 +6,7 @@ import com.swiftdrop.notification.client.ContactClient;
 import com.swiftdrop.notification.client.OrderRecipientClient;
 import com.swiftdrop.notification.dto.DispatchNotificationRequest;
 import com.swiftdrop.notification.dto.RecipientContact;
+import com.swiftdrop.notification.service.RecipientEmailStopService;
 import com.swiftdrop.notification.util.DisplayText;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -30,7 +31,8 @@ import java.util.UUID;
  *
  * Only a change of public status is news (the hub steps all read IN_TRANSIT and send nothing). Events carry no
  * email address, so it is read from the order service each time. A sender who entered their own email as
- * the recipient's gets only the sender's mail.
+ * the recipient's gets only the sender's mail. Each email has a "Stop these emails" link for this parcel; once
+ * the recipient uses it, nothing more is sent to them (the sender's mail goes on).
  */
 @Slf4j
 @Component
@@ -54,10 +56,12 @@ public class RecipientUpdatesTrigger implements NotificationTrigger {
 
     private final OrderRecipientClient orders;
     private final ContactClient accounts;
+    private final RecipientEmailStopService stops;
 
-    public RecipientUpdatesTrigger(OrderRecipientClient orders, ContactClient accounts) {
+    public RecipientUpdatesTrigger(OrderRecipientClient orders, ContactClient accounts, RecipientEmailStopService stops) {
         this.orders = orders;
         this.accounts = accounts;
+        this.stops = stops;
     }
 
     @Override
@@ -70,6 +74,10 @@ public class RecipientUpdatesTrigger implements NotificationTrigger {
         String template = template(envelope);
         UUID orderId = uuid(envelope.payload(), "orderId");
         if (template == null || orderId == null) {
+            return List.of();
+        }
+        if (stops.isStopped(orderId)) {
+            log.debug("The recipient of order {} stopped its emails", orderId);
             return List.of();
         }
         Optional<OrderRecipientClient.RecipientContact> found = orders.lookup(orderId);
@@ -88,6 +96,7 @@ public class RecipientUpdatesTrigger implements NotificationTrigger {
         put(params, "trackingNumber", trackingNumber);
         put(params, "recipientName", contact.recipientName());
         put(params, "senderName", contact.senderName() != null ? contact.senderName() : "The sender");
+        params.put("stopToken", stops.tokenFor(orderId));
         switch (template) {
             case CREATED -> {
                 put(params, "pickupDistrict", text(envelope.payload(), "pickupDistrict"));

@@ -124,6 +124,24 @@ class EmailHtmlRendererTest {
     }
 
     @Test
+    @DisplayName("Recipient emails have a stop link (token in the fragment); other emails and bad tokens get none")
+    void stopLink() {
+        EmailHtmlRenderer local = new EmailHtmlRenderer("http://localhost:5173");
+        String token = "q3kN0e6Zb2v8Yx1RjT5wL9mPa4sDc7Hf0uGi3KoBnEz";
+        String stop = "http://localhost:5173/stop-emails#token=" + token;
+
+        assertThat(local.renderHtml("RECIPIENT_DELIVERED", "s", "b", TRK, Map.of("stopToken", token)))
+                .contains("href=\"" + stop + "\"", "Stop these emails");
+        assertThat(local.renderText("RECIPIENT_DELIVERED", "Body", TRK, Map.of("stopToken", token)))
+                .contains("Stop these emails: " + stop);
+
+        assertThat(local.renderHtml("PARCEL_DELIVERED", "s", "b", TRK, Map.of("stopToken", token)))
+                .doesNotContain("stop-emails");
+        assertThat(local.renderHtml("RECIPIENT_DELIVERED", "s", "b", TRK, Map.of("stopToken", "\"><b>")))
+                .doesNotContain("stop-emails").doesNotContain("Not your parcel");
+    }
+
+    @Test
     @DisplayName("A tracking site that is not an http(s) URL is refused at startup")
     void badTrackingSite() {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> new EmailHtmlRenderer("javascript:alert(1)"))
