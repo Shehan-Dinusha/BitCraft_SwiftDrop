@@ -185,10 +185,10 @@ function PartySummary({
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <span className="text-overline text-secondary">{label}</span>
-      <span className="truncate text-body-strong text-primary">{location}</span>
+      <span className="break-words text-body-strong text-primary">{location}</span>
       {hasContact ? (
         <div className="flex min-w-0 flex-col gap-0.5 text-caption text-muted">
-          {name ? <span className="truncate">{name}</span> : null}
+          {name ? <span className="break-words">{name}</span> : null}
           {phone ? <span className="font-mono tabular-nums">{phone}</span> : null}
         </div>
       ) : null}
