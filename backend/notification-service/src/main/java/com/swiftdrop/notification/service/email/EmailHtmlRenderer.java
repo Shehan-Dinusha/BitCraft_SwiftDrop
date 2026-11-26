@@ -1,6 +1,8 @@
 package com.swiftdrop.notification.service.email;
 
 import com.swiftdrop.notification.util.SensitiveTemplates;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 
@@ -33,6 +35,38 @@ import java.util.regex.Pattern;
  */
 @Component
 public class EmailHtmlRenderer {
+
+    /** The same public site the shipping label's QR code points to. */
+    static final String DEFAULT_TRACKING_BASE_URL = "https://swiftdrop.lk";
+    private static final Pattern SAFE_BASE_URL = Pattern.compile("(?i)^https?://[^\\s/\"'<>]+(/[^\\s\"'<>]*)?$");
+
+    private final String trackingBaseUrl;
+
+    public EmailHtmlRenderer() {
+        this(DEFAULT_TRACKING_BASE_URL);
+    }
+
+    @Autowired
+    public EmailHtmlRenderer(@Value("${notification.email.tracking-base-url:" + DEFAULT_TRACKING_BASE_URL + "}") String trackingBaseUrl) {
+        String base = trackingBaseUrl == null ? "" : trackingBaseUrl.trim().replaceAll("/+$", "");
+        if (!SAFE_BASE_URL.matcher(base).matches()) {
+            throw new IllegalArgumentException("notification.email.tracking-base-url must be an http(s) URL");
+        }
+        this.trackingBaseUrl = base;
+    }
+
+    /**
+     * The public tracking page of a parcel email, or null for any other email. Everyone can open it; a signed-in
+     * sender sees their own parcel there in full.
+     */
+    String trackingUrl(String templateCode, String trackingNumber) {
+        String code = templateCode == null ? "" : templateCode.trim().toUpperCase(Locale.ROOT);
+        boolean parcel = code.startsWith("PARCEL_") || code.startsWith("RECIPIENT_");
+        if (!parcel || trackingNumber == null || !SAFE_TRACKING_NUMBER.matcher(trackingNumber).matches()) {
+            return null;
+        }
+        return trackingBaseUrl + "/track/" + trackingNumber;
+    }
 
     private static final Pattern SAFE_TRACKING_NUMBER = Pattern.compile("[A-Za-z0-9-]{4,40}");
     private static final Pattern SAFE_CODE = Pattern.compile("[0-9]{4,10}");
@@ -182,7 +216,14 @@ public class EmailHtmlRenderer {
 
     /** Plain-text alternative: the template text and the automated-message notice. */
     public String renderText(String body, String trackingNumber) {
+        return renderText(null, body, trackingNumber);
+    }
+
+    /** Plain-text alternative, with the tracking link for a parcel email. */
+    public String renderText(String templateCode, String body, String trackingNumber) {
+        String url = trackingUrl(templateCode, trackingNumber);
         return (body == null ? "" : body.trim())
+                + (url == null ? "" : "\n\nTrack your parcel: " + url)
                 + "\n\n--\nSwiftDrop Courier & Logistics. This is an automated message; please do not reply.";
     }
 
@@ -219,6 +260,7 @@ public class EmailHtmlRenderer {
                 content.append(progress(style));
             }
             content.append(details(code, tracking, p));
+            content.append(trackButton(trackingUrl(code, tracking)));
         }
         // A failed delivery says what happens next for this parcel (tried again, or returned).
         String next = code.endsWith("_FAILED") && clean(p.get("nextStep")) != null ? clean(p.get("nextStep")) : style.next();
@@ -491,6 +533,17 @@ public class EmailHtmlRenderer {
     }
 
     /** The invite button, the same link as text for clients that block buttons, and the expiry. */
+    /** The tracking number stays once in the visible email: the button names no number, the text part has the URL. */
+    private static String trackButton(String url) {
+        if (url == null) {
+            return "";
+        }
+        return "<tr><td align=\"center\" style=\"padding:24px 40px 0 40px;\">"
+                + "<a href=\"" + esc(url) + "\" style=\"display:inline-block;padding:14px 28px;border-radius:10px;background:"
+                + BRAND + ";color:#ffffff;font-size:15px;line-height:20px;font-weight:700;text-decoration:none;\">"
+                + "Track your parcel</a></td></tr>\n";
+    }
+
     private static String inviteButton(String url, String hours) {
         if (url == null || !SAFE_INVITE_URL.matcher(url).matches()) {
             return "";

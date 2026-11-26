@@ -29,11 +29,12 @@ class EmailHtmlRendererTest {
     /** The visible email, without the hidden inbox-preview text at the top of the body. */
     private static String visible(String html) {
         int preview = html.indexOf("display:none");
-        return html.substring(html.indexOf("</div>", preview));
+        // Text only: a link's address is not something the reader sees.
+        return html.substring(html.indexOf("</div>", preview)).replaceAll("<[^>]+>", " ");
     }
 
     @Test
-    @DisplayName("Order confirmation: branded layout, tracking number shown once, route and service, no button")
+    @DisplayName("Order confirmation: branded layout, tracking number shown once, route and service, a tracking button")
     void orderConfirmation() {
         String html = renderer.renderHtml("PARCEL_CREATED", "SwiftDrop Order Confirmed",
                 "Your parcel " + TRK + " has been scheduled for pickup. Track live on SwiftDrop.", TRK,
@@ -51,9 +52,10 @@ class EmailHtmlRendererTest {
                 .contains(">Express<")
                 .contains("Parcel update")
                 .contains("Please do not reply")
-                .doesNotContain("Track your parcel")
+                // One link, to the public tracking page, so a recipient without an account can follow the parcel.
+                .contains("href=\"https://swiftdrop.lk/track/" + TRK + "\"")
+                .contains("Track your parcel")
                 .doesNotContain("Track live")
-                .doesNotContain("href=")
                 .doesNotContain("<img")
                 .doesNotContain("%s");
         assertThat(count(visible(html), TRK)).as("tracking number appears once in the visible email").isEqualTo(1);
@@ -101,6 +103,31 @@ class EmailHtmlRendererTest {
                         "Saturday, 28 Nov", "nothing to pay", "the sender of this parcel entered your email address")
                 .doesNotContain("notification settings");
         assertThat(failed).contains("It goes back to the sender.").doesNotContain("Please contact the sender if you have questions.");
+    }
+
+    @Test
+    @DisplayName("Parcel emails link to the public tracking page; courier, account and business emails do not")
+    void trackingLink() {
+        EmailHtmlRenderer local = new EmailHtmlRenderer("http://localhost:5173/");
+        String link = "http://localhost:5173/track/" + TRK;
+
+        assertThat(local.renderHtml("RECIPIENT_OUT_FOR_DELIVERY", "s", "b", TRK, Map.of()))
+                .contains("href=\"" + link + "\"", "Track your parcel");
+        assertThat(local.renderHtml("PARCEL_DELIVERED", "s", "b", TRK, Map.of())).contains(link);
+        assertThat(local.renderText("RECIPIENT_PICKED_UP", "Body", TRK)).contains("Track your parcel: " + link);
+
+        assertThat(local.renderHtml("COURIER_ASSIGNED", "s", "b", TRK, Map.of())).doesNotContain("/track/");
+        assertThat(local.renderHtml("MERCHANT_APPROVED", "s", "b", TRK, Map.of())).doesNotContain("/track/");
+        assertThat(local.renderText("EMAIL_VERIFICATION", "Body", null)).doesNotContain("/track/");
+        // A tracking number that is not one is never put in a link.
+        assertThat(local.renderHtml("PARCEL_DELIVERED", "s", "b", "\"><script>", Map.of())).doesNotContain("/track/");
+    }
+
+    @Test
+    @DisplayName("A tracking site that is not an http(s) URL is refused at startup")
+    void badTrackingSite() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new EmailHtmlRenderer("javascript:alert(1)"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

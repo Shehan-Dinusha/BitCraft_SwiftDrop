@@ -176,7 +176,7 @@ class MultiChannelNotificationDispatcherTest {
         assertThat(response.channel()).isEqualTo("EMAIL");
         assertThat(response.destination()).isEqualTo("customer@example.com");
         verify(emailSender).send(eq("customer@example.com"), eq("Delivered"), startsWith("Delivered at your door"),
-                and(and(contains("Your parcel has been delivered"), contains("SD-001")), not(contains("/track/"))));
+                and(and(contains("Your parcel has been delivered"), contains("SD-001")), contains("/track/SD-001")));
     }
 
     @Test
