@@ -89,6 +89,14 @@ public class DispatchAssignmentService {
                 .toList();
     }
 
+    /** Sent from {@code district}'s hub and not yet accepted by the drop-off hub: shown read-only. */
+    @Transactional(readOnly = true)
+    public List<DispatchAssignmentResponse> getSent(SriLankanDistrict district) {
+        return assignmentRepository.findSent(district).stream()
+                .map(DispatchAssignmentResponse::fromEntity)
+                .toList();
+    }
+
     /** Open orders delivered into {@code district} from elsewhere: shown to its dispatcher read-only. */
     @Transactional(readOnly = true)
     public List<DispatchAssignmentResponse> getIncoming(SriLankanDistrict district) {

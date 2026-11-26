@@ -98,6 +98,10 @@ class HubQueuesIT {
         assertThat(tracking(service.getReadyToSend(C))).containsExactly(atColomboHub);
         assertThat(service.getReadyToSend(K)).isEmpty();
 
+        // Colombo still sees what it sent until Kandy accepts it; Kandy's accepted parcel is no longer listed.
+        assertThat(tracking(service.getSent(C))).containsExactly(onTheWay);
+        assertThat(service.getSent(K)).isEmpty();
+
         // Coming into Kandy until its hub accepts it; then it is Kandy's own order.
         assertThat(tracking(service.getIncoming(K))).containsExactlyInAnyOrder(colomboToKandyNew, atColomboHub, onTheWay);
 

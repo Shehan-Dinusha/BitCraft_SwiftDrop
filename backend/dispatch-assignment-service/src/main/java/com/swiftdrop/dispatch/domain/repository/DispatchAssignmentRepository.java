@@ -69,6 +69,15 @@ public interface DispatchAssignmentRepository extends JpaRepository<DispatchAssi
     List<DispatchAssignment> findReadyToSend(@Param("district") SriLankanDistrict district);
 
     /**
+     * Marked Outbound by the pickup district and not yet accepted at the drop-off hub: sent, on the way. Once
+     * accepted it is the drop-off district's last-mile order and leaves this list.
+     */
+    @Query("SELECT a FROM DispatchAssignment a WHERE a.pickupDistrict = :district "
+            + "AND a.status = com.swiftdrop.dispatch.domain.enums.AssignmentStatus.IN_TRANSFER "
+            + "AND a.hubStage = com.swiftdrop.contracts.enums.InternalQueueStatus.OUTBOUND ORDER BY a.updatedAt")
+    List<DispatchAssignment> findSent(@Param("district") SriLankanDistrict district);
+
+    /**
      * Orders coming into a district from another one, until its hub accepts them (they then become the
      * district's own last-mile orders). Those marked Outbound (hubStage OUTBOUND) can be accepted.
      */

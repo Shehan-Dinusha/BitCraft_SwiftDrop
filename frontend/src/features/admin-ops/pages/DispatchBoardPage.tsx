@@ -122,7 +122,7 @@ export function DispatchBoardPage() {
   const lagTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(lagTimer.current), []);
 
-  const { unassigned, assigned, ready, incoming, returns, couriers, refresh } = useDispatchData(
+  const { unassigned, assigned, ready, sent, incoming, returns, couriers, refresh } = useDispatchData(
     user?.id,
     scope,
     hubTabs
@@ -182,7 +182,7 @@ export function DispatchBoardPage() {
   const searching = query.trim() !== '';
   const search = (orders: DispatchAssignmentResponse[]) =>
     orders.filter((order) => matchesOrder(order, query));
-  const lists = [unassigned, assigned, ready, incoming, returns, couriers];
+  const lists = [unassigned, assigned, ready, sent, incoming, returns, couriers];
   const failed = lists.some((list) => list.isError);
   const fetching = lists.some((list) => list.isFetching);
   // Waiting times are measured at the last refresh, which is at most a few seconds ago.
@@ -282,6 +282,7 @@ export function DispatchBoardPage() {
         return (
           <ReadyToSendTab
             orders={search(readyOrders)}
+            sent={search(sent.data ?? [])}
             searching={searching}
             busy={hubBusy}
             now={now}

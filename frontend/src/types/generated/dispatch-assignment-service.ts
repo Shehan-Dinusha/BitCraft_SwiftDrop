@@ -181,6 +181,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List parcels this district marked Outbound that the drop-off hub has not accepted yet
+         * @description Read-only: the drop-off district accepts them, and they then leave this list. A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+         */
+        get: operations["getSent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatch/incoming": {
         parameters: {
             query?: never;
@@ -1452,6 +1472,47 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Returns retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
+                };
+            };
+            /** @description A SYSTEM_ADMIN did not give a district */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getSent: {
+        parameters: {
+            query?: {
+                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
+                district?: components["schemas"]["SriLankanDistrict"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sent parcels retrieved */
             200: {
                 headers: {
                     [name: string]: unknown;
