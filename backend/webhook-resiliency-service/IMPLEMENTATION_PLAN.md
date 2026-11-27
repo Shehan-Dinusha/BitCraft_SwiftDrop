@@ -6,6 +6,10 @@ missing, the agreed order of work, cross-member dependencies, and how to run and
 - **Service path:** `backend/webhook-resiliency-service`. Below, `WH/` means `src/main/java/com/swiftdrop/webhook/`.
 - **Shared contracts path:** `CC/` means `backend/common-contracts/src/main/java/com/swiftdrop/contracts/`.
 - **Status:** written on 2026-11-14, after the technical audit and the "plan + dev-mode" setup task (Step 0).
+  **Re-verified on 2026-11-27** against `dev` at `33c56175`, after the team's PRs #87–#205: see
+  [Section 2a](#2a-verified-state-on-2026-11-27) and the re-ordered [remaining work](#remaining-work-re-ordered-2026-11-27).
+- **Local testing:** [`docs/LOCAL-TESTING.md`](docs/LOCAL-TESTING.md) (synthetic events and the real parcel lifecycle,
+  every public status).
 
 ---
 
@@ -28,7 +32,22 @@ Follow these on **every** task that touches this service:
 13. Do not introduce new infrastructure (Kafka, Redis, ShedLock, Resilience4j, etc.) unless a real requirement is documented here first. The intended stack is Spring Boot + PostgreSQL + RabbitMQ.
 14. Every task ends with the report described in [Section 3](#3-mandatory-report-after-every-implementation-task).
 
-### NO AUTOMATED TESTS IN THIS DEVELOPMENT SESSION
+### Automated tests (current rule, since 2026-11-27)
+
+The 2026-11-14 "no automated tests" decision below is **superseded**. The team restored and extended the tests
+(PR #186), and the repository rules now apply:
+
+- `AGENTS.md`: `mvn test` runs unit tests only; `mvn -f backend/pom.xml -pl webhook-resiliency-service -am verify`
+  (Testcontainers, Docker required) is expected before any PR touching persistence, Flyway or messaging, and CI runs it.
+- `backend/AGENTS.md`: a new Flyway migration counts as proven only when `verify` applies it.
+- JaCoCo `check` runs in `verify`. This module has a ratchet of **85 % line / 68 % branch** (`pom.xml`; the project
+  default is 70 % / 50 %).
+- Every implementation step therefore names the tests it adds or changes, and runs the module's `verify`.
+  Manual verification (see [`docs/LOCAL-TESTING.md`](docs/LOCAL-TESTING.md)) is still required on top.
+- How to run `verify` without a host JDK 25: `docs/LOCAL-TESTING.md`, section 6.
+- The failsafe `failIfNoTests=false` override mentioned below was removed by PR #186.
+
+### Superseded: NO AUTOMATED TESTS IN THIS DEVELOPMENT SESSION (2026-11-14 – 2026-11-22)
 
 On 2026-11-14 the service owner decided the following:
 
@@ -58,7 +77,7 @@ These are verified as working, and the design depends on them. Do not rewrite th
 | Schema V1–V3 | `src/main/resources/db/migration/V1..V3` | Composite FKs enforce tenant isolation. Lease, schedule and replay columns already exist. **Never edit an applied migration.** Add `V4+`. |
 | Access rules | `WH/service/access/MerchantAccess` | Merchant sees only its own data. Another merchant's resource returns 404. SYSTEM_ADMIN sees all. |
 | Caller identity | `WH/config/CallerContextArgumentResolver` + `CC/security/CallerContext` | Identity comes from gateway-injected headers only. |
-| API paths | `/api/v1/webhooks/subscriptions/**`, `/api/v1/webhooks/dlq/**` | Used by the frontend (`frontend/src/services/api/webhookApi.ts`) and routed by the gateway. |
+| API paths | `/api/v1/webhooks/subscriptions/**`, `/api/v1/webhooks/deliveries/failed/**` (PR #179); legacy `/api/v1/webhooks/dlq/**` | The first two are used by the frontend (`frontend/src/services/api/webhookApi.ts`); all are routed by the gateway (`/api/v1/webhooks/**`). No screen uses `/dlq` any more (Step 17 retires its replay). |
 | Subscription patterns | `WH/service/subscription/EventSubscriptionPatterns`, `WebhookEventType` | Validated on registration, lenient on read. |
 
 ---
@@ -93,6 +112,45 @@ Also note:
 - `OutboundWebhookDispatcher` is `@Deprecated`. Only test ping and legacy replay use it.
 - `webhook.dispatch.requested` is bound but has no producer. The consumer deliberately rejects it to the DLQ.
 - The old alias paths `/api/v1/dlq-replay` and `/api/v1/webhook-subscription` were removed (the gateway never routed them); use `/api/v1/webhooks/dlq` and `/api/v1/webhooks/subscriptions`.
+
+## 2a. Verified state on 2026-11-27
+
+Section 2 describes the state at Step 0. This is the state after Steps 1–10 and the team's PRs, checked in the code.
+
+**Unchanged since Step 10 (PR #79):** `WebhookUrlPolicy`, `BlockingAddressResolverGroup`, `WebhookHttpSender`,
+`WebhookSigner`/`WebhookHeaders`, `WebhookPayloadFactory` (one equivalent Jackson call, #88), `DeliveryRetryPolicy`,
+`DeliveryJobRepository`, `DeliveryAttemptRecorder`, `DeliveryProcessor`, `DeliveryFanOut`; `DeliveryWorker` and
+`LeaseRecoveryJob` changed in comments only.
+
+**Changed or added by the team:**
+
+| PR | Effect on this service |
+|---|---|
+| #87 | Non-root image, ZGC; `aks` profile has no DB/RabbitMQ password defaults; Helm `readOnlyRootFilesystem` with a writable `/tmp`; legacy HMAC verify is constant-time; first unit tests and the JaCoCo gate. |
+| #122 | `LogSanitizer` in `GlobalExceptionHandler`. |
+| #152 | OpenAPI server `/` with a global bearer requirement; alias paths removed. |
+| #179 | **Step 11** done (`TestPingService`), **Step 13** core done (`FailedDeliveryService`/`Repository`/`Controller`, `V4__one_active_replay.sql`), **Step 14** mostly done (Failed events table, event checkboxes, merchant API guide). The console is `/merchant/webhooks`, MERCHANT-only; `/ops/webhooks` is gone. |
+| #183 | `codAmount` removed from `OrderCreatedEvent`; dimensions added. Outbound payload unchanged. |
+| #186 | Tests restored and extended (17 classes; see `docs/LOCAL-TESTING.md` §6); module coverage ratchet 85 %/68 %; `failIfNoTests` override removed. |
+| #190 | Docker build stage JDK 26 compiling `release 25`; runtime JRE 25; CI JDK 25. |
+| #203 | Decoder: `merchantId` is the owner only when `customerId` equals it or is absent. Ingestion: `parcel.status.changed` with `previousPublicStatus == newPublicStatus` is dropped as `NO_CHANGE` before the inbox (no row, no job). Upstream, customer bookings no longer carry `merchantId` (C3 fixed). |
+
+**Parcel lifecycle.** The README's lifecycle section is stale: the code has 16 delivery states and 11 public
+statuses (`DELIVERY_ATTEMPTED`, `RETURNING` added; `RETURNED_TO_SENDER` comes from the real `RETURNED` state). The
+full mapping, who emits each event and how to trigger each one are in `docs/LOCAL-TESTING.md` §1.
+
+**New findings (2026-11-27):**
+
+| ID | Finding | Evidence | Owner |
+|---|---|---|---|
+| N1 | **Order-service cancellations never become webhooks.** `OrderEventPublisher.publishOrderCancelled` sends `previousPublicStatus = CANCELLED` (read after the order was set to CANCELLED), so the #203 `NO_CHANGE` rule drops it. Delivery's `order.cancelled` handler publishes nothing. Only a delivery-API cancel (`ASSIGNED → CANCELLED`) reaches merchants. | Source; webhook side reproduced locally (synthetic `CANCELLED → CANCELLED` → `outcome=NO_CHANGE`) | Member 3 (send the status before the change). Webhook side: add a regression test once fixed. |
+| N2 | `PICKUP_ASSIGNED` is published twice for a first-mile assignment (dispatch `ManualOverrideService.publishAssignmentEvents` and delivery `handleCourierAssigned`), with different event ids, so merchants get two webhooks. | Source (was "unverified" in Section 6); not yet observed at runtime | Members 5 + 6 |
+| N3 | **Replay breaks the API guide's ordering promise.** A replay keeps its original's `occurred_at`; FIFO (D7) does not let a `DEAD` or `SUCCEEDED` job block later ones, so a replayed status normally arrives after newer ones. The merchant API guide says "Events of one parcel arrive in order". | Source (`claimDue` SQL, `queueReplays`, `ApiGuidePage.tsx`) | Member 8: correct the guide text (tell merchants to compare `occurredAt`); optionally warn in the Failed events table |
+| N4 | Hub, held-at-hub and return steps inside one public status are dropped as `NO_CHANGE`, by design. A status can legitimately go "backwards" (`OUT_FOR_DELIVERY → IN_TRANSIT` when a courier brings a parcel back; `DELIVERY_ATTEMPTED → IN_TRANSIT` on retry). | Source | Document for merchants (API guide) |
+| N5 | `NO_CHANGE` trusts the producer's `previousPublicStatus`. All current producers derive it from the stored state, except N1. A missing `previousPublicStatus` is never treated as unchanged. | Source | Covered by N1 plus tests |
+| N6 | The legacy `/api/v1/webhooks/dlq` API is still routed: replay still signs the old way (body-only HMAC, millisecond timestamp, random Delivery-Id), makes HTTP calls inside `@Transactional`, and the list still admits DISPATCHER. Nothing writes new legacy records any more (only a failed legacy replay does), and the local table is empty. | Source; local DB count 0; hosted count unknown | Member 8: Step 17 |
+| N7 | Test Ping is sent even when the endpoint is paused. Probably intended (an explicit action), not documented. | Source | Decide; document |
+| N8 | The local broker may carry a stale `webhook.#` binding from old code (#25). It is not in the repository and is harmless. | Local broker | — |
 
 ---
 
@@ -134,7 +192,7 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
 | D3 | HTTP classification | **APPROVED** | **Success:** 2xx. **Retryable:** timeout, connection failure, 408, 425, 429, 5xx. **Permanent (straight to DEAD):** 3xx (`INVALID_RESPONSE`), other 4xx (`HTTP_CLIENT_ERROR`), blocked destination (`BLOCKED_DESTINATION`). | The guide covers 2xx/408/429/5xx/timeouts/4xx; the additions were approved. `BLOCKED_DESTINATION` is already used since Step 3. **Approved with Step 8 (2026-11-15):** `UNKNOWN` failures are retryable, within the same 4-attempt limit. Steps 7–8. |
 | D4 | Signature | **APPROVED** | `X-SwiftDrop-Signature: sha256=<hex HMAC-SHA256(secret, "<timestamp>.<raw body bytes>")>`. `X-SwiftDrop-Timestamp` = Unix **seconds**. Merchants should reject requests older than **5 minutes**. | The `sha256=` prefix follows the member guide; the earlier `v1=` proposal was dropped. Step 6. |
 | D5 | Request headers | **APPROVED** | `X-SwiftDrop-Signature`, `X-SwiftDrop-Timestamp`, `X-SwiftDrop-Event-Id` (inbound event id), `X-SwiftDrop-Delivery-Id` (**stable across all retries of the same job**), `X-SwiftDrop-Event` (event type), `X-SwiftDrop-Attempt`, `User-Agent`. | Steps 6–7 and 10. The legacy dispatcher's per-attempt random Delivery-Id goes away with it. |
-| D6 | Payload v1 and money fields | **PROVISIONAL (pending Member 7)** | Envelope `{"id","type","apiVersion":1,"occurredAt","data"}`. `parcel.status.changed` data: `orderId`, `merchantOrderReference` (null until Step 18), `trackingNumber` (from `order_merchant_map`), `status`, `previousStatus`, `failureReason`. `order.created` data: `orderId`, `merchantOrderReference` (null), `trackingNumber`, `speed`. **All monetary fields are excluded:** `codAmount`, `declaredValue`, `estimatedPrice`, `currency`, and any pricing or payout data. Never included: `customerId`, `correlationId`, `internalSubStatus`, districts, merchant id, database ids. | Member 7 could not be reached. Approved money fields can be added later as additive properties in a documented revision. Field facts: `codAmount` = cash to collect (LKR); `declaredValue` = declared merchandise value (LKR); `estimatedPrice` = creation-time `estimated_fee` (not the final fee, not updated on revision); `currency` default `"LKR"`. The question for Member 7 is under Step 4. **Implemented in Step 5.** |
+| D6 | Payload v1 and money fields | **PROVISIONAL (pending Member 7)** | Envelope `{"id","type","apiVersion":1,"occurredAt","data"}`. `parcel.status.changed` data: `orderId`, `merchantOrderReference` (null until Step 18), `trackingNumber` (from `order_merchant_map`), `status`, `previousStatus`, `failureReason`. `order.created` data: `orderId`, `merchantOrderReference` (null), `trackingNumber`, `speed`. **All monetary fields are excluded:** `codAmount`, `declaredValue`, `estimatedPrice`, `currency`, and any pricing or payout data. Never included: `customerId`, `correlationId`, `internalSubStatus`, districts, merchant id, database ids. | Member 7 could not be reached. Approved money fields can be added later as additive properties in a documented revision. Field facts: `codAmount` = cash to collect (LKR); `declaredValue` = declared merchandise value (LKR); `estimatedPrice` = creation-time `estimated_fee` (not the final fee, not updated on revision); `currency` default `"LKR"`. The question for Member 7 is under Step 4. **Implemented in Step 5.** **2026-11-27:** `codAmount` no longer exists anywhere in the event contract (PR #183 removed cash on delivery); `declaredValue`, `estimatedPrice` and `currency` are still in `OrderCreatedEvent` and still excluded. |
 | D7 | Ordering | **APPROVED** | FIFO per (endpoint, order). A later event waits while an earlier one for the same endpoint and order is still active (`PENDING`/`RETRY`/`IN_FLIGHT`). `DEAD` and `SUCCEEDED` do not block. Different parcels never block each other. | Needs the V4 columns `order_id`/`occurred_at`. Steps 9–10. |
 | D8 | Disabled endpoint | **APPROVED (requires a later code change)** | Disabling an endpoint **pauses** delivery. Events arriving while it is disabled must still be **queued as `PENDING` deliveries** and become deliverable once it is re-enabled. No event is permanently skipped because of a pause. | **Gap in the current code:** `DeliveryFanOut.createDeliveries` uses `findByMerchantIdAndActiveTrue`, so no job is created for a disabled endpoint. Fix in **Step 9**: fan-out must include inactive endpoints (one narrow ingestion change), and the claim query must skip jobs of inactive endpoints. Deleted endpoints are unaffected (deletion with jobs is already blocked by the FK, 409). |
 | D9 | Worker concurrency | **APPROVED** (initial, conservative) | Per replica: **max 4** concurrent requests, **max 1** per endpoint, claim batch **10**, poll every **2 s**, lease **60 s**. All configurable (`webhook.delivery.*`). | With the Helm HPA at 2–8 replicas, the cluster-wide maximum is **8–32** concurrent requests. Steps 8 (properties) and 10. |
@@ -491,7 +549,10 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
 - **Modify:** `WebhookSubscriptionService.testPing`.
 - **Depends on:** Steps 1, 3, 5, 6 and 7.
 - **Done when:** compiled; the ping signature verifies with the Section 7.6 script.
-- **Status:** NOT STARTED
+- **Status:** DONE by the team in PR #179 (2026-11-22), confirmed in code on 2026-11-27. `TestPingService` sends one
+  `webhook.test.ping` v1 envelope through `WebhookHttpSender` (same signer, headers, URL policy and connect-time guard),
+  records one legacy-shape attempt row (no delivery job, no retry, no DLQ). Tested by `TestPingServiceTest` (mocked
+  sender) and `WebhookDeliveryFlowIT.endpointManagement` (real request).
 
 ### Step 12 — Delivery history read API
 - **Objective:** let merchants and admins see deliveries and attempts.
@@ -504,7 +565,9 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
 - **Also update:** the OpenAPI spec and the generated frontend types.
 - **Depends on:** Step 9 (Step 10 for meaningful data).
 - **Done when:** compiled; in dev mode the list shows only the dev merchant's rows.
-- **Status:** NOT STARTED
+- **Status:** PARTIAL, now optional (2026-11-27). PR #179 covers the DEAD list (`/deliveries/failed`) and the
+  per-endpoint attempts list; there is no general delivery list or per-delivery detail. See
+  [remaining work](#remaining-work-re-ordered-2026-11-27).
 
 ### Step 13 — DEAD list + asynchronous replay; legacy replay becomes read-only
 - **Objective:** `POST /api/v1/webhooks/deliveries/{id}/replay` returns 202 and inserts a replay row (D10). It is idempotent while one is active. `DEAD` deliveries can be listed through Step 12's filter `status=DEAD`.
@@ -564,7 +627,8 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
   - Stop writing `dead_letter_webhook_records`. Keep the table and the read-only list as history.
 - **Depends on:** Steps 11 and 13.
 - **Done when:** no references remain and the module compiles.
-- **Status:** NOT STARTED
+- **Status:** NOT STARTED. Steps 11 and 13 are done, so it is unblocked; scheduled as R2 in the
+  [remaining work](#remaining-work-re-ordered-2026-11-27).
 
 ### Step 18 — Merchant order reference (coordinated; blocked on Member 3)
 - **Objective:** merchants can correlate a webhook with their own order.
@@ -573,7 +637,30 @@ Decided by the service owner on 2026-11-15 after the Step 4 review. Later steps 
   - The decoder and `insertOrderOwnershipIfAbsent` store it. This is a minimal ingestion change.
   - The payload's `merchantOrderReference` gets filled.
 - **Depends on:** Step 5 plus the Member 3 / contracts change. **Do not edit `CC/` yourself.**
-- **Status:** BLOCKED (waiting for Member 3)
+- **Status:** BLOCKED (waiting for Member 3). Re-checked 2026-11-27: `OrderCreatedEvent` still has no `externalRef`.
+  The order service **already stores** it (`CustomerOrderService.createMerchantOrder` → `CustomerOrder.externalRef`),
+  so only the event field and its publisher are missing.
+
+### Remaining work, re-ordered 2026-11-27
+
+Old step numbers are kept as names. Order chosen by risk and dependencies, not by number.
+
+| # | Task | Status | Why still needed | Depends on / coordination | Tests required | Manual verification |
+|---|---|---|---|---|---|---|
+| R0 | Report N1 (order-service cancel event) and N2 (double `PICKUP_ASSIGNED`) | To do (message, no code) | N1 means merchants never hear about most cancellations | Members 3, 5, 6 | None here; after Member 3's fix, add an ingestion IT that a real-shaped cancel (`PICKUP_ASSIGNED → CANCELLED`) creates deliveries | `LOCAL-TESTING.md` B.7 cancel via the order API |
+| R1 | Merchant API guide: ordering and status semantics (N3, N4) | To do | The guide promises an order a replay breaks, and doesn't mention backwards statuses or `NO_CHANGE` | None (frontend copy only) | Update `apiGuide.test.ts` only if samples change; `npm run lint`, `npm test`, `npm run build` | Read `/merchant/api-guide` in dev mode |
+| R2 | **Step 17: retire the legacy path** | Not started; unblocked | N6: last live sender with the old signature, HTTP inside a transaction, DISPATCHER read access; doing it before Step 15 means one fewer reader of the plaintext secret to migrate | None (no migration; API change to `/dlq` replay → 410 or removal; spec + generated types) | Delete or replace `HmacSignatureGeneratorTest`, `ExponentialBackoffSchedulerTest`; update `DlqReplayServiceTest`, `DlqReplayControllerTest`, `WebhookDeliveryFlowIT.legacyDeadLetterReplay` (assert 410, no request); keep the 85 %/68 % gate; `verify` | `POST /dlq/{id}/replay` refused, no request reaches the mock; `GET /dlq` still lists history for MERCHANT/SYSTEM_ADMIN |
+| R3 | Test hardening for Step 9–10 code | To do | No test covers lease recovery, stale-result fencing, `releaseClaim`, concurrent claimers, pause between claim and send, the connect-time resolver guard, timeouts or Retry-After end to end | None | New ITs on the `WebhookDeliveryFlowIT`/`FailedDeliveryReplayIT` setups (Testcontainers PostgreSQL; a loopback receiver); a unit test for `BlockingAddressResolverGroup` | None beyond `verify` |
+| R4 | **Step 15: secret encryption + rotation** | Not started | H1: secrets are plaintext in `webhook_endpoints.secret_key`; required before production | **Member 9**: `WEBHOOK_SECRET_KEY` is in none of `docker-compose.yml`, `.env.example`, Helm `values.yaml`/`values-secrets.example.yaml` or `scripts/generate-helm-secrets.sh` (checked 2026-11-27). New migration V5: back up the hosted DB first (runbook). | `SecretCipher` unit tests; migration IT (V5 applied, no plaintext left); signing still verifies end to end; rotate endpoint (owner only, other merchant 404, new secret works on the next attempt) | Rotate in the console; the next delivery verifies only with the new secret; `SELECT secret_key` shows no plaintext |
+| R5 | Step 16: metrics | Not started | No visibility of backlog, DEAD count or latency | Expose `metrics` in actuator (check gateway/ingress keep `/actuator` private) | Meter registration test or an IT asserting meters after a delivery | `GET http://localhost:8087/actuator/metrics/webhook.delivery.attempts` |
+| R6 | Step 12 remainder: delivery history | Optional | Merchants see failures and attempts already | None | Controller + scoping IT (another merchant → 404) | Console |
+| R7 | Step 18 | Blocked | — | Member 3 (and Member 7 for the name) | Decoder + ingestion IT for the stored reference | B.5 order with `externalRef` |
+
+Cross-member items re-checked on 2026-11-27: C3 **fixed** (order service); the delivery-execution tracking number is
+now only a fallback for old events (**mitigated**); publish-after-commit in the order service still **open**
+(Member 3); random correlation ids in delivery events still **open** (Member 6, `PublishStateTransitionAction`);
+`MerchantEventPublisher.publishOrderCreated` still has **no callers** (Member 7); `WEBHOOK_SECRET_KEY` still **absent**
+(Member 9).
 
 ### Deferred / optional (only if time allows)
 - **Endpoint health:** auto-disable an endpoint after N consecutive DEAD jobs, with the reason shown in the UI.
@@ -605,14 +692,15 @@ The webhook service must **not** try to solve upstream ownership problems by tru
 
 | Problem | Responsible | Why it affects webhooks | What is needed | Blocks |
 |---|---|---|---|---|
-| A customer can set any `merchantId` on `POST /api/v1/orders`: `CreateOrderRequest.merchantId` flows into `OrderCreatedEvent.merchantId` | **Member 3** | First-claim-wins ownership sends that order's events (COD, values, statuses) to the victim merchant. This cannot be detected downstream. | Ignore or reject `merchantId` on the public customer endpoint. Set it only on the internal merchant path (`/internal/v1/orders`). | Production use. Not a code dependency of any step. |
+| A customer can set any `merchantId` on `POST /api/v1/orders`: `CreateOrderRequest.merchantId` flows into `OrderCreatedEvent.merchantId` | **Member 3** | First-claim-wins ownership sends that order's events (COD, values, statuses) to the victim merchant. This cannot be detected downstream. | Ignore or reject `merchantId` on the public customer endpoint. Set it only on the internal merchant path (`/internal/v1/orders`). | **FIXED (PR #203):** the order service sets `merchantId` only for `OrderSource.MERCHANT`, and the webhook decoder ignores a `merchantId` that differs from `customerId`. |
+| Order-service cancellation event carries `previousPublicStatus = CANCELLED` (N1) | **Member 3** | Dropped as `NO_CHANGE`; merchants get no cancellation webhook | Read the status before changing it in `cancelOrder`/`rejectFeeRevision`, or pass it to `publishOrderCancelled` | Merchant-visible correctness (R0) |
 | `order.created` and `parcel.status.changed` are published inside `@Transactional` (`CustomerOrderService.persistNewOrder`, cancel paths) | **Member 3** | A rollback (for example losing the `(merchantId, externalRef)` race) still emits events, so the merchant gets webhooks for a phantom order | Publish after commit (`TransactionSynchronization` / `@TransactionalEventListener`) | Data quality from Step 10 on |
 | No merchant order reference in events | **Member 3** + contracts owner (+ Member 7 to confirm the field name) | The merchant cannot match a webhook to its own order | Add an optional `externalRef` to `CC/events/order/OrderCreatedEvent` with a back-compatible constructor. Call sites: customer-order `OrderEventPublisher`, dispatch `OrderCreatedConsumerIT`, `CourierMatchingEngineTest`. | Step 18 |
-| delivery-execution makes its own tracking number, `"SD-" + orderId[0..8]` (`DeliveryExecutionService.handleCourierAssigned`) | **Member 6** | The merchant would see two tracking numbers. Mitigation in this service: the payload uses `order_merchant_map.tracking_number` (Step 5). | Use `CourierAssignedEvent.trackingNumber` | None (mitigated) |
+| delivery-execution makes its own tracking number, `"SD-" + orderId[0..8]` (`DeliveryExecutionService.handleCourierAssigned`) | **Member 6** | The merchant would see two tracking numbers. Mitigation in this service: the payload uses `order_merchant_map.tracking_number` (Step 5). | Use `CourierAssignedEvent.trackingNumber` | None. **2026-11-27:** delivery now uses the event's tracking number; `"SD-"+orderId` is only a fallback for old events. |
 | A random correlationId on every delivery-execution event (`PublishStateTransitionAction.doPublish`) | **Member 6** | Traces break between the request and the webhook | Propagate the incoming correlationId | None (only affects logs) |
-| `PICKUP_ASSIGNED` is likely published by both dispatch (`CourierMatchingEngine`) and delivery-execution (unverified at runtime) | **Members 5 + 6** | Merchants get two PICKUP_ASSIGNED webhooks with different event ids | Agree on one owner | None. Dedupe is not possible here because the event ids differ. |
+| `PICKUP_ASSIGNED` is published by both dispatch (`ManualOverrideService.publishAssignmentEvents`) and delivery-execution (`handleCourierAssigned`): confirmed in source 2026-11-27 (N2), not yet observed at runtime | **Members 5 + 6** | Merchants get two PICKUP_ASSIGNED webhooks with different event ids | Agree on one owner | None. Dedupe is not possible here because the event ids differ. |
 | `MerchantEventPublisher.publishOrderCreated` (merchant-b2b) has no callers | **Member 7** | If it is wired up, a second ownership claim appears: a disagreement goes to the DLQ, an agreement is harmless | Remove it or document that it must not be used | None |
-| `merchantId` JWT claim for approved merchants | **Member 2 / Member 7** | `MerchantAccess` needs `X-Merchant-Id` for MERCHANT callers | Confirm the claim is issued after approval | Real (non-dev) merchant use |
+| `merchantId` JWT claim for approved merchants | **Member 2 / Member 7** | `MerchantAccess` needs `X-Merchant-Id` for MERCHANT callers | Confirm the claim is issued after approval | **Resolved:** IAM adds it after `merchant.approved` (the seeder waits for the claim), and the gateway forwards it as `X-Merchant-Id` |
 | `WEBHOOK_SECRET_KEY` in compose, `.env.example`, Helm and secret scripts | **Infra owner (Member 9)** | Required for Step 15 | Agree on a name and add mirrored config | Step 15 |
 | The dev SSRF allowlist reaching the container | Nobody (resolved) | Local ping and delivery to the host mock | **Decided in Step 3:** a personal, gitignored `docker-compose.override.yml`. No shared infrastructure change, so no coordination is needed. | — |
 | `definitions.json` | **Member 9** | Topology parity | No change needed. The member guide's "broker config drift" item (`docs/member-guides/member-8.md`) is **outdated**: the files match. | — |
@@ -620,6 +708,13 @@ The webhook service must **not** try to solve upstream ownership problems by tru
 ---
 
 ## 7. Local development and manual verification
+
+> **The current, verified procedures are in [`docs/LOCAL-TESTING.md`](docs/LOCAL-TESTING.md)** (2026-11-27): synthetic
+> events (Method A) and the real parcel lifecycle through the gateway (Method B), for every public status. The
+> subsections below are the original Step 0–10 notes. Where they disagree with the guide, the guide wins. In
+> particular: Test Ping now uses the real sender (7.7's first sentence is out of date), deliveries are sent by the
+> worker (7.5's "stays PENDING" note is out of date), and a synthetic `order.created` that includes `customerId` must
+> use the merchant id as `customerId`, or the order belongs to nobody (PR #203).
 
 ### 7.1 Minimum setup and which "login" is which
 
@@ -887,3 +982,4 @@ Append one entry per completed task. Never mark a step done unless its "Done whe
 | 2026-11-15 | 10 | Done | **New:** `delivery/DeliveryWorker`, `delivery/DeliveryProcessor`, `delivery/LeaseRecoveryJob`, `config/DeliverySchedulingConfig`. **Changed:** `DeliveryJobRepository` (+`releaseClaim`), `DeliveryAttemptRecorder` (+`release`), `application.yml` (`worker-enabled`, `lease-recovery-interval`), plan (Step 10, §7.7). Step 5–8 code, sender, topology, contracts and frontend unchanged; no migration. **Build:** Maven (JDK 25 container, `-DskipTests compile`) exit 0; no automated tests.<br>**Phase 1, isolated end to end** (a second container from the same image on a scratch DB, RabbitMQ deliberately unreachable, retry delays 3s/5s/8s, lease 15 s, recovery every 5 s, host mock via the dev allowlist; scratch DB and container removed afterwards): **15/15 scenarios passed** (one scenario first failed because of a test-design error, a slow mock longer than the 5 s response timeout; re-run with 4 s, it passed).<br>- Claimed and sent: SUCCEEDED with 1 row. One POST arrived, body byte-identical to an independently built payload, all D5 headers present, signature equal to an independent HMAC with the full `whsec_` secret.<br>- 400: DEAD after 1 attempt. 500 ×4: DEAD at 4, same Delivery-Id, Attempt headers 1..4, gaps 4.2/6.0/10.1 s (never early). 429 + Retry-After 10: next attempt after 12.2 s.<br>- Paused: 0 requests and PENDING/0; after reactivation delivered once with no new job. Pause between claim and send (held by a table lock): no request, claim released to PENDING/0, no row.<br>- FIFO: the older DEAD job didn't block the newer; the older RETRY job ran all 4 attempts before the newer's first.<br>- 9 slow jobs: peak 4 in flight, ≤1 per endpoint. Container `docker kill`ed mid-attempt and restarted: recovered as UNKNOWN, then SUCCEEDED (rows UNKNOWN, OK; the receiver saw 2 requests, at-least-once).<br>- A processing exception (missing mapping): no request, 4 UNKNOWN recovery rows, then DEAD, while other jobs kept flowing.<br>- Logs: 0 secrets, URLs, response bodies or signatures; the only exceptions came from the deliberately absent RabbitMQ. 0 legacy DLQ rows.<br>**Phase 2, real dev environment:** the owner's 3 endpoints delivered their 10-job backlog to webhook.site on first start (all 200). My step1–9 verification endpoints were **paused first** to avoid third-party traffic. Real `order.created` and `parcel.status.changed` published through RabbitMQ reached a fresh mock endpoint (2 requests, both signatures valid with its one-time secret; the money and district fields published in `order.created` were absent). Paused endpoints got 10 jobs, all still PENDING/0. Test Ping is unchanged (millisecond timestamp, legacy User-Agent, no Event-Id). Legacy DLQ 0, broker DLQ 0, logs clean. **Not verified end to end:** a late result from a still-running stale worker (covered at persistence level in Step 9), and multiple real replicas. **Left in dev DB:** endpoints step1–10 "…-verify" (paused) with PENDING jobs. |
 | 2026-11-15 | End-of-session security review | Done | **Disabled** the dev SSRF exception: `docker-compose.override.yml` (gitignored, kept) now sets `WEBHOOK_SECURITY_DEV_HTTP_ALLOWLIST: ""`, with enable/disable instructions in its comments; the webhook service was recreated (data kept) and is healthy. **Verified:** the env is empty in the container; no "DEVELOPMENT ONLY" warning; `http://host.docker.internal:9090/ok` and 8 other unsafe URLs return 400 with no rows created. Production builds (modes `production` and `webhook-dev`) contain 0 occurrences of `dev-token`, the bypass variables or the dev identity UUIDs. `vite preview --mode webhook-dev` does not proxy to the service (it went to the gateway and was refused). The running dev server ignored forged `SYSTEM_ADMIN` and merchant headers (returned only merchant …a1's 14 endpoints, not all 15). The service logs have 0 secrets, signatures, URLs or response bodies. Worker settings unchanged (4/1/10/2s/60s). No tracked file contains a secret. **Unchanged by design:** the frontend dev bypass (dev-server-only), and all production controls. **Not changed:** credentials, secrets, DB data, volumes, topology. |
 | 2026-11-15 | CI fix | Done | The PR's CI (`mvn -B -f backend/pom.xml verify -Dspring.profiles.active=integration-test`) failed only in this module: `maven-failsafe-plugin:3.5.1:integration-test … No tests to run!`, caused by `<failIfNoTests>true</failIfNoTests>` in `webhook-resiliency-service/pom.xml` after the Step 0 test removal. Changed it to `false` (with a comment explaining when to restore `true`). **Verified:** in the JDK 25 container, `mvn -pl webhook-resiliency-service -am verify -Dspring.profiles.active=integration-test -Dtest=none -Dsurefire.failIfNoSpecifiedTests=false` ran failsafe `integration-test` and `verify` for this module and gave BUILD SUCCESS, with no tests executed. The full CI run was not re-run locally. Notification and AnalyticsAI were skipped by the failed CI run and are first exercised on the next run; they don't have this problem (AnalyticsAI keeps its guard but has an IT; Notification declares no failsafe). |
+| 2026-11-27 | Audit after team PRs #87–#205 | Done (docs only) | **Changed:** this plan (test rule, Section 2a, Steps 11/12/17/18 status, D6 note, remaining work R0–R7, Section 6 rows, Section 7 note). **New:** `docs/LOCAL-TESTING.md`. No code, test, migration, config or frontend change. **Automated:** `mvn -pl webhook-resiliency-service -am verify -Dspring.profiles.active=integration-test` in the JDK 25 container with the Docker socket: BUILD SUCCESS; 187 unit tests and 43 ITs (`FailedDeliveryReplayIT` 6, `WebhookDeliveryFlowIT` 8, `WebhookIngestionIT` 18, `WebhookSchemaMigrationIT` 11), 0 failures; JaCoCo line 88.2 %, branch 72.9 % (gate 85 %/68 % met; margins 3.2 and 4.9 points). **Manual (local broker, merchant `…c1` with no endpoints, so nothing was sent):** shop order (`customerId = merchantId`) RESOLVED; a customer booking naming the shop NO_MERCHANT; legacy order without `customerId` RESOLVED; `CREATED` and `PICKUP_ASSIGNED` RESOLVED; `IN_TRANSIT → IN_TRANSIT` and `CANCELLED → CANCELLED` NO_CHANGE; duplicate event DUPLICATE; early status AWAITING_MERCHANT then released. **Left behind:** 8 inbox rows with `source_service = 'manual-test'` (merchant `…c1` / none), no deliveries. **Not run:** Method B (real lifecycle). **Findings:** N1–N8 in Section 2a. |
