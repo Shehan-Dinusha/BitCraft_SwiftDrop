@@ -7,12 +7,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Legacy dead-letter history written by the synchronous {@code OutboundWebhookDispatcher}.
+ * Legacy dead-letter history written by the synchronous dispatcher that Step 17 retired.
  *
- * <p>Kept because the existing DLQ list/replay API and the operations console read it. It is not the
- * source of truth for delivery jobs: a job that exhausts its attempts becomes
- * {@link WebhookDeliveryStatus#DEAD} in {@code webhook_deliveries}. Serving dead jobs through the DLQ API
- * (a read model over {@code webhook_deliveries}) belongs to the replay redesign.</p>
+ * <p>Read-only: nothing writes this table any more, and its records cannot be replayed. The read-only list
+ * ({@code GET /api/v1/webhooks/dlq}) keeps old rows visible. A job that exhausts its attempts becomes
+ * {@link WebhookDeliveryStatus#DEAD} in {@code webhook_deliveries}, listed and replayed by the failed-delivery API.
+ * Unrelated to the RabbitMQ inbound dead-letter queue.</p>
  */
 @Entity
 @Table(name = "dead_letter_webhook_records")

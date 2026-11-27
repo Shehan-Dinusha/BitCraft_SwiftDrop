@@ -200,7 +200,7 @@ function Orders() {
 const HEADERS: [string, string][] = [
   ['X-SwiftDrop-Event', 'The event type'],
   ['X-SwiftDrop-Event-Id', 'The same in every attempt and replay. Ignore one you already handled.'],
-  ['X-SwiftDrop-Delivery-Id', 'This delivery. A replay gets a new one.'],
+  ['X-SwiftDrop-Delivery-Id', 'This delivery, the same in every retry. A replay gets a new one.'],
   ['X-SwiftDrop-Attempt', '1 for the first try'],
   ['X-SwiftDrop-Timestamp', 'Unix time in seconds'],
   ['X-SwiftDrop-Signature', 'sha256= and 64 hex characters']
@@ -241,7 +241,7 @@ function Webhooks() {
         <p>
           A <Mono>POST</Mono> with JSON when an order is booked (<Mono>order.created</Mono>) or its
           status changes (<Mono>parcel.status.changed</Mono>). A test is{' '}
-          <Mono>webhook.test.ping</Mono>.
+          <Mono>webhook.test.ping</Mono>, sent once and never retried.
         </p>
         <Code label="parcel.status.changed">{pretty(STATUS_EVENT)}</Code>
         <p className="flex flex-wrap items-center gap-1.5">
@@ -249,6 +249,12 @@ function Webhooks() {
           {STATUSES.map((status) => (
             <Mono key={status}>{status}</Mono>
           ))}
+        </p>
+        <p>
+          We send one only when the status changes, and it can go back: for example from{' '}
+          <Mono>OUT_FOR_DELIVERY</Mono> to <Mono>IN_TRANSIT</Mono> when the courier brings the parcel
+          back to the hub. <Mono>failureReason</Mono>, when present, says why a delivery attempt or
+          the parcel failed.
         </p>
         <Code label="order.created">{pretty(CREATED_EVENT)}</Code>
         <p>
@@ -271,8 +277,10 @@ function Webhooks() {
 
       <Section title="Answer and retries">
         <p>
-          Answer with any <strong>2xx</strong> within 5 seconds, and do slow work afterwards. Events
-          of one parcel arrive in order.
+          Answer with any <strong>2xx</strong> within 5 seconds, and do slow work afterwards. We
+          send a parcel&apos;s events one at a time, oldest first, but a replay or an event we
+          received late can arrive after a newer one: compare <Mono>occurredAt</Mono> and keep the
+          latest status.
         </p>
         <Table
           headers={['Your answer', 'What happens']}
@@ -286,11 +294,16 @@ function Webhooks() {
           ]}
         />
         <p>
+          A <Mono>Retry-After</Mono> on 429 or 503 can make us wait longer, up to 10 minutes. While an
+          address is paused we keep its events and send them when you activate it again.
+        </p>
+        <p>
           Events we stopped sending are under{' '}
           <Link to="/merchant/webhooks" className="text-brand-primary underline">
             Failed events
           </Link>
-          , where you can replay them.
+          , where you can replay them. A replay sends the same event again, with the same{' '}
+          <Mono>X-SwiftDrop-Event-Id</Mono>; it can be replayed again only if the replay failed too.
         </p>
       </Section>
     </div>

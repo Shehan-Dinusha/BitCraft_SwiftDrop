@@ -185,7 +185,12 @@ class WebhookDeliveryFlowIT {
         ok(post(path), merchant);
         await().atMost(WAIT).untilAsserted(() -> assertThat(deliveries("SUCCEEDED")).isEqualTo(1));
         assertThat(received).hasSize(4);
+        Received replayed = received.getLast();
+        assertThat(replayed.header(WebhookHeaders.EVENT_ID)).isEqualTo(received.getFirst().header(WebhookHeaders.EVENT_ID));
+        assertThat(replayed.header(WebhookHeaders.DELIVERY_ID)).isNotEqualTo(received.getFirst().header(WebhookHeaders.DELIVERY_ID));
         assertThat(ok(post("/api/v1/webhooks/deliveries/failed/replay"), merchant)).isNotNull();
+        // Outbound failures live in webhook_deliveries only; the legacy dead-letter table is never written.
+        assertThat(legacyRecords()).isZero();
     }
 
     @Test
@@ -254,6 +259,14 @@ class WebhookDeliveryFlowIT {
 
         assertThat(ok(post(path + "/test"), merchant).get("success").asBoolean()).isTrue();
         assertThat(received).hasSize(1);
+        // The ping is one request through the delivery sender: v1 envelope, timestamp-and-body signature, no job.
+        Received ping = received.getFirst();
+        assertThat(ping.header(WebhookHeaders.EVENT)).isEqualTo("webhook.test.ping");
+        assertThat(ping.header(WebhookHeaders.ATTEMPT)).isEqualTo("1");
+        assertThat(ping.header(WebhookHeaders.SIGNATURE)).isEqualTo(new WebhookSigner().sign(
+                created.get("signingSecret").asText(), Long.parseLong(ping.header(WebhookHeaders.TIMESTAMP)), ping.body()));
+        assertThat(json.readTree(ping.body()).get("apiVersion").asInt()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM webhook_deliveries", Integer.class)).isZero();
         assertThat(ok(patch(path + "/status").param("active", "false"), merchant).get("active").asBoolean()).isFalse();
         // A switched-off endpoint gets nothing until it is on again.
         publish(status(order(merchant)));
@@ -269,8 +282,8 @@ class WebhookDeliveryFlowIT {
     }
 
     @Test
-    @DisplayName("An old dead-letter record is replayed to its shop once it works again, by its owner only")
-    void legacyDeadLetterReplay() throws Exception {
+    @DisplayName("Old dead-letter records are read-only history: listed for their owner, never replayed or sent")
+    void legacyDeadLetterRecordsAreReadOnly() throws Exception {
         UUID endpoint = UUID.fromString(register().at("/endpoint/endpointId").asText());
         UUID record = UUID.randomUUID();
         jdbc.update("INSERT INTO dead_letter_webhook_records(dlq_id, endpoint_id, merchant_id, event_type, payload, failure_reason) "
@@ -278,14 +291,23 @@ class WebhookDeliveryFlowIT {
                 record, endpoint, merchant);
         String path = "/api/v1/webhooks/dlq/" + record;
 
-        status(get(path), stranger, 404);
-        status(as(post(path + "/replay"), UUID.randomUUID(), "DISPATCHER", null), 403);
+        // Read-only history, for its merchant (and a system admin) only.
         assertThat(ok(get(path), merchant).get("replayed").asBoolean()).isFalse();
-        shopAnswers = 500;
-        assertThat(ok(post(path + "/replay"), merchant).get("status").asText()).isEqualTo("FAILED");
-        shopAnswers = 200;
-        assertThat(ok(post(path + "/replay"), merchant).get("status").asText()).isEqualTo("SUCCESS");
-        assertThat(ok(get("/api/v1/webhooks/dlq?unreplayedOnly=false"), merchant)).isNotEmpty();
+        assertThat(ok(get("/api/v1/webhooks/dlq?unreplayedOnly=false"), merchant)).hasSize(1);
+        assertThat(ok(get("/api/v1/webhooks/dlq"), stranger)).isEmpty();
+        status(get(path), stranger, 404);
+        status(as(get("/api/v1/webhooks/dlq"), UUID.randomUUID(), "DISPATCHER", null), 403);
+        status(as(get(path), UUID.randomUUID(), "DISPATCHER", null), 403);
+        status(as(get("/api/v1/webhooks/dlq"), UUID.randomUUID(), "SYSTEM_ADMIN", null), 200);
+
+        // Replay is retired: 410 for everyone, nothing sent, nothing written.
+        status(post(path + "/replay"), merchant, 410);
+        status(post("/api/v1/webhooks/dlq/replay-all"), merchant, 410);
+        status(as(post("/api/v1/webhooks/dlq/replay-all"), UUID.randomUUID(), "SYSTEM_ADMIN", null), 410);
+        await().during(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(2)).untilAsserted(() -> assertThat(received).isEmpty());
+        assertThat(legacyRecords()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT is_replayed FROM dead_letter_webhook_records WHERE dlq_id = ?", Boolean.class, record)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM webhook_delivery_attempts", Integer.class)).isZero();
     }
 
     // ---- steps
@@ -333,6 +355,10 @@ class WebhookDeliveryFlowIT {
 
     private void publish(ParcelStatusChangedEvent event) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EVENTS_EXCHANGE, "parcel.status.changed", event);
+    }
+
+    private int legacyRecords() {
+        return jdbc.queryForObject("SELECT count(*) FROM dead_letter_webhook_records", Integer.class);
     }
 
     private int deliveries(String status) {

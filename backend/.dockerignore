@@ -1,3 +1,5 @@
-**/.idea/
-**/.vscode/
+**/target
+**/.idea
+**/.vscode
 **/*.class
+*.log

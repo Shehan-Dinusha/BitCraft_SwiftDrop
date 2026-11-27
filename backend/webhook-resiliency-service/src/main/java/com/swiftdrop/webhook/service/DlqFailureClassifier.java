@@ -9,9 +9,10 @@ import java.util.regex.Pattern;
 /**
  * Classifications and sanitised summaries for failed delivery attempts and dead-letter records.
  *
- * <p>Two kinds of stored failure text exist:</p>
+ * <p>{@link #describe} gives the summary for an attempt of the current delivery system. {@link #classify} reads the
+ * failure text of legacy dead-letter records, which nothing writes any more (Step 17). Two kinds of that text exist:</p>
  * <ul>
- *   <li><b>Sanitised reasons</b> written by the current dispatcher via {@link #storedReason}: the error class name,
+ *   <li><b>Sanitised reasons</b> written by the retired dispatcher after Step 1: the error class name,
  *       optionally followed by {@code " HTTP <status>"} (for example {@code "HTTP_SERVER_ERROR HTTP 503"}).
  *       They are parsed exactly.</li>
  *   <li><b>Legacy raw exception messages</b>, which routinely contain the merchant's callback URL, host name,
@@ -29,7 +30,7 @@ public final class DlqFailureClassifier {
     /** Spring WebClient's response-exception message: {@code "<status> <reason> from <METHOD> <url>"}. */
     private static final Pattern HTTP_STATUS = Pattern.compile("^(\\d{3}) [^\\r\\n]* from [A-Z]+ ");
 
-    /** Format written by {@link #storedReason}. */
+    /** Sanitised format written by the retired dispatcher: {@code "<ERROR_CLASS>[ HTTP <status>]"}. */
     private static final Pattern SANITISED_REASON = Pattern.compile("^([A-Z_]{1,32})(?: HTTP (\\d{3}))?$");
 
     private DlqFailureClassifier() {
@@ -57,12 +58,6 @@ public final class DlqFailureClassifier {
                     "Destination refused by the URL policy (public HTTPS endpoints only); nothing was sent");
             case UNKNOWN -> unknown();
         };
-    }
-
-    /** Text persisted as a failure reason: class name plus optional status, never raw exception text. */
-    public static String storedReason(AttemptErrorClass errorClass, Integer httpStatus) {
-        AttemptErrorClass safeClass = errorClass != null ? errorClass : AttemptErrorClass.UNKNOWN;
-        return httpStatus != null ? safeClass.name() + " HTTP " + httpStatus : safeClass.name();
     }
 
     public static Classification classify(String storedFailureReason) {

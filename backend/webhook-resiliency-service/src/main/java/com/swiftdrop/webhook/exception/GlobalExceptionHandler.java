@@ -32,6 +32,13 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(HttpStatus.NOT_FOUND.value(), "DLQ Record Not Found", ex.getMessage(), request.getRequestURI()));
     }
 
+    /** Retired legacy replay: 410 with a fixed message that names the replacement. */
+    @ExceptionHandler(LegacyReplayRetiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleLegacyReplayRetired(LegacyReplayRetiredException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(ApiErrorResponse.of(HttpStatus.GONE.value(), "Gone", ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(FailedDeliveryNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleFailedDeliveryNotFound(FailedDeliveryNotFoundException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
