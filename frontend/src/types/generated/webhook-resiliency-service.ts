@@ -372,7 +372,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health check for DLQ replay controller */
+        /** Health check for the legacy dead-letter API */
         get: {
             parameters: {
                 query?: never;
@@ -407,13 +407,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Dead-Letter Queue webhook records
-         * @description A MERCHANT sees only its own records (a different merchantId is refused with 403). SYSTEM_ADMIN and DISPATCHER may filter by merchantId or omit it to see every merchant; DISPATCHER responses carry operational metadata only (no payload, endpointId or raw failureReason).
+         * List legacy dead-letter webhook records (read-only history)
+         * @description Records written by the retired synchronous dispatcher; nothing writes them any more. A MERCHANT sees only its own records (a different merchantId is refused with 403). A SYSTEM_ADMIN may filter by merchantId or omit it to see every merchant. Other roles: 403. Current failures are under /api/v1/webhooks/deliveries/failed.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Merchant filter for SYSTEM_ADMIN and DISPATCHER. Merchant clients should omit it. */
+                    /** @description Merchant filter for SYSTEM_ADMIN. Merchant clients should omit it. */
                     merchantId?: string;
                     unreplayedOnly?: boolean;
                 };
@@ -452,8 +452,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get detailed DLQ record by ID
-         * @description Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses carry operational metadata only (no payload, endpointId or raw failureReason).
+         * Get a legacy dead-letter record by ID
+         * @description MERCHANT (own records) and SYSTEM_ADMIN. Another merchant's record returns 404, exactly like an unknown ID. Other roles: 403.
          */
         get: {
             parameters: {
@@ -498,8 +498,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Manually replay a dead-lettered webhook record
-         * @description MERCHANT (own records) and SYSTEM_ADMIN only.
+         * Retired: replay a legacy dead-letter record
+         * @deprecated
+         * @description Retired. Always 410 Gone for an identified caller; nothing is read, sent or written. Replay failed deliveries with POST /api/v1/webhooks/deliveries/failed/{deliveryId}/replay.
          */
         post: {
             parameters: {
@@ -512,18 +513,8 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Replay execution result */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiResponseReplayDlqResponse"];
-                    };
-                };
                 401: components["responses"]["Unauthorized"];
-                403: components["responses"]["Forbidden"];
-                404: components["responses"]["NotFound"];
+                410: components["responses"]["Gone"];
             };
         };
         delete?: never;
@@ -542,13 +533,14 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Batch replay all unreplayed DLQ records
-         * @description A MERCHANT replays its own unreplayed records. A SYSTEM_ADMIN may target one merchant or, without merchantId, every merchant. Other roles: 403.
+         * Retired: replay every legacy dead-letter record
+         * @deprecated
+         * @description Retired. Always 410 Gone for an identified caller; nothing is read, sent or written. Replay failed deliveries with POST /api/v1/webhooks/deliveries/failed/replay.
          */
         post: {
             parameters: {
                 query?: {
-                    /** @description Merchant filter for SYSTEM_ADMIN. Merchant clients should omit it. */
+                    /** @description Ignored. */
                     merchantId?: string;
                 };
                 header?: never;
@@ -557,17 +549,8 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Batch replay execution summary */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiResponseListReplayDlqResponse"];
-                    };
-                };
                 401: components["responses"]["Unauthorized"];
-                403: components["responses"]["Forbidden"];
+                410: components["responses"]["Gone"];
             };
         };
         delete?: never;
@@ -705,17 +688,13 @@ export interface components {
         DeadLetterWebhookResponse: {
             /** Format: uuid */
             dlqId?: string;
-            /**
-             * Format: uuid
-             * @description Target endpoint. Omitted (null) for DISPATCHER callers.
-             */
+            /** Format: uuid */
             endpointId?: string;
             /** Format: uuid */
             merchantId?: string;
             eventType?: string;
-            /** @description Event payload. Omitted (null) for DISPATCHER callers. */
             payload?: string;
-            /** @description Raw failure detail recorded by the dispatcher; may contain the callback URL or host. Omitted (null) for DISPATCHER callers. */
+            /** @description Raw failure detail recorded by the retired dispatcher; may contain the callback URL or host. */
             failureReason?: string;
             /**
              * @description Failure classification derived from the recorded failure.
@@ -736,15 +715,6 @@ export interface components {
              * @description Dead-lettering timestamp (the time of the final failed attempt).
              */
             createdAt?: string;
-        };
-        ReplayDlqResponse: {
-            /** Format: uuid */
-            dlqId?: string;
-            status?: string;
-            statusCode?: number;
-            message?: string;
-            /** Format: date-time */
-            replayedAt?: string;
         };
         /** @description Newly registered endpoint plus its signing secret. The secret is returned only here, once; it cannot be retrieved again through GET or list. */
         WebhookEndpointCreatedResponse: {
@@ -787,16 +757,6 @@ export interface components {
             message?: string;
             data?: components["schemas"]["DeadLetterWebhookResponse"][];
         };
-        ApiResponseReplayDlqResponse: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["ReplayDlqResponse"];
-        };
-        ApiResponseListReplayDlqResponse: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["ReplayDlqResponse"][];
-        };
     };
     responses: {
         /** @description Invalid request, e.g. malformed subscriptions or an administrator omitting merchantId. */
@@ -837,6 +797,15 @@ export interface components {
         };
         /** @description The endpoint has delivery history and cannot be deleted; deactivate it instead. */
         Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiErrorResponse"];
+            };
+        };
+        /** @description The operation was retired (legacy dead-letter replay); the message names its replacement. */
+        Gone: {
             headers: {
                 [name: string]: unknown;
             };

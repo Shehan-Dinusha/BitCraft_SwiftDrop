@@ -275,6 +275,14 @@ Test Ping, the attempts dialog, event checkboxes and the **Failed events** table
 Method B), create `frontend/.env.webhook-dev.local` (gitignored) with `WEBHOOK_DEV_MERCHANT_ID=<uuid>` and restart.
 
 There is no console screen for the legacy `/api/v1/webhooks/dlq` API any more, and no admin route to the console.
+Since Step 17 that API is read-only history: `GET /dlq` and `GET /dlq/{id}` for MERCHANT (own records) and
+SYSTEM_ADMIN (403 for every other role, including DISPATCHER), and `POST /dlq/{id}/replay` and `POST /dlq/replay-all`
+always answer **410 Gone** without sending anything. Check it with:
+
+```powershell
+Invoke-RestMethod "$Wh/dlq" -Headers $AsMerchant                                    # history (usually empty)
+try { Invoke-RestMethod -Method Post "$Wh/dlq/replay-all" -Headers $AsMerchant } catch { $_.Exception.Response.StatusCode.value__ }   # 410
+```
 
 ---
 

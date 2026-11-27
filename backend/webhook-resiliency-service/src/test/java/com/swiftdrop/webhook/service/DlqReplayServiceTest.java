@@ -1,18 +1,12 @@
 package com.swiftdrop.webhook.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.webhook.domain.entity.AttemptErrorClass;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.webhook.domain.entity.DeadLetterWebhookRecord;
-import com.swiftdrop.webhook.domain.entity.WebhookEndpoint;
 import com.swiftdrop.webhook.domain.repository.DeadLetterWebhookRecordRepository;
-import com.swiftdrop.webhook.domain.repository.WebhookEndpointRepository;
-import com.swiftdrop.webhook.security.WebhookUrlPolicy;
 import com.swiftdrop.webhook.dto.DeadLetterWebhookResponse;
-import com.swiftdrop.webhook.dto.ReplayDlqResponse;
-import com.swiftdrop.webhook.dto.WebhookDeliveryAttemptResponse;
 import com.swiftdrop.webhook.exception.DlqRecordNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +20,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,7 +32,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,23 +40,12 @@ class DlqReplayServiceTest {
 
     private static final String CALLBACK_HOST = "shop-a.internal.example";
     private static final String CALLBACK_URL = "https://" + CALLBACK_HOST + ":8443/hooks/swiftdrop-7f3a";
-    /** What the legacy dispatcher stored: the exception message, including the merchant's callback URL. */
+    /** What the retired dispatcher stored: the exception message, including the merchant's callback URL. */
     private static final String RAW_FAILURE = "503 Service Unavailable from POST " + CALLBACK_URL;
     private static final String PAYLOAD = "{\"status\":\"DELIVERED\",\"recipientName\":\"Nimal Perera\"}";
 
-    private final ObjectMapper json = new ObjectMapper().findAndRegisterModules();
-
     @Mock
     private DeadLetterWebhookRecordRepository dlqRepository;
-
-    @Mock
-    private WebhookEndpointRepository endpointRepository;
-
-    @Mock
-    private OutboundWebhookDispatcher dispatcher;
-
-    @Mock
-    private WebhookUrlPolicy urlPolicy;
 
     @InjectMocks
     private DlqReplayService dlqReplayService;
@@ -69,11 +55,9 @@ class DlqReplayServiceTest {
     private UUID merchantA;
     private UUID merchantB;
     private DeadLetterWebhookRecord recordOfA;
-    private WebhookEndpoint endpointOfA;
     private CallerContext callerA;
     private CallerContext callerB;
     private CallerContext admin;
-    private CallerContext dispatcherCaller;
 
     @BeforeEach
     void setUp() {
@@ -94,23 +78,11 @@ class DlqReplayServiceTest {
                 .createdAt(Instant.now())
                 .build();
 
-        endpointOfA = WebhookEndpoint.builder()
-                .endpointId(endpointId)
-                .merchantId(merchantA)
-                .targetUrl("https://merchant.example.com/webhooks")
-                .secretKey("whsec_secret123")
-                .active(true)
-                .build();
-
         callerA = caller(UserRole.MERCHANT, merchantA);
         callerB = caller(UserRole.MERCHANT, merchantB);
         admin = caller(UserRole.SYSTEM_ADMIN, null);
-        dispatcherCaller = caller(UserRole.DISPATCHER, null);
 
         when(dlqRepository.findByDlqId(dlqId)).thenReturn(Optional.of(recordOfA));
-        when(endpointRepository.findByEndpointId(endpointId)).thenReturn(Optional.of(endpointOfA));
-        when(dispatcher.dispatch(any(), any(), any())).thenReturn(new WebhookDeliveryAttemptResponse(
-                UUID.randomUUID(), endpointId, merchantA, "parcel.status.changed", 200, 1, true, null, null, 12, Instant.now()));
     }
 
     private static CallerContext caller(UserRole role, UUID merchantId) {
@@ -136,7 +108,6 @@ class DlqReplayServiceTest {
     void merchantCannotListOther() {
         assertThatThrownBy(() -> dlqReplayService.listDlqRecords(merchantA, false, callerB))
                 .isInstanceOf(ForbiddenException.class);
-        verifyNoInteractions(dispatcher);
         verify(dlqRepository, never()).findByMerchantIdOrderByCreatedAtDesc(any());
     }
 
@@ -166,26 +137,6 @@ class DlqReplayServiceTest {
     }
 
     @Test
-    @DisplayName("dispatcher list carries operational metadata only")
-    void dispatcherListsMetadataOnly() throws Exception {
-        when(dlqRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(recordOfA));
-
-        List<DeadLetterWebhookResponse> result = dlqReplayService.listDlqRecords(null, false, dispatcherCaller);
-
-        assertThat(result).singleElement().satisfies(this::assertDispatcherView);
-        assertNoMerchantInfrastructureOrPayload(json.writeValueAsString(result));
-    }
-
-    @Test
-    @DisplayName("dispatcher single-record view carries operational metadata only")
-    void dispatcherGetsMetadataOnly() throws Exception {
-        DeadLetterWebhookResponse response = dlqReplayService.getDlqRecord(dlqId, dispatcherCaller);
-
-        assertDispatcherView(response);
-        assertNoMerchantInfrastructureOrPayload(json.writeValueAsString(response));
-    }
-
-    @Test
     @DisplayName("owner and system admin keep the full record, plus the sanitised fields")
     void ownerAndAdminKeepFullDetail() {
         when(dlqRepository.findByMerchantIdOrderByCreatedAtDesc(merchantA)).thenReturn(List.of(recordOfA));
@@ -205,49 +156,9 @@ class DlqReplayServiceTest {
         }
     }
 
-    private void assertDispatcherView(DeadLetterWebhookResponse r) {
-        // Retained operational metadata.
-        assertThat(r.dlqId()).isEqualTo(dlqId);
-        assertThat(r.eventType()).isEqualTo("parcel.status.changed");
-        assertThat(r.totalAttempts()).isEqualTo(3);
-        assertThat(r.replayed()).isFalse();
-        assertThat(r.createdAt()).isEqualTo(recordOfA.getCreatedAt());
-        assertThat(r.errorClass()).isEqualTo(AttemptErrorClass.HTTP_SERVER_ERROR);
-        assertThat(r.failureSummary()).isEqualTo("Endpoint returned a server error (HTTP 503)");
-        // Withheld.
-        assertThat(r.payload()).isNull();
-        assertThat(r.endpointId()).isNull();
-        assertThat(r.failureReason()).isNull();
-    }
-
-    private void assertNoMerchantInfrastructureOrPayload(String serialised) {
-        assertThat(serialised)
-                .doesNotContain(CALLBACK_HOST)
-                .doesNotContain("https://")
-                .doesNotContain("/hooks/")
-                .doesNotContain("Nimal Perera")
-                .doesNotContain("recipientName")
-                .doesNotContain("whsec_")
-                .doesNotContain(endpointId.toString());
-    }
-
-    @Test
-    @DisplayName("replay refuses an endpoint not owned by the record's merchant, revealing nothing")
-    void replayRefusesEndpointOfAnotherMerchant() {
-        endpointOfA.setMerchantId(merchantB);   // legacy data inconsistency: record of A points at B's endpoint
-
-        ReplayDlqResponse response = dlqReplayService.replayDlqRecord(dlqId, callerA);
-
-        assertThat(response.status()).isEqualTo("FAILED");
-        assertThat(response.statusCode()).isEqualTo(404);
-        assertThat(response.message()).isEqualTo("Target endpoint no longer exists");
-        verifyNoInteractions(dispatcher);
-        assertThat(recordOfA.isReplayed()).isFalse();
-    }
-
     @ParameterizedTest
-    @EnumSource(value = UserRole.class, names = {"CUSTOMER", "COURIER"})
-    @DisplayName("customers and couriers have no DLQ access")
+    @EnumSource(value = UserRole.class, names = {"CUSTOMER", "COURIER", "DISPATCHER"})
+    @DisplayName("customers, couriers and dispatchers have no access to the legacy records")
     void otherRolesCannotList(UserRole role) {
         assertThatThrownBy(() -> dlqReplayService.listDlqRecords(null, false, caller(role, null)))
                 .isInstanceOf(ForbiddenException.class);
@@ -268,11 +179,10 @@ class DlqReplayServiceTest {
     // --- get ------------------------------------------------------------------------------------------------------
 
     @Test
-    @DisplayName("owner and admin see the full record; dispatcher sees it without the payload")
+    @DisplayName("owner and admin see the full record")
     void getRecordByRole() {
         assertThat(dlqReplayService.getDlqRecord(dlqId, callerA).payload()).isEqualTo(recordOfA.getPayload());
         assertThat(dlqReplayService.getDlqRecord(dlqId, admin).payload()).isEqualTo(recordOfA.getPayload());
-        assertThat(dlqReplayService.getDlqRecord(dlqId, dispatcherCaller).payload()).isNull();
     }
 
     @Test
@@ -289,94 +199,32 @@ class DlqReplayServiceTest {
                 .hasMessage("Dead-letter webhook record not found with ID: " + dlqId);
     }
 
-    // --- replay ---------------------------------------------------------------------------------------------------
+    // --- retired replay (Step 17) ------------------------------------------------------------------------------
 
     @Test
-    @DisplayName("owner replays its own record and it is marked replayed")
-    void ownerReplays() {
-        ReplayDlqResponse response = dlqReplayService.replayDlqRecord(dlqId, callerA);
-
-        assertThat(response.status()).isEqualTo("SUCCESS");
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(recordOfA.isReplayed()).isTrue();
-        assertThat(recordOfA.getReplayedAt()).isNotNull();
-        verify(dlqRepository).save(recordOfA);
+    @DisplayName("the service can no longer replay or send: its only dependency is the legacy record repository")
+    void legacyServiceCannotSend() {
+        assertThat(Arrays.stream(DlqReplayService.class.getDeclaredFields())
+                .filter(field -> !Modifier.isStatic(field.getModifiers())).map(Field::getType))
+                .containsExactly(DeadLetterWebhookRecordRepository.class);
+        assertThat(Arrays.stream(DlqReplayService.class.getDeclaredMethods())
+                .filter(method -> Modifier.isPublic(method.getModifiers())).map(Method::getName))
+                .containsExactlyInAnyOrder("listDlqRecords", "getDlqRecord");
     }
 
     @Test
-    @DisplayName("another merchant cannot replay the record: not found and nothing dispatched")
-    void otherMerchantCannotReplay() {
-        assertThatThrownBy(() -> dlqReplayService.replayDlqRecord(dlqId, callerB))
-                .isInstanceOf(DlqRecordNotFoundException.class);
-        verifyNoInteractions(dispatcher);
-        assertThat(recordOfA.isReplayed()).isFalse();
-    }
-
-    @Test
-    @DisplayName("dispatcher cannot replay a record or replay all")
-    void dispatcherCannotReplay() {
-        assertThatThrownBy(() -> dlqReplayService.replayDlqRecord(dlqId, dispatcherCaller))
-                .isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(() -> dlqReplayService.replayAllUnreplayed(null, dispatcherCaller))
-                .isInstanceOf(ForbiddenException.class);
-        verifyNoInteractions(dispatcher);
-    }
-
-    @Test
-    @DisplayName("system admin can replay any merchant's record")
-    void adminReplays() {
-        assertThat(dlqReplayService.replayDlqRecord(dlqId, admin).status()).isEqualTo("SUCCESS");
-    }
-
-    @Test
-    @DisplayName("replay fails cleanly when the endpoint no longer exists")
-    void replayEndpointMissing() {
-        when(endpointRepository.findByEndpointId(endpointId)).thenReturn(Optional.empty());
-
-        ReplayDlqResponse response = dlqReplayService.replayDlqRecord(dlqId, callerA);
-
-        assertThat(response.status()).isEqualTo("FAILED");
-        assertThat(response.statusCode()).isEqualTo(404);
-        verify(dlqRepository, never()).save(recordOfA);
-    }
-
-    @Test
-    @DisplayName("replay fails cleanly when the endpoint is deactivated")
-    void replayEndpointDeactivated() {
-        endpointOfA.setActive(false);
-
-        ReplayDlqResponse response = dlqReplayService.replayDlqRecord(dlqId, callerA);
-
-        assertThat(response.status()).isEqualTo("FAILED");
-        assertThat(response.statusCode()).isEqualTo(400);
-    }
-
-    // --- replay all -----------------------------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("merchant replay-all is limited to its own unreplayed records")
-    void merchantReplayAllOwn() {
+    @DisplayName("listing and reading never write a legacy record")
+    void readsNeverWrite() {
         when(dlqRepository.findByMerchantIdOrderByCreatedAtDesc(merchantA)).thenReturn(List.of(recordOfA));
+        when(dlqRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(recordOfA));
 
-        assertThat(dlqReplayService.replayAllUnreplayed(null, callerA)).singleElement()
-                .satisfies(r -> assertThat(r.status()).isEqualTo("SUCCESS"));
-        verify(dlqRepository, never()).findByReplayedFalseOrderByCreatedAtDesc();
-        verify(dispatcher).dispatch(eq(endpointOfA), eq("parcel.status.changed"), any());
-    }
+        dlqReplayService.listDlqRecords(null, false, callerA);
+        dlqReplayService.listDlqRecords(null, true, admin);
+        dlqReplayService.getDlqRecord(dlqId, callerA);
 
-    @Test
-    @DisplayName("merchant cannot replay-all another merchant's records")
-    void merchantCannotReplayAllOther() {
-        assertThatThrownBy(() -> dlqReplayService.replayAllUnreplayed(merchantA, callerB))
-                .isInstanceOf(ForbiddenException.class);
-        verifyNoInteractions(dispatcher);
-    }
-
-    @Test
-    @DisplayName("system admin replay-all covers every merchant when no filter is given")
-    void adminReplayAll() {
-        when(dlqRepository.findByReplayedFalseOrderByCreatedAtDesc()).thenReturn(List.of(recordOfA));
-
-        assertThat(dlqReplayService.replayAllUnreplayed(null, admin)).hasSize(1);
+        verify(dlqRepository, never()).save(any());
+        verify(dlqRepository, never()).saveAll(any());
+        verify(dlqRepository, never()).delete(any());
+        assertThat(recordOfA.isReplayed()).isFalse();
     }
 }

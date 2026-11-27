@@ -5,11 +5,13 @@ import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.ForbiddenException;
 import com.swiftdrop.webhook.domain.entity.AttemptErrorClass;
 import com.swiftdrop.webhook.dto.DeadLetterWebhookResponse;
-import com.swiftdrop.webhook.dto.ReplayDlqResponse;
 import com.swiftdrop.webhook.exception.DlqRecordNotFoundException;
+import com.swiftdrop.webhook.exception.LegacyReplayRetiredException;
 import com.swiftdrop.webhook.service.DlqReplayService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -66,6 +68,7 @@ class DlqReplayControllerTest {
     void missingIdentityIsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/webhooks/dlq")).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/v1/webhooks/dlq/replay-all")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/webhooks/dlq/{dlqId}/replay", dlqId)).andExpect(status().isUnauthorized());
         verifyNoInteractions(dlqReplayService);
     }
 
@@ -85,11 +88,13 @@ class DlqReplayControllerTest {
     }
 
     @Test
-    @DisplayName("dispatcher identity is passed through as DISPATCHER, never elevated")
-    void dispatcherRoleIsPreserved() throws Exception {
-        when(dlqReplayService.listDlqRecords(any(), any(), any())).thenReturn(List.of());
+    @DisplayName("a dispatcher is passed through as DISPATCHER, never elevated, and the refusal is a 403")
+    void dispatcherIsRefused() throws Exception {
+        when(dlqReplayService.listDlqRecords(any(), any(), any())).thenThrow(new ForbiddenException("Caller role is not permitted"));
+        when(dlqReplayService.getDlqRecord(any(), any())).thenThrow(new ForbiddenException("Caller role is not permitted"));
 
-        mockMvc.perform(as("DISPATCHER", get("/api/v1/webhooks/dlq"))).andExpect(status().isOk());
+        mockMvc.perform(as("DISPATCHER", get("/api/v1/webhooks/dlq"))).andExpect(status().isForbidden());
+        mockMvc.perform(as("DISPATCHER", get("/api/v1/webhooks/dlq/{dlqId}", dlqId))).andExpect(status().isForbidden());
 
         ArgumentCaptor<CallerContext> caller = ArgumentCaptor.forClass(CallerContext.class);
         verify(dlqReplayService).listDlqRecords(eq(null), eq(false), caller.capture());
@@ -112,41 +117,19 @@ class DlqReplayControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    @Test
-    @DisplayName("POST replay by the owner")
-    void testReplayRecord() throws Exception {
-        when(dlqReplayService.replayDlqRecord(eq(dlqId), any())).thenReturn(
-                new ReplayDlqResponse(dlqId, "SUCCESS", 200, "Webhook replayed and accepted", Instant.now()));
+    @ParameterizedTest
+    @ValueSource(strings = {"MERCHANT", "SYSTEM_ADMIN", "DISPATCHER"})
+    @DisplayName("legacy replay and replay-all are retired: 410 Gone, pointing at the failed-delivery API, nothing done")
+    void legacyReplayIsGone(String role) throws Exception {
+        mockMvc.perform(as(role, post("/api/v1/webhooks/dlq/{dlqId}/replay", dlqId)))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.status").value(410))
+                .andExpect(jsonPath("$.error").value("Gone"))
+                .andExpect(jsonPath("$.message").value(LegacyReplayRetiredException.MESSAGE));
+        mockMvc.perform(as(role, post("/api/v1/webhooks/dlq/replay-all")).param("merchantId", merchantId.toString()))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.message").value(LegacyReplayRetiredException.MESSAGE));
 
-        mockMvc.perform(as("MERCHANT", post("/api/v1/webhooks/dlq/{dlqId}/replay", dlqId)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("SUCCESS"));
-    }
-
-    @Test
-    @DisplayName("a refused replay (e.g. by a dispatcher) is a 403")
-    void forbiddenReplayIsMapped() throws Exception {
-        when(dlqReplayService.replayDlqRecord(eq(dlqId), any())).thenThrow(new ForbiddenException("Caller role is not permitted"));
-        when(dlqReplayService.replayAllUnreplayed(any(), any())).thenThrow(new ForbiddenException("Caller role is not permitted"));
-
-        mockMvc.perform(as("DISPATCHER", post("/api/v1/webhooks/dlq/{dlqId}/replay", dlqId)))
-                .andExpect(status().isForbidden());
-        mockMvc.perform(as("DISPATCHER", post("/api/v1/webhooks/dlq/replay-all")))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @DisplayName("POST replay-all passes the optional filter and caller")
-    void testReplayAll() throws Exception {
-        when(dlqReplayService.replayAllUnreplayed(any(), any())).thenReturn(List.of(
-                new ReplayDlqResponse(dlqId, "SUCCESS", 200, "Webhook replayed and accepted", Instant.now())));
-
-        mockMvc.perform(as("SYSTEM_ADMIN", post("/api/v1/webhooks/dlq/replay-all")).param("merchantId", merchantId.toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].status").value("SUCCESS"));
-
-        ArgumentCaptor<CallerContext> caller = ArgumentCaptor.forClass(CallerContext.class);
-        verify(dlqReplayService).replayAllUnreplayed(eq(merchantId), caller.capture());
-        assertThat(caller.getValue().role()).isEqualTo(UserRole.SYSTEM_ADMIN);
+        verifyNoInteractions(dlqReplayService);
     }
 }
