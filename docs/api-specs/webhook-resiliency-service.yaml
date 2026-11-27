@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: SwiftDrop Webhook Resiliency API
   description: |
-    Webhook subscriptions, exponential delivery retries, HMAC-SHA256 signatures, and failed-delivery replay APIs.
+    Webhook subscriptions, scheduled delivery retries, HMAC-SHA256 signatures, and failed-delivery replay APIs.
     The legacy dead-letter API (/api/v1/webhooks/dlq) is read-only history; its replay operations answer 410 Gone.
 
     Authentication and authorization: every operation except the health checks requires a Bearer JWT, verified by
@@ -51,6 +51,22 @@ info:
         valid    = abs(now_unix_seconds - int(timestampHeader)) <= 300
                    and signatureHeader starts with "sha256="
                    and constant_time_equals(expected, signatureHeader without "sha256=")
+
+    ## Delivery behaviour
+
+    - Events: `order.created`, and `parcel.status.changed` when the public status changes (never for a step
+      inside the same status). A status can move back, for example `OUT_FOR_DELIVERY` to `IN_TRANSIT` when the
+      courier brings the parcel back to the hub. Test pings are `webhook.test.ping`: one request, never retried,
+      never listed as a failed delivery.
+    - Answer with any 2xx within 5 seconds. No answer, a connection failure, 408, 425, 429 or 5xx is retried after
+      about 30 seconds, 2 minutes and 10 minutes (±20 %), 4 attempts in all; a `Retry-After` on 429 or 503 can
+      lengthen a wait up to 10 minutes. 3xx (redirects are not followed) and other 4xx stop at once. A delivery
+      that stops is listed under `/api/v1/webhooks/deliveries/failed`.
+    - A parcel's events are sent one at a time, oldest first, per endpoint. A replay, or an event received late,
+      can arrive after a newer one: compare `occurredAt` and keep the latest status.
+    - A replay is a new delivery of the same event: same `X-SwiftDrop-Event-Id`, new `X-SwiftDrop-Delivery-Id`,
+      attempts counted from 1. One replay per failed delivery can be active; a delivered replay cannot be repeated.
+    - A paused endpoint receives nothing; its events are kept and sent after it is activated again.
   version: v1.0.0
 servers:
   - url: /
@@ -170,6 +186,9 @@ paths:
     patch:
       tags: [WebhookSubscription]
       summary: Toggle active status for a webhook endpoint
+      description: >-
+        active=false pauses the endpoint: nothing is sent to it, and events that arrive meanwhile are kept and sent
+        after it is activated again (active=true).
       parameters:
         - name: endpointId
           in: path
@@ -268,7 +287,7 @@ paths:
     post:
       tags: [FailedDeliveries]
       operationId: replayAllFailedDeliveries
-      summary: Queue every failed delivery that has not been replayed
+      summary: Queue every failed delivery that was never replayed, or whose last replay failed too
       responses:
         "202":
           description: How many replays were queued

@@ -193,7 +193,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Toggle active status for a webhook endpoint */
+        /**
+         * Toggle active status for a webhook endpoint
+         * @description active=false pauses the endpoint: nothing is sent to it, and events that arrive meanwhile are kept and sent after it is activated again (active=true).
+         */
         patch: {
             parameters: {
                 query: {
@@ -337,7 +340,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Queue every failed delivery that has not been replayed */
+        /** Queue every failed delivery that was never replayed, or whose last replay failed too */
         post: operations["replayAllFailedDeliveries"];
         delete?: never;
         options?: never;

@@ -441,8 +441,8 @@ A quicker retry schedule is not configurable without recreating the container wi
 `WebhookDeliveryFlowIT` already runs retry and replay with 200 ms delays.
 
 **Replay ordering caveat.** A replay carries its original's `occurredAt`. Newer events of the same order have usually
-been delivered already, so the replayed (older) status arrives **after** them. The API guide currently says "Events of
-one parcel arrive in order", which a replay breaks.
+been delivered already, so the replayed (older) status arrives **after** them. Since R1 the merchant API guide says so
+and tells merchants to compare `occurredAt` and keep the latest status.
 
 ---
 
