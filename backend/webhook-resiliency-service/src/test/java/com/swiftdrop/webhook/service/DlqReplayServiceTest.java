@@ -20,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
@@ -204,12 +203,14 @@ class DlqReplayServiceTest {
     @Test
     @DisplayName("the service can no longer replay or send: its only dependency is the legacy record repository")
     void legacyServiceCannotSend() {
-        assertThat(Arrays.stream(DlqReplayService.class.getDeclaredFields())
-                .filter(field -> !Modifier.isStatic(field.getModifiers())).map(Field::getType))
-                .containsExactly(DeadLetterWebhookRecordRepository.class);
-        assertThat(Arrays.stream(DlqReplayService.class.getDeclaredMethods())
-                .filter(method -> Modifier.isPublic(method.getModifiers())).map(Method::getName))
-                .containsExactlyInAnyOrder("listDlqRecords", "getDlqRecord");
+        List<String> dependencies = Arrays.stream(DlqReplayService.class.getDeclaredFields())
+                .filter(field -> !Modifier.isStatic(field.getModifiers()))
+                .map(field -> field.getType().getName()).toList();
+        assertThat(dependencies).containsExactly(DeadLetterWebhookRecordRepository.class.getName());
+        List<String> operations = Arrays.stream(DlqReplayService.class.getDeclaredMethods())
+                .filter(method -> Modifier.isPublic(method.getModifiers()))
+                .map(Method::getName).toList();
+        assertThat(operations).containsExactlyInAnyOrder("listDlqRecords", "getDlqRecord");
     }
 
     @Test
