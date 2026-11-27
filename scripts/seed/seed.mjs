@@ -664,7 +664,7 @@ async function stageAssign() {
       const courier = options.find((o) => orderIds.every((id) => (o.fittingOrderIds || []).includes(id)));
       if (!courier) { count('shops no courier can take in one visit'); continue; }
       try {
-        await api('POST', `/api/v1/dispatch/shops/${merchantId}/assign`, { token: d.token, body: { courierId: courier.courierId } });
+        await api('POST', `/api/v1/dispatch/shops/${merchantId}/assign`, { token: d.token, body: { courierId: courier.courierId, orderIds } });
         count('shop visits assigned');
         count('shop parcels assigned', orderIds.length);
       } catch (e) {
