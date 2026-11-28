@@ -364,6 +364,8 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-swiftdrop}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme_rabbit}
+      # AES-256-GCM keyring for merchant signing secrets; no default on purpose (see .env.example).
+      WEBHOOK_SECRET_KEYRING: ${WEBHOOK_SECRET_KEYRING:-}
     depends_on:
       webhook-postgres:
         condition: service_healthy
