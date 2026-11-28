@@ -5,7 +5,7 @@ import { BrandMark, Button, Card, DensityProvider, PublicHeader } from '@/design
 import { TrackingSearchForm } from '@/features/public-tracking/components/TrackingSearchForm';
 import { SkyBackdrop } from '@/features/auth/components/SkyBackdrop';
 import { PAYMENT_NOTE } from '@/features/customer/components/orders/orderDisplay';
-import { roleHome } from '@/app/roleHome';
+import { homeFor } from '@/app/roleHome';
 import { useAuthStore } from '@/store/useAuthStore';
 
 const steps = [
@@ -79,8 +79,9 @@ export function LandingPage() {
   const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
   const role = useAuthStore((state) => state.role);
+  const backendRole = useAuthStore((state) => state.user?.role);
   const signedIn = Boolean(token);
-  const dashboard = roleHome[role];
+  const dashboard = homeFor(role, backendRole);
 
   const track = (trackingNumber: string) =>
     navigate(`/track/${encodeURIComponent(trackingNumber)}`);

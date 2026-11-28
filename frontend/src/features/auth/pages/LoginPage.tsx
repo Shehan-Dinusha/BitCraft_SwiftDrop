@@ -4,7 +4,7 @@ import { ChevronRight, Lock, LogIn, Mail, ShieldCheck, Store, User, UserPlus } f
 import { Alert } from '@/design-system/components/Alert/Alert';
 import { Button } from '@/design-system/primitives/Button';
 import { Input } from '@/design-system/primitives/Input';
-import { roleHome } from '@/app/roleHome';
+import { homeFor, roleHome } from '@/app/roleHome';
 import {
   completeMfaLogin,
   isMfaChallenge,
@@ -83,7 +83,7 @@ export function LoginPage() {
   function signedIn(tokens: AuthTokenResponse) {
     setAuth(tokens);
     // Redirect to the page the user tried to visit, or their role home.
-    navigate(from ?? roleHome[personaForRole(tokens.role)], { replace: true });
+    navigate(from ?? homeFor(personaForRole(tokens.role), tokens.role), { replace: true });
   }
 
   async function onSubmitCode(event: FormEvent<HTMLFormElement>) {

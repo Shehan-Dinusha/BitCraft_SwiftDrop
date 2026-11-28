@@ -267,7 +267,7 @@ export const routes: RouteObject[] = [
       {
         path: '/ops',
         element: (
-          <RoleGuard roles={['ADMIN_OPS']}>
+          <RoleGuard roles={['ADMIN_OPS']} dispatcherOnly>
             <FleetControlTowerPage />
           </RoleGuard>
         )
@@ -283,7 +283,7 @@ export const routes: RouteObject[] = [
       {
         path: '/ops/dispatch',
         element: (
-          <RoleGuard roles={['ADMIN_OPS']}>
+          <RoleGuard roles={['ADMIN_OPS']} dispatcherOnly>
             <DispatchBoardPage />
           </RoleGuard>
         )
@@ -299,7 +299,7 @@ export const routes: RouteObject[] = [
       {
         path: '/ops/merchants',
         element: (
-          <RoleGuard roles={['ADMIN_OPS']}>
+          <RoleGuard roles={['ADMIN_OPS']} dispatcherOnly>
             <MerchantApprovalsPage />
           </RoleGuard>
         )
@@ -323,7 +323,7 @@ export const routes: RouteObject[] = [
       {
         path: '/ops/couriers',
         element: (
-          <RoleGuard roles={['ADMIN_OPS']}>
+          <RoleGuard roles={['ADMIN_OPS']} dispatcherOnly>
             <CourierManagementPage />
           </RoleGuard>
         )

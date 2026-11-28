@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  Store,
   UserCheck,
   Users,
   UserX
@@ -21,6 +22,7 @@ import {
   type UserRole,
   type UserStatus
 } from '@/services/api/authApi';
+import { merchantApi, type MerchantApprovalResponse } from '@/services/api/merchantApi';
 import { Button } from '@/design-system/primitives/Button';
 import { Modal } from '@/design-system/primitives/Modal';
 import { SurfaceCard } from '@/design-system/components/SurfaceCard/SurfaceCard';
@@ -58,6 +60,26 @@ const ACTIONS: Record<AccountActionStatus, { label: string; past: string; descri
       'This account will lose access to SwiftDrop and its active sessions will be revoked. You can reactivate it later.'
   }
 };
+type ShopAction = 'suspend' | 'reactivate';
+const SHOP_ACTIONS: Record<ShopAction, { label: string; past: string; description: string }> = {
+  suspend: {
+    label: 'Suspend shop',
+    past: 'suspended',
+    description:
+      "The shop's API keys stop working and it cannot upload orders until reactivated. The owner can still sign in."
+  },
+  reactivate: {
+    label: 'Reactivate shop',
+    past: 'reactivated',
+    description: 'The shop can upload orders and use its API keys again.'
+  }
+};
+type Pending =
+  | { kind: 'account'; user: UserProfileItem; status: AccountActionStatus }
+  | { kind: 'shop'; user: UserProfileItem; shop: MerchantApprovalResponse; action: ShopAction };
+function pendingCopy(pending: Pending) {
+  return pending.kind === 'account' ? ACTIONS[pending.status] : SHOP_ACTIONS[pending.action];
+}
 const PAGE_SIZE = 20;
 function errorMessage(error: unknown) {
   return axios.isAxiosError(error)
@@ -72,7 +94,7 @@ export function UserManagementPage() {
   const [role, setRole] = useState<UserRole | ''>('');
   const [status, setStatus] = useState<UserStatus | ''>('');
   const [page, setPage] = useState(0);
-  const [pending, setPending] = useState<{ user: UserProfileItem; status: AccountActionStatus }>();
+  const [pending, setPending] = useState<Pending>();
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState('');
   const [success, setSuccess] = useState('');
@@ -95,6 +117,18 @@ export function UserManagementPage() {
       }),
     retry: false
   });
+  // Merchant shops by owner, so a merchant's row can suspend or reactivate the shop itself (its API
+  // keys and order uploads), which is separate from the owner's account status.
+  const shopsQuery = useQuery({
+    queryKey: ['admin-merchant-shops'],
+    queryFn: () => merchantApi.listApplications(),
+    retry: false
+  });
+  const shopsByOwner = new Map(
+    (shopsQuery.data ?? [])
+      .filter((shop) => shop.ownerUserId && (shop.status === 'APPROVED' || shop.status === 'SUSPENDED'))
+      .map((shop) => [shop.ownerUserId, shop])
+  );
   const users = query.data?.content ?? [];
   const total = query.data?.totalElements ?? 0;
   const pages = Math.max(1, query.data?.totalPages ?? 0);
@@ -108,20 +142,30 @@ export function UserManagementPage() {
     setStatus('');
     setPage(0);
   }
-  function requestAction(user: UserProfileItem, next: AccountActionStatus) {
+  function requestAction(next: Pending) {
     setActionError('');
     setSuccess('');
-    setPending({ user, status: next });
+    setPending(next);
   }
   async function confirmAction() {
     if (!pending?.user.id || saving) return;
     setSaving(true);
     setActionError('');
     try {
-      await updateUserStatus(pending.user.id, pending.status);
-      setSuccess(`${pending.user.username} was ${ACTIONS[pending.status].past} successfully.`);
-      setPending(undefined);
-      await client.invalidateQueries({ queryKey: ['admin-users'] });
+      if (pending.kind === 'account') {
+        await updateUserStatus(pending.user.id, pending.status);
+        setSuccess(`${pending.user.username} was ${ACTIONS[pending.status].past} successfully.`);
+        setPending(undefined);
+        await client.invalidateQueries({ queryKey: ['admin-users'] });
+      } else if (pending.shop.merchantId) {
+        if (pending.action === 'suspend') await merchantApi.suspend(pending.shop.merchantId);
+        else await merchantApi.reactivate(pending.shop.merchantId);
+        setSuccess(
+          `${pending.shop.businessName ?? 'The shop'} was ${SHOP_ACTIONS[pending.action].past} successfully.`
+        );
+        setPending(undefined);
+        await client.invalidateQueries({ queryKey: ['admin-merchant-shops'] });
+      }
     } catch (error) {
       setActionError(errorMessage(error));
     } finally {
@@ -317,6 +361,8 @@ export function UserManagementPage() {
                 {users.map((user) => {
                   const accountStatus = user.status ?? 'ACTIVE';
                   const self = user.id === currentUserId;
+                  const shop =
+                    user.role === 'MERCHANT' && user.id ? shopsByOwner.get(user.id) : undefined;
                   return (
                     <tr key={user.id} className="transition-colors hover:bg-canvas">
                       <td className="px-4 py-4">
@@ -345,6 +391,17 @@ export function UserManagementPage() {
                           <LockKeyhole size={12} className="text-muted" />
                           {user.role ? ROLE_LABELS[user.role] : 'Unassigned'}
                         </span>
+                        {shop && (
+                          <p className="mt-1.5 flex items-center gap-1 text-xs text-secondary">
+                            <Store size={12} className="text-muted" />
+                            {shop.businessName}
+                            {shop.status === 'SUSPENDED' && (
+                              <span className="ml-1 rounded-full bg-status-warning-bg px-1.5 py-0.5 text-[10px] font-medium text-status-warning-fg">
+                                Shop suspended
+                              </span>
+                            )}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-4">
                         <span
@@ -363,16 +420,35 @@ export function UserManagementPage() {
                             <span className="text-xs text-muted">Current session</span>
                           ) : (
                             <>
+                              {shop && (
+                                <Button
+                                  variant="outline"
+                                  density="compact"
+                                  disabled={saving || !shop.merchantId}
+                                  leftIcon={<Store />}
+                                  onClick={() =>
+                                    requestAction({
+                                      kind: 'shop',
+                                      user,
+                                      shop,
+                                      action: shop.status === 'APPROVED' ? 'suspend' : 'reactivate'
+                                    })
+                                  }
+                                >
+                                  {shop.status === 'APPROVED' ? 'Suspend shop' : 'Reactivate shop'}
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 density="compact"
                                 disabled={saving || !user.id}
                                 leftIcon={accountStatus === 'ACTIVE' ? <UserX /> : <UserCheck />}
                                 onClick={() =>
-                                  requestAction(
+                                  requestAction({
+                                    kind: 'account',
                                     user,
-                                    accountStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
-                                  )
+                                    status: accountStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+                                  })
                                 }
                               >
                                 {accountStatus === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
@@ -428,8 +504,14 @@ export function UserManagementPage() {
             setActionError('');
           }
         }}
-        title={pending ? `${ACTIONS[pending.status].label} account?` : 'Account status'}
-        description={pending ? ACTIONS[pending.status].description : undefined}
+        title={
+          pending
+            ? pending.kind === 'account'
+              ? `${ACTIONS[pending.status].label} account?`
+              : `${SHOP_ACTIONS[pending.action].label}?`
+            : 'Account status'
+        }
+        description={pending ? pendingCopy(pending).description : undefined}
         footer={
           <div className="flex justify-end gap-2">
             <Button
@@ -444,13 +526,22 @@ export function UserManagementPage() {
               Cancel
             </Button>
             <Button
-              variant={pending?.status === 'ACTIVE' ? 'primary' : 'destructive'}
+              variant={
+                (pending?.kind === 'account' && pending.status === 'ACTIVE') ||
+                (pending?.kind === 'shop' && pending.action === 'reactivate')
+                  ? 'primary'
+                  : 'destructive'
+              }
               density="compact"
               loading={saving}
               loadingLabel="Updating…"
               onClick={() => void confirmAction()}
             >
-              {pending ? `${ACTIONS[pending.status].label} account` : 'Confirm'}
+              {pending
+                ? pending.kind === 'account'
+                  ? `${ACTIONS[pending.status].label} account`
+                  : SHOP_ACTIONS[pending.action].label
+                : 'Confirm'}
             </Button>
           </div>
         }
@@ -460,10 +551,17 @@ export function UserManagementPage() {
             <div className="rounded-lg border border-border-subtle bg-canvas p-3">
               <p className="font-semibold">{pending.user.username}</p>
               <p className="mt-1 text-sm text-secondary">{pending.user.email}</p>
-              <p className="mt-2 text-xs text-secondary">
-                {pending.user.role ? ROLE_LABELS[pending.user.role] : 'Unassigned'} ·{' '}
-                {STATUS_LABELS[pending.user.status ?? 'ACTIVE']} → {STATUS_LABELS[pending.status]}
-              </p>
+              {pending.kind === 'account' ? (
+                <p className="mt-2 text-xs text-secondary">
+                  {pending.user.role ? ROLE_LABELS[pending.user.role] : 'Unassigned'} ·{' '}
+                  {STATUS_LABELS[pending.user.status ?? 'ACTIVE']} → {STATUS_LABELS[pending.status]}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-secondary">
+                  Shop: {pending.shop.businessName} ·{' '}
+                  {pending.action === 'suspend' ? 'Approved → Suspended' : 'Suspended → Approved'}
+                </p>
+              )}
             </div>
             {actionError && (
               <p role="alert" className="text-sm text-status-danger">

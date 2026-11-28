@@ -215,7 +215,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Approve a pending merchant (DISPATCHER of its district, SYSTEM_ADMIN)
+         * Approve a pending merchant (DISPATCHER of its district)
          * @description The owner is emailed; IAM links the owner's account to the merchant (merchant.approved).
          */
         post: {
@@ -284,7 +284,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reject a pending merchant with a reason (DISPATCHER of its district, SYSTEM_ADMIN)
+         * Reject a pending merchant with a reason (DISPATCHER of its district)
          * @description The owner is emailed the reason and can correct the application and resubmit it.
          */
         post: {

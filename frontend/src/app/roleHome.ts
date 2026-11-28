@@ -7,3 +7,16 @@ export const roleHome: Record<PersonaRole, string> = {
   MERCHANT: '/merchant',
   ADMIN_OPS: '/ops'
 };
+
+/**
+ * A system admin's home. The admin oversees the platform (analytics, users, cash, calendar, prices)
+ * and does not do a dispatcher's daily work, so the control tower is not theirs.
+ */
+export const SYSTEM_ADMIN_HOME = '/ops/analytics';
+
+/** Home route for a persona, using the backend role to tell a system admin from a dispatcher. */
+export function homeFor(persona: PersonaRole, backendRole?: string | null): string {
+  return persona === 'ADMIN_OPS' && backendRole === 'SYSTEM_ADMIN'
+    ? SYSTEM_ADMIN_HOME
+    : roleHome[persona];
+}

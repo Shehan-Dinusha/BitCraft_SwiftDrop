@@ -1263,12 +1263,11 @@ export interface paths {
         };
         /**
          * List couriers
-         * @description Requires DISPATCHER or SYSTEM_ADMIN. A dispatcher sees the couriers of their own district (the district parameter is ignored); a SYSTEM_ADMIN sees every district or the one given.
+         * @description Requires DISPATCHER. A dispatcher sees the couriers of their own district.
          */
         get: {
             parameters: {
                 query?: {
-                    district?: components["schemas"]["SriLankanDistrict"];
                     status?: components["schemas"]["UserStatus"];
                     search?: string;
                     page?: number;
@@ -1289,7 +1288,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponsePagedUsers"];
                     };
                 };
-                /** @description DISPATCHER or SYSTEM_ADMIN required */
+                /** @description DISPATCHER required */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1303,7 +1302,7 @@ export interface paths {
         put?: never;
         /**
          * Register a courier and email them an invite
-         * @description Requires DISPATCHER or SYSTEM_ADMIN. Creates the COURIER account in the dispatcher's own district without a password. The courier receives an email link (valid 72 hours) where they choose a password and add their vehicle.
+         * @description Requires DISPATCHER. Creates the COURIER account in the dispatcher's own district without a password. The courier receives an email link (valid 72 hours) where they choose a password and add their vehicle.
          */
         post: {
             parameters: {
@@ -1336,7 +1335,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiErrorResponse"];
                     };
                 };
-                /** @description DISPATCHER or SYSTEM_ADMIN required */
+                /** @description DISPATCHER required */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1371,7 +1370,7 @@ export interface paths {
         };
         /**
          * Get a courier
-         * @description Requires DISPATCHER or SYSTEM_ADMIN. 403 for a courier of another district.
+         * @description Requires DISPATCHER. 403 for a courier of another district.
          */
         get: {
             parameters: {
@@ -1901,7 +1900,7 @@ export interface components {
             /** Format: uuid */
             merchantId?: string | null;
         };
-        /** @description Registers a courier. No password is set; the courier receives an email invite. */
+        /** @description Registers a courier in the dispatcher's own district. No password is set; the courier receives an email invite. */
         CreateCourierRequest: {
             /** @example kasun.colombo */
             username: string;
@@ -1911,7 +1910,6 @@ export interface components {
             phone: string;
             firstName: string;
             lastName: string;
-            district?: components["schemas"]["SriLankanDistrict"];
         };
         InviteTokenRequest: {
             /** @description Invite token from the emailed link (the part after */

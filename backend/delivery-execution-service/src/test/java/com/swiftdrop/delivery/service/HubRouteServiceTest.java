@@ -154,9 +154,9 @@ class HubRouteServiceTest {
                 .isInstanceOf(ForbiddenException.class).hasMessageContaining("accept");
         verify(repository, never()).save(any());
 
-        stubSave();
         CallerContext admin = new CallerContext(UUID.randomUUID(), UserRole.SYSTEM_ADMIN, null, null);
-        service.transition(session.getDeliveryId(), to(DeliveryState.AT_DESTINATION_HUB), admin);
-        assertThat(session.getCurrentState()).isEqualTo(DeliveryState.AT_DESTINATION_HUB);
+        assertThatThrownBy(() -> service.transition(session.getDeliveryId(), to(DeliveryState.AT_DESTINATION_HUB),
+                admin)).isInstanceOf(ForbiddenException.class);
+        verify(repository, never()).save(any());
     }
 }

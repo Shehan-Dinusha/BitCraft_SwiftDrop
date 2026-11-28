@@ -4,12 +4,7 @@ import { UserCheck } from 'lucide-react';
 import { Button, StatusBanner } from '@/design-system';
 import { Modal } from '@/design-system/primitives/Modal';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
-import {
-  dispatchApi,
-  type DispatchAssignmentResponse,
-  type SriLankanDistrict
-} from '@/services/api/dispatchApi';
-import { districtLabel } from '@/features/profile/profileFormat';
+import { dispatchApi, type DispatchAssignmentResponse } from '@/services/api/dispatchApi';
 import { vehicleLabel } from '@/utils/vehicles';
 import { cn } from '@/utils/cn';
 import { amount, onBreakUntil } from './courierFit';
@@ -20,13 +15,10 @@ import { formatAge, type ShopGroup } from './dispatchQueues';
 export function ShopPickups({
   shops,
   now,
-  showDistrict,
   onAssigned
 }: {
   shops: ShopGroup[];
   now: number;
-  /** An admin looking at every district. */
-  showDistrict: boolean;
   onAssigned: (message: string) => void;
 }) {
   const [assigning, setAssigning] = useState<ShopGroup | null>(null);
@@ -36,21 +28,11 @@ export function ShopPickups({
       <h2 className="px-3 pb-2 text-h3 text-primary">Shops</h2>
       <DispatchTable
         label="Shop pickups"
-        headers={[
-          'Shop',
-          ...(showDistrict ? ['District'] : []),
-          'Ready',
-          'Weight',
-          'Waiting',
-          'Action'
-        ]}
+        headers={['Shop', 'Ready', 'Weight', 'Waiting', 'Action']}
       >
         {shops.map((shop) => (
           <tr key={shop.key} className="hover:bg-canvas">
             <td className={`${CELL} font-semibold text-primary`}>{shop.name}</td>
-            {showDistrict ? (
-              <td className={`${CELL} text-secondary`}>{districtLabel(shop.district)}</td>
-            ) : null}
             <td className={CELL}>
               <span className="flex flex-wrap items-center gap-2">
                 {shop.ready.length > 0 ? (
@@ -112,7 +94,7 @@ function AssignShop({
   const [error, setError] = useState('');
   const couriers = useQuery({
     queryKey: ['shop-couriers', shop.key],
-    queryFn: () => dispatchApi.getShopCouriers(shop.merchantId, shop.district as SriLankanDistrict),
+    queryFn: () => dispatchApi.getShopCouriers(shop.merchantId),
     staleTime: 0,
     gcTime: 0,
     retry: false

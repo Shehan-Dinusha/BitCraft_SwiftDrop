@@ -32,7 +32,7 @@ export interface paths {
         put?: never;
         /**
          * Assign a courier to an unassigned order
-         * @description Dispatcher confirms a courier for an order in the unassigned queue. An order that already has a courier is never replaced by this operation; use /api/v1/dispatch/reassign. Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description Dispatcher confirms a courier for an order in the unassigned queue. An order that already has a courier is never replaced by this operation; use /api/v1/dispatch/reassign. Requires the DISPATCHER role.
          */
         post: operations["manualAssign"];
         delete?: never;
@@ -52,7 +52,7 @@ export interface paths {
         put?: never;
         /**
          * Reassign an order to a different courier
-         * @description Explicitly moves an assigned order to another courier. The request must name the courier currently assigned, so a reassignment based on a stale view is rejected instead of overwriting another dispatcher's decision. Not allowed once dispatch has recorded the parcel as picked up. Publishes dispatch.courier.assigned only; the public status is unchanged. Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description Explicitly moves an assigned order to another courier. The request must name the courier currently assigned, so a reassignment based on a stale view is rejected instead of overwriting another dispatcher's decision. Not allowed once dispatch has recorded the parcel as picked up. Publishes dispatch.courier.assigned only; the public status is unchanged. Requires the DISPATCHER role.
          */
         post: operations["reassign"];
         delete?: never;
@@ -70,7 +70,7 @@ export interface paths {
         };
         /**
          * List dispatch assignments with pagination and optional status filter
-         * @description A DISPATCHER gets the orders picked up in their own district; a SYSTEM_ADMIN gets every district or the one given.
+         * @description A DISPATCHER gets the orders picked up in their own district.
          */
         get: operations["getAssignments"];
         put?: never;
@@ -90,7 +90,7 @@ export interface paths {
         };
         /**
          * Get dispatch assignment by UUID
-         * @description A COURIER sees only an assignment they currently hold; DISPATCHER and SYSTEM_ADMIN see any, including UNASSIGNED orders.
+         * @description A COURIER sees only an assignment they currently hold; a DISPATCHER sees orders picked up in or bound for their district, including UNASSIGNED ones.
          */
         get: operations["getAssignmentById"];
         put?: never;
@@ -110,7 +110,7 @@ export interface paths {
         };
         /**
          * Get dispatch assignment by order UUID
-         * @description A COURIER sees only an assignment they currently hold; DISPATCHER and SYSTEM_ADMIN see any, including UNASSIGNED orders.
+         * @description A COURIER sees only an assignment they currently hold; a DISPATCHER sees orders picked up in or bound for their district, including UNASSIGNED ones.
          */
         get: operations["getAssignmentByOrderId"];
         put?: never;
@@ -130,7 +130,7 @@ export interface paths {
         };
         /**
          * List unassigned orders pending dispatch
-         * @description A DISPATCHER gets their own district's queue; a SYSTEM_ADMIN gets every district or the one given.
+         * @description A DISPATCHER gets their own district's queue.
          */
         get: operations["getUnassignedParcels"];
         put?: never;
@@ -150,7 +150,7 @@ export interface paths {
         };
         /**
          * List parcels handed in at the district's hub and waiting to be marked Outbound
-         * @description A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise). Mark one Outbound with the delivery transition AT_ORIGIN_HUB -> IN_TRANSIT.
+         * @description A DISPATCHER gets their own district. Mark one Outbound with the delivery transition AT_ORIGIN_HUB -> IN_TRANSIT.
          */
         get: operations["getReadyToSend"];
         put?: never;
@@ -170,7 +170,7 @@ export interface paths {
         };
         /**
          * List failed deliveries a district deals with
-         * @description RETURN_TO_HUB: a courier brings it back. HELD_AT_HUB: try again (delivery transition HELD_AT_HUB -> AT_DESTINATION_HUB, while canRetry) or return it (-> RETURN_IN_TRANSIT, or -> RETURN_AT_HUB when the sender is in the same district). RETURN_OUTBOUND: accept it at the sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+         * @description RETURN_TO_HUB: a courier brings it back. HELD_AT_HUB: try again (delivery transition HELD_AT_HUB -> AT_DESTINATION_HUB, while canRetry) or return it (-> RETURN_IN_TRANSIT, or -> RETURN_AT_HUB when the sender is in the same district). RETURN_OUTBOUND: accept it at the sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district.
          */
         get: operations["getReturns"];
         put?: never;
@@ -190,7 +190,7 @@ export interface paths {
         };
         /**
          * List parcels this district marked Outbound that the drop-off hub has not accepted yet
-         * @description Read-only: the drop-off district accepts them, and they then leave this list. A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+         * @description Read-only: the drop-off district accepts them, and they then leave this list. A DISPATCHER gets their own district.
          */
         get: operations["getSent"];
         put?: never;
@@ -210,7 +210,7 @@ export interface paths {
         };
         /**
          * List open orders coming into a district from another one
-         * @description Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+         * @description Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own district.
          */
         get: operations["getIncoming"];
         put?: never;
@@ -230,7 +230,7 @@ export interface paths {
         };
         /**
          * Suggest available couriers for an order
-         * @description Returns the couriers on shift in the district handling the order (a DISPATCHER only for orders of their district). Those who can take it come first (eligible true): the smallest vehicle the parcel fits, then the emptiest by parcels, weight or volume, then the most recent heartbeat, then courier ID. The rest carry an ineligibleReason. For an ASSIGNED or REASSIGNED order the courier currently holding it is left out. An order without a recorded size is limited by the parcel count only. Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description Returns the couriers on shift in the district handling the order (a DISPATCHER only for orders of their district). Those who can take it come first (eligible true): the smallest vehicle the parcel fits, then the emptiest by parcels, weight or volume, then the most recent heartbeat, then courier ID. The rest carry an ineligibleReason. For an ASSIGNED or REASSIGNED order the courier currently holding it is left out. An order without a recorded size is limited by the parcel count only. Requires the DISPATCHER role.
          */
         get: operations["getCourierSuggestions"];
         put?: never;
@@ -250,7 +250,7 @@ export interface paths {
         };
         /**
          * List active assignments for a courier
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description A COURIER may use only their own courier ID (their user ID); a DISPATCHER the couriers of their district.
          */
         get: operations["getCourierAssignments"];
         put?: never;
@@ -286,8 +286,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List couriers with optional district and shift status filters
-         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * List the couriers of the district with an optional shift status filter
+         * @description Requires the DISPATCHER role.
          */
         get: operations["getCouriers"];
         put?: never;
@@ -307,7 +307,7 @@ export interface paths {
         };
         /**
          * List current courier workloads
-         * @description Requires the DISPATCHER or SYSTEM_ADMIN role.
+         * @description Requires the DISPATCHER role.
          */
         get: operations["getWorkloads"];
         put?: never;
@@ -327,7 +327,7 @@ export interface paths {
         };
         /**
          * Get courier shift status and live metrics
-         * @description A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description A COURIER may use only their own courier ID (their user ID); a DISPATCHER the couriers of their district.
          */
         get: operations["getCourier"];
         put?: never;
@@ -371,7 +371,7 @@ export interface paths {
         };
         /**
          * List courier vehicles
-         * @description A DISPATCHER sees their own district (the district parameter is ignored); a SYSTEM_ADMIN sees every district or the one given.
+         * @description A DISPATCHER sees their own district.
          */
         get: operations["listCourierProfiles"];
         put?: never;
@@ -391,7 +391,7 @@ export interface paths {
         };
         get?: never;
         /**
-         * Update a courier's vehicle (DISPATCHER, SYSTEM_ADMIN)
+         * Update a courier's vehicle (DISPATCHER)
          * @description A DISPATCHER may change couriers of their own district only. Without maxCapacity, a changed vehicle type resets the capacity to the new type's default. The courier's shift picks up the new vehicle type and capacity straight away.
          */
         put: operations["updateCourierProfile"];
@@ -433,7 +433,7 @@ export interface paths {
         put?: never;
         /**
          * Start or register courier shift
-         * @description A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available. A shift starts only on a working day (Monday to Saturday, not a listed holiday) from 7:30 until 17:00 Sri Lanka time; otherwise 409 Shift Conflict says when the next working day is. A shift started after 9:00 is marked startedLate. Starting a shift that is already running returns it unchanged.
+         * @description A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their district. The shift starts in the courier's home district. The vehicle type and parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier Not Available. A shift starts only on a working day (a working weekday the SYSTEM_ADMIN set, not a listed holiday) from check-in time until closing (standard 7:30 until 17:00, Sri Lanka time); otherwise 409 Shift Conflict says when the next working day is. A shift started after the late-start time (standard 9:00) is marked startedLate. Starting a shift that is already running returns it unchanged.
          */
         post: operations["startShift"];
         delete?: never;
@@ -453,7 +453,7 @@ export interface paths {
         put?: never;
         /**
          * End courier shift
-         * @description A COURIER must have handed over all their cash first (409 Shift Conflict otherwise). A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description A COURIER must have handed over all their cash first (409 Shift Conflict otherwise). A COURIER may use only their own courier ID (their user ID); a DISPATCHER the couriers of their district.
          */
         post: operations["endShift"];
         delete?: never;
@@ -473,7 +473,7 @@ export interface paths {
         put?: never;
         /**
          * Leave the hub on the run
-         * @description Refused while parcels waiting at the hub for the courier are not loaded, while on break, or off shift. Afterwards hub parcels go only to couriers still at the hub, and this courier gets only pickups, until 15:00. Leaving again changes nothing. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description Refused while parcels waiting at the hub for the courier are not loaded, while on break, or off shift. Afterwards hub parcels go only to couriers still at the hub, and this courier gets only pickups, until 15:00. Leaving again changes nothing. A COURIER may use only their own courier ID; a DISPATCHER the couriers of their district.
          */
         post: operations["startRun"];
         delete?: never;
@@ -493,7 +493,7 @@ export interface paths {
         put?: never;
         /**
          * Back at the hub
-         * @description Ends the courier's run: they can hand in what they carry and load again, and hub parcels can be given to them again. Not on a run, nothing changes. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description Ends the courier's run: they can hand in what they carry and load again, and hub parcels can be given to them again. Not on a run, nothing changes. A COURIER may use only their own courier ID; a DISPATCHER the couriers of their district.
          */
         post: operations["backAtHub"];
         delete?: never;
@@ -512,7 +512,7 @@ export interface paths {
         get?: never;
         /**
          * Start or end the lunch break
-         * @description ON_BREAK starts the one lunch break of the shift (started between 12:00 and 14:30 Sri Lanka time, up to 45 minutes); AVAILABLE ends it, and the courier becomes BUSY again if every parcel place is taken. OFFLINE and BUSY are refused with 409 Shift Conflict: a shift ends through End shift, which checks parcels and cash, and BUSY follows the parcels held. A courier on break keeps their parcels and can be given more. A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+         * @description ON_BREAK starts the one lunch break of the shift (started between 12:00 and 14:30 Sri Lanka time, up to 45 minutes); AVAILABLE ends it, and the courier becomes BUSY again if every parcel place is taken. OFFLINE and BUSY are refused with 409 Shift Conflict: a shift ends through End shift, which checks parcels and cash, and BUSY follows the parcels held. A courier on break keeps their parcels and can be given more. A COURIER may use only their own courier ID (their user ID); a DISPATCHER the couriers of their district.
          */
         put: operations["updateShiftStatus"];
         post?: never;
@@ -531,12 +531,36 @@ export interface paths {
         };
         /**
          * Today's working day
-         * @description Whether today is open, the hours, the lunch break and the coming holidays, in Sri Lanka time. Couriers work Monday to Saturday, 8:00 to 17:00; Sundays and listed holidays are closed. For COURIER, DISPATCHER and SYSTEM_ADMIN.
+         * @description Whether today is open, the hours, the lunch break and the coming holidays, in Sri Lanka time, as the SYSTEM_ADMIN set them (standard: Monday to Saturday, 8:00 to 17:00). Weekdays outside the working days and listed holidays are closed. For COURIER, DISPATCHER and SYSTEM_ADMIN.
          */
         get: operations["getWorkingDay"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch/calendar/hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change the working hours
+         * @description The working days, hours, lunch break and cut-offs couriers work to. They apply at once: shift starts, breaks, late starts, pickups given out and the delivery day promised at booking. SYSTEM_ADMIN only. Returns today's working day.
+         */
+        put: operations["updateWorkingHours"];
+        post?: never;
+        /**
+         * Restore the standard working hours
+         * @description Monday to Saturday, 8:00 to 17:00, check-in from 7:30 (late after 9:00), lunch of 45 minutes started between 12:00 and 14:30, pickups until 15:00, Same day until 11:00. SYSTEM_ADMIN only.
+         */
+        delete: operations["resetWorkingHours"];
         options?: never;
         head?: never;
         patch?: never;
@@ -553,7 +577,7 @@ export interface paths {
         put?: never;
         /**
          * Close a holiday
-         * @description Nobody works that day: shifts cannot start. Today or later, and not a Sunday (always closed). SYSTEM_ADMIN only. Returns the holidays from today on.
+         * @description Nobody works that day: shifts cannot start. Today or later, and a working weekday (the others are always closed). SYSTEM_ADMIN only. Returns the holidays from today on.
          */
         post: operations["addClosedDay"];
         delete?: never;
@@ -591,7 +615,7 @@ export interface paths {
         };
         /**
          * Couriers on shift and which of the shop's ready parcels each has room for
-         * @description A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN must give it.
+         * @description A DISPATCHER gets their own district.
          */
         get: operations["getShopCouriers"];
         put?: never;
@@ -918,18 +942,25 @@ export interface components {
             date: string;
             /** @description Whether today is a working day. */
             open: boolean;
-            /** @description Why today is closed, "Sunday" or the holiday's name. */
+            /** @description Why today is closed, the weekday's name (such as "Sunday") or the holiday's name. */
             closedReason?: string | null;
             /** Format: date */
             nextWorkingDay: string;
             /** @description Whether a courier can start a shift right now. */
             shiftCanStart: boolean;
+            /** @description The weekdays couriers work; the others are closed every week. */
+            workingDays: components["schemas"]["DayOfWeek"][];
             /** @example 08:00 */
             opensAt: string;
             /** @example 17:00 */
             closesAt: string;
             /** @example 07:30 */
             shiftFrom: string;
+            /**
+             * @description A shift started after this shows as a late start.
+             * @example 09:00
+             */
+            lateAfter: string;
             /** @example 12:00 */
             breakFrom: string;
             /** @example 14:30 */
@@ -941,6 +972,11 @@ export interface components {
              * @example 15:00
              */
             pickupCutoff: string;
+            /**
+             * @description Same day parcels are booked before this time.
+             * @example 11:00
+             */
+            sameDayCutoff: string;
             /** @description Listed holidays from today on. */
             closedDays: components["schemas"]["ClosedDayResponse"][];
         };
@@ -950,10 +986,52 @@ export interface components {
             /** @example Unduvap Poya Day */
             name: string;
         };
+        /** @enum {string} */
+        DayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
+        /** @description The courier working hours, in Sri Lanka time ("HH:mm"). The day must close by 20:00 and check-in may open from 7:00 up to opening; late-after, the lunch window and both cut-offs must be within working hours. */
+        WorkingHoursRequest: {
+            workingDays: components["schemas"]["DayOfWeek"][];
+            /** @example 08:00 */
+            opensAt: string;
+            /** @example 17:00 */
+            closesAt: string;
+            /**
+             * @description Earliest check-in.
+             * @example 07:30
+             */
+            shiftFrom: string;
+            /**
+             * @description A shift started after this shows as late.
+             * @example 09:00
+             */
+            lateAfter: string;
+            /**
+             * @description Lunch can start from.
+             * @example 12:00
+             */
+            breakFrom: string;
+            /**
+             * @description Lunch can start until.
+             * @example 14:30
+             */
+            breakUntil: string;
+            /** @example 45 */
+            breakMinutes: number;
+            /**
+             * @description New pickups are given out until this time.
+             * @example 15:00
+             */
+            pickupCutoff: string;
+            /**
+             * @description Same day parcels are booked before this time.
+             * @example 11:00
+             */
+            sameDayCutoff: string;
+        };
         ClosedDayRequest: {
             /**
              * Format: date
-             * @description Today or later, and not a Sunday.
+             * @description Today or later, and a working weekday.
              */
             day: string;
             /** @example Unduvap Poya Day */
@@ -1153,7 +1231,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1221,7 +1299,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1251,8 +1329,6 @@ export interface operations {
     getAssignments: {
         parameters: {
             query?: {
-                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
-                district?: components["schemas"]["SriLankanDistrict"];
                 status?: components["schemas"]["AssignmentStatus"];
                 page?: number;
                 size?: number;
@@ -1281,7 +1357,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1321,7 +1397,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier who does not hold this assignment (including UNASSIGNED orders) */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier who does not hold this assignment (including UNASSIGNED orders) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1368,7 +1444,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier who does not hold this assignment (including UNASSIGNED orders) */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier who does not hold this assignment (including UNASSIGNED orders) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1388,10 +1464,7 @@ export interface operations {
     };
     getUnassignedParcels: {
         parameters: {
-            query?: {
-                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
-                district?: components["schemas"]["SriLankanDistrict"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1416,7 +1489,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1429,10 +1502,7 @@ export interface operations {
     };
     getReadyToSend: {
         parameters: {
-            query?: {
-                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
-                district?: components["schemas"]["SriLankanDistrict"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1448,23 +1518,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
                 };
             };
-            /** @description A SYSTEM_ADMIN did not give a district */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponse"];
-                };
-            };
         };
     };
     getReturns: {
         parameters: {
-            query?: {
-                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
-                district?: components["schemas"]["SriLankanDistrict"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1480,16 +1538,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
                 };
             };
-            /** @description A SYSTEM_ADMIN did not give a district */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponse"];
-                };
-            };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1502,10 +1551,7 @@ export interface operations {
     };
     getSent: {
         parameters: {
-            query?: {
-                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
-                district?: components["schemas"]["SriLankanDistrict"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1521,16 +1567,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
                 };
             };
-            /** @description A SYSTEM_ADMIN did not give a district */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponse"];
-                };
-            };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1543,10 +1580,7 @@ export interface operations {
     };
     getIncoming: {
         parameters: {
-            query?: {
-                /** @description SYSTEM_ADMIN only; a DISPATCHER always gets their own district. */
-                district?: components["schemas"]["SriLankanDistrict"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1562,16 +1596,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListDispatchAssignmentResponse"];
                 };
             };
-            /** @description A SYSTEM_ADMIN did not give a district */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponse"];
-                };
-            };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1611,7 +1636,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1669,7 +1694,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1703,7 +1728,6 @@ export interface operations {
     getCouriers: {
         parameters: {
             query?: {
-                district?: components["schemas"]["SriLankanDistrict"];
                 status?: components["schemas"]["ShiftStatus"];
             };
             header?: never;
@@ -1730,7 +1754,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1768,7 +1792,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller role is not DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller role is not DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1808,7 +1832,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1917,9 +1941,7 @@ export interface operations {
     };
     listCourierProfiles: {
         parameters: {
-            query?: {
-                district?: components["schemas"]["SriLankanDistrict"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1935,7 +1957,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListCourierProfileResponse"];
                 };
             };
-            /** @description Caller is not a DISPATCHER or SYSTEM_ADMIN */
+            /** @description Caller is not a DISPATCHER */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2079,7 +2101,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2128,7 +2150,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2168,7 +2190,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2208,7 +2230,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCourierShiftResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2259,7 +2281,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier */
+            /** @description Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2308,6 +2330,77 @@ export interface operations {
             };
         };
     };
+    updateWorkingHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkingHoursRequest"];
+            };
+        };
+        responses: {
+            /** @description Working hours saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseWorkdayResponse"];
+                };
+            };
+            /** @description The hours do not make a workable day (no working day, closing after 20:00, check-in before 7:00, lunch window or cut-offs outside working hours, lunch shorter than 10 or longer than 120 minutes) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Caller is not a SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    resetWorkingHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Standard working hours restored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseWorkdayResponse"];
+                };
+            };
+            /** @description Caller is not a SYSTEM_ADMIN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     addClosedDay: {
         parameters: {
             query?: never;
@@ -2330,7 +2423,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseListClosedDayResponse"];
                 };
             };
-            /** @description A past day, a Sunday, a day already closed, or a missing name */
+            /** @description A past day, a weekday that is always closed, a day already closed, or a missing name */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2392,9 +2485,7 @@ export interface operations {
     };
     getShopCouriers: {
         parameters: {
-            query?: {
-                district?: components["schemas"]["SriLankanDistrict"];
-            };
+            query?: never;
             header?: never;
             path: {
                 merchantId: string;

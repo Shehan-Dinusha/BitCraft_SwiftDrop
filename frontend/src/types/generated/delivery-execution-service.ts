@@ -118,7 +118,7 @@ export interface paths {
         };
         /**
          * Get the addresses, contacts and cash for a delivery
-         * @description For the assigned courier, a DISPATCHER of either district, or a SYSTEM_ADMIN. Shows only what the current leg needs: the sender and the fee until pickup, and the recipient for the courier who delivers. A finished or cancelled delivery gives no contacts and no amounts. Never cached.
+         * @description For the assigned courier or a DISPATCHER of either district. Shows only what the current leg needs: the sender and the fee until pickup, and the recipient for the courier who delivers. A finished or cancelled delivery gives no contacts and no amounts. Never cached.
          */
         get: operations["getCourierJob"];
         put?: never;

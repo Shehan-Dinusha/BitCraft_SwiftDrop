@@ -32,7 +32,7 @@ export function blockedBecause(courier: CourierSuggestionResponse): string | und
     case 'ON_RUN':
       return 'Left the hub';
     case 'PICKUPS_CLOSED':
-      return 'Pickups close at 15:00';
+      return 'Pickups closed for today';
     case 'TOO_LONG':
       return `Too long for a ${vehicle} (up to ${amount(courier.maxSideCm)} cm)`;
     case 'TOO_HEAVY':

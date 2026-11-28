@@ -109,15 +109,13 @@ const routedNav: Record<ShellRole, NavEntry[]> = {
     { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
     { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' }
   ],
+  // The admin oversees the platform; the dispatcher's daily work (control tower, dispatch, couriers,
+  // merchant applications) stays with the dispatchers. Merchant suspension is in User management.
   'system-admin': [
-    { id: 'tower', label: 'Control tower', icon: 'map', to: '/ops' },
-    { id: 'dispatch', label: 'Dispatch', icon: 'inbox', to: '/ops/dispatch' },
-    { id: 'couriers', label: 'Couriers', icon: 'truck', to: '/ops/couriers' },
-    { id: 'cash', label: 'Cash', icon: 'wallet', to: '/ops/cash' },
-    { id: 'merchants', label: 'Merchants', icon: 'store', to: '/ops/merchants' },
-    { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
-    { id: 'working-days', label: 'Working days', icon: 'calendar', to: '/ops/working-days' },
     { id: 'analytics', label: 'Analytics', icon: 'chart', to: '/ops/analytics' },
+    { id: 'users', label: 'User management', icon: 'users', to: '/ops/users' },
+    { id: 'cash', label: 'Cash', icon: 'wallet', to: '/ops/cash' },
+    { id: 'working-days', label: 'Working days', icon: 'calendar', to: '/ops/working-days' },
     { id: 'zones', label: 'Zone pricing', icon: 'calc', to: '/ops/zones' }
   ]
 };

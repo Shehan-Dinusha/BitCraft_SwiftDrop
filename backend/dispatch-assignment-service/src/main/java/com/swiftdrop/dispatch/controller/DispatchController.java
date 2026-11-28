@@ -68,7 +68,7 @@ public class DispatchController {
             description = "Dispatcher confirms a courier for an order in the unassigned queue. "
                     + "Returns 409 if the order already has a courier; use /reassign to change it. "
                     + "A DISPATCHER may assign only orders picked up in their district (403 otherwise), and the "
-                    + "courier must work in the order's pickup district. Requires DISPATCHER or SYSTEM_ADMIN.")
+                    + "courier must work in the order's pickup district. Requires DISPATCHER.")
     public ApiResponse<DispatchAssignmentResponse> manualAssign(
             @Valid @RequestBody ManualAssignRequest request,
             @Parameter(description = "Request correlation ID, propagated to the published events when it is a UUID")
@@ -88,7 +88,7 @@ public class DispatchController {
     @Operation(summary = "Reassign an order to a different courier",
             description = "Explicitly moves an assigned order to another courier. The request must name the courier "
                     + "currently assigned; returns 409 if the assignment changed since it was viewed. "
-                    + "The same district rules as /assign apply. Requires DISPATCHER or SYSTEM_ADMIN.")
+                    + "The same district rules as /assign apply. Requires DISPATCHER.")
     public ApiResponse<DispatchAssignmentResponse> reassign(
             @Valid @RequestBody ReassignCourierRequest request,
             @Parameter(description = "Request correlation ID, propagated to the published events when it is a UUID")
@@ -106,11 +106,9 @@ public class DispatchController {
 
     @GetMapping("/assignments")
     @Operation(summary = "List dispatch assignments with pagination and optional status filter",
-            description = "A DISPATCHER gets the orders picked up in their own district (the district parameter is "
-                    + "ignored); a SYSTEM_ADMIN gets every district or the one given.")
+            description = "A DISPATCHER gets the orders picked up in their own district.")
     public ApiResponse<PagedResult<DispatchAssignmentResponse>> getAssignments(
             @RequestParam(required = false) AssignmentStatus status,
-            @RequestParam(required = false) SriLankanDistrict district,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             HttpServletRequest httpRequest
@@ -118,7 +116,7 @@ public class DispatchController {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
         Page<DispatchAssignmentResponse> paged = dispatchAssignmentService.getAssignments(
                 status,
-                DistrictScope.listDistrict(caller, district),
+                DistrictScope.listDistrict(caller),
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         PagedResult<DispatchAssignmentResponse> result = PagedResult.of(
@@ -134,7 +132,7 @@ public class DispatchController {
     @GetMapping("/assignments/{assignmentId}")
     @Operation(summary = "Get dispatch assignment by UUID",
             description = "A COURIER sees only an assignment they currently hold (403 otherwise, "
-                    + "including UNASSIGNED orders); DISPATCHER and SYSTEM_ADMIN see any.")
+                    + "including UNASSIGNED orders); a DISPATCHER sees orders picked up in or bound for their district.")
     public ApiResponse<DispatchAssignmentResponse> getAssignmentById(
             @PathVariable UUID assignmentId,
             HttpServletRequest httpRequest) {
@@ -147,7 +145,7 @@ public class DispatchController {
     @GetMapping("/assignments/order/{orderId}")
     @Operation(summary = "Get dispatch assignment by order UUID",
             description = "A COURIER sees only an assignment they currently hold (403 otherwise, "
-                    + "including UNASSIGNED orders); DISPATCHER and SYSTEM_ADMIN see any.")
+                    + "including UNASSIGNED orders); a DISPATCHER sees orders picked up in or bound for their district.")
     public ApiResponse<DispatchAssignmentResponse> getAssignmentByOrderId(
             @PathVariable UUID orderId,
             HttpServletRequest httpRequest) {
@@ -159,60 +157,46 @@ public class DispatchController {
 
     @GetMapping("/unassigned")
     @Operation(summary = "List unassigned orders pending dispatch",
-            description = "A DISPATCHER gets their own district's queue (the district parameter is ignored); a "
-                    + "SYSTEM_ADMIN gets every district or the one given.")
+            description = "A DISPATCHER gets their own district's queue.")
     public ApiResponse<List<DispatchAssignmentResponse>> getUnassignedParcels(
-            @RequestParam(required = false) SriLankanDistrict district,
             HttpServletRequest httpRequest) {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
-                dispatchAssignmentService.getUnassignedParcels(DistrictScope.listDistrict(caller, district)),
+                dispatchAssignmentService.getUnassignedParcels(DistrictScope.listDistrict(caller)),
                 "Unassigned orders retrieved"
         );
     }
 
     @GetMapping("/ready-to-send")
     @Operation(summary = "List parcels handed in at the district's hub and waiting to be marked Outbound",
-            description = "A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district. Mark one "
-                    + "Outbound with the delivery transition AT_ORIGIN_HUB -> IN_TRANSIT.")
+            description = "A DISPATCHER gets their own district. Mark one Outbound with the delivery transition "
+                    + "AT_ORIGIN_HUB -> IN_TRANSIT.")
     public ApiResponse<List<DispatchAssignmentResponse>> getReadyToSend(
-            @RequestParam(required = false) SriLankanDistrict district,
             HttpServletRequest httpRequest) {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
-        SriLankanDistrict scope = DistrictScope.listDistrict(caller, district);
-        if (scope == null) {
-            throw new IllegalArgumentException("Choose a district");
-        }
+        SriLankanDistrict scope = DistrictScope.listDistrict(caller);
         return ApiResponse.success(dispatchAssignmentService.getReadyToSend(scope), "Parcels ready to send retrieved");
     }
 
     @GetMapping("/sent")
     @Operation(summary = "List parcels this district marked Outbound that the drop-off hub has not accepted yet",
             description = "Read-only: the drop-off district accepts them. Once accepted they leave this list. A "
-                    + "DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district.")
+                    + "DISPATCHER gets their own district.")
     public ApiResponse<List<DispatchAssignmentResponse>> getSent(
-            @RequestParam(required = false) SriLankanDistrict district,
             HttpServletRequest httpRequest) {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
-        SriLankanDistrict scope = DistrictScope.listDistrict(caller, district);
-        if (scope == null) {
-            throw new IllegalArgumentException("Choose a district");
-        }
+        SriLankanDistrict scope = DistrictScope.listDistrict(caller);
         return ApiResponse.success(dispatchAssignmentService.getSent(scope), "Sent parcels retrieved");
     }
 
     @GetMapping("/incoming")
     @Operation(summary = "List open orders coming into a district from another one",
             description = "Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own "
-                    + "district; a SYSTEM_ADMIN must give the district.")
+                    + "district.")
     public ApiResponse<List<DispatchAssignmentResponse>> getIncoming(
-            @RequestParam(required = false) SriLankanDistrict district,
             HttpServletRequest httpRequest) {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
-        SriLankanDistrict scope = DistrictScope.listDistrict(caller, district);
-        if (scope == null) {
-            throw new IllegalArgumentException("Choose a district");
-        }
+        SriLankanDistrict scope = DistrictScope.listDistrict(caller);
         return ApiResponse.success(dispatchAssignmentService.getIncoming(scope), "Incoming orders retrieved");
     }
 
@@ -221,22 +205,17 @@ public class DispatchController {
             description = "RETURN_TO_HUB: a courier brings it back. HELD_AT_HUB: try again (delivery transition "
                     + "HELD_AT_HUB -> AT_DESTINATION_HUB, while canRetry) or return it (-> RETURN_IN_TRANSIT, or "
                     + "-> RETURN_AT_HUB when the sender is in the same district). RETURN_OUTBOUND: accept it at the "
-                    + "sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district; a SYSTEM_ADMIN must "
-                    + "give the district.")
+                    + "sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district.")
     public ApiResponse<List<DispatchAssignmentResponse>> getReturns(
-            @RequestParam(required = false) SriLankanDistrict district,
             HttpServletRequest httpRequest) {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
-        SriLankanDistrict scope = DistrictScope.listDistrict(caller, district);
-        if (scope == null) {
-            throw new IllegalArgumentException("Choose a district");
-        }
+        SriLankanDistrict scope = DistrictScope.listDistrict(caller);
         return ApiResponse.success(dispatchAssignmentService.getReturns(scope), "Returns retrieved");
     }
 
     @GetMapping("/couriers/{courierId}/assignments")
     @Operation(summary = "List active assignments for a courier",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+            description = "A COURIER may use only their own courier ID; a DISPATCHER may use any.")
     public ApiResponse<List<DispatchAssignmentResponse>> getCourierAssignments(
             @PathVariable UUID courierId,
             @RequestParam(required = false) AssignmentStatus status,

@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 
 /**
  * Couriers' own vehicles. A courier registers their vehicle once; after that only a dispatcher of the
- * courier's district (or a SYSTEM_ADMIN) can change it. Every change is copied onto the courier's shift
+ * courier's district can change it. Every change is copied onto the courier's shift
  * row, which is what assignment reads.
  */
 @Service
@@ -79,13 +79,12 @@ public class CourierProfileService {
         return save(profile);
     }
 
-    /** Profiles a dispatcher may see: their own district; a SYSTEM_ADMIN sees all or one district. */
+    /** Profiles a dispatcher may see: their own district. */
     @Transactional(readOnly = true)
-    public List<CourierProfileResponse> list(CallerContext caller, SriLankanDistrict requestedDistrict) {
-        caller.requireRole(UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN);
-        SriLankanDistrict district = caller.role() == UserRole.DISPATCHER ? requireOwnDistrict(caller) : requestedDistrict;
-        List<CourierProfile> profiles = district == null ? profileRepository.findAll() : profileRepository.findByDistrict(district);
-        return profiles.stream().map(CourierProfileResponse::fromEntity).toList();
+    public List<CourierProfileResponse> list(CallerContext caller) {
+        caller.requireRole(UserRole.DISPATCHER);
+        return profileRepository.findByDistrict(requireOwnDistrict(caller)).stream()
+                .map(CourierProfileResponse::fromEntity).toList();
     }
 
     /**
@@ -94,10 +93,10 @@ public class CourierProfileService {
      */
     @Transactional
     public CourierProfileResponse updateByOperations(CallerContext caller, UUID courierId, CourierVehicleRequest request) {
-        caller.requireRole(UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN);
+        caller.requireRole(UserRole.DISPATCHER);
         CourierProfile profile = profileRepository.findByCourierId(courierId)
                 .orElseThrow(CourierProfileException::notFound);
-        if (caller.role() == UserRole.DISPATCHER && profile.getDistrict() != requireOwnDistrict(caller)) {
+        if (profile.getDistrict() != requireOwnDistrict(caller)) {
             throw new ForbiddenException("This courier belongs to another district");
         }
         boolean typeChanged = profile.getVehicleType() != request.vehicleType();
@@ -189,7 +188,8 @@ public class CourierProfileService {
 
     private static void requireOrderAccess(CallerContext caller, DispatchAssignment assignment) {
         boolean allowed = switch (caller.role()) {
-            case DISPATCHER, SYSTEM_ADMIN -> true;
+            case DISPATCHER -> true;
+            case SYSTEM_ADMIN -> false;
             case CUSTOMER -> caller.userId().equals(assignment.getCustomerId());
             case MERCHANT -> caller.merchantId() != null && caller.merchantId().equals(assignment.getMerchantId());
             case COURIER -> caller.userId().equals(assignment.getCourierId());

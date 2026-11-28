@@ -515,9 +515,11 @@ export function AnalyticsDashboardPage() {
               {workload.length === 0 ? (
                 <EmptyChart icon={<Truck size={24} />} title="No couriers yet">
                   Workload appears after the first courier assignment.
-                  <Link to="/ops" className="mt-3 block font-semibold text-brand-primary">
-                    Open control tower →
-                  </Link>
+                  {!isAdmin && (
+                    <Link to="/ops" className="mt-3 block font-semibold text-brand-primary">
+                      Open control tower →
+                    </Link>
+                  )}
                 </EmptyChart>
               ) : (
                 <>

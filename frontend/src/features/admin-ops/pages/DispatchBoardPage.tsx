@@ -2,23 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw } from 'lucide-react';
-import { Button, SelectDropdown, StatusBanner, SurfaceCard, Tabs } from '@/design-system';
+import { Button, StatusBanner, SurfaceCard, Tabs } from '@/design-system';
 import { Input } from '@/design-system/primitives/Input';
 import { useAuthStore } from '@/store/useAuthStore';
 import { parseApiError } from '@/services/api/apiError';
 import { deliveryApi, type DeliveryFailureReason } from '@/services/api/deliveryApi';
-import {
-  dispatchApi,
-  type DispatchAssignmentResponse,
-  type SriLankanDistrict
-} from '@/services/api/dispatchApi';
+import { dispatchApi, type DispatchAssignmentResponse } from '@/services/api/dispatchApi';
 import { districtLabel } from '@/features/profile/profileFormat';
 import { ManualDispatchOverrideModal } from '../components/ManualDispatchOverrideModal';
-import { LiveFleetHeatmap } from '../components/LiveFleetHeatmap';
 import { AssignedTab } from '../components/dispatch/AssignedTab';
 import { CouriersTab } from '../components/dispatch/CouriersTab';
 import { TableSkeleton } from '../components/dispatch/DispatchTable';
-import { ALL_DISTRICTS, DISTRICT_OPTIONS } from '../components/dispatch/districtOptions';
 import { IncomingTab, ReadyToSendTab } from '../components/dispatch/HubTabs';
 import { ReturnsTab, type ReturnStep } from '../components/dispatch/ReturnsTab';
 import { ToAssignTab } from '../components/dispatch/ToAssignTab';
@@ -94,20 +88,11 @@ function hubNotice(target: HubStep, done: number, failures: string[], retry: boo
 
 /**
  * One tab per job, so nothing sits below the fold. A dispatcher sees only their own district (the server
- * decides); a system admin picks one, and the hub tabs appear once they have.
+ * decides).
  */
 export function DispatchBoardPage() {
   const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === 'SYSTEM_ADMIN';
   const [params, setParams] = useSearchParams();
-  // The control tower links here with ?district= for an admin who picked one there.
-  const [adminDistrict, setAdminDistrict] = useState<string>(() => {
-    const asked = params.get('district');
-    return DISTRICT_OPTIONS.some(({ value }) => value === asked) ? asked! : ALL_DISTRICTS;
-  });
-  const scope =
-    isAdmin && adminDistrict !== ALL_DISTRICTS ? (adminDistrict as SriLankanDistrict) : undefined;
-  const hubTabs = !isAdmin || scope !== undefined;
 
   // Other pages link here with ?q=<tracking number>.
   const [query, setQuery] = useState(() => params.get('q') ?? '');
@@ -123,9 +108,7 @@ export function DispatchBoardPage() {
   useEffect(() => () => window.clearTimeout(lagTimer.current), []);
 
   const { unassigned, assigned, ready, sent, incoming, returns, couriers, refresh } = useDispatchData(
-    user?.id,
-    scope,
-    hubTabs
+    user?.id
   );
 
   const suggestions = useQuery({
@@ -152,28 +135,14 @@ export function DispatchBoardPage() {
   const tabs = [
     { id: 'assign', label: 'To assign', count: unassigned.data?.length, list: unassigned },
     { id: 'assigned', label: 'Assigned', count: assigned.data?.total, list: assigned },
-    ...(hubTabs
-      ? [
-          {
-            id: 'ready',
-            label: 'Ready to send',
-            count: ready.data && readyOrders.length,
-            list: ready
-          },
-          {
-            id: 'incoming',
-            label: 'Incoming',
-            count: incoming.data && incomingOrders.length,
-            list: incoming
-          },
-          {
-            id: 'returns',
-            label: 'Returns',
-            count: returns.data && returnOrders.length,
-            list: returns
-          }
-        ]
-      : []),
+    { id: 'ready', label: 'Ready to send', count: ready.data && readyOrders.length, list: ready },
+    {
+      id: 'incoming',
+      label: 'Incoming',
+      count: incoming.data && incomingOrders.length,
+      list: incoming
+    },
+    { id: 'returns', label: 'Returns', count: returns.data && returnOrders.length, list: returns },
     { id: 'couriers', label: 'Couriers', count: couriers.data?.length, list: couriers }
   ];
   const current = tabs.find((tab) => tab.id === params.get('tab')) ?? tabs[0];
@@ -312,18 +281,10 @@ export function DispatchBoardPage() {
         );
       case 'couriers':
         return (
-          <>
-            {isAdmin && !scope ? (
-              <div className="px-3 pb-3">
-                <LiveFleetHeatmap couriers={couriers.data} />
-              </div>
-            ) : null}
-            <CouriersTab
-              couriers={(couriers.data ?? []).filter((courier) => matchesCourier(courier, query))}
-              searching={searching}
-              showDistrict={isAdmin && !scope}
-            />
-          </>
+          <CouriersTab
+            couriers={(couriers.data ?? []).filter((courier) => matchesCourier(courier, query))}
+            searching={searching}
+          />
         );
       default:
         return (
@@ -331,7 +292,6 @@ export function DispatchBoardPage() {
             orders={search(unassigned.data ?? [])}
             searching={searching}
             now={now}
-            showDistrict={isAdmin && !scope}
             onAssign={openAssignment}
             onShopAssigned={(title) => {
               setNotice({ tone: 'success', title });
@@ -347,21 +307,11 @@ export function DispatchBoardPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-h1 text-primary">Dispatch</h1>
-          {!isAdmin && user?.district ? (
+          {user?.district ? (
             <p className="text-caption text-secondary">{districtLabel(user.district)} district</p>
           ) : null}
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          {isAdmin ? (
-            <SelectDropdown
-              label="District"
-              searchable
-              options={DISTRICT_OPTIONS}
-              value={adminDistrict}
-              onChange={setAdminDistrict}
-              className="w-56"
-            />
-          ) : null}
           <Button
             variant="outline"
             density="compact"

@@ -11,6 +11,7 @@ type PageTab = 'inbox' | 'settings';
 /** Notifications page for every workspace: the inbox and the notification settings. */
 export function NotificationsPage() {
   const role = useAuthStore((s) => s.role);
+  const backendRole = useAuthStore((s) => s.user?.role);
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const tab: PageTab = params.get('tab') === 'settings' ? 'settings' : 'inbox';
@@ -20,7 +21,7 @@ export function NotificationsPage() {
 
   const openItem = (item: TrayItem) => {
     if (item.unread) inbox.markRead(item.id);
-    const target = notificationTarget(role, item.type, item.trackingNumber);
+    const target = notificationTarget(role, item.type, item.trackingNumber, backendRole);
     if (target) navigate(target);
   };
 

@@ -34,7 +34,7 @@ class CourierAccountServiceTest {
     private CourierAccountService service;
 
     @Test
-    void aDispatcherRegistersCouriersInTheirOwnDistrictWhateverTheRequestSays() {
+    void aDispatcherRegistersCouriersInTheirOwnDistrict() {
         UserAccount dispatcher = account(UserRole.DISPATCHER, SriLankanDistrict.COLOMBO);
         UserAccount created = account(UserRole.COURIER, SriLankanDistrict.COLOMBO);
         when(userAccountService.requireUser(dispatcher.getPublicId())).thenReturn(dispatcher);
@@ -42,7 +42,7 @@ class CourierAccountServiceTest {
                 eq(SriLankanDistrict.COLOMBO))).thenReturn(created);
 
         var profile = service.register(dispatcher.getPublicId(), new CreateCourierRequest(
-                "kasun", "kasun@example.com", "+94771234567", "Kasun", "Perera", SriLankanDistrict.GALLE));
+                "kasun", "kasun@example.com", "+94771234567", "Kasun", "Perera"));
 
         assertThat(profile.district()).isEqualTo(SriLankanDistrict.COLOMBO);
         verify(userAccountService).createInvited("kasun", "kasun@example.com", "+94771234567", "Kasun", "Perera",
@@ -50,13 +50,15 @@ class CourierAccountServiceTest {
     }
 
     @Test
-    void anAdminMustChooseTheDistrict() {
-        UserAccount admin = account(UserRole.SYSTEM_ADMIN, SriLankanDistrict.COLOMBO);
+    void anAdminDoesNotManageCouriers() {
+        UserAccount admin = account(UserRole.SYSTEM_ADMIN, null);
         when(userAccountService.requireUser(admin.getPublicId())).thenReturn(admin);
 
         assertThatThrownBy(() -> service.register(admin.getPublicId(), new CreateCourierRequest(
-                "kasun", "kasun@example.com", "+94771234567", "Kasun", "Perera", null)))
-                .isInstanceOf(IllegalArgumentException.class);
+                "kasun", "kasun@example.com", "+94771234567", "Kasun", "Perera")))
+                .isInstanceOf(AuthException.class)
+                .satisfies(e -> assertThat(((AuthException) e).getStatus()).isEqualTo(HttpStatus.FORBIDDEN));
+        verify(userAccountService, never()).createInvited(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -102,7 +104,7 @@ class CourierAccountServiceTest {
         UserAccount dispatcher = account(UserRole.DISPATCHER, SriLankanDistrict.KANDY);
         when(userAccountService.requireUser(dispatcher.getPublicId())).thenReturn(dispatcher);
 
-        service.list(dispatcher.getPublicId(), SriLankanDistrict.GALLE, null, null, 0, 50);
+        service.list(dispatcher.getPublicId(), null, null, 0, 50);
 
         verify(userAccountService).list(UserRole.COURIER, null, SriLankanDistrict.KANDY, null, 0, 50);
     }
@@ -112,7 +114,7 @@ class CourierAccountServiceTest {
         UserAccount courier = account(UserRole.COURIER, SriLankanDistrict.COLOMBO);
         when(userAccountService.requireUser(courier.getPublicId())).thenReturn(courier);
 
-        assertThatThrownBy(() -> service.list(courier.getPublicId(), null, null, null, 0, 50))
+        assertThatThrownBy(() -> service.list(courier.getPublicId(), null, null, 0, 50))
                 .isInstanceOf(AuthException.class);
     }
 

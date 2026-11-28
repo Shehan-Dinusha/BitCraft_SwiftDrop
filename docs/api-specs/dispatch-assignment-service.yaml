@@ -35,7 +35,7 @@ paths:
       description: >-
         Dispatcher confirms a courier for an order in the unassigned queue. An order that
         already has a courier is never replaced by this operation; use /api/v1/dispatch/reassign.
-        Requires the DISPATCHER or SYSTEM_ADMIN role.
+        Requires the DISPATCHER role.
       operationId: manualAssign
       parameters:
         - name: X-Correlation-Id
@@ -64,7 +64,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -94,7 +94,7 @@ paths:
         currently assigned, so a reassignment based on a stale view is rejected instead of
         overwriting another dispatcher's decision. Not allowed once dispatch has recorded the parcel
         as picked up. Publishes dispatch.courier.assigned only; the public status is unchanged.
-        Requires the DISPATCHER or SYSTEM_ADMIN role.
+        Requires the DISPATCHER role.
       operationId: reassign
       parameters:
         - name: X-Correlation-Id
@@ -123,7 +123,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -150,16 +150,9 @@ paths:
         - Dispatch
       summary: List dispatch assignments with pagination and optional status filter
       description: >-
-        A DISPATCHER gets the orders picked up in their own district; a SYSTEM_ADMIN gets every
-        district or the one given.
+        A DISPATCHER gets the orders picked up in their own district.
       operationId: getAssignments
       parameters:
-        - name: district
-          in: query
-          required: false
-          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
         - name: status
           in: query
           required: false
@@ -191,7 +184,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -203,7 +196,7 @@ paths:
         - Dispatch
       summary: Get dispatch assignment by UUID
       description: >-
-        A COURIER sees only an assignment they currently hold; DISPATCHER and SYSTEM_ADMIN see any, including UNASSIGNED orders.
+        A COURIER sees only an assignment they currently hold; a DISPATCHER sees orders picked up in or bound for their district, including UNASSIGNED ones.
       operationId: getAssignmentById
       parameters:
         - name: assignmentId
@@ -226,7 +219,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier who does not hold this assignment (including UNASSIGNED orders)
+          description: Caller is not a COURIER or DISPATCHER, or is a courier who does not hold this assignment (including UNASSIGNED orders)
           content:
             application/json:
               schema:
@@ -240,7 +233,7 @@ paths:
         - Dispatch
       summary: Get dispatch assignment by order UUID
       description: >-
-        A COURIER sees only an assignment they currently hold; DISPATCHER and SYSTEM_ADMIN see any, including UNASSIGNED orders.
+        A COURIER sees only an assignment they currently hold; a DISPATCHER sees orders picked up in or bound for their district, including UNASSIGNED ones.
       operationId: getAssignmentByOrderId
       parameters:
         - name: orderId
@@ -263,7 +256,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier who does not hold this assignment (including UNASSIGNED orders)
+          description: Caller is not a COURIER or DISPATCHER, or is a courier who does not hold this assignment (including UNASSIGNED orders)
           content:
             application/json:
               schema:
@@ -277,16 +270,8 @@ paths:
         - Dispatch
       summary: List unassigned orders pending dispatch
       description: >-
-        A DISPATCHER gets their own district's queue; a SYSTEM_ADMIN gets every district or the one
-        given.
+        A DISPATCHER gets their own district's queue.
       operationId: getUnassignedParcels
-      parameters:
-        - name: district
-          in: query
-          required: false
-          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Unassigned orders retrieved
@@ -301,7 +286,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -313,16 +298,9 @@ paths:
         - Dispatch
       summary: List parcels handed in at the district's hub and waiting to be marked Outbound
       description: >-
-        A DISPATCHER gets their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+        A DISPATCHER gets their own district.
         Mark one Outbound with the delivery transition AT_ORIGIN_HUB -> IN_TRANSIT.
       operationId: getReadyToSend
-      parameters:
-        - name: district
-          in: query
-          required: false
-          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Parcels ready to send
@@ -330,12 +308,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
-        "400":
-          description: A SYSTEM_ADMIN did not give a district
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorResponse"
 
   /api/v1/dispatch/returns:
     get:
@@ -346,16 +318,8 @@ paths:
         RETURN_TO_HUB: a courier brings it back. HELD_AT_HUB: try again (delivery transition
         HELD_AT_HUB -> AT_DESTINATION_HUB, while canRetry) or return it (-> RETURN_IN_TRANSIT, or
         -> RETURN_AT_HUB when the sender is in the same district). RETURN_OUTBOUND: accept it at the
-        sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district; a SYSTEM_ADMIN must give
-        the district (400 otherwise).
+        sender's hub (-> RETURN_AT_HUB). A DISPATCHER gets their own district.
       operationId: getReturns
-      parameters:
-        - name: district
-          in: query
-          required: false
-          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Returns retrieved
@@ -363,14 +327,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
-        "400":
-          description: A SYSTEM_ADMIN did not give a district
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -383,15 +341,8 @@ paths:
       summary: List parcels this district marked Outbound that the drop-off hub has not accepted yet
       description: >-
         Read-only: the drop-off district accepts them, and they then leave this list. A DISPATCHER gets
-        their own district; a SYSTEM_ADMIN must give the district (400 otherwise).
+        their own district.
       operationId: getSent
-      parameters:
-        - name: district
-          in: query
-          required: false
-          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Sent parcels retrieved
@@ -399,14 +350,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
-        "400":
-          description: A SYSTEM_ADMIN did not give a district
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -419,15 +364,8 @@ paths:
       summary: List open orders coming into a district from another one
       description: >-
         Read-only: the pickup district's dispatcher manages them. A DISPATCHER gets their own
-        district; a SYSTEM_ADMIN must give the district (400 otherwise).
+        district.
       operationId: getIncoming
-      parameters:
-        - name: district
-          in: query
-          required: false
-          description: SYSTEM_ADMIN only; a DISPATCHER always gets their own district.
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Incoming orders retrieved
@@ -435,14 +373,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListDispatchAssignmentResponse"
-        "400":
-          description: A SYSTEM_ADMIN did not give a district
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -459,7 +391,7 @@ paths:
         fits, then the emptiest by parcels, weight or volume, then the most recent heartbeat, then courier ID.
         The rest carry an ineligibleReason. For an ASSIGNED or REASSIGNED order the courier currently holding
         it is left out. An order without a recorded size is limited by the parcel count only. Requires the
-        DISPATCHER or SYSTEM_ADMIN role.
+        DISPATCHER role.
       operationId: getCourierSuggestions
       parameters:
         - name: orderId
@@ -482,7 +414,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -504,7 +436,7 @@ paths:
         - Dispatch
       summary: List active assignments for a courier
       description: >-
-        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+        A COURIER may use only their own courier ID (their user ID); a DISPATCHER the couriers of their district.
       operationId: getCourierAssignments
       parameters:
         - name: courierId
@@ -532,7 +464,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          description: Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier
           content:
             application/json:
               schema:
@@ -556,15 +488,10 @@ paths:
     get:
       tags:
         - CourierAvailability
-      summary: List couriers with optional district and shift status filters
-      description: Requires the DISPATCHER or SYSTEM_ADMIN role.
+      summary: List the couriers of the district with an optional shift status filter
+      description: Requires the DISPATCHER role.
       operationId: getCouriers
       parameters:
-        - name: district
-          in: query
-          required: false
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
         - name: status
           in: query
           required: false
@@ -584,7 +511,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -595,7 +522,7 @@ paths:
       tags:
         - CourierAvailability
       summary: List current courier workloads
-      description: Requires the DISPATCHER or SYSTEM_ADMIN role.
+      description: Requires the DISPATCHER role.
       operationId: getWorkloads
       responses:
         "200":
@@ -611,7 +538,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller role is not DISPATCHER or SYSTEM_ADMIN
+          description: Caller role is not DISPATCHER
           content:
             application/json:
               schema:
@@ -623,7 +550,7 @@ paths:
         - CourierAvailability
       summary: Get courier shift status and live metrics
       description: >-
-        A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+        A COURIER may use only their own courier ID (their user ID); a DISPATCHER the couriers of their district.
       operationId: getCourier
       parameters:
         - name: courierId
@@ -646,7 +573,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          description: Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier
           content:
             application/json:
               schema:
@@ -726,15 +653,8 @@ paths:
         - Courier vehicles
       summary: List courier vehicles
       description: >-
-        A DISPATCHER sees their own district (the district parameter is ignored); a SYSTEM_ADMIN sees
-        every district or the one given.
+        A DISPATCHER sees their own district.
       operationId: listCourierProfiles
-      parameters:
-        - name: district
-          in: query
-          required: false
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Courier profiles retrieved
@@ -743,7 +663,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseListCourierProfileResponse"
         "403":
-          description: Caller is not a DISPATCHER or SYSTEM_ADMIN
+          description: Caller is not a DISPATCHER
           content:
             application/json:
               schema:
@@ -753,7 +673,7 @@ paths:
     put:
       tags:
         - Courier vehicles
-      summary: Update a courier's vehicle (DISPATCHER, SYSTEM_ADMIN)
+      summary: Update a courier's vehicle (DISPATCHER)
       description: >-
         A DISPATCHER may change couriers of their own district only. Without maxCapacity, a changed
         vehicle type resets the capacity to the new type's default. The courier's shift picks up the
@@ -847,11 +767,12 @@ paths:
       summary: Start or register courier shift
       description: >-
         A COURIER may use only their own courier ID (their user ID), a DISPATCHER the couriers of their
-        district, a SYSTEM_ADMIN any. The shift starts in the courier's home district. The vehicle type and
+        district. The shift starts in the courier's home district. The vehicle type and
         parcel capacity come from the courier's registered vehicle; without one the answer is 409 Courier
-        Not Available. A shift starts only on a working day (Monday to Saturday, not a listed holiday) from
-        7:30 until 17:00 Sri Lanka time; otherwise 409 Shift Conflict says when the next working day is. A
-        shift started after 9:00 is marked startedLate. Starting a shift that is already running returns it
+        Not Available. A shift starts only on a working day (a working weekday the SYSTEM_ADMIN set, not a
+        listed holiday) from check-in time until closing (standard 7:30 until 17:00, Sri Lanka time); otherwise
+        409 Shift Conflict says when the next working day is. A shift started after the late-start time
+        (standard 9:00) is marked startedLate. Starting a shift that is already running returns it
         unchanged.
       operationId: startShift
       requestBody:
@@ -874,7 +795,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          description: Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier
           content:
             application/json:
               schema:
@@ -904,7 +825,7 @@ paths:
         - CourierAvailability
       summary: End courier shift
       description: >-
-        A COURIER must have handed over all their cash first (409 Shift Conflict otherwise). A COURIER may use only their own courier ID (their user ID); DISPATCHER and SYSTEM_ADMIN may use any.
+        A COURIER must have handed over all their cash first (409 Shift Conflict otherwise). A COURIER may use only their own courier ID (their user ID); a DISPATCHER the couriers of their district.
       operationId: endShift
       parameters:
         - name: courierId
@@ -927,7 +848,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          description: Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier
           content:
             application/json:
               schema:
@@ -961,7 +882,7 @@ paths:
         Refused while parcels waiting at the hub for the courier are not loaded, while on break, or off
         shift. Afterwards hub parcels go only to couriers still at the hub, and this courier gets only
         pickups, until 15:00. Leaving again changes nothing. A COURIER may use only their own courier ID;
-        DISPATCHER and SYSTEM_ADMIN may use any.
+        a DISPATCHER the couriers of their district.
       operationId: startRun
       parameters:
         - name: courierId
@@ -978,7 +899,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          description: Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier
           content:
             application/json:
               schema:
@@ -997,8 +918,7 @@ paths:
       summary: Back at the hub
       description: >-
         Ends the courier's run: they can hand in what they carry and load again, and hub parcels can be given
-        to them again. Not on a run, nothing changes. A COURIER may use only their own courier ID; DISPATCHER
-        and SYSTEM_ADMIN may use any.
+        to them again. Not on a run, nothing changes. A COURIER may use only their own courier ID; a DISPATCHER the couriers of their district.
       operationId: backAtHub
       parameters:
         - name: courierId
@@ -1015,7 +935,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseCourierShiftResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          description: Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier
           content:
             application/json:
               schema:
@@ -1037,8 +957,7 @@ paths:
         45 minutes); AVAILABLE ends it, and the courier becomes BUSY again if every parcel place is taken.
         OFFLINE and BUSY are refused with 409 Shift Conflict: a shift ends through End shift, which checks
         parcels and cash, and BUSY follows the parcels held. A courier on break keeps their parcels and can
-        be given more. A COURIER may use only their own courier ID (their user ID); DISPATCHER and
-        SYSTEM_ADMIN may use any.
+        be given more. A COURIER may use only their own courier ID (their user ID); a DISPATCHER the couriers of their district.
       operationId: updateShiftStatus
       requestBody:
         required: true
@@ -1060,7 +979,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
         "403":
-          description: Caller is not a COURIER, DISPATCHER or SYSTEM_ADMIN, or is a courier acting on another courier
+          description: Caller is not a COURIER or DISPATCHER, or is a courier acting on another courier
           content:
             application/json:
               schema:
@@ -1080,9 +999,9 @@ paths:
         - WorkingDay
       summary: Today's working day
       description: >-
-        Whether today is open, the hours, the lunch break and the coming holidays, in Sri Lanka time.
-        Couriers work Monday to Saturday, 8:00 to 17:00; Sundays and listed holidays are closed. For COURIER,
-        DISPATCHER and SYSTEM_ADMIN.
+        Whether today is open, the hours, the lunch break and the coming holidays, in Sri Lanka time, as the
+        SYSTEM_ADMIN set them (standard: Monday to Saturday, 8:00 to 17:00). Weekdays outside the working days
+        and listed holidays are closed. For COURIER, DISPATCHER and SYSTEM_ADMIN.
       operationId: getWorkingDay
       responses:
         "200":
@@ -1098,14 +1017,73 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
 
+  /api/v1/dispatch/calendar/hours:
+    put:
+      tags:
+        - WorkingDay
+      summary: Change the working hours
+      description: >-
+        The working days, hours, lunch break and cut-offs couriers work to. They apply at once: shift starts,
+        breaks, late starts, pickups given out and the delivery day promised at booking. SYSTEM_ADMIN only.
+        Returns today's working day.
+      operationId: updateWorkingHours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkingHoursRequest"
+      responses:
+        "200":
+          description: Working hours saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseWorkdayResponse"
+        "400":
+          description: >-
+            The hours do not make a workable day (no working day, closing after 20:00, check-in before 7:00,
+            lunch window or cut-offs outside working hours, lunch shorter than 10 or longer than 120 minutes)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "403":
+          description: Caller is not a SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+    delete:
+      tags:
+        - WorkingDay
+      summary: Restore the standard working hours
+      description: >-
+        Monday to Saturday, 8:00 to 17:00, check-in from 7:30 (late after 9:00), lunch of 45 minutes started
+        between 12:00 and 14:30, pickups until 15:00, Same day until 11:00. SYSTEM_ADMIN only.
+      operationId: resetWorkingHours
+      responses:
+        "200":
+          description: Standard working hours restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseWorkdayResponse"
+        "403":
+          description: Caller is not a SYSTEM_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
   /api/v1/dispatch/calendar/closed-days:
     post:
       tags:
         - WorkingDay
       summary: Close a holiday
       description: >-
-        Nobody works that day: shifts cannot start. Today or later, and not a Sunday (always closed).
-        SYSTEM_ADMIN only. Returns the holidays from today on.
+        Nobody works that day: shifts cannot start. Today or later, and a working weekday (the others are
+        always closed). SYSTEM_ADMIN only. Returns the holidays from today on.
       operationId: addClosedDay
       requestBody:
         required: true
@@ -1121,7 +1099,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseListClosedDayResponse"
         "400":
-          description: A past day, a Sunday, a day already closed, or a missing name
+          description: A past day, a weekday that is always closed, a day already closed, or a missing name
           content:
             application/json:
               schema:
@@ -1173,7 +1151,7 @@ paths:
         - ShopPickup
       summary: Couriers on shift and which of the shop's ready parcels each has room for
       description: >-
-        A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN must give it.
+        A DISPATCHER gets their own district.
       operationId: getShopCouriers
       parameters:
         - name: merchantId
@@ -1182,11 +1160,6 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: district
-          in: query
-          required: false
-          schema:
-            $ref: "#/components/schemas/SriLankanDistrict"
       responses:
         "200":
           description: Success
@@ -1771,13 +1744,16 @@ components:
         - open
         - nextWorkingDay
         - shiftCanStart
+        - workingDays
         - opensAt
         - closesAt
         - shiftFrom
+        - lateAfter
         - breakFrom
         - breakUntil
         - breakMinutes
         - pickupCutoff
+        - sameDayCutoff
         - closedDays
       properties:
         date:
@@ -1787,7 +1763,7 @@ components:
           description: Whether today is a working day.
           type: boolean
         closedReason:
-          description: Why today is closed, "Sunday" or the holiday's name.
+          description: Why today is closed, the weekday's name (such as "Sunday") or the holiday's name.
           type: [string, "null"]
         nextWorkingDay:
           type: string
@@ -1795,6 +1771,11 @@ components:
         shiftCanStart:
           description: Whether a courier can start a shift right now.
           type: boolean
+        workingDays:
+          description: The weekdays couriers work; the others are closed every week.
+          type: array
+          items:
+            $ref: "#/components/schemas/DayOfWeek"
         opensAt:
           type: string
           example: "08:00"
@@ -1804,6 +1785,10 @@ components:
         shiftFrom:
           type: string
           example: "07:30"
+        lateAfter:
+          description: A shift started after this shows as a late start.
+          type: string
+          example: "09:00"
         breakFrom:
           type: string
           example: "12:00"
@@ -1817,6 +1802,10 @@ components:
           description: New pickups are given out until this time.
           type: string
           example: "15:00"
+        sameDayCutoff:
+          description: Same day parcels are booked before this time.
+          type: string
+          example: "11:00"
         closedDays:
           description: Listed holidays from today on.
           type: array
@@ -1836,6 +1825,69 @@ components:
           type: string
           example: Unduvap Poya Day
 
+    DayOfWeek:
+      type: string
+      enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+
+    WorkingHoursRequest:
+      type: object
+      description: >-
+        The courier working hours, in Sri Lanka time ("HH:mm"). The day must close by 20:00 and check-in may
+        open from 7:00 up to opening; late-after, the lunch window and both cut-offs must be within working hours.
+      required:
+        - workingDays
+        - opensAt
+        - closesAt
+        - shiftFrom
+        - lateAfter
+        - breakFrom
+        - breakUntil
+        - breakMinutes
+        - pickupCutoff
+        - sameDayCutoff
+      properties:
+        workingDays:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/DayOfWeek"
+        opensAt:
+          type: string
+          example: "08:00"
+        closesAt:
+          type: string
+          example: "17:00"
+        shiftFrom:
+          description: Earliest check-in.
+          type: string
+          example: "07:30"
+        lateAfter:
+          description: A shift started after this shows as late.
+          type: string
+          example: "09:00"
+        breakFrom:
+          description: Lunch can start from.
+          type: string
+          example: "12:00"
+        breakUntil:
+          description: Lunch can start until.
+          type: string
+          example: "14:30"
+        breakMinutes:
+          type: integer
+          minimum: 10
+          maximum: 120
+          example: 45
+        pickupCutoff:
+          description: New pickups are given out until this time.
+          type: string
+          example: "15:00"
+        sameDayCutoff:
+          description: Same day parcels are booked before this time.
+          type: string
+          example: "11:00"
+
     ClosedDayRequest:
       type: object
       required:
@@ -1843,7 +1895,7 @@ components:
         - name
       properties:
         day:
-          description: Today or later, and not a Sunday.
+          description: Today or later, and a working weekday.
           type: string
           format: date
         name:

@@ -72,11 +72,8 @@ public class MerchantPickupService {
 
     /** The couriers of the district on shift, and which of the shop's ready parcels each has room for. */
     @Transactional(readOnly = true)
-    public List<ShopCourierSuggestionResponse> suggestions(CallerContext caller, UUID merchantId, SriLankanDistrict requested) {
-        SriLankanDistrict district = DistrictScope.listDistrict(caller, requested);
-        if (district == null) {
-            throw new IllegalArgumentException("Choose a district");
-        }
+    public List<ShopCourierSuggestionResponse> suggestions(CallerContext caller, UUID merchantId) {
+        SriLankanDistrict district = DistrictScope.listDistrict(caller);
         List<DispatchAssignment> ready = assignmentRepository.findAtShop(merchantId).stream()
                 .filter(parcel -> parcel.getStatus() == AssignmentStatus.UNASSIGNED && parcel.isShopPickup()
                         && parcel.isReadyForPickup() && parcel.getPickupDistrict() == district)
@@ -86,13 +83,14 @@ public class MerchantPickupService {
         Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
                 couriers.stream().map(CourierShift::getCourierId).toList());
         boolean pickupsClosed = workingDay.pickupsClosed();
+        WorkHours hours = workingDay.hours();
         return couriers.stream()
                 .map(courier -> new ShopCourierSuggestionResponse(courier.getCourierId(), courier.getCourierName(),
                         courier.getVehicleType(), courier.getActiveParcelsCount(), courier.getMaxCapacity(),
                         CourierFit.fitting(courier, loads.getOrDefault(courier.getCourierId(), CourierLoad.NONE), ready,
                                         pickupsClosed)
                                 .stream().map(DispatchAssignment::getOrderId).toList(),
-                        CourierSuggestionResponse.breakEndsAt(courier)))
+                        CourierSuggestionResponse.breakEndsAt(courier, hours)))
                 // Most of the shop's parcels first, couriers at work before those on their break, then the
                 // smallest vehicle that takes them.
                 .sorted(Comparator.comparingInt((ShopCourierSuggestionResponse option) -> -option.fittingOrderIds().size())
