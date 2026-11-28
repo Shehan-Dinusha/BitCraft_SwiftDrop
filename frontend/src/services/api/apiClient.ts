@@ -1,5 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '@/store/useAuthStore';
+import { setSignedInHint, useAuthStore } from '@/store/useAuthStore';
 import type { AuthTokenResponse } from '@/services/api/authApi';
 
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -55,7 +55,9 @@ export async function restoreSession(): Promise<void> {
   try {
     await refreshSession();
   } catch {
-    // No cookie, or it expired or was revoked: the guard sends the user to sign in.
+    // No cookie, or it expired or was revoked: the guard sends the user to sign in. Forget that this browser
+    // was signed in, so other new tabs stop trying.
+    setSignedInHint(false);
   } finally {
     useAuthStore.getState().setSessionRestore('done');
   }

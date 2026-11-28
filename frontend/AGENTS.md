@@ -36,7 +36,7 @@ Use `tabular-nums` for tracking IDs, ETAs, prices, and currency. Use the semanti
 - Generated files under `src/types/generated/` are build outputs; regenerate them rather than hand-editing them.
 - Public parcel tracking uses Member 1’s gateway hub: SSE at `/api/v1/tracking/{trackingId}/stream` or WebSocket at `/ws/tracking?trackingId={trackingId}`.
 - Keep tracking payloads aligned with the sanitized `PublicTrackingViewDto`; never render courier phone numbers, exact home addresses, or internal merchant payout data.
-- Sessions: the access token lives in `sessionStorage` (per tab); the refresh token is the HttpOnly `swiftdrop_refresh` cookie, shared by all tabs and single use (a reused one revokes every session of the user). A tab without a token signs in from the cookie (`restoreSession`, run by `RoleGuard`). Every refresh goes through `refreshSession` in `apiClient.ts`, which holds the `swiftdrop-auth-refresh` Web Lock so two tabs never spend the same cookie; never call `/v1/auth/refresh` another way.
+- Sessions: the access token lives in `sessionStorage` (per tab); the refresh token is the HttpOnly `swiftdrop_refresh` cookie, shared by all tabs and single use (a reused one revokes every session of the user). A tab without a token signs in from the cookie (`restoreSession`): `RoleGuard` runs it on protected pages, and `AuthProvider` runs it at startup on any page when the shared `swiftdrop-signed-in` flag in `localStorage` says this browser has signed in (the flag holds no secret; anonymous visitors never send a refresh). Every refresh goes through `refreshSession` in `apiClient.ts`, which holds the `swiftdrop-auth-refresh` Web Lock so two tabs never spend the same cookie; never call `/v1/auth/refresh` another way.
 
 ## Branding and public pages
 

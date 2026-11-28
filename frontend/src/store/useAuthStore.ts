@@ -31,6 +31,28 @@ export function personaForRole(role?: UserRole | AuthUserProfile['role']): Perso
   }
 }
 
+// Shared by every tab (localStorage), unlike the token: says only that this browser has signed in, so a new
+// tab on a public page (the home page, sign-in, tracking) knows the refresh cookie is worth trying. Holds no
+// secret. Anonymous visitors never have it, so they send no refresh request.
+const SIGNED_IN_HINT = 'swiftdrop-signed-in';
+
+export function hasSignedInHint(): boolean {
+  try {
+    return window.localStorage.getItem(SIGNED_IN_HINT) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setSignedInHint(signedIn: boolean): void {
+  try {
+    if (signedIn) window.localStorage.setItem(SIGNED_IN_HINT, '1');
+    else window.localStorage.removeItem(SIGNED_IN_HINT);
+  } catch {
+    // Storage blocked (private window): new tabs then sign in from protected pages only.
+  }
+}
+
 /**
  * Browser session. Only the short-lived access token is kept here; the refresh token is an
  * HttpOnly cookie set by the auth service, so no script (and no XSS payload) can read it.
@@ -63,7 +85,7 @@ export const useAuthStore = create<Session>()(
       sessionRestore: 'idle',
       setSessionRestore: (sessionRestore) => set({ sessionRestore }),
       setSession: (token, role) => set({ token, role, user: null, isDevSession: true }),
-      setAuth: (tokens) =>
+      setAuth: (tokens) => {
         set({
           token: tokens.accessToken ?? null,
           user: {
@@ -75,11 +97,14 @@ export const useAuthStore = create<Session>()(
           },
           role: personaForRole(tokens.role),
           isDevSession: false
-        }),
+        });
+        setSignedInHint(true);
+      },
       setUser: (user) => set({ user, role: personaForRole(user.role), isDevSession: false }),
       signOut: () => {
         // A shared phone must not show the previous person's unfinished booking (addresses, phones).
         clearAllDrafts();
+        setSignedInHint(false);
         set({
           token: null,
           user: null,
