@@ -31,6 +31,28 @@ export function personaForRole(role?: UserRole | AuthUserProfile['role']): Perso
   }
 }
 
+// Shared by every tab (localStorage), unlike the token: says only that this browser has signed in, so a new
+// tab on a public page (the home page, sign-in, tracking) knows the refresh cookie is worth trying. Holds no
+// secret. Anonymous visitors never have it, so they send no refresh request.
+const SIGNED_IN_HINT = 'swiftdrop-signed-in';
+
+export function hasSignedInHint(): boolean {
+  try {
+    return window.localStorage.getItem(SIGNED_IN_HINT) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setSignedInHint(signedIn: boolean): void {
+  try {
+    if (signedIn) window.localStorage.setItem(SIGNED_IN_HINT, '1');
+    else window.localStorage.removeItem(SIGNED_IN_HINT);
+  } catch {
+    // Storage blocked (private window): new tabs then sign in from protected pages only.
+  }
+}
+
 /**
  * Browser session. Only the short-lived access token is kept here; the refresh token is an
  * HttpOnly cookie set by the auth service, so no script (and no XSS payload) can read it.
@@ -47,6 +69,16 @@ type Session = {
    */
   sessionRestore: 'idle' | 'running' | 'done';
   setSessionRestore: (state: 'idle' | 'running' | 'done') => void;
+  /**
+   * True when this tab was signed out because the browser's session now belongs to another account (someone
+   * signed in as another user in another tab). The sign-in page explains it. Not persisted.
+   */
+  accountChanged: boolean;
+  /**
+   * Ends this tab's session only, for {@link accountChanged}. Unlike signOut it keeps the signed-in flag and
+   * the booking drafts: they belong to the account that is now signed in.
+   */
+  endTabSession: () => void;
   setSession: (token: string, role: PersonaRole) => void;
   setAuth: (tokens: AuthTokenResponse) => void;
   setUser: (user: AuthUserProfile) => void;
@@ -62,8 +94,18 @@ export const useAuthStore = create<Session>()(
       isDevSession: false,
       sessionRestore: 'idle',
       setSessionRestore: (sessionRestore) => set({ sessionRestore }),
+      accountChanged: false,
+      endTabSession: () =>
+        set({
+          token: null,
+          user: null,
+          role: 'CUSTOMER',
+          isDevSession: false,
+          sessionRestore: 'done',
+          accountChanged: true
+        }),
       setSession: (token, role) => set({ token, role, user: null, isDevSession: true }),
-      setAuth: (tokens) =>
+      setAuth: (tokens) => {
         set({
           token: tokens.accessToken ?? null,
           user: {
@@ -74,19 +116,24 @@ export const useAuthStore = create<Session>()(
             district: tokens.district
           },
           role: personaForRole(tokens.role),
-          isDevSession: false
-        }),
+          isDevSession: false,
+          accountChanged: false
+        });
+        setSignedInHint(true);
+      },
       setUser: (user) => set({ user, role: personaForRole(user.role), isDevSession: false }),
       signOut: () => {
         // A shared phone must not show the previous person's unfinished booking (addresses, phones).
         clearAllDrafts();
+        setSignedInHint(false);
         set({
           token: null,
           user: null,
           role: 'CUSTOMER',
           isDevSession: false,
           // Signed out on purpose (or the session ended): do not sign straight back in from the cookie.
-          sessionRestore: 'done'
+          sessionRestore: 'done',
+          accountChanged: false
         });
       }
     }),
