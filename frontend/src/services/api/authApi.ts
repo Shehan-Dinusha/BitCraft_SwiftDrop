@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/api/apiClient';
+import { apiClient, refreshSession } from '@/services/api/apiClient';
 import type { components } from '@/types/generated/auth-iam-service';
 
 export type AuthTokenResponse = components['schemas']['TokenResponse'];
@@ -107,10 +107,12 @@ export async function deleteOwnAccount(currentPassword: string): Promise<void> {
   await apiClient.delete('/v1/users/me', { data: { currentPassword } });
 }
 
-/** Rotates the session. The refresh token is the HttpOnly cookie, so nothing is sent in the body. */
-export async function refreshTokens(): Promise<AuthTokenResponse> {
-  const { data } = await apiClient.post<AuthTokenResponse>('/v1/auth/refresh', {});
-  return data;
+/**
+ * Rotates the session. The refresh token is the HttpOnly cookie, so nothing is sent in the body. Goes through
+ * the shared refresh, which never spends the single-use cookie twice (other requests, other tabs).
+ */
+export function refreshTokens(): Promise<AuthTokenResponse> {
+  return refreshSession();
 }
 
 /** Revokes the refresh-token cookie's session and blacklists the current access token. */

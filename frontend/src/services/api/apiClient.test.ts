@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiClient } from './apiClient';
+import { apiClient, restoreSession } from './apiClient';
 import { useAuthStore } from '@/store/useAuthStore';
 
 const FRESH = 'fresh-access-token';
@@ -64,6 +64,65 @@ describe('apiClient session refresh', () => {
     const refresh = vi.spyOn(axios, 'post');
 
     await expect(apiClient.get('/a')).rejects.toBeInstanceOf(AxiosError);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('restoreSession (a new tab)', () => {
+  beforeEach(() => {
+    // A new tab: nothing in sessionStorage, and no attempt made yet.
+    useAuthStore.setState({ token: null, user: null, isDevSession: false, sessionRestore: 'idle' });
+  });
+
+  afterEach(() => {
+    useAuthStore.getState().signOut();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('signs the tab in from the shared refresh cookie', async () => {
+    const refresh = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { accessToken: FRESH, userId: 'u1', username: 'alice', role: 'COURIER' }
+    });
+
+    await restoreSession();
+
+    expect(refresh).toHaveBeenCalledWith('/api/v1/auth/refresh', {}, { withCredentials: true });
+    expect(useAuthStore.getState().token).toBe(FRESH);
+    expect(useAuthStore.getState().role).toBe('COURIER');
+    expect(useAuthStore.getState().sessionRestore).toBe('done');
+  });
+
+  it('stays signed out without a valid cookie, and tries only once', async () => {
+    const refresh = vi.spyOn(axios, 'post').mockRejectedValue(new Error('no cookie'));
+
+    await restoreSession();
+    await restoreSession();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState().token).toBeNull();
+    expect(useAuthStore.getState().sessionRestore).toBe('done');
+  });
+
+  it('refreshes under a lock shared by every tab, so two tabs never spend the same cookie', async () => {
+    const request = vi.fn((_name: string, callback: () => Promise<unknown>) => callback());
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { accessToken: FRESH, userId: 'u1', username: 'alice', role: 'CUSTOMER' }
+    });
+
+    await restoreSession();
+
+    expect(request).toHaveBeenCalledWith('swiftdrop-auth-refresh', expect.any(Function));
+    expect(useAuthStore.getState().token).toBe(FRESH);
+  });
+
+  it('does not sign back in after the user signed out in this tab', async () => {
+    const refresh = vi.spyOn(axios, 'post');
+    useAuthStore.getState().signOut();
+
+    await restoreSession();
+
     expect(refresh).not.toHaveBeenCalled();
   });
 });
