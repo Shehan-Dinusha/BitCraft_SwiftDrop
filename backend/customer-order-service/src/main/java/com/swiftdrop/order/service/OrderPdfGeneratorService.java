@@ -659,17 +659,13 @@ public class OrderPdfGeneratorService {
         money.addCell(headerCell("Payment", Element.ALIGN_LEFT));
         money.addCell(headerCell("Amount", Element.ALIGN_RIGHT));
         money.addCell(lineCell("Delivery fee", speedLabel(order.getOrderSpeed()) + " service, billed as "
-                + kg(order.getChargeableWeightKg())));
+                + kg(order.getChargeableWeightKg()) + ". Paid in cash at pickup."));
         money.addCell(amountCell(currency, fee, false));
         doc.add(money);
 
-        // Signatures and the QR side by side.
-        PdfPTable bottom = table(new float[]{2.4f, 1f});
+        // The courier records the handover in the app (proof of delivery), so the receipt needs no signatures.
+        PdfPTable bottom = table(new float[]{1f});
         bottom.setSpacingBefore(18);
-        PdfPCell signatures = cell(Rectangle.NO_BORDER, 0, 0);
-        signatures.addElement(signatureLine("Recipient signature"));
-        signatures.addElement(signatureLine("Courier signature"));
-        bottom.addCell(signatures);
         PdfPCell qrCell = cell(Rectangle.NO_BORDER, 0, 0);
         qrCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         Image qr = qr(trackingUrl(order), 74);
@@ -802,15 +798,6 @@ public class OrderPdfGeneratorService {
         p.setLeading(11.5f);
         p.setIndentationLeft(8);
         p.setFirstLineIndent(-8);
-        return p;
-    }
-
-    private Paragraph signatureLine(String caption) {
-        Paragraph p = new Paragraph();
-        p.setSpacingBefore(30);
-        p.add(new Chunk("_____________________________________", font(sans, 9, MUTED)));
-        p.add(Chunk.NEWLINE);
-        p.add(new Chunk(caption, font(sans, 7.5f, MUTED)));
         return p;
     }
 
