@@ -5,7 +5,7 @@ import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.service.CourierLoad;
-import com.swiftdrop.dispatch.service.WorkingDay;
+import com.swiftdrop.dispatch.service.WorkHours;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -81,7 +81,7 @@ public record CourierShiftResponse(
         @Schema(description = "Whether the courier left the shift open and it was closed at night")
         boolean closedAutomatically
 ) {
-    public static CourierShiftResponse fromEntity(CourierShift entity, CourierLoad load) {
+    public static CourierShiftResponse fromEntity(CourierShift entity, CourierLoad load, WorkHours hours) {
         return new CourierShiftResponse(
                 entity.getCourierId(),
                 entity.getCourierName(),
@@ -99,9 +99,9 @@ public record CourierShiftResponse(
                 load.volumeLitres(),
                 entity.getVehicleType().maxVolumeLitres(),
                 entity.getBreakStartedAt(),
-                WorkingDay.breakEndsAt(entity.getBreakStartedAt()),
+                hours.breakEndsAt(entity.getBreakStartedAt()),
                 entity.getBreakEndedAt(),
-                WorkingDay.startedLate(entity.getShiftStartedAt()),
+                hours.startedLate(entity.getShiftStartedAt()),
                 entity.getRunStartedAt(),
                 entity.getLastRunEndedAt(),
                 entity.isClosedAutomatically()

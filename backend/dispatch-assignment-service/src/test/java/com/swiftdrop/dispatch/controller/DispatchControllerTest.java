@@ -143,7 +143,7 @@ class DispatchControllerTest {
         courier.setCourierName("Sunil Perera");
         courier.setCurrentDistrict(SriLankanDistrict.COLOMBO);
         CourierSuggestionResponse suggestion = CourierSuggestionResponse.of(courier, CourierLoad.NONE,
-                CourierBlock.TOO_LONG, SriLankanDistrict.COLOMBO);
+                CourierBlock.TOO_LONG, SriLankanDistrict.COLOMBO, com.swiftdrop.dispatch.service.WorkHours.STANDARD);
         when(dispatchAssignmentService.getSuggestions(orderId)).thenReturn(List.of(suggestion));
         DispatchAssignment order = new DispatchAssignment();
         order.setOrderId(orderId);

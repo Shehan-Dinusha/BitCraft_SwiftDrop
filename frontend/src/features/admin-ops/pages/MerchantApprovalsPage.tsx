@@ -3,10 +3,8 @@ import { useAuthStore } from '@/store/useAuthStore';
 import {
   merchantApi,
   type MerchantApprovalResponse,
-  type MerchantStatus,
-  type SriLankanDistrict
+  type MerchantStatus
 } from '@/services/api/merchantApi';
-import { SRI_LANKAN_DISTRICTS } from '@/services/api/authApi';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
 import { Button } from '@/design-system/primitives/Button';
 import { Modal } from '@/design-system/primitives/Modal';
@@ -48,25 +46,21 @@ function districtName(value?: string | null) {
     : '—';
 }
 
-type Action = 'approve' | 'reject' | 'suspend' | 'reactivate';
+type Action = 'approve' | 'reject';
 const ACTION_PAST: Record<Action, string> = {
   approve: 'approved',
-  reject: 'rejected',
-  suspend: 'suspended',
-  reactivate: 'reactivated'
+  reject: 'rejected'
 };
 
 /**
- * Merchant applications. The dispatcher of each district reviews the businesses that collect from it;
- * a system admin sees every district and can suspend or reactivate approved merchants.
+ * Merchant applications. The dispatcher of each district reviews the businesses that collect from it.
+ * Suspending an approved merchant is the system admin's, from User management.
  */
 export function MerchantApprovalsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const ownDistrict = useAuthStore((s) => s.user?.district);
-  const isAdmin = role === 'SYSTEM_ADMIN';
-  const canReview = isAdmin || role === 'DISPATCHER';
+  const canReview = role === 'DISPATCHER';
   const [status, setStatus] = useState<MerchantStatus | ''>('PENDING_APPROVAL');
-  const [district, setDistrict] = useState<SriLankanDistrict | ''>('');
   const [rows, setRows] = useState<MerchantApprovalResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,7 +79,7 @@ export function MerchantApprovalsPage() {
     setError('');
     setRows([]);
     merchantApi
-      .listApplications(status || undefined, (isAdmin && district) || undefined)
+      .listApplications(status || undefined)
       .then((data) => {
         if (!cancelled) setRows(data);
       })
@@ -98,7 +92,7 @@ export function MerchantApprovalsPage() {
     return () => {
       cancelled = true;
     };
-  }, [status, district, revision, canReview, isAdmin]);
+  }, [status, revision, canReview]);
   const confirm = async () => {
     if (!decision?.merchant.merchantId || busy) return;
     setBusy(true);
@@ -107,14 +101,9 @@ export function MerchantApprovalsPage() {
     try {
       const id = decision.merchant.merchantId;
       if (decision.action === 'approve') await merchantApi.approve(id);
-      else if (decision.action === 'reject') await merchantApi.reject(id, reason.trim());
-      else if (decision.action === 'suspend') await merchantApi.suspend(id);
-      else await merchantApi.reactivate(id);
+      else await merchantApi.reject(id, reason.trim());
       setMessage(
-        `${decision.merchant.businessName} ${ACTION_PAST[decision.action]}.` +
-          (decision.action === 'approve' || decision.action === 'reject'
-            ? ' The owner has been emailed.'
-            : '')
+        `${decision.merchant.businessName} ${ACTION_PAST[decision.action]}. The owner has been emailed.`
       );
       setDecision(null);
       setRevision((v) => v + 1);
@@ -132,8 +121,8 @@ export function MerchantApprovalsPage() {
   if (!canReview)
     return (
       <main className="p-6">
-        <StatusBanner tone="warning" title="Operations access required">
-          Only dispatchers and system administrators can review merchant applications.
+        <StatusBanner tone="warning" title="Dispatcher access required">
+          Only the district dispatcher reviews merchant applications.
         </StatusBanner>
       </main>
     );
@@ -141,13 +130,12 @@ export function MerchantApprovalsPage() {
     <main className="space-y-4 p-4 md:p-6" data-density="compact">
       <header>
         <p className="text-xs font-semibold uppercase tracking-widest text-brand-primary">
-          {isAdmin ? 'All districts' : `${districtName(ownDistrict)} district`}
+          {`${districtName(ownDistrict)} district`}
         </p>
         <h1 className="text-h1 text-primary">Merchant applications</h1>
         <p className="text-sm text-secondary">
-          {isAdmin
-            ? 'Each district dispatcher reviews their own businesses. You can decide for any district and suspend approved merchants.'
-            : 'Businesses that want SwiftDrop to collect from your district. Check the details and the pickup address before approving.'}
+          Businesses that want SwiftDrop to collect from your district. Check the details and the pickup
+          address before approving.
         </p>
       </header>
       <div className="flex flex-wrap items-center gap-3">
@@ -166,24 +154,6 @@ export function MerchantApprovalsPage() {
             ))}
           </select>
         </label>
-        {isAdmin && (
-          <label className="text-sm text-primary">
-            District{' '}
-            <select
-              className="rounded-lg border border-border-subtle bg-card p-2"
-              value={district}
-              disabled={busy}
-              onChange={(e) => setDistrict(e.target.value as SriLankanDistrict | '')}
-            >
-              <option value="">All districts</option>
-              {SRI_LANKAN_DISTRICTS.map((d) => (
-                <option key={d} value={d}>
-                  {districtName(d)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
         <Button
           variant="outline"
           disabled={loading || busy}
@@ -269,20 +239,6 @@ export function MerchantApprovalsPage() {
                       </Button>
                     ))}
                   </div>
-                ) : isAdmin && (r.status === 'APPROVED' || r.status === 'SUSPENDED') ? (
-                  <Button
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => {
-                      setError('');
-                      setDecision({
-                        merchant: r,
-                        action: r.status === 'APPROVED' ? 'suspend' : 'reactivate'
-                      });
-                    }}
-                  >
-                    {r.status === 'APPROVED' ? 'Suspend' : 'Reactivate'}
-                  </Button>
                 ) : (
                   'Reviewed'
                 )
@@ -318,11 +274,7 @@ export function MerchantApprovalsPage() {
             </label>
           ) : (
             <p className="text-sm text-secondary">
-              {decision?.action === 'approve'
-                ? 'This enables API keys and order ingestion for this merchant and emails the owner.'
-                : decision?.action === 'suspend'
-                  ? "The merchant's API keys stop working and it cannot upload orders until reactivated."
-                  : 'The merchant can use its API keys and upload orders again.'}
+              This enables API keys and order ingestion for this merchant and emails the owner.
             </p>
           )}
           <div className="flex justify-end gap-2">

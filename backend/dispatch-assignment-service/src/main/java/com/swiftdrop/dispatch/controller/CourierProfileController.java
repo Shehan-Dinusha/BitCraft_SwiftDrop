@@ -1,7 +1,6 @@
 package com.swiftdrop.dispatch.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
-import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.dispatch.dto.CourierProfileResponse;
 import com.swiftdrop.dispatch.dto.CourierVehicleRequest;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -53,17 +51,14 @@ public class CourierProfileController {
 
     @GetMapping("/couriers/profiles")
     @Operation(summary = "List courier vehicles",
-            description = "A DISPATCHER sees their own district (the district parameter is ignored); a SYSTEM_ADMIN "
-                    + "sees every district or the one given.")
-    public ApiResponse<List<CourierProfileResponse>> listProfiles(
-            @RequestParam(required = false) SriLankanDistrict district,
-            HttpServletRequest httpRequest) {
+            description = "A DISPATCHER sees their own district.")
+    public ApiResponse<List<CourierProfileResponse>> listProfiles(HttpServletRequest httpRequest) {
         CallerContext caller = CallerContext.from(httpRequest::getHeader);
-        return ApiResponse.success(courierProfileService.list(caller, district), "Courier profiles retrieved");
+        return ApiResponse.success(courierProfileService.list(caller), "Courier profiles retrieved");
     }
 
     @PutMapping("/couriers/{courierId}/profile")
-    @Operation(summary = "Update a courier's vehicle (DISPATCHER, SYSTEM_ADMIN)",
+    @Operation(summary = "Update a courier's vehicle (DISPATCHER)",
             description = "A DISPATCHER may change couriers of their own district only. The courier's shift picks up "
                     + "the new vehicle type and capacity straight away.")
     public ApiResponse<CourierProfileResponse> updateProfile(@PathVariable UUID courierId,

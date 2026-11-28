@@ -47,7 +47,6 @@ describe('ShopPickups', () => {
         <ShopPickups
           shops={groupByShop(orders)}
           now={Date.parse('2026-11-22T10:30:00Z')}
-          showDistrict={false}
           onAssigned={onAssigned}
         />
       </QueryClientProvider>

@@ -28,8 +28,8 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * Sends one signed webhook attempt and returns a structured {@link AttemptOutcome}. It never throws for HTTP, network
- * or policy failures. Not wired to anything yet: the delivery worker (Step 10) calls {@link #send}; test pings keep
- * the legacy dispatcher until Step 11.
+ * or policy failures. The only outbound sender: the delivery worker ({@code DeliveryProcessor}) and test pings
+ * ({@code TestPingService}) both call {@link #send}.
  *
  * <p><b>Exact bytes.</b> The body array of the {@link WebhookRequest} is signed by {@link WebhookSigner} and the same
  * array is wrapped (not copied, not re-serialised) as the request body. Content-Length is set from that array, so the

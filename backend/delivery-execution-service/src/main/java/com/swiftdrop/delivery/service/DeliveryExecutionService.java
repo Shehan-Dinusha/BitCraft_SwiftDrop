@@ -185,13 +185,16 @@ public class DeliveryExecutionService {
     /**
      * Who may take a hub step. The pickup district's dispatcher marks a parcel Outbound; the drop-off
      * district's dispatcher accepts it at their hub; a courier never does either. Handing in at the
-     * origin hub is the first courier's step (their dispatcher may record it too). A system admin may
-     * take any step. Internal callers (no caller) are not checked.
+     * origin hub is the first courier's step (their dispatcher may record it too). A system admin takes
+     * no hub steps. Internal callers (no caller) are not checked.
      */
     private static void requireHubActor(DeliveryState from, DeliveryState to, DeliverySession session,
                                         CallerContext caller) {
-        if (caller == null || caller.role() == UserRole.SYSTEM_ADMIN) {
+        if (caller == null) {
             return;
+        }
+        if (caller.role() == UserRole.SYSTEM_ADMIN) {
+            throw new ForbiddenException("Hub steps are taken by the district dispatcher");
         }
         boolean outbound = from == DeliveryState.AT_ORIGIN_HUB && to == DeliveryState.IN_TRANSIT;
         boolean accept = from == DeliveryState.IN_TRANSIT && to == DeliveryState.AT_DESTINATION_HUB

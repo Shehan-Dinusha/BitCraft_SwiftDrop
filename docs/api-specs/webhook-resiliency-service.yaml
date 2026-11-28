@@ -2,7 +2,8 @@ openapi: 3.1.0
 info:
   title: SwiftDrop Webhook Resiliency API
   description: |
-    Webhook subscriptions, exponential delivery retries, HMAC-SHA256 signatures, and DLQ replay APIs.
+    Webhook subscriptions, scheduled delivery retries, HMAC-SHA256 signatures, and failed-delivery replay APIs.
+    The legacy dead-letter API (/api/v1/webhooks/dlq) is read-only history; its replay operations answer 410 Gone.
 
     Authentication and authorization: every operation except the health checks requires a Bearer JWT, verified by
     the API gateway. The gateway removes any client-supplied X-User-Id, X-User-Role, X-Merchant-Id and
@@ -11,10 +12,9 @@ info:
     distinct from the user id. The service must be reachable only through the gateway.
 
     Roles:
-    - MERCHANT: manages and replays only its own merchant's endpoints and dead-letter records.
+    - MERCHANT: manages only its own merchant's endpoints, failed deliveries and legacy dead-letter records.
     - SYSTEM_ADMIN: all operations for every merchant.
-    - DISPATCHER: read-only dead-letter listing and detail across merchants with operational metadata only (no payload, endpointId or raw failureReason); no endpoint access, no replay.
-    - Other roles: 403.
+    - Other roles (including DISPATCHER): 403.
 
     Another merchant's endpoint or dead-letter record returns 404, indistinguishable from an unknown ID.
 
@@ -51,6 +51,22 @@ info:
         valid    = abs(now_unix_seconds - int(timestampHeader)) <= 300
                    and signatureHeader starts with "sha256="
                    and constant_time_equals(expected, signatureHeader without "sha256=")
+
+    ## Delivery behaviour
+
+    - Events: `order.created`, and `parcel.status.changed` when the public status changes (never for a step
+      inside the same status). A status can move back, for example `OUT_FOR_DELIVERY` to `IN_TRANSIT` when the
+      courier brings the parcel back to the hub. Test pings are `webhook.test.ping`: one request, never retried,
+      never listed as a failed delivery.
+    - Answer with any 2xx within 5 seconds. No answer, a connection failure, 408, 425, 429 or 5xx is retried after
+      about 30 seconds, 2 minutes and 10 minutes (±20 %), 4 attempts in all; a `Retry-After` on 429 or 503 can
+      lengthen a wait up to 10 minutes. 3xx (redirects are not followed) and other 4xx stop at once. A delivery
+      that stops is listed under `/api/v1/webhooks/deliveries/failed`.
+    - A parcel's events are sent one at a time, oldest first, per endpoint. A replay, or an event received late,
+      can arrive after a newer one: compare `occurredAt` and keep the latest status.
+    - A replay is a new delivery of the same event: same `X-SwiftDrop-Event-Id`, new `X-SwiftDrop-Delivery-Id`,
+      attempts counted from 1. One replay per failed delivery can be active; a delivered replay cannot be repeated.
+    - A paused endpoint receives nothing; its events are kept and sent after it is activated again.
   version: v1.0.0
 servers:
   - url: /
@@ -170,6 +186,9 @@ paths:
     patch:
       tags: [WebhookSubscription]
       summary: Toggle active status for a webhook endpoint
+      description: >-
+        active=false pauses the endpoint: nothing is sent to it, and events that arrive meanwhile are kept and sent
+        after it is activated again (active=true).
       parameters:
         - name: endpointId
           in: path
@@ -268,7 +287,7 @@ paths:
     post:
       tags: [FailedDeliveries]
       operationId: replayAllFailedDeliveries
-      summary: Queue every failed delivery that has not been replayed
+      summary: Queue every failed delivery that was never replayed, or whose last replay failed too
       responses:
         "202":
           description: How many replays were queued
@@ -311,7 +330,7 @@ paths:
   /api/v1/webhooks/dlq/health:
     get:
       tags: [DlqReplay]
-      summary: Health check for DLQ replay controller
+      summary: Health check for the legacy dead-letter API
       security: []
       responses:
         "200":
@@ -319,16 +338,16 @@ paths:
   /api/v1/webhooks/dlq:
     get:
       tags: [DlqReplay]
-      summary: List Dead-Letter Queue webhook records
+      summary: List legacy dead-letter webhook records (read-only history)
       description: >-
-        A MERCHANT sees only its own records (a different merchantId is refused with 403). SYSTEM_ADMIN and
-        DISPATCHER may filter by merchantId or omit it to see every merchant; DISPATCHER responses carry
-        operational metadata only (no payload, endpointId or raw failureReason).
+        Records written by the retired synchronous dispatcher; nothing writes them any more. A MERCHANT sees only
+        its own records (a different merchantId is refused with 403). A SYSTEM_ADMIN may filter by merchantId or
+        omit it to see every merchant. Other roles: 403. Current failures are under /api/v1/webhooks/deliveries/failed.
       parameters:
         - name: merchantId
           in: query
           required: false
-          description: Merchant filter for SYSTEM_ADMIN and DISPATCHER. Merchant clients should omit it.
+          description: Merchant filter for SYSTEM_ADMIN. Merchant clients should omit it.
           schema:
             type: string
             format: uuid
@@ -352,10 +371,10 @@ paths:
   /api/v1/webhooks/dlq/{dlqId}:
     get:
       tags: [DlqReplay]
-      summary: Get detailed DLQ record by ID
+      summary: Get a legacy dead-letter record by ID
       description: >-
-        Another merchant's record returns 404, exactly like an unknown ID. DISPATCHER responses carry
-        operational metadata only (no payload, endpointId or raw failureReason).
+        MERCHANT (own records) and SYSTEM_ADMIN. Another merchant's record returns 404, exactly like an unknown ID.
+        Other roles: 403.
       parameters:
         - name: dlqId
           in: path
@@ -379,8 +398,11 @@ paths:
   /api/v1/webhooks/dlq/{dlqId}/replay:
     post:
       tags: [DlqReplay]
-      summary: Manually replay a dead-lettered webhook record
-      description: MERCHANT (own records) and SYSTEM_ADMIN only.
+      summary: "Retired: replay a legacy dead-letter record"
+      deprecated: true
+      description: >-
+        Retired. Always 410 Gone for an identified caller; nothing is read, sent or written. Replay failed
+        deliveries with POST /api/v1/webhooks/deliveries/failed/{deliveryId}/replay.
       parameters:
         - name: dlqId
           in: path
@@ -389,45 +411,31 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
-          description: Replay execution result
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseReplayDlqResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+        "410":
+          $ref: "#/components/responses/Gone"
   /api/v1/webhooks/dlq/replay-all:
     post:
       tags: [DlqReplay]
-      summary: Batch replay all unreplayed DLQ records
+      summary: "Retired: replay every legacy dead-letter record"
+      deprecated: true
       description: >-
-        A MERCHANT replays its own unreplayed records. A SYSTEM_ADMIN may target one merchant or, without
-        merchantId, every merchant. Other roles: 403.
+        Retired. Always 410 Gone for an identified caller; nothing is read, sent or written. Replay failed
+        deliveries with POST /api/v1/webhooks/deliveries/failed/replay.
       parameters:
         - name: merchantId
           in: query
           required: false
-          description: Merchant filter for SYSTEM_ADMIN. Merchant clients should omit it.
+          description: Ignored.
           schema:
             type: string
             format: uuid
       responses:
-        "200":
-          description: Batch replay execution summary
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseListReplayDlqResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
+        "410":
+          $ref: "#/components/responses/Gone"
 components:
   securitySchemes:
     bearerAuth:
@@ -463,6 +471,12 @@ components:
             $ref: "#/components/schemas/ApiErrorResponse"
     Conflict:
       description: The endpoint has delivery history and cannot be deleted; deactivate it instead.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Gone:
+      description: The operation was retired (legacy dead-letter replay); the message names its replacement.
       content:
         application/json:
           schema:
@@ -673,7 +687,6 @@ components:
         endpointId:
           type: string
           format: uuid
-          description: Target endpoint. Omitted (null) for DISPATCHER callers.
         merchantId:
           type: string
           format: uuid
@@ -681,12 +694,10 @@ components:
           type: string
         payload:
           type: string
-          description: Event payload. Omitted (null) for DISPATCHER callers.
         failureReason:
           type: string
           description: >-
-            Raw failure detail recorded by the dispatcher; may contain the callback URL or host. Omitted (null) for
-            DISPATCHER callers.
+            Raw failure detail recorded by the retired dispatcher; may contain the callback URL or host.
         errorClass:
           type: string
           description: Failure classification derived from the recorded failure.
@@ -706,21 +717,6 @@ components:
           type: string
           format: date-time
           description: Dead-lettering timestamp (the time of the final failed attempt).
-    ReplayDlqResponse:
-      type: object
-      properties:
-        dlqId:
-          type: string
-          format: uuid
-        status:
-          type: string
-        statusCode:
-          type: integer
-        message:
-          type: string
-        replayedAt:
-          type: string
-          format: date-time
     WebhookEndpointCreatedResponse:
       type: object
       description: >-
@@ -801,23 +797,3 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DeadLetterWebhookResponse"
-    ApiResponseReplayDlqResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        message:
-          type: string
-        data:
-          $ref: "#/components/schemas/ReplayDlqResponse"
-    ApiResponseListReplayDlqResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        message:
-          type: string
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/ReplayDlqResponse"

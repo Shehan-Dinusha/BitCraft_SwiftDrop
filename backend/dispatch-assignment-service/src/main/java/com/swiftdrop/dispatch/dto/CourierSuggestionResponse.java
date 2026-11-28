@@ -6,7 +6,7 @@ import com.swiftdrop.dispatch.domain.enums.CourierBlock;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.domain.enums.VehicleType;
 import com.swiftdrop.dispatch.service.CourierLoad;
-import com.swiftdrop.dispatch.service.WorkingDay;
+import com.swiftdrop.dispatch.service.WorkHours;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -65,7 +65,7 @@ public record CourierSuggestionResponse(
         Instant breakEndsAt
 ) {
     public static CourierSuggestionResponse of(CourierShift courier, CourierLoad load, CourierBlock block,
-                                               SriLankanDistrict orderDistrict) {
+                                               SriLankanDistrict orderDistrict, WorkHours hours) {
         VehicleType vehicle = courier.getVehicleType();
         return new CourierSuggestionResponse(
                 courier.getCourierId(),
@@ -83,13 +83,13 @@ public record CourierSuggestionResponse(
                 vehicle.maxSideCm(),
                 block == null,
                 block,
-                breakEndsAt(courier)
+                breakEndsAt(courier, hours)
         );
     }
 
     /** When the courier's break should end, while they are on it. */
-    public static Instant breakEndsAt(CourierShift courier) {
+    public static Instant breakEndsAt(CourierShift courier, WorkHours hours) {
         return courier.getShiftStatus() == ShiftStatus.ON_BREAK
-                ? WorkingDay.breakEndsAt(courier.getBreakStartedAt()) : null;
+                ? hours.breakEndsAt(courier.getBreakStartedAt()) : null;
     }
 }

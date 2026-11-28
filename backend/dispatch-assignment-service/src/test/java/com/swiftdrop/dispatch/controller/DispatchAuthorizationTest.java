@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Dispatch-management endpoints are limited to DISPATCHER and SYSTEM_ADMIN,
+ * Dispatch-management endpoints are limited to DISPATCHER (a SYSTEM_ADMIN does no dispatch work),
  * using the identity headers the API gateway sets after verifying the JWT.
  * A rejected caller never reaches a service, so nothing is read or changed.
  */
@@ -101,16 +101,16 @@ class DispatchAuthorizationTest {
     }
 
     static Stream<Arguments> operationsRoleCases() {
-        return withRoles(UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN);
+        return withRoles(UserRole.DISPATCHER);
     }
 
     static Stream<Arguments> otherRoleCases() {
-        return withRoles(UserRole.COURIER, UserRole.CUSTOMER, UserRole.MERCHANT);
+        return withRoles(UserRole.COURIER, UserRole.CUSTOMER, UserRole.MERCHANT, UserRole.SYSTEM_ADMIN);
     }
 
     @ParameterizedTest(name = "{2} may call {0}")
     @MethodSource("operationsRoleCases")
-    @DisplayName("DISPATCHER and SYSTEM_ADMIN can call every dispatch-management endpoint")
+    @DisplayName("DISPATCHER can call every dispatch-management endpoint")
     void operationsRolesAreAllowed(String endpoint, EndpointRequest request, UserRole role) throws Exception {
         mockMvc.perform(request.build().with(as(role)))
                 .andExpect(status().isOk())

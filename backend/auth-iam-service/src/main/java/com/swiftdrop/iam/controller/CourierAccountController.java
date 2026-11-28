@@ -2,7 +2,6 @@ package com.swiftdrop.iam.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
 import com.swiftdrop.contracts.dto.PagedResult;
-import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.enums.UserStatus;
 import com.swiftdrop.contracts.openapi.OpenApiConstants;
 import com.swiftdrop.iam.dto.CreateCourierRequest;
@@ -33,7 +32,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/users/couriers")
 @Tag(name = "Courier accounts", description = "Dispatchers register and manage the couriers of their own district")
 @SecurityRequirement(name = OpenApiConstants.BEARER_AUTH_SCHEME)
-@PreAuthorize("hasAnyRole('DISPATCHER', 'SYSTEM_ADMIN')")
+@PreAuthorize("hasRole('DISPATCHER')")
 public class CourierAccountController {
 
     private final CourierAccountService courierAccountService;
@@ -44,17 +43,15 @@ public class CourierAccountController {
 
     @GetMapping
     @Operation(summary = "List couriers",
-            description = "A DISPATCHER sees the couriers of their own district (the district parameter is ignored); "
-                    + "a SYSTEM_ADMIN sees every district or the one given.")
+            description = "A DISPATCHER sees the couriers of their own district.")
     public ApiResponse<PagedResult<UserProfileResponse>> listCouriers(
-            @RequestParam(required = false) SriLankanDistrict district,
             @RequestParam(required = false) UserStatus status,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             Authentication authentication) {
         return ApiResponse.success(courierAccountService.list(SecurityPrincipal.userId(authentication),
-                district, status, search, page, size), "Couriers retrieved");
+                status, search, page, size), "Couriers retrieved");
     }
 
     @GetMapping("/{courierId}")

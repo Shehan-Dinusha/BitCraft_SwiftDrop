@@ -7,7 +7,7 @@ import { Input } from '@/design-system/primitives/Input';
 import { acceptInvite, previewInvite, type InvitePreview } from '@/services/api/authApi';
 import { parseApiError } from '@/services/api/apiError';
 import { useAuthStore, personaForRole } from '@/store/useAuthStore';
-import { roleHome } from '@/app/roleHome';
+import { homeFor } from '@/app/roleHome';
 import { validatePassword } from '@/features/auth/passwordPolicy';
 import {
   PasswordMatchMeter,
@@ -105,7 +105,7 @@ export function InviteAcceptPage() {
       const tokens = await acceptInvite(token, password);
       setAuth(tokens);
       navigate(
-        tokens.role === 'COURIER' ? '/courier/vehicle' : roleHome[personaForRole(tokens.role)],
+        tokens.role === 'COURIER' ? '/courier/vehicle' : homeFor(personaForRole(tokens.role), tokens.role),
         {
           replace: true
         }

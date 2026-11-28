@@ -1,18 +1,15 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Inbox, PackagePlus, RefreshCw, Send, Truck } from 'lucide-react';
-import { Button, SelectDropdown, StatusBanner, SurfaceCard } from '@/design-system';
+import { Button, StatusBanner, SurfaceCard } from '@/design-system';
 import { analyticsAiApi } from '@/services/api/analyticsAiApi';
-import type { SriLankanDistrict } from '@/services/api/dispatchApi';
 import { useAuthStore } from '@/store/useAuthStore';
 import { districtLabel } from '@/features/profile/profileFormat';
 import { colomboToday } from '@/utils/colomboDate';
 import { vehicleLabel } from '@/utils/vehicles';
-import { LiveFleetHeatmap } from '../components/LiveFleetHeatmap';
 import { SHIFT } from '../components/dispatch/CouriersTab';
 import { Badge, CELL, DispatchTable, TableSkeleton } from '../components/dispatch/DispatchTable';
-import { ALL_DISTRICTS, DISTRICT_OPTIONS } from '../components/dispatch/districtOptions';
 import { sortCouriers } from '../components/dispatch/dispatchQueues';
 import { useDispatchData } from '../components/dispatch/useDispatchData';
 
@@ -54,27 +51,18 @@ function JobCard({
 }
 
 /**
- * What needs doing now (each card opens that job in Dispatch), how today is going, and who is on shift.
- * A dispatcher sees their own district (the server decides); a system admin sees all of them or picks one.
+ * What needs doing now (each card opens that job in Dispatch), how today is going, and who is on shift,
+ * for the dispatcher's own district (the server decides).
  */
 export function FleetControlTowerPage() {
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.role === 'SYSTEM_ADMIN';
-  const [adminDistrict, setAdminDistrict] = useState<string>(ALL_DISTRICTS);
-  const scope =
-    isAdmin && adminDistrict !== ALL_DISTRICTS ? (adminDistrict as SriLankanDistrict) : undefined;
-  const oneDistrict = !isAdmin || scope !== undefined;
 
-  const { unassigned, assigned, ready, incoming, couriers, refresh } = useDispatchData(
-    user?.id,
-    scope,
-    oneDistrict
-  );
+  const { unassigned, assigned, ready, incoming, couriers, refresh } = useDispatchData(user?.id);
   const date = colomboToday();
   const today = useQuery({
-    queryKey: ['analytics-today', user?.id, scope ?? 'all', date],
+    queryKey: ['analytics-today', user?.id, date],
     queryFn: async ({ signal }) =>
-      (await analyticsAiApi.getDailyDeliveries(date, date, scope, signal)).days[0],
+      (await analyticsAiApi.getDailyDeliveries(date, date, undefined, signal)).days[0],
     refetchInterval: TODAY_REFRESH_MS,
     retry: 1
   });
@@ -85,28 +73,18 @@ export function FleetControlTowerPage() {
   const onShift = sortCouriers(
     (couriers.data ?? []).filter((c) => c.shiftStatus && c.shiftStatus !== 'OFFLINE')
   );
-  const tab = (id: string) => `/ops/dispatch?tab=${id}${scope ? `&district=${scope}` : ''}`;
+  const tab = (id: string) => `/ops/dispatch?tab=${id}`;
 
   return (
     <main className="mx-auto max-w-[1400px] space-y-5 p-4 md:p-6" data-density="compact">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-h1 text-primary">Control tower</h1>
-          {!isAdmin && user?.district ? (
+          {user?.district ? (
             <p className="text-caption text-secondary">{districtLabel(user.district)} district</p>
           ) : null}
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          {isAdmin ? (
-            <SelectDropdown
-              label="District"
-              searchable
-              options={DISTRICT_OPTIONS}
-              value={adminDistrict}
-              onChange={setAdminDistrict}
-              className="w-56"
-            />
-          ) : null}
           <Button
             variant="outline"
             density="compact"
@@ -140,22 +118,13 @@ export function FleetControlTowerPage() {
           icon={<Truck />}
           to={tab('assigned')}
         />
-        {oneDistrict ? (
-          <>
-            <JobCard
-              label="Ready to send"
-              count={ready.data?.length}
-              icon={<Send />}
-              to={tab('ready')}
-            />
-            <JobCard
-              label="Incoming"
-              count={incoming.data?.length}
-              icon={<Inbox />}
-              to={tab('incoming')}
-            />
-          </>
-        ) : null}
+        <JobCard label="Ready to send" count={ready.data?.length} icon={<Send />} to={tab('ready')} />
+        <JobCard
+          label="Incoming"
+          count={incoming.data?.length}
+          icon={<Inbox />}
+          to={tab('incoming')}
+        />
       </section>
 
       <SurfaceCard title="Today">
@@ -177,10 +146,7 @@ export function FleetControlTowerPage() {
         )}
       </SurfaceCard>
 
-      {isAdmin && !scope ? (
-        <LiveFleetHeatmap couriers={couriers.data} />
-      ) : (
-        <SurfaceCard title={`Couriers on shift (${onShift.length})`}>
+      <SurfaceCard title={`Couriers on shift (${onShift.length})`}>
           {couriers.data === undefined ? (
             couriers.isError ? null : (
               <TableSkeleton />
@@ -211,8 +177,7 @@ export function FleetControlTowerPage() {
               })}
             </DispatchTable>
           )}
-        </SurfaceCard>
-      )}
+      </SurfaceCard>
     </main>
   );
 }

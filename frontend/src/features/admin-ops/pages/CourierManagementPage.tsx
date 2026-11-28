@@ -14,7 +14,6 @@ import {
   UserX
 } from 'lucide-react';
 import {
-  SRI_LANKAN_DISTRICTS,
   listCouriers,
   registerCourier,
   resendCourierInvite,
@@ -26,7 +25,6 @@ import {
   dispatchApi,
   type CourierProfileResponse,
   type CourierShiftResponse,
-  type SriLankanDistrict,
   type VehicleType
 } from '@/services/api/dispatchApi';
 import { parseApiError } from '@/services/api/apiError';
@@ -75,7 +73,6 @@ function accountBadge(courier: UserProfileItem): AccountBadge {
  */
 export function CourierManagementPage() {
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.role === 'SYSTEM_ADMIN';
   const client = useQueryClient();
   const [search, setSearch] = useState('');
   const [notice, setNotice] = useState('');
@@ -88,9 +85,8 @@ export function CourierManagementPage() {
   const couriers = useQuery({ queryKey: ['couriers'], queryFn: () => listCouriers(), retry: false });
   const profiles = useQuery({ queryKey: ['courier-profiles'], queryFn: dispatchApi.getCourierProfiles, retry: false });
   const shifts = useQuery({
-    queryKey: ['courier-shifts', user?.district, isAdmin],
-    queryFn: () =>
-      dispatchApi.getCouriers(isAdmin ? undefined : { district: user?.district as SriLankanDistrict }),
+    queryKey: ['courier-shifts', user?.district],
+    queryFn: () => dispatchApi.getCouriers(),
     retry: false
   });
 
@@ -167,7 +163,7 @@ export function CourierManagementPage() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-brand-primary">
-            {isAdmin ? 'All districts' : `${districtName(user?.district)} district`}
+            {`${districtName(user?.district)} district`}
           </p>
           <h1 className="text-3xl font-bold tracking-tight">Couriers</h1>
         </div>
@@ -264,7 +260,7 @@ export function CourierManagementPage() {
               <caption className="sr-only">Couriers with their vehicle, shift and account status</caption>
               <thead>
                 <tr className="border-b border-border-subtle bg-canvas text-xs text-secondary">
-                  {['Courier', 'Account', 'Vehicle', 'Shift', ...(isAdmin ? ['District'] : []), 'Actions'].map((label) => (
+                  {['Courier', 'Account', 'Vehicle', 'Shift', 'Actions'].map((label) => (
                     <th key={label} scope="col" className={`px-4 py-3 font-medium ${label === 'Actions' ? 'text-right' : ''}`}>
                       {label}
                     </th>
@@ -312,7 +308,6 @@ export function CourierManagementPage() {
                           ? `${shift.shiftStatus.replaceAll('_', ' ').toLowerCase()} · ${shift.activeParcelsCount ?? 0}/${shift.maxCapacity ?? 0}`
                           : 'Off shift'}
                       </td>
-                      {isAdmin && <td className="px-4 py-3 text-xs text-secondary">{districtName(courier.district)}</td>}
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
                           {courier.invitePending && courier.status === 'ACTIVE' && (
@@ -355,8 +350,6 @@ export function CourierManagementPage() {
 
       <AddCourierModal
         open={adding}
-        isAdmin={isAdmin}
-        defaultDistrict={(user?.district as SriLankanDistrict) ?? 'COLOMBO'}
         onClose={() => setAdding(false)}
         onAdded={async (courier) => {
           setAdding(false);
@@ -420,21 +413,16 @@ export function CourierManagementPage() {
 
 function AddCourierModal({
   open,
-  isAdmin,
-  defaultDistrict,
   onClose,
   onAdded
 }: {
   open: boolean;
-  isAdmin: boolean;
-  defaultDistrict: SriLankanDistrict;
   onClose: () => void;
   onAdded: (courier: UserProfileItem) => void | Promise<void>;
 }) {
   const empty = { firstName: '', lastName: '', username: '', email: '', phone: '' };
   const [form, setForm] = useState(empty);
   const [phoneError, setPhoneError] = useState<string>();
-  const [district, setDistrict] = useState<SriLankanDistrict>(defaultDistrict);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -462,8 +450,7 @@ function AddCourierModal({
         lastName: form.lastName.trim(),
         username: form.username.trim(),
         email: form.email.trim(),
-        phone: toE164(form.phone),
-        ...(isAdmin ? { district } : {})
+        phone: toE164(form.phone)
       });
       setForm(empty);
       await onAdded(courier);
@@ -530,18 +517,6 @@ function AddCourierModal({
           className="sm:col-span-2"
           hint="The invite is sent here"
         />
-        {isAdmin && (
-          <label className="flex flex-col gap-1.5 text-sm font-semibold text-primary sm:col-span-2">
-            District
-            <select className={selectClass} value={district} onChange={(event) => setDistrict(event.target.value as SriLankanDistrict)}>
-              {SRI_LANKAN_DISTRICTS.map((value) => (
-                <option key={value} value={value}>
-                  {districtName(value)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
         {error && (
           <p role="alert" className="text-sm text-status-danger sm:col-span-2">
             {error}

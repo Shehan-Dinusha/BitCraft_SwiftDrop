@@ -18,7 +18,7 @@ import java.util.Optional;
  * suggestions list them after the couriers who are working.
  *
  * <p>The day decides two more things: a parcel waiting at a hub goes only to a courier who has not yet left on
- * their run, and pickups are given out only until 15:00 ({@link WorkingDay#PICKUP_CUTOFF}).</p> The suggestions and the assign and reassign checks all use this,
+ * their run, and pickups are given out only until the pickup cut-off ({@link WorkHours#pickupCutoff()}).</p> The suggestions and the assign and reassign checks all use this,
  * so what a dispatcher is offered is what the server accepts.
  *
  * <p>An order from before sizes were recorded has no size, so only the shift and parcel count apply to it.</p>
@@ -109,8 +109,7 @@ public final class CourierFit {
         return switch (block) {
             case OFF_SHIFT -> name + " is currently OFFLINE";
             case ON_RUN -> name + " has left on their run. Give hub parcels to a courier still at the hub.";
-            case PICKUPS_CLOSED -> "Pickups are given out until " + WorkingDay.PICKUP_CUTOFF
-                    + ". This one waits for tomorrow's run.";
+            case PICKUPS_CLOSED -> "Pickups are closed for today. This one waits for the next working day's run.";
             case PARCEL_LIMIT -> name + " already carries " + courier.getMaxCapacity() + " parcels";
             case TOO_LONG -> "The parcel is " + plain(parcel.getLongestSideCm()) + " cm long" + takes
                     + vehicle.maxSideCm() + " cm";

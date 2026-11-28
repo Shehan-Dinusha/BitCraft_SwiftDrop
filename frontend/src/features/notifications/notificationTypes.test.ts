@@ -47,6 +47,8 @@ describe('notification types per role', () => {
     expect(notificationTarget('MERCHANT', 'MERCHANT_DELIVERY_FAILED', 'SD-AAAA-BBBB')).toBe('/merchant');
     expect(notificationTarget('ADMIN_OPS', 'OPS_DELIVERY_FAILED', 'SD-AAAA-BBBB')).toBe('/ops/dispatch?tab=returns');
     expect(notificationTarget('ADMIN_OPS', 'DISPATCH_FAILED', null)).toBe('/ops/dispatch');
+    expect(notificationTarget('ADMIN_OPS', 'OPS_DELIVERY_FAILED', 'SD-AAAA-BBBB', 'SYSTEM_ADMIN')).toBe('/track/SD-AAAA-BBBB');
+    expect(notificationTarget('ADMIN_OPS', 'MERCHANT_APPLICATION', null, 'SYSTEM_ADMIN')).toBeNull();
     expect(notificationTarget('CUSTOMER', 'PARCEL_DELIVERED', null)).toBeNull();
   });
 });

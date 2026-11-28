@@ -8,31 +8,23 @@ import com.swiftdrop.contracts.security.ForbiddenException;
 /**
  * District boundaries for dispatchers. An order belongs to its pickup district: that district's
  * dispatcher sees it, assigns and reassigns its courier, and only couriers working in that district
- * can carry it. The drop-off district's dispatcher sees it too, read-only, as incoming. A SYSTEM_ADMIN
- * works across every district. The dispatcher's district comes from the gateway (X-District-Id, from
- * their account), never from the request.
+ * can carry it. The drop-off district's dispatcher sees it too, read-only, as incoming. The
+ * dispatcher's district comes from the gateway (X-District-Id, from their account), never from the
+ * request. A SYSTEM_ADMIN does not do dispatch work, so dispatch endpoints never reach here for one.
+ * {@code DispatchAccess} rejects them first.
  */
 public final class DistrictScope {
 
     private DistrictScope() {
     }
 
-    /**
-     * The district a list is limited to: the dispatcher's own district (any {@code requested} value is
-     * ignored), or for a SYSTEM_ADMIN the one requested, {@code null} meaning every district.
-     */
-    public static SriLankanDistrict listDistrict(CallerContext caller, SriLankanDistrict requested) {
-        if (caller.role() == UserRole.SYSTEM_ADMIN) {
-            return requested;
-        }
+    /** The district a list is limited to: always the dispatcher's own. */
+    public static SriLankanDistrict listDistrict(CallerContext caller) {
         return ownDistrict(caller);
     }
 
     /** May the caller see an order with these districts? Its pickup or its drop-off district. */
     public static void requireView(CallerContext caller, SriLankanDistrict pickup, SriLankanDistrict delivery) {
-        if (caller.role() == UserRole.SYSTEM_ADMIN) {
-            return;
-        }
         SriLankanDistrict own = ownDistrict(caller);
         if (own != pickup && own != delivery) {
             throw new ForbiddenException("This order is not in your district");
@@ -41,9 +33,6 @@ public final class DistrictScope {
 
     /** May the caller assign or reassign the courier of an order picked up in {@code pickup}? */
     public static void requireManage(CallerContext caller, SriLankanDistrict pickup) {
-        if (caller.role() == UserRole.SYSTEM_ADMIN) {
-            return;
-        }
         if (ownDistrict(caller) != pickup) {
             throw new ForbiddenException("This order is handled by the " + label(pickup) + " dispatcher");
         }

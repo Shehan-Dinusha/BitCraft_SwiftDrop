@@ -244,15 +244,14 @@ export async function acceptInvite(token: string, password: string): Promise<Aut
   return data;
 }
 
-// ── Courier accounts (DISPATCHER: own district; SYSTEM_ADMIN: any) ─────────
+// ── Courier accounts (DISPATCHER, own district only) ───────────────────────
 
 export type CreateCourierInput = components['schemas']['CreateCourierRequest'];
 
-/** Couriers the caller manages. A dispatcher always gets their own district. */
+/** Couriers of the dispatcher's own district. */
 export async function listCouriers(params?: {
   status?: UserStatus;
   search?: string;
-  district?: components['schemas']['SriLankanDistrict'];
 }): Promise<UserProfileItem[]> {
   const { data } = await apiClient.get<{ data?: components['schemas']['PagedUserProfileResponse'] }>(
     '/v1/users/couriers',

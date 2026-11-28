@@ -38,9 +38,9 @@ function renderPage(path = '/ops/dispatch') {
   );
 }
 
-const signInAs = (role: 'DISPATCHER' | 'SYSTEM_ADMIN') =>
+const signInAs = (role: 'DISPATCHER') =>
   useAuthStore.setState({
-    user: { id: 'u1', role, district: role === 'DISPATCHER' ? 'COLOMBO' : undefined } as never
+    user: { id: 'u1', role, district: 'COLOMBO' } as never
   });
 
 describe('DispatchBoardPage', () => {
@@ -219,15 +219,6 @@ describe('DispatchBoardPage', () => {
         expect.objectContaining({ targetState: 'FAILED', failureReason: 'LOST' })
       )
     );
-  });
-
-  it('hides the hub tabs until an admin picks a district', async () => {
-    signInAs('SYSTEM_ADMIN');
-    renderPage('/ops/dispatch?tab=ready');
-
-    expect(await screen.findByText('SD-A')).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: /Ready to send/ })).not.toBeInTheDocument();
-    expect(dispatchApi.getReadyToSend).not.toHaveBeenCalled();
   });
 
   it('does not call a queue empty when it could not be loaded', async () => {

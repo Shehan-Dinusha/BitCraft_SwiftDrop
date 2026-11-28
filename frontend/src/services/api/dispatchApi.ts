@@ -19,6 +19,8 @@ export type OrderCourierResponse = components['schemas']['OrderCourierResponse']
 export type WorkdayResponse = components['schemas']['WorkdayResponse'];
 export type ClosedDayResponse = components['schemas']['ClosedDayResponse'];
 export type ClosedDayRequest = components['schemas']['ClosedDayRequest'];
+export type WorkingHoursRequest = components['schemas']['WorkingHoursRequest'];
+export type DayOfWeek = components['schemas']['DayOfWeek'];
 
 export interface PagedDispatchResult {
   content: DispatchAssignmentResponse[];
@@ -33,13 +35,8 @@ export interface PagedDispatchResult {
 export type ShopCourierSuggestionResponse = components['schemas']['ShopCourierSuggestionResponse'];
 
 export const dispatchApi = {
-  /** A dispatcher always gets their own district; `district` only applies to a system admin. */
-  getAssignments: async (params?: {
-    status?: AssignmentStatus;
-    page?: number;
-    size?: number;
-    district?: SriLankanDistrict;
-  }) => {
+  /** Orders picked up in the dispatcher's own district. */
+  getAssignments: async (params?: { status?: AssignmentStatus; page?: number; size?: number }) => {
     const { data } = await apiClient.get<{ success: boolean; data: PagedDispatchResult }>(
       '/v1/dispatch/assignments',
       { params }
@@ -61,46 +58,41 @@ export const dispatchApi = {
     return data.data;
   },
 
-  getUnassignedParcels: async (district?: SriLankanDistrict) => {
+  getUnassignedParcels: async () => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
-      '/v1/dispatch/unassigned',
-      { params: { district } }
+      '/v1/dispatch/unassigned'
     );
     return data.data;
   },
 
   /** Parcels handed in at the district's hub and waiting to be marked Outbound. */
-  getReadyToSend: async (district?: SriLankanDistrict) => {
+  getReadyToSend: async () => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
-      '/v1/dispatch/ready-to-send',
-      { params: { district } }
+      '/v1/dispatch/ready-to-send'
+    );
+    return data.data;
+  },
+
+  /** Marked Outbound by the district and not yet accepted by the drop-off hub. Read-only. */
+  getSent: async () => {
+    const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
+      '/v1/dispatch/sent'
     );
     return data.data;
   },
 
   /** Open orders delivered into the district from elsewhere; read-only for its dispatcher. */
-  /** Marked Outbound by the district and not yet accepted by the drop-off hub. Read-only. */
-  getSent: async (district?: SriLankanDistrict) => {
+  getIncoming: async () => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
-      '/v1/dispatch/sent',
-      { params: { district } }
-    );
-    return data.data;
-  },
-
-  getIncoming: async (district?: SriLankanDistrict) => {
-    const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
-      '/v1/dispatch/incoming',
-      { params: { district } }
+      '/v1/dispatch/incoming'
     );
     return data.data;
   },
 
   /** Failed deliveries the district deals with, and returns coming to its hub. */
-  getReturns: async (district?: SriLankanDistrict) => {
+  getReturns: async () => {
     const { data } = await apiClient.get<{ success: boolean; data: DispatchAssignmentResponse[] }>(
-      '/v1/dispatch/returns',
-      { params: { district } }
+      '/v1/dispatch/returns'
     );
     return data.data;
   },
@@ -137,7 +129,8 @@ export const dispatchApi = {
     return data.data;
   },
 
-  getCouriers: async (params?: { district?: SriLankanDistrict; status?: ShiftStatus }) => {
+  /** The couriers of the dispatcher's own district. */
+  getCouriers: async (params?: { status?: ShiftStatus }) => {
     const { data } = await apiClient.get<{ success: boolean; data: CourierShiftResponse[] }>(
       '/v1/dispatch/couriers',
       { params }
@@ -161,10 +154,9 @@ export const dispatchApi = {
   },
 
   /** Couriers on shift and which of a shop's ready parcels each has room for. */
-  getShopCouriers: async (merchantId: string, district?: SriLankanDistrict) => {
+  getShopCouriers: async (merchantId: string) => {
     const { data } = await apiClient.get<{ data: ShopCourierSuggestionResponse[] }>(
-      `/v1/dispatch/shops/${merchantId}/couriers`,
-      { params: { district } }
+      `/v1/dispatch/shops/${merchantId}/couriers`
     );
     return data.data;
   },
@@ -268,6 +260,23 @@ export const dispatchApi = {
   getWorkday: async () => {
     const { data } = await apiClient.get<{ success: boolean; data: WorkdayResponse }>(
       '/v1/dispatch/calendar/today'
+    );
+    return data.data;
+  },
+
+  /** System admin: change the working days, hours, lunch break and cut-offs. Returns today's working day. */
+  updateWorkingHours: async (request: WorkingHoursRequest) => {
+    const { data } = await apiClient.put<{ success: boolean; data: WorkdayResponse }>(
+      '/v1/dispatch/calendar/hours',
+      request
+    );
+    return data.data;
+  },
+
+  /** System admin: restore the standard working hours. Returns today's working day. */
+  resetWorkingHours: async () => {
+    const { data } = await apiClient.delete<{ success: boolean; data: WorkdayResponse }>(
+      '/v1/dispatch/calendar/hours'
     );
     return data.data;
   },

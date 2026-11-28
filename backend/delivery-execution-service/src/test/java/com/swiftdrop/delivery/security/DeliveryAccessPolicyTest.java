@@ -105,14 +105,11 @@ class DeliveryAccessPolicyTest {
         assertThatThrownBy(() -> DeliveryAccessPolicy.assertCanAccess(colomboToKandy, galle))
                 .isInstanceOf(ForbiddenException.class);
 
-        CallerContext admin = new CallerContext(UUID.randomUUID(), UserRole.SYSTEM_ADMIN, null, null);
-        assertThatCode(() -> DeliveryAccessPolicy.assertCanAccess(colomboToKandy, admin))
-                .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("System admin role bypasses courier ownership checks")
-    void testSystemAdminBypassesOwnershipCheck() {
+    @DisplayName("A system admin does not run deliveries")
+    void testSystemAdminIsRefused() {
         UUID adminId = UUID.randomUUID();
         UUID courierId = UUID.randomUUID();
         CallerContext admin = new CallerContext(adminId, UserRole.SYSTEM_ADMIN, null, SriLankanDistrict.COLOMBO);
@@ -121,11 +118,11 @@ class DeliveryAccessPolicyTest {
         session.setDeliveryId(UUID.randomUUID());
         session.setCourierId(courierId);
 
-        assertThatCode(() -> DeliveryAccessPolicy.assertCanAccess(session, admin))
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> DeliveryAccessPolicy.assertCanAccess(session, admin))
+                .isInstanceOf(ForbiddenException.class);
 
-        assertThatCode(() -> DeliveryAccessPolicy.assertCanAccess(courierId, admin))
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> DeliveryAccessPolicy.assertCanAccess(courierId, admin))
+                .isInstanceOf(ForbiddenException.class);
     }
 
     @ParameterizedTest

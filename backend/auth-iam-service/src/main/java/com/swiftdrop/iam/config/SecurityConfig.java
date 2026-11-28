@@ -75,7 +75,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/change-password").authenticated()
                         // Dispatchers manage their district's couriers; must precede the admin-only rule.
                         .requestMatchers("/api/v1/users/couriers", "/api/v1/users/couriers/**")
-                        .hasAnyRole("DISPATCHER", "SYSTEM_ADMIN")
+                        .hasRole("DISPATCHER")
                         .requestMatchers("/api/v1/users/**").hasRole("SYSTEM_ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

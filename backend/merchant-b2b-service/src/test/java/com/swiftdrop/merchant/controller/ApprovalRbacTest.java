@@ -69,17 +69,25 @@ class ApprovalRbacTest {
         verifyNoInteractions(approvals);
     }
 
-    @Test void adminCanApproveRejectAndList() throws Exception {
+    @Test void anAdminListsButDoesNotReviewApplications() throws Exception {
         mvc.perform(post("/api/v1/admin/merchants/" + id + "/approve")
-                .header("X-User-Id", id).header("X-User-Role", "SYSTEM_ADMIN")).andExpect(status().isOk());
-        verify(approvals).approve(any(CallerContext.class), eq(UUID.fromString(id)), isNull());
+                .header("X-User-Id", id).header("X-User-Role", "SYSTEM_ADMIN")).andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/admin/merchants/" + id + "/reject")
                 .header("X-User-Id", id).header("X-User-Role", "SYSTEM_ADMIN")
                 .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Invalid business\"}"))
-                .andExpect(status().isOk());
-        verify(approvals).reject(any(CallerContext.class), eq(UUID.fromString(id)), eq("Invalid business"));
+                .andExpect(status().isForbidden());
+        verify(approvals, never()).approve(any(), any(), any());
+        verify(approvals, never()).reject(any(), any(), any());
         mvc.perform(get("/api/v1/admin/merchants?status=PENDING_APPROVAL")
                 .header("X-User-Id", id).header("X-User-Role", "SYSTEM_ADMIN")).andExpect(status().isOk());
+    }
+
+    @Test void aDispatcherRejectsWithAReason() throws Exception {
+        mvc.perform(post("/api/v1/admin/merchants/" + id + "/reject")
+                .header("X-User-Id", id).header("X-User-Role", "DISPATCHER").header("X-District-Id", "KANDY")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Invalid business\"}"))
+                .andExpect(status().isOk());
+        verify(approvals).reject(any(CallerContext.class), eq(UUID.fromString(id)), eq("Invalid business"));
     }
 
     @Test void aDispatcherReviewsWithTheirDistrictIdentity() throws Exception {
@@ -105,7 +113,7 @@ class ApprovalRbacTest {
     @Test void rejectionRequiresReason() throws Exception {
         for (String body : new String[]{"{}", "{\"reason\":\"  \"}"}) {
             mvc.perform(post("/api/v1/admin/merchants/" + id + "/reject")
-                    .header("X-User-Id", id).header("X-User-Role", "SYSTEM_ADMIN")
+                    .header("X-User-Id", id).header("X-User-Role", "DISPATCHER").header("X-District-Id", "KANDY")
                     .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
         }
         verifyNoInteractions(approvals);

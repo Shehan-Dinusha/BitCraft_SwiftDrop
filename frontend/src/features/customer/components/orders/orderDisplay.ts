@@ -24,6 +24,14 @@ export const SPEED_LABEL: Record<NonNullable<CustomerOrderResponse['orderSpeed']
  * matching the landing page. The app takes no online payment.
  */
 export const PAYMENT_NOTE = 'Pay the courier in cash at pickup.';
+export const PAID_NOTE = 'Paid to the courier in cash at pickup.';
+
+/**
+ * Whether the sender has paid. A courier cannot pick a parcel up without confirming the exact fee in cash,
+ * so every status from pickup on means it was paid.
+ */
+export const feePaid = (order: CustomerOrderResponse) =>
+  !['CREATED', 'PICKUP_ASSIGNED', 'CANCELLED'].includes(orderStatus(order));
 
 export const payableFee = (order: CustomerOrderResponse) =>
   order.finalFee ?? order.estimatedFee ?? 0;

@@ -2,6 +2,7 @@ package com.swiftdrop.dispatch.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -25,6 +26,10 @@ public record WorkdayResponse(
         @Schema(description = "Whether a courier can start a shift right now")
         boolean shiftCanStart,
 
+        @Schema(description = "The weekdays couriers work; the others are closed every week",
+                example = "[\"MONDAY\",\"TUESDAY\",\"WEDNESDAY\",\"THURSDAY\",\"FRIDAY\",\"SATURDAY\"]")
+        List<DayOfWeek> workingDays,
+
         @Schema(description = "Working day opens", type = "string", example = "08:00")
         LocalTime opensAt,
 
@@ -33,6 +38,9 @@ public record WorkdayResponse(
 
         @Schema(description = "Earliest shift start", type = "string", example = "07:30")
         LocalTime shiftFrom,
+
+        @Schema(description = "A shift started after this shows as a late start", type = "string", example = "09:00")
+        LocalTime lateAfter,
 
         @Schema(description = "Lunch break can start from", type = "string", example = "12:00")
         LocalTime breakFrom,
@@ -45,6 +53,9 @@ public record WorkdayResponse(
 
         @Schema(description = "New pickups are given out until", type = "string", example = "15:00")
         LocalTime pickupCutoff,
+
+        @Schema(description = "Same day parcels are booked before this", type = "string", example = "11:00")
+        LocalTime sameDayCutoff,
 
         @Schema(description = "Listed holidays from today on")
         List<ClosedDayResponse> closedDays

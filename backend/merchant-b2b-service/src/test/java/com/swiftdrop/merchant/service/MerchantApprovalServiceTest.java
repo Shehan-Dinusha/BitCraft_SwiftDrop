@@ -96,11 +96,12 @@ class MerchantApprovalServiceTest {
         verifyNoInteractions(events);
     }
 
-    @Test void anAdminCanDecideForAnyDistrict() {
-        var galle = pending();
-        galle.setOperatingDistrict(SriLankanDistrict.GALLE);
-        when(accounts.findForUpdate(merchantId)).thenReturn(Optional.of(galle));
-        assertThat(service.approve(adminCaller, merchantId, null).approvedBy()).isEqualTo(admin);
+    @Test void anAdminDoesNotDecideOnApplications() {
+        when(accounts.findForUpdate(merchantId)).thenReturn(Optional.of(pending()));
+        assertThatThrownBy(() -> service.approve(adminCaller, merchantId, null)).isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> service.reject(adminCaller, merchantId, "No")).isInstanceOf(ForbiddenException.class);
+        verify(accounts, never()).save(any());
+        verifyNoInteractions(events);
     }
 
     @Test void rejectionSavesReasonAndEmailsTheOwner() {
@@ -119,9 +120,9 @@ class MerchantApprovalServiceTest {
         var account = pending();
         account.setStatus(MerchantStatus.APPROVED);
         when(accounts.findForUpdate(merchantId)).thenReturn(Optional.of(account));
-        assertThatThrownBy(() -> service.approve(adminCaller, merchantId, null))
+        assertThatThrownBy(() -> service.approve(colomboDispatcher, merchantId, null))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
-        assertThatThrownBy(() -> service.reject(adminCaller, merchantId, "Invalid"))
+        assertThatThrownBy(() -> service.reject(colomboDispatcher, merchantId, "Invalid"))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
         verifyNoInteractions(events);
         verify(accounts, never()).save(any());
@@ -131,7 +132,7 @@ class MerchantApprovalServiceTest {
         var account = pending();
         account.setOwnerUserId(null);
         when(accounts.findForUpdate(merchantId)).thenReturn(Optional.of(account));
-        assertThatThrownBy(() -> service.approve(adminCaller, merchantId, null))
+        assertThatThrownBy(() -> service.approve(colomboDispatcher, merchantId, null))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
         verifyNoInteractions(events);
     }

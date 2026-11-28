@@ -7,7 +7,6 @@ import com.swiftdrop.dispatch.dto.WorkdayResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -29,8 +28,8 @@ public class ClosedDayService {
         if (day.isBefore(workingDay.today())) {
             throw new IllegalArgumentException("Choose today or a later day.");
         }
-        if (day.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            throw new IllegalArgumentException("Sundays are always closed.");
+        if (!workingDay.hours().isWorkingDay(day.getDayOfWeek())) {
+            throw new IllegalArgumentException(WorkingDay.weekdayName(day.getDayOfWeek()) + "s are always closed.");
         }
         if (closedDays.existsById(day)) {
             throw new IllegalArgumentException("That day is already closed.");

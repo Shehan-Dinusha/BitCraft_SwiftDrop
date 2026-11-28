@@ -23,15 +23,12 @@ export function ToAssignTab({
   orders: all,
   searching,
   now,
-  showDistrict,
   onAssign,
   onShopAssigned
 }: {
   orders: DispatchAssignmentResponse[];
   searching: boolean;
   now: number;
-  /** An admin looking at every district. */
-  showDistrict: boolean;
   onAssign: (order: DispatchAssignmentResponse) => void;
   onShopAssigned: (message: string) => void;
 }) {
@@ -52,12 +49,7 @@ export function ToAssignTab({
 
   return (
     <>
-      <ShopPickups
-        shops={shops}
-        now={now}
-        showDistrict={showDistrict}
-        onAssigned={onShopAssigned}
-      />
+      <ShopPickups shops={shops} now={now} onAssigned={onShopAssigned} />
       <div className="flex flex-wrap gap-2 px-3 pb-3">
         {chips.map((chip) => (
           <QueueChip

@@ -21,7 +21,7 @@ const SPEEDS: { value: OrderSpeed; title: string; caption: string; icon: JSX.Ele
   {
     value: 'SAME_DAY',
     title: 'Same day',
-    caption: 'Today, within one district, if booked by 11:00',
+    caption: 'Today, within one district, if booked in the morning',
     icon: <Timer />
   }
 ];

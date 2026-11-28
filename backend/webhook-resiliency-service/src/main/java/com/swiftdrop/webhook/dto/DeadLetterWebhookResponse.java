@@ -7,15 +7,14 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Dead-letter record. Fields marked "omitted for DISPATCHER" are {@code null} in responses to dispatchers, who
- * receive operational metadata only (no payload, no endpoint reference, no raw failure text).
+ * Legacy dead-letter record (read-only history), shown to its merchant or a system administrator.
  */
-@Schema(description = "Dead-Letter Queue webhook record")
+@Schema(description = "Legacy dead-letter webhook record (read-only history)")
 public record DeadLetterWebhookResponse(
         @Schema(description = "DLQ Record UUID")
         UUID dlqId,
 
-        @Schema(description = "Target Endpoint UUID. Omitted (null) for DISPATCHER callers.")
+        @Schema(description = "Target Endpoint UUID")
         UUID endpointId,
 
         @Schema(description = "Merchant UUID")
@@ -24,11 +23,10 @@ public record DeadLetterWebhookResponse(
         @Schema(description = "Triggering domain event type")
         String eventType,
 
-        @Schema(description = "Payload content. Omitted (null) for DISPATCHER callers.")
+        @Schema(description = "Payload content")
         String payload,
 
-        @Schema(description = "Raw failure detail recorded by the dispatcher; may contain the callback URL or host. "
-                + "Omitted (null) for DISPATCHER callers.")
+        @Schema(description = "Raw failure detail recorded by the retired dispatcher; may contain the callback URL or host")
         String failureReason,
 
         @Schema(description = "Failure classification derived from the recorded failure")

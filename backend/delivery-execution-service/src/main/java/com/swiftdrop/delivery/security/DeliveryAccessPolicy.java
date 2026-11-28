@@ -11,8 +11,8 @@ import java.util.UUID;
 
 /**
  * Access policy enforcing horizontal authorisation for delivery resources.
- * Only the courier assigned to the delivery session, or privileged roles
- * (DISPATCHER, SYSTEM_ADMIN), are permitted access.
+ * Only the courier assigned to the delivery session, or a DISPATCHER (of its district), is
+ * permitted access. A SYSTEM_ADMIN oversees the platform and does not run deliveries.
  */
 @Component
 public class DeliveryAccessPolicy {
@@ -55,8 +55,8 @@ public class DeliveryAccessPolicy {
 
         UserRole role = caller.role();
 
-        // Privileged operational roles bypass horizontal ownership checks
-        if (role == UserRole.DISPATCHER || role == UserRole.SYSTEM_ADMIN) {
+        // The dispatcher bypasses the courier ownership check (the district check is separate)
+        if (role == UserRole.DISPATCHER) {
             return;
         }
 
