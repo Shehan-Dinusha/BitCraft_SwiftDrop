@@ -47,6 +47,7 @@ export function LoginPage() {
     oauthError ? oauthErrorMessage(oauthError) : null
   );
   const signedInHome = useSignedInRedirect();
+  const accountChanged = useAuthStore((state) => state.accountChanged);
 
   if (signedInHome) return <Navigate to={signedInHome} replace />;
 
@@ -200,7 +201,14 @@ export function LoginPage() {
         </>
       }
     >
-      {notice && !error ? <Alert tone="success" title={notice} className="mb-5" /> : null}
+      {accountChanged && !error ? (
+        <Alert tone="warning" title="Signed in as another account in another tab" className="mb-5">
+          This browser holds one account at a time. Sign in again to continue here.
+        </Alert>
+      ) : null}
+      {notice && !error && !accountChanged ? (
+        <Alert tone="success" title={notice} className="mb-5" />
+      ) : null}
       {error ? (
         <Alert tone="danger" title="Sign-in failed" className="mb-5">
           {error}

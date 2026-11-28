@@ -1,5 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '@/store/useAuthStore';
+import { setSignedInHint, useAuthStore } from '@/store/useAuthStore';
 import type { AuthTokenResponse } from '@/services/api/authApi';
 
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -28,13 +28,33 @@ async function postRefreshInTurn(): Promise<AuthTokenResponse> {
 }
 
 /**
+ * The refresh cookie now belongs to another account: someone signed in as another user in another tab, which
+ * replaced the browser's one cookie. This tab's session has ended (endTabSession); it never takes on that
+ * other account.
+ */
+export class AccountChangedError extends Error {
+  constructor() {
+    super('Signed in as another account in another tab');
+    this.name = 'AccountChangedError';
+  }
+}
+
+/**
  * Rotates the session with the refresh cookie and stores the new tokens. The only way to call
  * `/v1/auth/refresh`: requests in this tab share one call, and the lock makes other tabs wait their turn.
+ *
+ * @throws AccountChangedError if the cookie returns another user than the one this tab is signed in as
  */
 export function refreshSession(): Promise<AuthTokenResponse> {
   inFlightRefresh ??= postRefreshInTurn()
     .then((data) => {
-      useAuthStore.getState().setAuth(data);
+      const auth = useAuthStore.getState();
+      const tabUser = auth.user?.id;
+      if (tabUser && data.userId && tabUser !== data.userId) {
+        auth.endTabSession();
+        throw new AccountChangedError();
+      }
+      auth.setAuth(data);
       return data;
     })
     .finally(() => {
@@ -54,8 +74,10 @@ export async function restoreSession(): Promise<void> {
   state.setSessionRestore('running');
   try {
     await refreshSession();
-  } catch {
-    // No cookie, or it expired or was revoked: the guard sends the user to sign in.
+  } catch (error) {
+    // No cookie, or it expired or was revoked: the guard sends the user to sign in. Forget that this browser
+    // was signed in, so other new tabs stop trying. (Another account signed in is still signed in.)
+    if (!(error instanceof AccountChangedError)) setSignedInHint(false);
   } finally {
     useAuthStore.getState().setSessionRestore('done');
   }
@@ -126,9 +148,10 @@ apiClient.interceptors.response.use(
       const { accessToken } = await refreshSession();
       request.headers.Authorization = `Bearer ${accessToken ?? ''}`;
       return apiClient(request);
-    } catch {
-      // Refresh token is expired or revoked — force a clean sign-out.
-      useAuthStore.getState().signOut();
+    } catch (refreshError) {
+      // Refresh token is expired or revoked — force a clean sign-out. When the browser is now signed in as
+      // another account, only this tab's session has ended (already done): that account stays signed in.
+      if (!(refreshError instanceof AccountChangedError)) useAuthStore.getState().signOut();
       return Promise.reject(error);
     }
   }
