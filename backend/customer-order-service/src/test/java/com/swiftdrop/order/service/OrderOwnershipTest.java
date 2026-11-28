@@ -362,7 +362,7 @@ class OrderOwnershipTest {
         CustomerOrderResponse response = customerOrderService.cancelOrder(orderId, null, customerA, "CUSTOMER", UUID.randomUUID());
 
         assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
-        verify(orderEventPublisher).publishOrderCancelled(any(), any(), any(), any());
+        verify(orderEventPublisher).publishOrderCancelled(any(), any(), any(), any(), any());
     }
 
     @Test

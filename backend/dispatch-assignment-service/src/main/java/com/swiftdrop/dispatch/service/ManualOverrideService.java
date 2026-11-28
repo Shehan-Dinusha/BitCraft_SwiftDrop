@@ -1,11 +1,8 @@
 package com.swiftdrop.dispatch.service;
 
-import com.swiftdrop.dispatch.domain.enums.AssignmentLeg;
 import com.swiftdrop.dispatch.security.DistrictScope;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.enums.InternalQueueStatus;
-import com.swiftdrop.contracts.enums.PublicOrderStatus;
-import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
@@ -105,20 +102,15 @@ public class ManualOverrideService {
             throw new AssignmentConflictException("Order " + request.orderId()
                     + " is not packed yet. The shop says when it is ready for pickup.");
         }
-        PublicOrderStatus previousPublicStatus = publicStatusOf(assignment.getStatus());
-
         CourierShift courier = findAcceptingCourier(request.courierId(), assignment);
         AssignmentStateMachine.transition(assignment.getStatus(), AssignmentStatus.ASSIGNED);
         incrementWorkload(courier);
 
         assignment = applyCourier(assignment, courier, AssignmentStatus.ASSIGNED, request.assignedBy());
-        if (assignment.getLeg() != AssignmentLeg.FIRST_MILE) {
-            // The parcel waits at a hub: customers already see it on its way, so only the courier
-            // assignment is published (a PICKUP_ASSIGNED status would move it backwards).
-            publishCourierAssigned(assignment, courier, eventCorrelationId(correlationId));
-        } else {
-            publishAssignmentEvents(assignment, courier, previousPublicStatus, correlationId);
-        }
+        // Only the assignment is published. delivery-execution-service owns parcel.status.changed: it reports
+        // CREATED -> PICKUP_ASSIGNED when it receives this event, so publishing that status here as well sent
+        // merchants two webhooks and senders two "courier assigned" emails.
+        publishCourierAssigned(assignment, courier, eventCorrelationId(correlationId));
         return assignment;
     }
 
@@ -190,20 +182,6 @@ public class ManualOverrideService {
                 assignment.getOrderId(), currentCourierId, newCourier.getCourierId());
         publishCourierAssigned(assignment, newCourier, eventCorrelationId(correlationId));
         return assignment;
-    }
-
-    /**
-     * Public status implied by the assignment state before this operation. Dispatch
-     * only tracks allocation, so an assigned order is reported as PICKUP_ASSIGNED.
-     */
-    private PublicOrderStatus publicStatusOf(AssignmentStatus status) {
-        return switch (status) {
-            case UNASSIGNED -> PublicOrderStatus.CREATED;
-            case ASSIGNED, REASSIGNED -> PublicOrderStatus.PICKUP_ASSIGNED;
-            case IN_TRANSFER -> PublicOrderStatus.IN_TRANSIT;
-            case COMPLETED -> PublicOrderStatus.DELIVERED;
-            case CANCELLED -> PublicOrderStatus.CANCELLED;
-        };
     }
 
     private DispatchAssignment findActiveAssignment(UUID orderId) {
@@ -281,33 +259,6 @@ public class ManualOverrideService {
     /** The caller's correlation ID when supplied, otherwise a newly generated one. */
     private UUID eventCorrelationId(UUID correlationId) {
         return correlationId != null ? correlationId : UUID.randomUUID();
-    }
-
-    /**
-     * First-time assignment: records courier.assigned and the CREATED to
-     * PICKUP_ASSIGNED status change for after-commit publication, sharing one
-     * correlation ID.
-     */
-    private void publishAssignmentEvents(DispatchAssignment assignment, CourierShift courier,
-                                         PublicOrderStatus previousPublicStatus, UUID correlationId) {
-        UUID eventCorrelationId = eventCorrelationId(correlationId);
-        publishCourierAssigned(assignment, courier, eventCorrelationId);
-
-        ParcelStatusChangedEvent statusEvent = new ParcelStatusChangedEvent(
-                UUID.randomUUID(),
-                eventCorrelationId,
-                assignment.getTrackingNumber(),
-                assignment.getOrderId(),
-                assignment.getCustomerId(),
-                previousPublicStatus,
-                PublicOrderStatus.PICKUP_ASSIGNED,
-                InternalQueueStatus.PICKUP_ASSIGNED,
-                assignment.getPickupDistrict(),
-                assignment.getDeliveryDistrict(),
-                null,
-                Instant.now()
-        );
-        eventPublisher.publishParcelStatusChanged(statusEvent);
     }
 
     private void publishCourierAssigned(DispatchAssignment assignment, CourierShift courier, UUID eventCorrelationId) {

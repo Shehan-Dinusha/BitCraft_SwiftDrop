@@ -58,15 +58,14 @@ Source: `PublicOrderStatus.fromDeliveryState`, `InternalQueueStatus.fromDelivery
 
 ### 1.2 Who emits `parcel.status.changed`
 
-All three use routing key `parcel.status.changed` on `swiftdrop.events.exchange` and the `ParcelStatusChangedEvent`
+All of them use routing key `parcel.status.changed` on `swiftdrop.events.exchange` and the `ParcelStatusChangedEvent`
 record **[source]**:
 
 | Producer | When | `previousPublicStatus` → `newPublicStatus` | After commit? |
 |---|---|---|---|
 | customer-order `OrderEventPublisher.publishOrderCreated` | Order booked (customer or merchant) | `null` → `CREATED` (sent right after `order.created`) | **No** (inside the order transaction) |
-| customer-order `OrderEventPublisher.publishOrderCancelled` | `POST /api/v1/orders/{id}/cancel`, or fee revision rejected | **`CANCELLED` → `CANCELLED`** (see 1.4, issue 1) | No |
-| dispatch `ManualOverrideService.publishAssignmentEvents` | First-mile courier assigned | `CREATED` → `PICKUP_ASSIGNED` | Yes (`AfterCommitRabbitRelay`) |
-| delivery-execution `PublishStateTransitionAction` | **Every** delivery transition, including the `CREATED → ASSIGNED` it makes when it receives `dispatch.courier.assigned` | mapped from the previous and new delivery states (table 1.1) | Yes (`afterCommit`) |
+| customer-order `OrderEventPublisher.publishOrderCancelled` | `POST /api/v1/orders/{id}/cancel`, or fee revision rejected | the status before the cancellation → `CANCELLED` (1.4, issue 1, fixed) | No |
+| delivery-execution `PublishStateTransitionAction` | **Every** delivery transition, including the `CREATED → ASSIGNED` it makes when it receives `dispatch.courier.assigned` (the only `PICKUP_ASSIGNED` event; dispatch publishes just the assignment) | mapped from the previous and new delivery states (table 1.1) | Yes (`afterCommit`) |
 
 Not every step emits one: a hub courier assignment (`AT_DESTINATION_HUB`/`RETURN_AT_HUB` + `dispatch.courier.assigned`)
 and delivery's own handling of `order.cancelled` publish **no** status event **[source]**.
@@ -84,7 +83,7 @@ Merchant (B2B) orders are always `STANDARD` or `EXPRESS`, so they always go **th
 | # | Transition (delivery state) | Public | Triggered by (gateway path; role) | Prerequisites | Webhook |
 |---|---|---|---|---|---|
 | 1 | booked → `CREATED` | `null → CREATED` | B2B: `POST /api/v1/b2b/orders` with `X-API-Key` (merchant API key) | Approved merchant, API key | ✅ `order.created`, then ✅ `CREATED` |
-| 2 | `CREATED → ASSIGNED` | `CREATED → PICKUP_ASSIGNED` | `POST /api/v1/dispatch/shops/{merchantId}/assign` (shop visit) or `POST /api/v1/dispatch/assign`; DISPATCHER of the pickup district or SYSTEM_ADMIN | Standard: merchant marked parcels ready (`POST /api/v1/b2b/pickups/ready`). Courier on shift with a vehicle that fits. Before 15:00 Colombo time | ✅ **twice** (dispatch and delivery both publish; issue 2) |
+| 2 | `CREATED → ASSIGNED` | `CREATED → PICKUP_ASSIGNED` | `POST /api/v1/dispatch/shops/{merchantId}/assign` (shop visit) or `POST /api/v1/dispatch/assign`; DISPATCHER of the pickup district or SYSTEM_ADMIN | Standard: merchant marked parcels ready (`POST /api/v1/b2b/pickups/ready`). Courier on shift with a vehicle that fits. Before 15:00 Colombo time | ✅ (delivery publishes it; issue 2, fixed) |
 | 3 | `ASSIGNED → PICKED_UP` | `PICKUP_ASSIGNED → PICKED_UP` | Shop: `POST /api/v1/deliveries/shops/{merchantId}/collect` `{deliveryIds, cashCollected}`. Single: `POST /api/v1/deliveries/{id}/transition` `{targetState:"PICKED_UP", cashCollected}`; COURIER who owns it | `cashCollected` must equal the fee(s) exactly, else 409 | ✅ |
 | 4 | `PICKED_UP → AT_ORIGIN_HUB` | `PICKED_UP → IN_TRANSIT` | `POST /api/v1/deliveries/hand-in` `{deliveryIds}`; COURIER | — | ✅ |
 | 5a | `AT_ORIGIN_HUB → AT_DESTINATION_HUB` (same district: "sorted") | `IN_TRANSIT → IN_TRANSIT` | `POST /api/v1/deliveries/{id}/transition` `{targetState:"AT_DESTINATION_HUB"}`; DISPATCHER of that district or SYSTEM_ADMIN | — | ❌ `NO_CHANGE` |
@@ -102,7 +101,7 @@ Merchant (B2B) orders are always `STANDARD` or `EXPRESS`, so they always go **th
 | 15 | `OUT_FOR_RETURN → RETURNED` | `RETURNING → RETURNED_TO_SENDER` | proof photo upload, then transition `RETURNED`; COURIER | Photo taken after it went out | ✅ |
 | 16 | any active state → `FAILED` | `… → FAILED` | transition `{targetState:"FAILED", failureReason:"LOST"\|"DAMAGED"\|"DAMAGED_IN_TRANSIT"}`; courier, dispatcher or admin | A **loss** reason (from `ASSIGNED`, any reason) | ✅ |
 | 17 | `CREATED/ASSIGNED → CANCELLED` via the **delivery** API | `PICKUP_ASSIGNED → CANCELLED` | transition `CANCELLED` | Only from `ASSIGNED` in practice (a `CREATED` session exists only after assignment) | ✅ |
-| 18 | order cancelled via the **order** API | `CANCELLED → CANCELLED` | `POST /api/v1/orders/{orderId}/cancel` `{reason}`; DISPATCHER/SYSTEM_ADMIN at any non-final status, the booking customer only while `CREATED` | — | ❌ **dropped (issue 1)** |
+| 18 | order cancelled via the **order** API | previous status → `CANCELLED` | `POST /api/v1/orders/{orderId}/cancel` `{reason}`; DISPATCHER/SYSTEM_ADMIN at any non-final status, the booking customer only while `CREATED` | — | ✅ (issue 1, fixed) |
 | 19 | `OUT_FOR_DELIVERY → AT_DESTINATION_HUB` (not reached today) | `OUT_FOR_DELIVERY → IN_TRANSIT` | `POST /api/v1/deliveries/hand-in`; COURIER | — | ✅ (status goes "backwards") |
 
 Every public status is reachable locally through Method B. `RETURNED_TO_SENDER` needs the longest chain (rows 7, 9,
@@ -110,14 +109,13 @@ Every public status is reachable locally through Method B. `RETURNED_TO_SENDER` 
 
 ### 1.4 Known issues found while writing this guide
 
-1. **Order-service cancellations never reach merchants.** `publishOrderCancelled` sets `previousPublicStatus` from
-   `order.getStatus()` *after* the order was set to `CANCELLED`, so the event is `CANCELLED → CANCELLED`. The PR #203
-   `NO_CHANGE` rule drops it **[source; the webhook side was reproduced, run 2026-11-27]**. Delivery's own
-   `order.cancelled` handler publishes nothing. Owner: Member 3 (order service). It also affects every other consumer
-   that filters on "status changed" (notification-service `EventEnvelope` has the same check).
-2. **`PICKUP_ASSIGNED` is sent twice** for a first-mile assignment: dispatch publishes `CREATED → PICKUP_ASSIGNED`, and
-   delivery publishes the same change when it consumes `dispatch.courier.assigned`. Different event ids, so both
-   become webhooks **[source; not yet observed at runtime]**. Owners: Members 5 and 6.
+1. **Fixed: order-service cancellations never reached merchants.** `publishOrderCancelled` set `previousPublicStatus`
+   from `order.getStatus()` *after* the order was set to `CANCELLED`, so the event was `CANCELLED → CANCELLED` and the
+   PR #203 `NO_CHANGE` rule dropped it. The caller now passes the status from before the cancellation.
+2. **Fixed: `PICKUP_ASSIGNED` was sent twice** for a first-mile assignment: dispatch published `CREATED →
+   PICKUP_ASSIGNED`, and delivery published the same change when it consumed `dispatch.courier.assigned`. Different
+   event ids, so both became webhooks (and two "courier assigned" emails). Delivery now owns the status event and
+   carries the assignment's correlation id; dispatch publishes only `dispatch.courier.assigned`.
 3. **Statuses can go backwards** (row 19, and row 11 after a failed attempt). That is real, not a webhook bug.
    Merchants must order by `occurredAt`.
 
@@ -557,7 +555,7 @@ $O.orderId; $O.trackingNumber
 
 Invoke-Sd POST '/api/v1/b2b/pickups/ready' $null $null @{ 'X-API-Key' = $ApiKey }        # the shop has packed it
 Start-Sleep 3
-Invoke-Sd POST "/api/v1/dispatch/shops/$MerchantId/assign" @{ courierId = $Courier.userId } $Disp.accessToken   # → PICKUP_ASSIGNED (x2, issue 2)
+Invoke-Sd POST "/api/v1/dispatch/shops/$MerchantId/assign" @{ courierId = $Courier.userId } $Disp.accessToken   # → PICKUP_ASSIGNED
 Start-Sleep 3
 $Stop = Invoke-Sd GET "/api/v1/deliveries/shops/$MerchantId" $null $Courier.accessToken
 $Fees = ($Stop.parcels | Measure-Object -Property fee -Sum).Sum
@@ -616,14 +614,13 @@ Move $D 'FAILED' $Courier.accessToken @{ failureReason = 'LOST'; notes = 'Lost i
 # CANCELLED through the delivery service (while ASSIGNED, before pickup)
 Move $D 'CANCELLED' $Disp.accessToken                                                          # → CANCELLED webhook
 
-# CANCELLED through the order service (any order not yet final): issue 1, expect NO webhook
+# CANCELLED through the order service (any order not yet final)                              → CANCELLED webhook
 Invoke-Sd POST "/api/v1/orders/$($O.orderId)/cancel" @{ reason = 'Shop cancelled' } $Disp.accessToken
-docker logs --since 2m swiftdrop-webhook-resiliency-service 2>&1 | Select-String "outcome=NO_CHANGE"
 ```
 
 ### B.8 What to check after each run
 
-1. The receiver got one request per ✅ row of table 1.3 that you performed (plus a second `PICKUP_ASSIGNED`, issue 2),
+1. The receiver got one request per ✅ row of table 1.3 that you performed,
    none for the `NO_CHANGE` rows, and all signatures verify against `$Ep.signingSecret`.
 2. `trackingNumber` in every body equals `$O.trackingNumber`; `merchantOrderReference` is `null` (Step 18 is blocked).
 3. SQL from 2.4 with `$O.orderId`: every webhook row is `SUCCEEDED`; inbox rows have `processing_status = RESOLVED`
@@ -639,7 +636,7 @@ docker logs --since 2m swiftdrop-webhook-resiliency-service 2>&1 | Select-String
 | Public status | Method A | Method B | Webhook expected |
 |---|---|---|---|
 | `CREATED` | 3.2 | B.5 | yes (after `order.created`) |
-| `PICKUP_ASSIGNED` | 3.2 | B.5 | yes, **twice** in B (issue 2) |
+| `PICKUP_ASSIGNED` | 3.2 | B.5 | yes |
 | `PICKED_UP` | 3.2 | B.5 | yes |
 | `IN_TRANSIT` | 3.2 | B.6, B.7 retry | yes on entry; hub-to-hub steps `NO_CHANGE` |
 | `OUT_FOR_DELIVERY` | 3.2 | B.6 | yes |
@@ -648,7 +645,7 @@ docker logs --since 2m swiftdrop-webhook-resiliency-service 2>&1 | Select-String
 | `RETURNING` | 3.2 | B.7 | yes on entry; later return steps `NO_CHANGE` |
 | `RETURNED_TO_SENDER` | 3.2 | B.7 | yes (needs proof photo in B) |
 | `FAILED` | 3.2 | B.7 | yes, with `failureReason` |
-| `CANCELLED` | 3.2 | B.7 | delivery-service cancel: yes. Order-service cancel: **no** (issue 1) |
+| `CANCELLED` | 3.2 | B.7 | yes, through either service |
 
 ---
 

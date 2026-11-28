@@ -21,7 +21,7 @@ Read [README.md](README.md) in this folder once. It has the shared-file ownershi
 - Consumers: `OrderCreatedConsumer` (`dispatch.order-created.queue` ← `order.created`), `OrderCancelledConsumer`, `ParcelStatusSyncConsumer` (`parcel.status.changed.#`).
 - `DispatchController` `/api/v1/dispatch`: `POST /assign`, `GET /assignments`, `/assignments/{id}`, `/assignments/order/{orderId}`, `GET /unassigned`, `GET /couriers/{courierId}/assignments`.
 - `CourierAvailabilityController` `/api/v1/dispatch/couriers`: list, get, shifts start/end/status/location.
-- `CourierMatchingEngine` (picks lowest workload), `ManualOverrideService`, `DispatchEventPublisher` → `dispatch.courier.assigned`, `dispatch.failed`, `parcel.status.changed`.
+- `CourierMatchingEngine` (picks lowest workload), `ManualOverrideService`, `DispatchEventPublisher` → `dispatch.courier.assigned`, `dispatch.failed`. Dispatch publishes no `parcel.status.changed`: delivery-execution reports `CREATED → PICKUP_ASSIGNED` when it receives the assignment.
 - Entities `DispatchAssignment`, `CourierShift`; Flyway V1, V2. Six test classes.
 - Frontend: `FleetControlTowerPage`, `ManualDispatchOverrideModal`, `LiveFleetHeatmap`, `dispatchApi.ts`.
 

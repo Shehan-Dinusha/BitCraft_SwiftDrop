@@ -34,9 +34,23 @@ public class PublishStateTransitionAction {
             DeliveryState previousState, DeliveryState newState, String notes,
             SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
             DeliveryFailureReason failureReason) {
+        execute(deliveryId, orderId, trackingNumber, courierId, customerId, previousState, newState, notes,
+                pickupDistrict, deliveryDistrict, failureReason, null);
+    }
 
+    /**
+     * @param correlationId carried on both events, so a transition caused by another service's event (a courier
+     *                      assignment) traces back to it; a new one is generated when {@code null}
+     */
+    public void execute(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, UUID customerId,
+            DeliveryState previousState, DeliveryState newState, String notes,
+            SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
+            DeliveryFailureReason failureReason, UUID correlationId) {
+
+        UUID effectiveCorrelationId = correlationId != null ? correlationId : UUID.randomUUID();
         Runnable publishTask = () -> doPublish(deliveryId, orderId, trackingNumber, courierId, customerId,
-                previousState, newState, notes, pickupDistrict, deliveryDistrict, failureReason);
+                previousState, newState, notes, pickupDistrict, deliveryDistrict, failureReason,
+                effectiveCorrelationId);
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -64,12 +78,12 @@ public class PublishStateTransitionAction {
     private void doPublish(UUID deliveryId, UUID orderId, String trackingNumber, UUID courierId, UUID customerId,
             DeliveryState previousState, DeliveryState newState, String notes,
             SriLankanDistrict pickupDistrict, SriLankanDistrict deliveryDistrict,
-            DeliveryFailureReason failureReason) {
+            DeliveryFailureReason failureReason, UUID correlationId) {
 
         // 1. Publish internal delivery state changed event
         eventPublisher.publishStateChanged(new DeliveryStateChangedEvent(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
+                correlationId,
                 deliveryId,
                 orderId,
                 courierId,
@@ -85,7 +99,7 @@ public class PublishStateTransitionAction {
 
         eventPublisher.publishParcelStatusChanged(new ParcelStatusChangedEvent(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
+                correlationId,
                 trackingNumber,
                 orderId,
                 customerId,

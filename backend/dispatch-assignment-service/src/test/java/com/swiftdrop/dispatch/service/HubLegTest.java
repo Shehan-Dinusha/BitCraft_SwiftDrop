@@ -146,7 +146,7 @@ class HubLegTest {
         overrideService.manualAssign(request, null, kandy);
         assertThat(order.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
         verify(eventPublisher).publishCourierAssigned(any());
-        verify(eventPublisher, never()).publishParcelStatusChanged(any());
+        verifyNoMoreInteractions(eventPublisher);
     }
 
     @Test

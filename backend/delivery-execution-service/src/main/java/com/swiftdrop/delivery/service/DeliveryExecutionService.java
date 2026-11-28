@@ -140,7 +140,10 @@ public class DeliveryExecutionService {
                 "Courier assigned",
                 session.getPickupDistrict(),
                 session.getDeliveryDistrict(),
-                null
+                null,
+                // This is the only CREATED -> PICKUP_ASSIGNED status event (dispatch publishes just the
+                // assignment), so it keeps the dispatcher's request correlation ID.
+                event.correlationId()
         );
 
         return session;

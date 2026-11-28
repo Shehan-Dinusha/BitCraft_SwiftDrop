@@ -1,6 +1,5 @@
 package com.swiftdrop.dispatch.messaging.publisher;
 
-import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.contracts.events.dispatch.DispatchFailedEvent;
 import com.swiftdrop.dispatch.config.RabbitMQConfig;
@@ -35,12 +34,6 @@ public class DispatchEventPublisher {
     public void publishDispatchFailed(DispatchFailedEvent event) {
         log.warn("Publishing DispatchFailedEvent for order: {}, reason: {}", event.orderId(), event.failureReason());
         enqueue(RabbitMQConfig.ROUTING_KEY_DISPATCH_FAILED, event, event.orderId());
-    }
-
-    public void publishParcelStatusChanged(ParcelStatusChangedEvent event) {
-        log.info("Publishing ParcelStatusChangedEvent for order: {}, tracking: {}, status: {}",
-                event.orderId(), event.trackingNumber(), event.newPublicStatus());
-        enqueue(RabbitMQConfig.ROUTING_KEY_PARCEL_STATUS, event, event.orderId());
     }
 
     private void enqueue(String routingKey, Object payload, UUID orderId) {
