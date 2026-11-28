@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { exchangeOAuthCode, oauthErrorMessage } from '@/services/api/authApi';
 import { personaForRole, useAuthStore } from '@/store/useAuthStore';
-import { roleHome } from '@/app/roleHome';
+import { homeFor } from '@/app/roleHome';
 import axios from 'axios';
 
 /**
@@ -49,7 +49,7 @@ export function OAuthCallbackPage() {
       try {
         const tokens = await exchangeOAuthCode(code);
         setAuth(tokens);
-        navigate(roleHome[personaForRole(tokens.role)], { replace: true });
+        navigate(homeFor(personaForRole(tokens.role), tokens.role), { replace: true });
       } catch (err) {
         if (axios.isAxiosError(err)) {
           const message = (err.response?.data as { message?: string } | undefined)?.message;

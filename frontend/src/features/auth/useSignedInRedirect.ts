@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { roleHome } from '@/app/roleHome';
+import { homeFor } from '@/app/roleHome';
 import { useAuthStore } from '@/store/useAuthStore';
 
 /**
@@ -9,8 +9,8 @@ import { useAuthStore } from '@/store/useAuthStore';
  */
 export function useSignedInRedirect(): string | null {
   const [target] = useState(() => {
-    const { token, isDevSession, role } = useAuthStore.getState();
-    return token && !isDevSession ? roleHome[role] : null;
+    const { token, isDevSession, role, user } = useAuthStore.getState();
+    return token && !isDevSession ? homeFor(role, user?.role) : null;
   });
   return target;
 }

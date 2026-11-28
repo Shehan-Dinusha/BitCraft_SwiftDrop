@@ -235,11 +235,15 @@ export function notificationTone(type: NotificationType | null): string {
   return `${tone.background} ${tone.foreground}`;
 }
 
-/** Where clicking a notification takes each role. */
+/**
+ * Where clicking a notification takes each role. A system admin (`backendRole`) has no dispatch or
+ * merchant-application pages, so their notifications open the parcel's public tracking page.
+ */
 export function notificationTarget(
   role: PersonaRole,
   type: NotificationType | null,
-  trackingNumber?: string | null
+  trackingNumber?: string | null,
+  backendRole?: string | null
 ): string | null {
   switch (role) {
     case 'CUSTOMER':
@@ -249,6 +253,7 @@ export function notificationTarget(
     case 'MERCHANT':
       return '/merchant';
     case 'ADMIN_OPS':
+      if (backendRole === 'SYSTEM_ADMIN') return trackingNumber ? `/track/${trackingNumber}` : null;
       if (type === 'MERCHANT_APPLICATION') return '/ops/merchants';
       return type === 'DISPATCH_FAILED' || type === 'OPS_DELIVERY_FAILED'
         ? type === 'OPS_DELIVERY_FAILED'
