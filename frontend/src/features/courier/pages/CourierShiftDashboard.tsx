@@ -481,7 +481,7 @@ export function CourierShiftDashboard() {
         </StatusBanner>
       )}
       {isOnline && onRun && (
-        <SurfaceCard className="flex flex-wrap items-center justify-between gap-3 p-4">
+        <SurfaceCard className="p-4" bodyClassName="flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-1.5 text-body text-secondary">
             <Truck aria-hidden="true" className="h-4 w-4" />
             On the road since {colomboClock(shift?.runStartedAt)}. Only pickups can be added now.
@@ -575,7 +575,7 @@ export function CourierShiftDashboard() {
       )}
 
       {isOnline && !onRun && (
-        <SurfaceCard className="space-y-3 p-4">
+        <SurfaceCard className="p-4" bodyClassName="space-y-3">
           <div className="flex items-center gap-2">
             <Warehouse aria-hidden="true" className="h-5 w-5 text-brand-primary" />
             <h2 className="text-lg font-bold text-primary">At the hub</h2>
@@ -677,7 +677,8 @@ export function CourierShiftDashboard() {
             </div>
           ) : null}
           <Button
-            variant={atHub.length > 0 ? 'outline' : 'primary'}
+            // One primary action at a time: loading or handing in comes before starting the run.
+            variant={atHub.length > 0 || toHandIn.length > 0 ? 'outline' : 'primary'}
             className="min-h-target w-full"
             disabled={updating || onBreak || atHub.length > 0}
             onClick={handleStartRun}

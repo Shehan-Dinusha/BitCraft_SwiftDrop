@@ -10,19 +10,55 @@ export const apiClient = axios.create({ baseURL: '/api' });
 // the user). A page fires several requests at once, so when the access token is stale they all get a
 // 401 together. They must share ONE refresh instead of each spending the same refresh token.
 // The refresh token itself is the HttpOnly `swiftdrop_refresh` cookie; the browser attaches it.
-let inFlightRefresh: Promise<string> | null = null;
+let inFlightRefresh: Promise<AuthTokenResponse> | null = null;
 
-function refreshSession(): Promise<string> {
-  inFlightRefresh ??= axios
+// The cookie is shared by every tab, so two tabs refreshing at the same moment would also spend the same
+// token. A Web Lock makes them take turns: each refresh then sends the cookie the previous one set.
+const REFRESH_LOCK = 'swiftdrop-auth-refresh';
+
+function postRefresh(): Promise<AuthTokenResponse> {
+  return axios
     .post<AuthTokenResponse>('/api/v1/auth/refresh', {}, { withCredentials: true })
-    .then(({ data }) => {
+    .then(({ data }) => data);
+}
+
+async function postRefreshInTurn(): Promise<AuthTokenResponse> {
+  if (!navigator.locks) return postRefresh();
+  return await navigator.locks.request(REFRESH_LOCK, postRefresh);
+}
+
+/**
+ * Rotates the session with the refresh cookie and stores the new tokens. The only way to call
+ * `/v1/auth/refresh`: requests in this tab share one call, and the lock makes other tabs wait their turn.
+ */
+export function refreshSession(): Promise<AuthTokenResponse> {
+  inFlightRefresh ??= postRefreshInTurn()
+    .then((data) => {
       useAuthStore.getState().setAuth(data);
-      return data.accessToken ?? '';
+      return data;
     })
     .finally(() => {
       inFlightRefresh = null;
     });
   return inFlightRefresh;
+}
+
+/**
+ * Signs a new tab in from the refresh cookie. The access token is kept per tab (sessionStorage), so a tab
+ * opened by hand starts without one even though the user is signed in. Tried once per tab; without a valid
+ * cookie the tab simply stays signed out.
+ */
+export async function restoreSession(): Promise<void> {
+  const state = useAuthStore.getState();
+  if (state.sessionRestore !== 'idle' || state.token || state.isDevSession) return;
+  state.setSessionRestore('running');
+  try {
+    await refreshSession();
+  } catch {
+    // No cookie, or it expired or was revoked: the guard sends the user to sign in.
+  } finally {
+    useAuthStore.getState().setSessionRestore('done');
+  }
 }
 
 // ─── Request interceptor ────────────────────────────────────────────────────
@@ -87,8 +123,8 @@ apiClient.interceptors.response.use(
     }
 
     try {
-      const accessToken = await refreshSession();
-      request.headers.Authorization = `Bearer ${accessToken}`;
+      const { accessToken } = await refreshSession();
+      request.headers.Authorization = `Bearer ${accessToken ?? ''}`;
       return apiClient(request);
     } catch {
       // Refresh token is expired or revoked — force a clean sign-out.

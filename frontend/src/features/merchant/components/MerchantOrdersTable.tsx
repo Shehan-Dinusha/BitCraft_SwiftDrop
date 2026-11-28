@@ -64,7 +64,7 @@ export function MerchantOrdersTable({
     return () => controller.abort();
   }, [merchantId, page, revision, refreshToken]);
   return (
-    <SurfaceCard className="space-y-3 p-4" density="compact">
+    <SurfaceCard className="p-4" bodyClassName="space-y-3" density="compact">
       <div className="flex items-center justify-between">
         <h2 className="text-h3 text-primary">Merchant orders</h2>
         <Button variant="outline" disabled={loading} onClick={() => setRevision((v) => v + 1)}>

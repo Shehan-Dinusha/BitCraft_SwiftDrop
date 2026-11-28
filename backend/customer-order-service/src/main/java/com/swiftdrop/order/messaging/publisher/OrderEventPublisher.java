@@ -100,7 +100,12 @@ public class OrderEventPublisher {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, EventRoutingKeys.ORDER_UPDATED, event);
     }
 
-    public void publishOrderCancelled(CustomerOrder order, String reason, String cancelledBy, UUID correlationId) {
+    /**
+     * @param previousStatus the public status before the cancellation; the order itself already reads CANCELLED,
+     *                       and a status event from CANCELLED to CANCELLED is dropped as no change by consumers
+     */
+    public void publishOrderCancelled(CustomerOrder order, PublicOrderStatus previousStatus, String reason,
+                                      String cancelledBy, UUID correlationId) {
         UUID effectiveCorrelationId = correlationId != null ? correlationId : UUID.randomUUID();
 
         OrderCancelledEvent cancelledEvent = new OrderCancelledEvent(
@@ -128,7 +133,7 @@ public class OrderEventPublisher {
                 order.getTrackingNumber(),
                 order.getOrderId(),
                 order.getCustomerId(),
-                order.getStatus(),
+                previousStatus,
                 PublicOrderStatus.CANCELLED,
                 InternalQueueStatus.CANCELLED,
                 order.getPickupDistrict(),

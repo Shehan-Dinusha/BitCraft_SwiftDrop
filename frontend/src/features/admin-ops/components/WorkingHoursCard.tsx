@@ -122,7 +122,7 @@ export function WorkingHoursCard({ hours }: { hours: WorkdayResponse }) {
   };
 
   return (
-    <SurfaceCard className="space-y-4 p-4">
+    <SurfaceCard className="p-4" bodyClassName="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-h3 text-primary">Working hours</h2>
@@ -255,7 +255,8 @@ export function WorkingHoursCard({ hours }: { hours: WorkdayResponse }) {
             ['Pickups until', hhmm(hours.pickupCutoff)],
             ['Same day until', hhmm(hours.sameDayCutoff)]
           ].map(([label, value]) => (
-            <div key={label}>
+            // The lunch window is the longest value; a double column keeps it on one line.
+            <div key={label} className={label === 'Lunch' ? 'sm:col-span-2' : undefined}>
               <dt className="text-caption text-secondary">{label}</dt>
               <dd className="text-body tabular-nums text-primary">{value}</dd>
             </div>

@@ -53,7 +53,7 @@ export function OneTapStateTransitionCard({
   const text = instruction[currentState];
 
   return (
-    <SurfaceCard variant="elevated" className="space-y-4 p-5" data-density="touch">
+    <SurfaceCard variant="elevated" className="p-5" bodyClassName="space-y-4" data-density="touch">
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
         <h3 className="text-base font-bold text-primary">Next step</h3>
         <FsmStatusBadge state={currentState} size="lg" />

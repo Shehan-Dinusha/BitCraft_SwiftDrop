@@ -138,6 +138,37 @@ bash scripts/db/restore-aks.sh backups/<stamp> iam    # only some
 - Restore all databases from the **same** folder. The services reference each other's ids, so mixing points in time leaves orphaned records.
 - Restore is destructive. It asks you to type `restore`, scales each owning service to 0, replaces the database in one transaction (a failure leaves it unchanged), then scales the service back up.
 - Backups are safe while the app is live; `pg_dump` reads a consistent snapshot.
+- A webhook database backup is only useful with the webhook keyring from the same period (next section).
+
+## Webhook secret keyring
+
+webhook-resiliency-service encrypts each merchant's webhook signing secret with AES-256-GCM. The keys come from one value, `secrets.webhook.secretKeyring` in `values-secrets.yaml` (`WEBHOOK_SECRET_KEYRING` in a local `.env`):
+
+```json
+{"activeKeyId":"v1","keys":{"v1":"<standard Base64 of 32 random bytes>"}}
+```
+
+- New secrets are encrypted with `activeKeyId`. Every stored secret records the id of the key that encrypted it, so older keys stay in the keyring until nothing uses them.
+- Key ids match `^[a-z0-9-]{1,32}$` (`v1`, `v2`, ...). Never reuse an id for a different key.
+- `helm upgrade` refuses a malformed keyring: bad JSON, a key that is not 32 bytes, a bad id, or an `activeKeyId` that is not one of the keys. Once encryption ships, the service checks the same rules at startup and refuses to start without a keyring. There is no generated or fallback key.
+- **Losing the keyring makes every stored signing secret unreadable**, and every merchant has to rotate their endpoint secret. Keep `values-secrets.yaml` in a password manager, apart from the database backups. A restored webhook database needs the keyring that was live when the backup was taken, or a later one that still holds the same key ids.
+
+**First setup on an existing cluster.** `scripts/generate-helm-secrets.sh` adds a keyring to new files only (it never overwrites). For the existing file, add one by hand:
+
+```bash
+bash scripts/generate-webhook-keyring.sh     # prints {"activeKeyId":"v1","keys":{"v1":"..."}}
+```
+
+Put it under `secrets:` in `values-secrets.yaml` as `webhook: { secretKeyring: '<output>' }` (single quotes), then `gh secret set HELM_SECRETS_VALUES --env production < infra/helm/swiftdrop/values-secrets.yaml` and deploy with `target_service` = `none`. Do this before the release that starts encrypting secrets.
+
+**Rotating the key.** Every step is an edit to `values-secrets.yaml`, then `gh secret set HELM_SECRETS_VALUES ...` and a deploy with `none`. A change to any secret restarts the pods.
+
+1. Add the new key without making it active: `bash scripts/generate-webhook-keyring.sh --key` prints one key; add it to `keys` as `v2`. Deploy.
+2. Set `activeKeyId` to `v2`. Deploy. New secrets now use `v2`.
+3. Re-encrypt the existing secrets with `v2` (a service operation) until no secret uses `v1`.
+4. Remove `v1` from `keys`. Deploy.
+
+Steps 1 and 2 are separate deploys so that during a rolling update an old pod never meets a secret encrypted with a key it does not have. The service refuses to start if a stored secret uses a key id that is not in the keyring, so removing a key too early fails the deploy instead of breaking webhooks.
 
 ## When something goes wrong
 
