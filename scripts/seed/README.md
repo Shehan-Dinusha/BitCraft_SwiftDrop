@@ -6,7 +6,7 @@ Fills SwiftDrop with realistic demo data **through the public APIs**, the way re
 |---|---|
 | System admin (bootstrap account) | Creates 25 dispatchers (one per district), 50 couriers (two per district), 40 customers and 6 merchant owners |
 | 40 customers | Book 4–6 parcels each (≈200 orders, real towns and postcodes) |
-| 6 merchant businesses | Apply (category, monthly volume and pickup location), and the admin approves all 6 (their e-mail addresses are not real, so decision e-mails could not be read). Each creates an API key and sends 8–12 B2B orders (≈58) through the B2B API, then marks its parcels ready; one shop is left unpacked. To demo the review flow, sign up a business with a real address at `/register/business` and approve it as that district's dispatcher |
+| 6 merchant businesses | Apply (category, monthly volume and pickup location), and their district's dispatcher approves all 6 (their e-mail addresses are not real, so decision e-mails could not be read). Each creates an API key and sends 8–12 B2B orders (≈58) through the B2B API, then marks its parcels ready; one shop is left unpacked. To demo the review flow, sign up a business with a real address at `/register/business` and approve it as that district's dispatcher |
 | Couriers | Are created ready to work (active, no invite), register their own vehicle (each district's second courier has a three-wheeler, van or lorry for the large boxes), get capacity 20 from their dispatcher, and start their shifts. To demo the invite flow, register a courier with a real address as a dispatcher on **Couriers** |
 | Customers | Cancel ~10% of parcels before dispatch |
 | Dispatchers | Each works their own district: ~80% of parcels go to the courier dispatch suggests (one whose vehicle fits), a shop's packed parcels to one courier in one visit; ~10% stay unassigned so the board has work |
@@ -99,7 +99,7 @@ charts show a single spike. `timeshift.mjs` runs **once, after the last stage**,
   courier's handover at the end of that round, its count, the deposit later that day and the admin's
   confirmation the next day, so revenue on the Analytics page spreads over the month too;
 - merchants get a story built backwards from their first B2B order: the owner signs up, the business
-  applies, the admin approves it in office hours, an API key is created, then the orders arrive; the
+  applies, its district's dispatcher approves it in office hours, an API key is created, then the orders arrive; the
   pending application is a day or two old and the rejected one a couple of weeks;
 - the analytics daily and per-courier totals are rebuilt with the analytics service's own rules;
   seeded accounts get believable sign-up dates.

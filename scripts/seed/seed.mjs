@@ -426,12 +426,13 @@ async function stageMerchants() {
       app = await api('POST', '/api/v1/merchants/register', { token: owner.token, body: applicationOf(m) });
       count('resubmitted');
     }
-    // 2. The admin decides (in production the district dispatcher does; the admin can for any district).
+    // 2. The dispatcher of the pickup district decides (the admin has no say in applications).
+    const reviewer = app.status === 'PENDING_APPROVAL' ? await login(dispatcherOf(plan.district).username) : null;
     if (app.status === 'PENDING_APPROVAL' && plan.outcome === 'APPROVED') {
-      app = await api('POST', `/api/v1/admin/merchants/${app.merchantId}/approve`, { token: admin.token });
+      app = await api('POST', `/api/v1/admin/merchants/${app.merchantId}/approve`, { token: reviewer.token });
       count('approved');
     } else if (app.status === 'PENDING_APPROVAL' && plan.outcome === 'REJECTED') {
-      app = await api('POST', `/api/v1/admin/merchants/${app.merchantId}/reject`, { token: admin.token, body: { reason: plan.reason } });
+      app = await api('POST', `/api/v1/admin/merchants/${app.merchantId}/reject`, { token: reviewer.token, body: { reason: plan.reason } });
       count('rejected');
     }
     if (plan.outcome !== 'APPROVED' || app.status !== 'APPROVED') { count(`left ${app.status.toLowerCase()}`); continue; }

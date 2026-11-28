@@ -5,8 +5,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.EnumSet;
 import java.util.Set;
 
 import static com.swiftdrop.contracts.enums.OrderSpeed.EXPRESS;
@@ -60,5 +63,37 @@ class DeliveryPromiseTest {
         assertThat(at("2026-11-29T10:00").deliverBy(STANDARD, COLOMBO, COLOMBO)).isEqualTo("2026-12-02");
         // Wednesday 3 December, Express: Thursday is Poya, so Friday.
         assertThat(at("2026-12-03T10:00").deliverBy(EXPRESS, COLOMBO, COLOMBO)).isEqualTo("2026-12-05");
+    }
+
+    @Test
+    @DisplayName("The admin's working days and cut-offs from the dispatch calendar decide the promise")
+    void editedRules() {
+        // Couriers work Monday to Friday only, Same day until 10:00, pickups until 13:00.
+        WorkingRules weekdays = new WorkingRules(EnumSet.range(DayOfWeek.MONDAY, DayOfWeek.FRIDAY),
+                LocalTime.of(10, 0), LocalTime.of(13, 0));
+        ClosedDaysClient calendar = new ClosedDaysClient() {
+            @Override
+            public Set<LocalDate> between(LocalDate from, LocalDate to) {
+                return Set.of();
+            }
+
+            @Override
+            public WorkingRules rules() {
+                return weekdays;
+            }
+        };
+        Clock tuesday1030 = Clock.fixed(LocalDateTime.parse("2026-11-24T10:30").atZone(DeliveryPromise.ZONE)
+                .toInstant(), DeliveryPromise.ZONE);
+        DeliveryPromise promise = new DeliveryPromise(tuesday1030, calendar);
+        assertThatThrownBy(() -> promise.deliverBy(SAME_DAY, COLOMBO, COLOMBO))
+                .isInstanceOf(SameDayNotAvailableException.class).hasMessageContaining("10:00");
+        // Picked up today (before 13:00), Express Wednesday.
+        assertThat(promise.deliverBy(EXPRESS, COLOMBO, KANDY)).isEqualTo("2026-11-25");
+
+        // Friday 14:00: past the pickup cut-off and Saturday is closed, so picked up Monday, Express Tuesday.
+        Clock friday1400 = Clock.fixed(LocalDateTime.parse("2026-11-27T14:00").atZone(DeliveryPromise.ZONE)
+                .toInstant(), DeliveryPromise.ZONE);
+        assertThat(new DeliveryPromise(friday1400, calendar).deliverBy(EXPRESS, COLOMBO, KANDY))
+                .isEqualTo("2026-12-01");
     }
 }

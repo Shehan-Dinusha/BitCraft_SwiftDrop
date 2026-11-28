@@ -50,6 +50,13 @@ public final class MerchantAccess {
         return caller;
     }
 
+    /** A DISPATCHER: reviewing merchant applications is district work. */
+    public static CallerContext requireDispatcher(HttpServletRequest request) {
+        CallerContext caller = caller(request);
+        caller.requireRole(UserRole.DISPATCHER);
+        return caller;
+    }
+
     /** DISPATCHER or SYSTEM_ADMIN. */
     public static CallerContext requireOperations(HttpServletRequest request) {
         CallerContext caller = caller(request);
@@ -57,12 +64,13 @@ public final class MerchantAccess {
         return caller;
     }
 
-    /** A dispatcher may decide only on applications from their own district; an admin on any. */
+    /**
+     * Only the dispatcher of the application's district decides on it. A SYSTEM_ADMIN oversees merchants
+     * (list, suspend, reactivate) but does not review applications.
+     */
     public static void requireReviewer(CallerContext caller, SriLankanDistrict applicationDistrict) {
-        caller.requireRole(UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN);
-        if (caller.role() == UserRole.DISPATCHER) {
-            caller.requireDistrict(applicationDistrict);
-        }
+        caller.requireRole(UserRole.DISPATCHER);
+        caller.requireDistrict(applicationDistrict);
     }
 
     /** The district a reviewer may list: a dispatcher's own, or the admin's choice (null for all). */

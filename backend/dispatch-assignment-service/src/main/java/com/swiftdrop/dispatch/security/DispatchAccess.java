@@ -22,16 +22,19 @@ import java.util.UUID;
  */
 public final class DispatchAccess {
 
-    /** Roles that run the dispatch queue: allocation, suggestions, fleet and workload views. */
-    static final UserRole[] OPERATIONS_ROLES = {UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN};
+    /**
+     * Roles that run the dispatch queue: allocation, suggestions, fleet and workload views. Only the
+     * district dispatcher: a SYSTEM_ADMIN oversees the platform and does not do dispatch work.
+     */
+    static final UserRole[] OPERATIONS_ROLES = {UserRole.DISPATCHER};
 
     /** Roles that may use courier resources at all; couriers are further limited to their own. */
-    static final UserRole[] COURIER_RESOURCE_ROLES = {UserRole.COURIER, UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN};
+    static final UserRole[] COURIER_RESOURCE_ROLES = {UserRole.COURIER, UserRole.DISPATCHER};
 
     private DispatchAccess() {
     }
 
-    /** Allows only DISPATCHER and SYSTEM_ADMIN callers. */
+    /** Allows only DISPATCHER callers. */
     public static CallerContext requireOperations(HttpServletRequest request) {
         CallerContext caller = CallerContext.from(request::getHeader);
         caller.requireRole(OPERATIONS_ROLES);
@@ -39,8 +42,8 @@ public final class DispatchAccess {
     }
 
     /**
-     * Allows the courier whose ID is {@code courierId}, or DISPATCHER and SYSTEM_ADMIN
-     * for any courier. The role is checked first: CallerContext's self check compares
+     * Allows the courier whose ID is {@code courierId}, or a DISPATCHER (limited to their
+     * district by the caller). The role is checked first: CallerContext's self check compares
      * IDs only, so a CUSTOMER or MERCHANT must not pass it with their own user ID.
      */
     public static CallerContext requireCourierSelfOrOperations(HttpServletRequest request, UUID courierId) {
@@ -61,9 +64,9 @@ public final class DispatchAccess {
     }
 
     /**
-     * Second half of an assignment lookup, once the record is loaded: DISPATCHER and
-     * SYSTEM_ADMIN see every assignment, including UNASSIGNED ones (no courier); a
-     * courier sees only an assignment currently held by them.
+     * Second half of an assignment lookup, once the record is loaded: a DISPATCHER sees
+     * assignments of their district, including UNASSIGNED ones (no courier); a courier
+     * sees only an assignment currently held by them.
      */
     public static void requireAssignmentAccess(CallerContext caller, UUID assignedCourierId) {
         if (isOperations(caller)) {
@@ -73,6 +76,6 @@ public final class DispatchAccess {
     }
 
     public static boolean isOperations(CallerContext caller) {
-        return caller.role() == UserRole.DISPATCHER || caller.role() == UserRole.SYSTEM_ADMIN;
+        return caller.role() == UserRole.DISPATCHER;
     }
 }

@@ -18,7 +18,7 @@ import java.util.UUID;
 /**
  * Courier accounts as managed by dispatchers. A dispatcher registers, lists, re-invites, suspends and
  * reactivates the couriers of their own district only; the district always comes from the
- * dispatcher's own account, never from the request. A SYSTEM_ADMIN can manage couriers in any district.
+ * dispatcher's own account, never from the request. A SYSTEM_ADMIN does not manage couriers.
  *
  * <p>A courier of another district answers 403, as cross-district access does everywhere else.
  */
@@ -32,10 +32,9 @@ public class CourierAccountService {
     }
 
     @Transactional(readOnly = true)
-    public PagedResult<UserProfileResponse> list(UUID callerId, SriLankanDistrict requestedDistrict,
-                                                 UserStatus status, String search, int page, int size) {
-        SriLankanDistrict district = scopeDistrict(callerId, requestedDistrict);
-        return userAccountService.list(UserRole.COURIER, status, district, search, page, size);
+    public PagedResult<UserProfileResponse> list(UUID callerId, UserStatus status, String search, int page,
+                                                 int size) {
+        return userAccountService.list(UserRole.COURIER, status, ownDistrict(callerId), search, page, size);
     }
 
     @Transactional(readOnly = true)
@@ -45,10 +44,7 @@ public class CourierAccountService {
 
     @Transactional
     public UserProfileResponse register(UUID callerId, CreateCourierRequest request) {
-        SriLankanDistrict district = scopeDistrict(callerId, request.district());
-        if (district == null) {
-            throw new IllegalArgumentException("District is required");
-        }
+        SriLankanDistrict district = ownDistrict(callerId);
         UserAccount courier = userAccountService.createInvited(request.username(), request.email(),
                 request.phone(), request.firstName(), request.lastName(), UserRole.COURIER, district);
         return AuthMapper.toProfile(courier);
@@ -66,31 +62,25 @@ public class CourierAccountService {
         return userAccountService.updateStatus(courierId, status);
     }
 
-    /**
-     * The district the caller may act in: a dispatcher's own district (whatever was requested), or
-     * for a SYSTEM_ADMIN the requested one (null meaning every district).
-     */
-    private SriLankanDistrict scopeDistrict(UUID callerId, SriLankanDistrict requested) {
+    /** The district the caller may act in: always the dispatcher's own district. */
+    private SriLankanDistrict ownDistrict(UUID callerId) {
         UserAccount caller = userAccountService.requireUser(callerId);
-        return switch (caller.getRole()) {
-            case SYSTEM_ADMIN -> requested;
-            case DISPATCHER -> {
-                if (caller.getDistrict() == null) {
-                    throw new AuthException(HttpStatus.FORBIDDEN, "Your dispatcher account has no district");
-                }
-                yield caller.getDistrict();
-            }
-            default -> throw new AuthException(HttpStatus.FORBIDDEN, "Only dispatchers can manage couriers");
-        };
+        if (caller.getRole() != UserRole.DISPATCHER) {
+            throw new AuthException(HttpStatus.FORBIDDEN, "Only dispatchers can manage couriers");
+        }
+        if (caller.getDistrict() == null) {
+            throw new AuthException(HttpStatus.FORBIDDEN, "Your dispatcher account has no district");
+        }
+        return caller.getDistrict();
     }
 
     private UserAccount requireCourierInScope(UUID callerId, UUID courierId) {
-        SriLankanDistrict scope = scopeDistrict(callerId, null);
+        SriLankanDistrict scope = ownDistrict(callerId);
         UserAccount courier = userAccountService.requireUser(courierId);
         if (courier.getRole() != UserRole.COURIER) {
             throw new ResourceNotFoundException("Courier not found");
         }
-        if (scope != null && scope != courier.getDistrict()) {
+        if (scope != courier.getDistrict()) {
             throw new AuthException(HttpStatus.FORBIDDEN, "This courier belongs to another district");
         }
         return courier;

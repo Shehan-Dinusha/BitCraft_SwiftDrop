@@ -27,6 +27,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -70,6 +71,10 @@ class WorkingDayIT {
     @BeforeEach
     void clean() {
         jdbcTemplate.update("DELETE FROM closed_days");
+        jdbcTemplate.update("UPDATE working_hours SET working_days = 'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY', "
+                + "opens_at = '08:00', closes_at = '17:00', shift_from = '07:30', late_after = '09:00', "
+                + "break_from = '12:00', break_until = '14:30', break_minutes = 45, pickup_cutoff = '15:00', "
+                + "same_day_cutoff = '11:00'");
         jdbcTemplate.update("DELETE FROM courier_shifts");
         jdbcTemplate.update("DELETE FROM courier_profiles");
     }
@@ -103,6 +108,50 @@ class WorkingDayIT {
         assertThat(internal.get(0).asText()).isEqualTo("2026-12-04");
 
         assertThat(data(send(delete("/api/v1/dispatch/calendar/closed-days/2026-12-04"), admin, null), 200)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("An admin changes the working hours and restores the standard ones; others cannot")
+    void adminEditsTheWorkingHours() throws Exception {
+        Map<String, Object> hours = new java.util.HashMap<>(Map.of(
+                "workingDays", List.of("MONDAY", "WEDNESDAY", "FRIDAY"),
+                "opensAt", "09:00", "closesAt", "18:00", "shiftFrom", "08:30", "lateAfter", "09:30",
+                "breakFrom", "12:30", "breakUntil", "14:00", "breakMinutes", 30,
+                "pickupCutoff", "16:00", "sameDayCutoff", "10:30"));
+
+        status(send(put("/api/v1/dispatch/calendar/hours"), TestCallers.dispatcher(), hours), 403);
+
+        // Tuesday 24 November is no longer a working day.
+        JsonNode today = data(send(put("/api/v1/dispatch/calendar/hours"), admin, hours), 200);
+        assertThat(today.get("open").asBoolean()).isFalse();
+        assertThat(today.get("closedReason").asText()).isEqualTo("Tuesday");
+        assertThat(today.get("nextWorkingDay").asText()).isEqualTo("2026-11-25");
+        assertThat(today.get("opensAt").asText()).startsWith("09:00");
+        assertThat(today.get("breakMinutes").asInt()).isEqualTo(30);
+        assertThat(today.get("sameDayCutoff").asText()).startsWith("10:30");
+        assertThat(today.get("workingDays")).hasSize(3);
+
+        // The order service reads the new cut-offs.
+        JsonNode rules = data(send(get("/internal/v1/calendar/rules"), admin, null), 200);
+        assertThat(rules.get("sameDayCutoff").asText()).startsWith("10:30");
+        assertThat(rules.get("pickupCutoff").asText()).startsWith("16:00");
+
+        // A Tuesday holiday is refused: Tuesdays are closed anyway.
+        status(send(post("/api/v1/dispatch/calendar/closed-days"), admin, Map.of("day", "2026-12-01", "name", "X")), 400);
+
+        hours.put("closesAt", "21:00");
+        assertThat(message(send(put("/api/v1/dispatch/calendar/hours"), admin, hours), 400)).contains("20:00");
+        hours.put("closesAt", "18:00");
+        hours.put("breakUntil", "12:00");
+        status(send(put("/api/v1/dispatch/calendar/hours"), admin, hours), 400);
+        hours.put("workingDays", List.of());
+        status(send(put("/api/v1/dispatch/calendar/hours"), admin, hours), 400);
+
+        status(send(delete("/api/v1/dispatch/calendar/hours"), TestCallers.dispatcher(), null), 403);
+        JsonNode standard = data(send(delete("/api/v1/dispatch/calendar/hours"), admin, null), 200);
+        assertThat(standard.get("open").asBoolean()).isTrue();
+        assertThat(standard.get("opensAt").asText()).startsWith("08:00");
+        assertThat(standard.get("workingDays")).hasSize(6);
     }
 
     @Test

@@ -53,8 +53,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Courier-facing endpoints. A courier's dispatch ID is their IAM user ID (the
  * gateway's X-User-Id), so a COURIER may act only on resources whose courier ID
- * equals their user ID; DISPATCHER and SYSTEM_ADMIN may act on any courier;
- * CUSTOMER and MERCHANT are refused even when their user ID equals the courier ID.
+ * equals their user ID; a DISPATCHER may act on couriers of their district;
+ * CUSTOMER, MERCHANT and SYSTEM_ADMIN are refused even when their user ID equals the courier ID.
  * Rejected requests never reach a service.
  */
 @WebMvcTest({DispatchController.class, CourierAvailabilityController.class})
@@ -94,11 +94,11 @@ class CourierAccessAuthorizationTest {
     }
 
     static Stream<Arguments> courierEndpointsForOperations() {
-        return withRoles(UserRole.DISPATCHER, UserRole.SYSTEM_ADMIN);
+        return withRoles(UserRole.DISPATCHER);
     }
 
     static Stream<Arguments> courierEndpointsForNonCourierRoles() {
-        return withRoles(UserRole.CUSTOMER, UserRole.MERCHANT);
+        return withRoles(UserRole.CUSTOMER, UserRole.MERCHANT, UserRole.SYSTEM_ADMIN);
     }
 
     // ── Endpoints keyed by courier ID ──────────────────────────────────────────
@@ -224,7 +224,7 @@ class CourierAccessAuthorizationTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @EnumSource(value = UserRole.class, names = {"DISPATCHER", "SYSTEM_ADMIN"})
+    @EnumSource(value = UserRole.class, names = {"DISPATCHER"})
     @DisplayName("Operations can look up an assignment of their district, including UNASSIGNED ones")
     void operationsCanReadAssignmentsInScope(UserRole role) throws Exception {
         DispatchAssignmentResponse unassigned = assignment(null, AssignmentStatus.UNASSIGNED);
@@ -309,7 +309,8 @@ class CourierAccessAuthorizationTest {
         CourierShift shift = new CourierShift();
         shift.setCourierId(UUID.randomUUID());
         shift.setCurrentDistrict(district);
-        return CourierShiftResponse.fromEntity(shift, com.swiftdrop.dispatch.service.CourierLoad.NONE);
+        return CourierShiftResponse.fromEntity(shift, com.swiftdrop.dispatch.service.CourierLoad.NONE,
+                com.swiftdrop.dispatch.service.WorkHours.STANDARD);
     }
 
     private void assertNoServiceCalled() {

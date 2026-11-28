@@ -154,9 +154,10 @@ class HubLegTest {
     void noCourierBetweenTheHubs() {
         order.setStatus(AssignmentStatus.IN_TRANSFER);
         order.setCourierId(null);
-        CallerContext admin = new CallerContext(UUID.randomUUID(), UserRole.SYSTEM_ADMIN, null, null);
+        CallerContext dispatcher = new CallerContext(UUID.randomUUID(), UserRole.DISPATCHER, null,
+                SriLankanDistrict.COLOMBO);
         assertThatThrownBy(() -> overrideService.manualAssign(
-                new ManualAssignRequest(orderId, UUID.randomUUID(), "ADMIN", null), null, admin))
+                new ManualAssignRequest(orderId, UUID.randomUUID(), "dispatcher", null), null, dispatcher))
                 .isInstanceOf(AssignmentConflictException.class).hasMessageContaining("between district hubs");
     }
 

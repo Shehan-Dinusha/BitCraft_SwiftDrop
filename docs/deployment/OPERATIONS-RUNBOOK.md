@@ -169,7 +169,7 @@ More symptoms are in the [deployment guide's troubleshooting table](AKS-HELM-DEP
 
 If the data is gone and there is no backup, rebuild a month of realistic demo data through the public APIs. Follow [scripts/seed/README.md → A cluster that runs everything (AKS)](../../scripts/seed/README.md). It switches e-mail to mock while seeding so nobody receives real mail. Take a backup straight after it finishes.
 
-The seed must run **on a working day morning (Sri Lanka time)**: dispatch checks the real clock, so shifts start only Monday to Saturday from 07:30 and pickups are given out only until 15:00. Check `/ops/working-days` that the day is not a holiday. It takes under an hour; `timeshift.mjs` then spreads the history over the past month.
+The seed must run **on a working day morning (Sri Lanka time)**: dispatch checks the real clock, so shifts start only on a working day from check-in time and pickups are given out only until the pickup cut-off (standard: Monday to Saturday, from 07:30, pickups until 15:00). Check `/ops/working-days` that the day is not a holiday and that the hours are the standard ones (**Restore standard** if someone changed them for testing). It takes under an hour; `timeshift.mjs` then spreads the history over the past month.
 
 ### Starting over with fresh demo data
 

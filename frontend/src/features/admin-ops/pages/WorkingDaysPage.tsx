@@ -4,12 +4,14 @@ import { Trash2 } from 'lucide-react';
 import { Button, Field, StatusBanner, SurfaceCard } from '@/design-system';
 import { dispatchApi, type WorkdayResponse } from '@/services/api/dispatchApi';
 import { apiErrorMessage } from '@/services/api/apiErrorMessage';
-import { colomboToday, dayLabel, hhmm } from '@/utils/colomboDate';
+import { colomboToday, dayLabel } from '@/utils/colomboDate';
 import { useAuthStore } from '@/store/useAuthStore';
+import { WORKDAY, WorkingHoursCard } from '../components/WorkingHoursCard';
 
-const WORKDAY = ['dispatch', 'workday'] as const;
-
-/** System admin: the holidays (Poya days, public holidays) on which nobody works. */
+/**
+ * System admin: the working days and hours couriers work to, and the holidays (Poya days, public
+ * holidays) on which nobody works.
+ */
 export function WorkingDaysPage() {
   const isAdmin = useAuthStore((s) => s.user?.role) === 'SYSTEM_ADMIN';
   const queryClient = useQueryClient();
@@ -48,19 +50,22 @@ export function WorkingDaysPage() {
     <main className="mx-auto max-w-3xl space-y-5 p-4 md:p-6" data-density="compact">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-primary">Working days</h1>
-        {hours ? (
-          <p className="text-body text-secondary">
-            Monday to Saturday, {hhmm(hours.opensAt)} to {hhmm(hours.closesAt)}. Sundays are closed.
-          </p>
-        ) : null}
       </header>
 
-      {error ? (
-        <StatusBanner tone="danger" title="Not saved">
+      {workday.isError ? (
+        <StatusBanner tone="danger" title="The working day could not be loaded">
+          {apiErrorMessage(workday.error, 'Refresh to try again.')}
+        </StatusBanner>
+      ) : null}
+      {hours ? <WorkingHoursCard hours={hours} /> : null}
+
+        {error ? (
+        <StatusBanner tone="danger" title="Holiday not saved">
           {apiErrorMessage(error, 'Try again.')}
         </StatusBanner>
       ) : null}
 
+      <h2 className="text-h3 text-primary">Holidays</h2>
       <SurfaceCard className="p-4">
         <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-caption font-medium text-secondary">

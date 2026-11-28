@@ -189,6 +189,7 @@ public class DispatchAssignmentService {
                 candidates.stream().map(CourierShift::getCourierId).toList());
         boolean sized = assignment.getVolumeLitres() != null;
         boolean pickupsClosed = workingDay.pickupsClosed();
+        WorkHours hours = workingDay.hours();
 
         record Option(CourierShift courier, CourierLoad load, CourierBlock block) {}
         // Couriers at work come before those on their lunch break, who can still be given it.
@@ -206,7 +207,7 @@ public class DispatchAssignmentService {
                     return new Option(courier, load, CourierFit.block(courier, load, assignment, pickupsClosed).orElse(null));
                 })
                 .sorted(ranking)
-                .map(option -> CourierSuggestionResponse.of(option.courier(), option.load(), option.block(), district))
+                .map(option -> CourierSuggestionResponse.of(option.courier(), option.load(), option.block(), district, hours))
                 .toList();
     }
 

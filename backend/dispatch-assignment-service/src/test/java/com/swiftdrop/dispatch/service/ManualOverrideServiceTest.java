@@ -567,16 +567,16 @@ class ManualOverrideServiceTest {
     }
 
     @Test
-    @DisplayName("A courier from another district cannot be assigned, even by an admin")
+    @DisplayName("A courier from another district cannot be assigned, even by the pickup district's dispatcher")
     void aCourierMustWorkInThePickupDistrict() {
         CourierShift kandyCourier = courier(newCourierId, "Kandy Courier", 0);
         kandyCourier.setCurrentDistrict(SriLankanDistrict.KANDY);
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
         when(courierShiftRepository.findByCourierId(newCourierId)).thenReturn(Optional.of(kandyCourier));
-        CallerContext admin = new CallerContext(UUID.randomUUID(), UserRole.SYSTEM_ADMIN, null, null);
+        CallerContext colombo = dispatcherOf(SriLankanDistrict.COLOMBO);
 
         assertThatThrownBy(() -> manualOverrideService.manualAssign(
-                new ManualAssignRequest(orderId, newCourierId, "ADMIN", null), null, admin))
+                new ManualAssignRequest(orderId, newCourierId, "dispatcher", null), null, colombo))
                 .isInstanceOf(CourierNotAvailableException.class)
                 .hasMessageContaining("works in Kandy")
                 .hasMessageContaining("picked up in Colombo");

@@ -437,7 +437,7 @@ class RbacIT extends IamContainers {
         var dispatcher = fixture("dispatch", UserRole.DISPATCHER, SriLankanDistrict.COLOMBO);
         var colombo = fixture("colombo", UserRole.COURIER, SriLankanDistrict.COLOMBO);
         var galle = fixture("galle", UserRole.COURIER, SriLankanDistrict.GALLE);
-        String body = mvc.perform(get(COURIERS_API).param("search", prefix).param("district", "GALLE")
+        String body = mvc.perform(get(COURIERS_API).param("search", prefix)
                 .header("Authorization", bearer(dispatcher)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -456,12 +456,14 @@ class RbacIT extends IamContainers {
     }
 
     @Test
-    @DisplayName("Customers and couriers cannot use the courier management API")
+    @DisplayName("Customers, couriers and the system admin cannot use the courier management API")
     void nonDispatchers_cannotManageCouriers() throws Exception {
         var customer = fixture("customer", UserRole.CUSTOMER, SriLankanDistrict.COLOMBO);
         var courier = fixture("courier", UserRole.COURIER, SriLankanDistrict.COLOMBO);
+        var admin = fixture("admin", UserRole.SYSTEM_ADMIN, null);
         mvc.perform(get(COURIERS_API).header("Authorization", bearer(customer))).andExpect(status().isForbidden());
         mvc.perform(get(COURIERS_API).header("Authorization", bearer(courier))).andExpect(status().isForbidden());
+        mvc.perform(get(COURIERS_API).header("Authorization", bearer(admin))).andExpect(status().isForbidden());
     }
 
     @Test

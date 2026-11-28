@@ -3,7 +3,6 @@ package com.swiftdrop.dispatch.controller;
 import com.swiftdrop.dispatch.security.DistrictScope;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.dto.ApiResponse;
-import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.dispatch.domain.enums.ShiftStatus;
 import com.swiftdrop.dispatch.dto.CourierShiftResponse;
 import com.swiftdrop.dispatch.dto.CourierWorkloadResponse;
@@ -46,23 +45,21 @@ public class CourierAvailabilityController {
 
     @GetMapping
     @Operation(summary = "List couriers with optional district and shift status filters",
-            description = "A DISPATCHER gets the couriers of their own district (the district parameter is "
-                    + "ignored); a SYSTEM_ADMIN gets every district or the one given.")
+            description = "A DISPATCHER gets the couriers of their own district.")
     public ApiResponse<List<CourierShiftResponse>> getCouriers(
-            @RequestParam(required = false) SriLankanDistrict district,
             @RequestParam(required = false) ShiftStatus status,
             HttpServletRequest httpRequest
     ) {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
-                courierShiftService.getCouriers(DistrictScope.listDistrict(caller, district), status),
+                courierShiftService.getCouriers(DistrictScope.listDistrict(caller), status),
                 "Couriers retrieved"
         );
     }
 
     @GetMapping("/{courierId}")
     @Operation(summary = "Get courier shift status and live metrics",
-            description = "A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+            description = "A COURIER may use only their own courier ID; a DISPATCHER the couriers of their district.")
     public ApiResponse<CourierShiftResponse> getCourier(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
@@ -75,19 +72,19 @@ public class CourierAvailabilityController {
 
     @GetMapping("/workload")
     @Operation(summary = "List current courier workloads",
-            description = "A DISPATCHER sees their own district's couriers; a SYSTEM_ADMIN sees all.")
+            description = "A DISPATCHER sees their own district's couriers.")
     public ApiResponse<List<CourierWorkloadResponse>> getWorkloads(HttpServletRequest httpRequest) {
         CallerContext caller = DispatchAccess.requireOperations(httpRequest);
         return ApiResponse.success(
-                courierShiftService.getWorkloads(DistrictScope.listDistrict(caller, null)),
+                courierShiftService.getWorkloads(DistrictScope.listDistrict(caller)),
                 "Courier workloads retrieved"
         );
     }
 
     @PostMapping("/shifts/start")
     @Operation(summary = "Start or register courier shift",
-            description = "A COURIER may use only their own courier ID, a DISPATCHER the couriers of their district, "
-                    + "a SYSTEM_ADMIN any. The shift starts in the courier's home district, only on a working day "
+            description = "A COURIER may use only their own courier ID, a DISPATCHER the couriers of their district. "
+                    + "The shift starts in the courier's home district, only on a working day "
                     + "(Monday to Saturday, not a listed holiday) from 7:30 until 17:00 Sri Lanka time. Starting a "
                     + "shift that is already running returns it unchanged.")
     public ApiResponse<CourierShiftResponse> startShift(
@@ -104,7 +101,7 @@ public class CourierAvailabilityController {
     @Operation(summary = "End courier shift",
             description = "Refused while the courier carries parcels (picked up and not delivered or handed in); a "
                     + "pickup not made today stays assigned to them. A COURIER must have handed over all their cash "
-                    + "first. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+                    + "first. A COURIER may use only their own courier ID; a DISPATCHER the couriers of their district.")
     public ApiResponse<CourierShiftResponse> endShift(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
@@ -119,7 +116,7 @@ public class CourierAvailabilityController {
     @Operation(summary = "Leave the hub on the run",
             description = "Refused while parcels waiting at the hub for the courier are not loaded. Afterwards the "
                     + "courier gets only pickups, until 15:00; leaving again changes nothing. A COURIER may use only "
-                    + "their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+                    + "their own courier ID; a DISPATCHER the couriers of their district.")
     public ApiResponse<CourierShiftResponse> startRun(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
@@ -131,7 +128,7 @@ public class CourierAvailabilityController {
     @Operation(summary = "Back at the hub",
             description = "Ends the courier's run: they can hand in what they carry and load again, and hub parcels "
                     + "can be given to them again. Not on a run, nothing changes. A COURIER may use only their own "
-                    + "courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+                    + "courier ID; a DISPATCHER the couriers of their district.")
     public ApiResponse<CourierShiftResponse> backAtHub(
             @PathVariable UUID courierId,
             HttpServletRequest httpRequest) {
@@ -144,7 +141,7 @@ public class CourierAvailabilityController {
             description = "ON_BREAK starts the one lunch break of the shift (between 12:00 and 14:30, up to 45 "
                     + "minutes); AVAILABLE ends it. OFFLINE and BUSY are refused: a shift ends through End shift, "
                     + "and BUSY follows the parcels held. A courier on break keeps their parcels and can be given "
-                    + "more. A COURIER may use only their own courier ID; DISPATCHER and SYSTEM_ADMIN may use any.")
+                    + "more. A COURIER may use only their own courier ID; a DISPATCHER the couriers of their district.")
     public ApiResponse<CourierShiftResponse> updateShiftStatus(
             @Valid @RequestBody UpdateShiftStatusRequest request,
             HttpServletRequest httpRequest) {
@@ -155,10 +152,10 @@ public class CourierAvailabilityController {
         );
     }
 
-    /** The courier themselves, a SYSTEM_ADMIN, or the dispatcher of the district the courier works in. */
+    /** The courier themselves, or the dispatcher of the district the courier works in. */
     private CallerContext requireCourierAccess(HttpServletRequest httpRequest, UUID courierId) {
         CallerContext caller = DispatchAccess.requireCourierSelfOrOperations(httpRequest, courierId);
-        if (caller.role() == com.swiftdrop.contracts.enums.UserRole.DISPATCHER) {
+        if (DispatchAccess.isOperations(caller)) {
             DistrictScope.requireCourier(caller, courierShiftService.getCourier(courierId).currentDistrict());
         }
         return caller;

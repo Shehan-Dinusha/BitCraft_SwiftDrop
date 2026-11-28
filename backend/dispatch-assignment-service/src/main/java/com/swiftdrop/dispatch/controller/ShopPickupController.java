@@ -1,7 +1,6 @@
 package com.swiftdrop.dispatch.controller;
 
 import com.swiftdrop.contracts.dto.ApiResponse;
-import com.swiftdrop.contracts.enums.SriLankanDistrict;
 import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.security.JwtHeaderConstants;
 import com.swiftdrop.dispatch.dto.AssignShopPickupRequest;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -41,13 +39,12 @@ public class ShopPickupController {
 
     @GetMapping("/{merchantId}/couriers")
     @Operation(summary = "Couriers on shift and which of the shop's ready parcels each has room for",
-            description = "A DISPATCHER gets their own district (the parameter is ignored); a SYSTEM_ADMIN must give it.")
+            description = "A DISPATCHER gets their own district.")
     public ApiResponse<List<ShopCourierSuggestionResponse>> couriers(
             @PathVariable UUID merchantId,
-            @RequestParam(required = false) SriLankanDistrict district,
             HttpServletRequest http) {
         CallerContext caller = DispatchAccess.requireOperations(http);
-        return ApiResponse.success(merchantPickupService.suggestions(caller, merchantId, district), "Couriers retrieved");
+        return ApiResponse.success(merchantPickupService.suggestions(caller, merchantId), "Couriers retrieved");
     }
 
     @PostMapping("/{merchantId}/assign")

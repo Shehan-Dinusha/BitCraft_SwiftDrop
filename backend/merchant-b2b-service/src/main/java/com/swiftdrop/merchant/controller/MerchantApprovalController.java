@@ -69,23 +69,23 @@ public class MerchantApprovalController {
     }
 
     @PostMapping("/api/v1/admin/merchants/{merchantId}/approve")
-    @Operation(summary = "Approve a pending merchant (DISPATCHER of its district, SYSTEM_ADMIN)")
+    @Operation(summary = "Approve a pending merchant (DISPATCHER of its district)")
     public ApiResponse<MerchantApprovalResponse> approve(
             @PathVariable UUID merchantId,
             @RequestHeader(value = JwtHeaderConstants.X_CORRELATION_ID, required = false) UUID correlationId,
             HttpServletRequest httpRequest) {
-        CallerContext caller = MerchantAccess.requireOperations(httpRequest);
+        CallerContext caller = MerchantAccess.requireDispatcher(httpRequest);
         return ApiResponse.success(approvals.approve(caller, merchantId, correlationId), "Merchant approved");
     }
 
     @PostMapping("/api/v1/admin/merchants/{merchantId}/reject")
-    @Operation(summary = "Reject a pending merchant with a reason (DISPATCHER of its district, SYSTEM_ADMIN)",
+    @Operation(summary = "Reject a pending merchant with a reason (DISPATCHER of its district)",
             description = "The owner is emailed the reason and can correct the application and resubmit it.")
     public ApiResponse<MerchantApprovalResponse> reject(
             @PathVariable UUID merchantId,
             @Valid @RequestBody RejectMerchantRequest request,
             HttpServletRequest httpRequest) {
-        CallerContext caller = MerchantAccess.requireOperations(httpRequest);
+        CallerContext caller = MerchantAccess.requireDispatcher(httpRequest);
         return ApiResponse.success(approvals.reject(caller, merchantId, request.reason()), "Merchant rejected");
     }
 

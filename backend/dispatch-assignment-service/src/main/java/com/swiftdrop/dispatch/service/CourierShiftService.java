@@ -275,9 +275,10 @@ public class CourierShiftService {
         }
         Map<UUID, CourierLoad> loads = CourierLoad.all(assignmentRepository,
                 list.stream().map(CourierShift::getCourierId).toList());
+        WorkHours hours = workingDay.hours();
         return list.stream()
                 .map(shift -> CourierShiftResponse.fromEntity(shift,
-                        loads.getOrDefault(shift.getCourierId(), CourierLoad.NONE)))
+                        loads.getOrDefault(shift.getCourierId(), CourierLoad.NONE), hours))
                 .toList();
     }
 
@@ -289,7 +290,8 @@ public class CourierShiftService {
     }
 
     private CourierShiftResponse toResponse(CourierShift shift) {
-        return CourierShiftResponse.fromEntity(shift, CourierLoad.of(assignmentRepository, shift.getCourierId()));
+        return CourierShiftResponse.fromEntity(shift, CourierLoad.of(assignmentRepository, shift.getCourierId()),
+                workingDay.hours());
     }
 
     @Transactional(readOnly = true)

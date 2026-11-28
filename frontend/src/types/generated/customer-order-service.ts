@@ -32,7 +32,7 @@ export interface paths {
         put?: never;
         /**
          * Calculate pre-confirmation delivery fee estimate (FR-C2)
-         * @description The fee and the day delivery is promised (deliverBy, Sri Lanka time). Same day is only within one district and booked by 11:00 on a working day; otherwise 400. Couriers work Monday to Saturday, not on listed holidays.
+         * @description The fee and the day delivery is promised (deliverBy, Sri Lanka time). Same day is only within one district and booked before the Same day cut-off (standard 11:00) on a working day; otherwise 400. Couriers work the weekdays the SYSTEM_ADMIN set (standard Monday to Saturday), not on listed holidays.
          */
         post: operations["calculateFeeEstimate"];
         delete?: never;
@@ -339,7 +339,7 @@ export interface components {
             speed?: components["schemas"]["OrderSpeed"];
             /**
              * Format: date
-             * @description The day delivery is promised if booked now. Same day today; otherwise picked up today when booked before 15:00 on a working day (else the next one), then Express the next working day, Standard two working days later within one district or three to another district.
+             * @description The day delivery is promised if booked now. Same day today; otherwise picked up today when booked before the pickup cut-off (standard 15:00) on a working day (else the next one), then Express the next working day, Standard two working days later within one district or three to another district.
              * @example 2026-11-26
              */
             deliverBy?: string;
@@ -766,7 +766,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseFeeEstimateResponse"];
                 };
             };
-            /** @description Same day asked for between districts, after 11:00, or on a closed day */
+            /** @description Same day asked for between districts, after the Same day cut-off, or on a closed day */
             400: {
                 headers: {
                     [name: string]: unknown;
