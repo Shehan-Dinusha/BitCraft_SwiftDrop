@@ -23,6 +23,11 @@ export interface SurfaceCardProps extends Omit<HTMLAttributes<HTMLElement>, 'tit
   /** Footer slot, separated by a hairline. Use for primary/secondary actions. */
   footer?: ReactNode;
   density?: DensityMode;
+  /**
+   * Classes for the body that wraps `children`, such as `space-y-3` or `flex gap-3`. `className` styles the
+   * outer card, whose only child is that body, so spacing classes there never reach the content.
+   */
+  bodyClassName?: string;
 }
 
 const variantClasses: Record<SurfaceCardVariant, string> = {
@@ -52,6 +57,7 @@ export function SurfaceCard({
   footer,
   density,
   className,
+  bodyClassName,
   children,
   onClick,
   onKeyDown,
@@ -104,7 +110,7 @@ export function SurfaceCard({
           {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
         </header>
       ) : null}
-      <div className={cn('min-w-0 flex-1', recipe.surfacePadding)}>{children}</div>
+      <div className={cn('min-w-0 flex-1', recipe.surfacePadding, bodyClassName)}>{children}</div>
       {footer ? (
         <footer className={cn('border-t border-border-subtle', recipe.surfaceSection)}>
           {footer}
