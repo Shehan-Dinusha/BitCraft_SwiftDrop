@@ -126,3 +126,54 @@ describe('restoreSession (a new tab)', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+describe('another account signed in in another tab', () => {
+  const originalAdapter = apiClient.defaults.adapter;
+
+  beforeEach(() => {
+    apiClient.defaults.adapter = fakeAdapter;
+    // This tab is the courier; another tab then signed in as a customer, replacing the browser's cookie.
+    useAuthStore.setState({
+      token: 'courier-expired-token',
+      user: { id: 'courier-1', username: 'kavindi', role: 'COURIER' },
+      role: 'COURIER',
+      isDevSession: false,
+      accountChanged: false
+    });
+    window.localStorage.setItem('swiftdrop-signed-in', '1');
+  });
+
+  afterEach(() => {
+    apiClient.defaults.adapter = originalAdapter;
+    useAuthStore.getState().signOut();
+    window.localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('ends this tab instead of turning the courier into the customer', async () => {
+    vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { accessToken: FRESH, userId: 'customer-1', username: 'nimal', role: 'CUSTOMER' }
+    });
+
+    await expect(apiClient.get('/courier/jobs')).rejects.toBeInstanceOf(AxiosError);
+
+    const state = useAuthStore.getState();
+    expect(state.token).toBeNull();
+    expect(state.user).toBeNull();
+    expect(state.accountChanged).toBe(true);
+    // The customer is still signed in: their flag stays for other tabs.
+    expect(window.localStorage.getItem('swiftdrop-signed-in')).toBe('1');
+  });
+
+  it('keeps the tab signed in when the cookie still belongs to the same user', async () => {
+    vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { accessToken: FRESH, userId: 'courier-1', username: 'kavindi', role: 'COURIER' }
+    });
+
+    const response = await apiClient.get('/courier/jobs');
+
+    expect(response.status).toBe(200);
+    expect(useAuthStore.getState().token).toBe(FRESH);
+    expect(useAuthStore.getState().accountChanged).toBe(false);
+  });
+});

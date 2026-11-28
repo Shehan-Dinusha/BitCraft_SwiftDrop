@@ -4,7 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from './AuthProvider';
 import { hasSignedInHint, useAuthStore } from '@/store/useAuthStore';
 
-const SIGNED_IN = { accessToken: 'from-cookie', userId: 'u1', username: 'kavindi', role: 'COURIER' };
+const SIGNED_IN = {
+  accessToken: 'from-cookie',
+  userId: 'u1',
+  username: 'kavindi',
+  role: 'COURIER'
+};
 
 describe('AuthProvider (a new tab on a public page)', () => {
   beforeEach(() => {
