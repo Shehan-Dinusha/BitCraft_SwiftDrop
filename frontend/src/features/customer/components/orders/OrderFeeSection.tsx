@@ -1,15 +1,26 @@
 import type { ReactNode } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { MoneyAmount, SurfaceCard } from '@/design-system';
 import type { CustomerOrderResponse } from '@/services/api/orderApi';
-import { PAYMENT_NOTE, hasPendingFeeRevision, payableFee } from './orderDisplay';
+import {
+  PAID_NOTE,
+  PAYMENT_NOTE,
+  feePaid,
+  hasPendingFeeRevision,
+  payableFee
+} from './orderDisplay';
 
-/** The delivery fee, and how it changed if the courier re-measured the parcel. */
+/**
+ * The delivery fee, how it changed if the courier re-measured the parcel, and whether it is paid. The
+ * sender pays the courier at pickup, so from then on it reads "Paid" instead of "To pay".
+ */
 export function OrderFeeSection({ order }: { order: CustomerOrderResponse }) {
   const currency = order.currency ?? 'LKR';
   const booked = order.estimatedFee ?? 0;
   const pending = hasPendingFeeRevision(order);
   const current = payableFee(order);
   const changed = !pending && current !== booked;
+  const paid = feePaid(order);
   const billedByWeight =
     order.chargeableWeightKg !== undefined &&
     order.actualWeightKg !== undefined &&
@@ -35,8 +46,11 @@ export function OrderFeeSection({ order }: { order: CustomerOrderResponse }) {
               </Row>
             ) : null}
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-body-strong text-primary">
-                {changed ? 'Updated fee' : 'To pay'}
+              <dt className="flex items-center gap-2 text-body-strong text-primary">
+                {paid ? 'Paid' : changed ? 'Updated fee' : 'To pay'}
+                {paid ? (
+                  <CheckCircle2 aria-hidden="true" className="size-4 text-status-success" />
+                ) : null}
               </dt>
               <dd>
                 <MoneyAmount amount={current} size="lg" currency={currency} />
@@ -45,7 +59,7 @@ export function OrderFeeSection({ order }: { order: CustomerOrderResponse }) {
           </>
         )}
       </dl>
-      <p className="mt-3 text-caption text-secondary">{PAYMENT_NOTE}</p>
+      <p className="mt-3 text-caption text-secondary">{paid ? PAID_NOTE : PAYMENT_NOTE}</p>
       {billedByWeight ? (
         <p className="mt-3 text-caption text-secondary">
           Charged as {order.chargeableWeightKg} kg because the parcel&apos;s size counts for more
