@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import axios from 'axios';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { RoleGuard } from './RoleGuard';
@@ -29,11 +30,27 @@ function signInAs(role: PersonaRole) {
 }
 
 describe('RoleGuard', () => {
-  afterEach(() => useAuthStore.getState().signOut());
+  afterEach(() => {
+    useAuthStore.getState().signOut();
+    vi.restoreAllMocks();
+  });
 
-  it('sends a visitor without a token to the login page', () => {
+  it('sends a visitor without a token to the login page', async () => {
+    useAuthStore.setState({ sessionRestore: 'idle' });
+    vi.spyOn(axios, 'post').mockRejectedValue(new Error('no refresh cookie'));
     renderAt('/ops');
-    expect(screen.getByText('login page')).toBeInTheDocument();
+    expect(await screen.findByText('login page')).toBeInTheDocument();
+  });
+
+  it('signs a new tab in from the refresh cookie instead of asking to sign in again', async () => {
+    useAuthStore.setState({ sessionRestore: 'idle' });
+    vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { accessToken: 'from-cookie', userId: 'u1', username: 'ops', role: 'DISPATCHER' }
+    });
+    renderAt('/ops');
+    expect(screen.getByRole('status')).toHaveTextContent('Signing you in');
+    expect(await screen.findByText('ops console')).toBeInTheDocument();
+    expect(screen.queryByText('login page')).not.toBeInTheDocument();
   });
 
   it('renders the page for an allowed persona', () => {

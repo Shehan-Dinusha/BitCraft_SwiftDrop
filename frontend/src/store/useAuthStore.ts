@@ -41,6 +41,12 @@ type Session = {
   role: PersonaRole;
   /** True for a developer-switched persona with a fake token. The API client leaves it signed in on 401. */
   isDevSession: boolean;
+  /**
+   * Whether this tab has tried to restore the session from the refresh cookie. The access token lives in
+   * sessionStorage, which a new tab starts without, but the cookie is shared by every tab. Not persisted.
+   */
+  sessionRestore: 'idle' | 'running' | 'done';
+  setSessionRestore: (state: 'idle' | 'running' | 'done') => void;
   setSession: (token: string, role: PersonaRole) => void;
   setAuth: (tokens: AuthTokenResponse) => void;
   setUser: (user: AuthUserProfile) => void;
@@ -54,6 +60,8 @@ export const useAuthStore = create<Session>()(
       user: null,
       role: 'CUSTOMER',
       isDevSession: false,
+      sessionRestore: 'idle',
+      setSessionRestore: (sessionRestore) => set({ sessionRestore }),
       setSession: (token, role) => set({ token, role, user: null, isDevSession: true }),
       setAuth: (tokens) =>
         set({
@@ -76,7 +84,9 @@ export const useAuthStore = create<Session>()(
           token: null,
           user: null,
           role: 'CUSTOMER',
-          isDevSession: false
+          isDevSession: false,
+          // Signed out on purpose (or the session ended): do not sign straight back in from the cookie.
+          sessionRestore: 'done'
         });
       }
     }),

@@ -1,6 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { restoreSession } from '@/services/api/apiClient';
 import type { PersonaRole } from '@/types/contracts';
 import { SYSTEM_ADMIN_HOME, homeFor } from '@/app/roleHome';
 
@@ -8,7 +10,9 @@ import { SYSTEM_ADMIN_HOME, homeFor } from '@/app/roleHome';
  * Route-level authorization guard.
  *
  * Redirects unauthenticated visitors to /login (preserving `from` so the page
- * can redirect back after sign-in). A signed-in user whose persona is not in
+ * can redirect back after sign-in). A tab without a token first tries to sign in
+ * from the refresh cookie, which every tab shares: a tab opened by hand would
+ * otherwise ask a signed-in user to sign in again. A signed-in user whose persona is not in
  * `roles` is sent to their own home page: sending them to /login would look
  * like they had been signed out.
  *
@@ -29,10 +33,22 @@ export function RoleGuard({
   dispatcherOnly?: boolean;
   children: ReactNode;
 }) {
-  const { token, role, user } = useAuthStore();
+  const { token, role, user, sessionRestore } = useAuthStore();
   const location = useLocation();
 
+  useEffect(() => {
+    if (!token && sessionRestore === 'idle') void restoreSession();
+  }, [token, sessionRestore]);
+
   if (!token) {
+    if (sessionRestore !== 'done') {
+      return (
+        <div role="status" className="flex min-h-screen items-center justify-center bg-canvas">
+          <Loader2 aria-hidden="true" className="size-6 animate-spin text-brand-primary" />
+          <span className="sr-only">Signing you in</span>
+        </div>
+      );
+    }
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
   if (!roles.includes(role)) {
