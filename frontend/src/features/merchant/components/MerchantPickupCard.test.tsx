@@ -53,7 +53,10 @@ describe('MerchantPickupCard', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ready for pickup' }));
 
     await waitFor(() => expect(ready).toHaveBeenCalledWith('m1'));
-    expect(await screen.findByText('Marked ready. A courier will be sent.')).toBeInTheDocument();
+    // The card reloads after marking ready; under coverage on CI that took just over the default 1 s.
+    expect(
+      await screen.findByText('Marked ready. A courier will be sent.', undefined, { timeout: 3000 })
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ready for pickup' })).toBeDisabled();
   });
 
