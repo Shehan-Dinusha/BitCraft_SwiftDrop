@@ -354,6 +354,7 @@ public class CustomerOrderService {
             throw new InvalidOrderStateException("Only a booked parcel with no courier assigned yet can be cancelled.");
         }
 
+        PublicOrderStatus previousStatus = order.getStatus();
         order.setStatus(PublicOrderStatus.CANCELLED);
         order.setInternalQueueStatus(InternalQueueStatus.CANCELLED);
         order.setCancellationReason(request != null ? request.getReason() : "Customer cancelled order");
@@ -362,7 +363,8 @@ public class CustomerOrderService {
 
         CustomerOrder saved = customerOrderRepository.save(order);
         orderStatusHistoryService.recordCurrentStatus(saved, null);
-        orderEventPublisher.publishOrderCancelled(saved, order.getCancellationReason(), "CUSTOMER", correlationId);
+        orderEventPublisher.publishOrderCancelled(saved, previousStatus, order.getCancellationReason(), "CUSTOMER",
+                correlationId);
         return CustomerOrderResponse.fromEntity(saved);
     }
 
@@ -394,6 +396,7 @@ public class CustomerOrderService {
         // FR-C8: Auto-cancelling at $0 if rejected
         order.setFinalFee(BigDecimal.ZERO);
         order.setFeeRevisionStatus(FeeRevisionStatus.REJECTED);
+        PublicOrderStatus previousStatus = order.getStatus();
         order.setStatus(PublicOrderStatus.CANCELLED);
         order.setInternalQueueStatus(InternalQueueStatus.CANCELLED);
         order.setCancellationReason("Customer rejected courier fee revision of LKR " + order.getRevisedFee());
@@ -402,7 +405,8 @@ public class CustomerOrderService {
 
         CustomerOrder saved = customerOrderRepository.save(order);
         orderStatusHistoryService.recordCurrentStatus(saved, null);
-        orderEventPublisher.publishOrderCancelled(saved, order.getCancellationReason(), "CUSTOMER", correlationId);
+        orderEventPublisher.publishOrderCancelled(saved, previousStatus, order.getCancellationReason(), "CUSTOMER",
+                correlationId);
         log.info("Customer rejected fee revision for order {}: cancelled at LKR 0.00", orderId);
         return CustomerOrderResponse.fromEntity(saved);
     }

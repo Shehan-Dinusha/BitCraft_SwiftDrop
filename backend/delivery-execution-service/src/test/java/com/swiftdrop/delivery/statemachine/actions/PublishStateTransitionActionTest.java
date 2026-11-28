@@ -61,6 +61,25 @@ class PublishStateTransitionActionTest {
     }
 
     @Test
+    @DisplayName("Carries a given correlation ID on both events")
+    void testCarriesGivenCorrelationId() {
+        UUID correlationId = UUID.randomUUID();
+
+        action.execute(UUID.randomUUID(), UUID.randomUUID(), "SD-COL-001", UUID.randomUUID(), UUID.randomUUID(),
+                DeliveryState.CREATED, DeliveryState.ASSIGNED, "Courier assigned",
+                SriLankanDistrict.COLOMBO, SriLankanDistrict.KANDY, null, correlationId);
+
+        ArgumentCaptor<DeliveryStateChangedEvent> state = ArgumentCaptor.forClass(DeliveryStateChangedEvent.class);
+        ArgumentCaptor<ParcelStatusChangedEvent> parcel = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
+        verify(eventPublisher).publishStateChanged(state.capture());
+        verify(eventPublisher).publishParcelStatusChanged(parcel.capture());
+        assertThat(state.getValue().correlationId()).isEqualTo(correlationId);
+        assertThat(parcel.getValue().correlationId()).isEqualTo(correlationId);
+        assertThat(parcel.getValue().previousPublicStatus()).isEqualTo(PublicOrderStatus.CREATED);
+        assertThat(parcel.getValue().newPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
+    }
+
+    @Test
     @DisplayName("Defers event publishing until active transaction commits")
     void testDefersPublishingUntilTransactionCommit() {
         TransactionSynchronizationManager.initSynchronization();

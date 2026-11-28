@@ -5,8 +5,6 @@ import com.swiftdrop.contracts.security.CallerContext;
 import com.swiftdrop.contracts.enums.UserRole;
 import com.swiftdrop.contracts.enums.OrderSpeed;
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.contracts.enums.PublicOrderStatus;
-import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
 import com.swiftdrop.dispatch.domain.entity.DispatchAssignment;
@@ -136,9 +134,8 @@ class ManualOverrideServiceTest {
         assertThat(assigned.getValue().pickupDistrict()).isEqualTo(SriLankanDistrict.KANDY);
         assertThat(assigned.getValue().deliveryDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
 
-        ArgumentCaptor<ParcelStatusChangedEvent> status = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
-        verify(eventPublisher).publishParcelStatusChanged(status.capture());
-        assertThat(status.getValue().customerId()).isEqualTo(customerId);
+        // delivery-execution-service reports the status change once it receives courier.assigned.
+        verifyNoMoreInteractions(eventPublisher);
     }
 
     @Test
@@ -159,7 +156,7 @@ class ManualOverrideServiceTest {
         assertThat(result.getAssignedBy()).isEqualTo("DISPATCHER_ONE");
         verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(newCourierId) && c.getActiveParcelsCount() == 2));
         verify(eventPublisher).publishCourierAssigned(any(CourierAssignedEvent.class));
-        verify(eventPublisher).publishParcelStatusChanged(any());
+        verifyNoMoreInteractions(eventPublisher);
     }
 
     @Test
@@ -215,7 +212,7 @@ class ManualOverrideServiceTest {
         verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(oldCourierId) && c.getActiveParcelsCount() == 1));
         verify(courierShiftRepository).save(argThat(c -> c.getCourierId().equals(newCourierId) && c.getActiveParcelsCount() == 2));
         verify(eventPublisher).publishCourierAssigned(any(CourierAssignedEvent.class));
-        verify(eventPublisher, never()).publishParcelStatusChanged(any());
+        verifyNoMoreInteractions(eventPublisher);
     }
 
     @Test
@@ -341,7 +338,7 @@ class ManualOverrideServiceTest {
     }
 
     @Test
-    @DisplayName("Assign events: CREATED -> PICKUP_ASSIGNED, the assigned courier and the request correlation ID")
+    @DisplayName("Assign events: only courier.assigned, naming the assigned courier, with the request correlation ID")
     void testManualAssign_EventContents() {
         UUID correlationId = UUID.randomUUID();
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
@@ -353,15 +350,12 @@ class ManualOverrideServiceTest {
                 new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_ONE", null), correlationId);
 
         CourierAssignedEvent assigned = capturedCourierAssigned();
-        ParcelStatusChangedEvent status = capturedStatusChanged();
         assertThat(assigned.orderId()).isEqualTo(orderId);
         assertThat(assigned.courierId()).isEqualTo(newCourierId);
         assertThat(assigned.courierName()).isEqualTo("New Courier");
         assertThat(assigned.assignedAt()).isEqualTo(result.getAssignedAt());
-        assertThat(status.previousPublicStatus()).isEqualTo(PublicOrderStatus.CREATED);
-        assertThat(status.newPublicStatus()).isEqualTo(PublicOrderStatus.PICKUP_ASSIGNED);
         assertThat(assigned.correlationId()).isEqualTo(correlationId);
-        assertThat(status.correlationId()).isEqualTo(correlationId);
+        verifyNoMoreInteractions(eventPublisher);
     }
 
     @Test
@@ -389,7 +383,7 @@ class ManualOverrideServiceTest {
         assertThat(assigned.customerId()).as("customer kept for delivery notifications (#75)").isEqualTo(customerId);
         assertThat(assigned.pickupDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
         assertThat(assigned.deliveryDistrict()).isEqualTo(SriLankanDistrict.GAMPAHA);
-        verify(eventPublisher, never()).publishParcelStatusChanged(any());
+        verifyNoMoreInteractions(eventPublisher);
     }
 
     @Test
@@ -405,7 +399,7 @@ class ManualOverrideServiceTest {
                 orderId, oldCourierId, newCourierId, "DISPATCH_SUPERVISOR", null));
 
         assertThat(capturedCourierAssigned().courierId()).isEqualTo(newCourierId);
-        verify(eventPublisher, never()).publishParcelStatusChanged(any());
+        verifyNoMoreInteractions(eventPublisher);
     }
 
     @Test
@@ -423,8 +417,8 @@ class ManualOverrideServiceTest {
     }
 
     @Test
-    @DisplayName("Assign: without a request correlation ID both events share one generated correlation ID")
-    void testManualAssign_GeneratesOneSharedCorrelationId() {
+    @DisplayName("Assign: without a request correlation ID, courier.assigned carries a generated one")
+    void testManualAssign_GeneratesCorrelationId() {
         when(assignmentRepository.findByOrderId(orderId)).thenReturn(Optional.of(unassignedOrder()));
         when(courierShiftRepository.findByCourierId(newCourierId))
                 .thenReturn(Optional.of(courier(newCourierId, "New Courier", 0)));
@@ -432,9 +426,7 @@ class ManualOverrideServiceTest {
 
         manualOverrideService.manualAssign(new ManualAssignRequest(orderId, newCourierId, "DISPATCHER_ONE", null), null);
 
-        UUID generated = capturedCourierAssigned().correlationId();
-        assertThat(generated).isNotNull();
-        assertThat(capturedStatusChanged().correlationId()).isEqualTo(generated);
+        assertThat(capturedCourierAssigned().correlationId()).isNotNull();
     }
 
     @Test
@@ -472,12 +464,6 @@ class ManualOverrideServiceTest {
     private CourierAssignedEvent capturedCourierAssigned() {
         ArgumentCaptor<CourierAssignedEvent> captor = ArgumentCaptor.forClass(CourierAssignedEvent.class);
         verify(eventPublisher).publishCourierAssigned(captor.capture());
-        return captor.getValue();
-    }
-
-    private ParcelStatusChangedEvent capturedStatusChanged() {
-        ArgumentCaptor<ParcelStatusChangedEvent> captor = ArgumentCaptor.forClass(ParcelStatusChangedEvent.class);
-        verify(eventPublisher).publishParcelStatusChanged(captor.capture());
         return captor.getValue();
     }
 

@@ -354,7 +354,9 @@ class CustomerOrderServiceTest {
 
         assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
         assertThat(response.getCancellationReason()).isEqualTo("No longer needed");
-        verify(orderEventPublisher).publishOrderCancelled(any(CustomerOrder.class), eq("No longer needed"), eq("CUSTOMER"), eq(correlationId));
+        // The status before the cancellation, not CANCELLED: consumers drop a status event that changes nothing.
+        verify(orderEventPublisher).publishOrderCancelled(any(CustomerOrder.class), eq(PublicOrderStatus.CREATED),
+                eq("No longer needed"), eq("CUSTOMER"), eq(correlationId));
         verify(customerOrderRepository).findByOrderIdForUpdate(orderId);
         verify(orderStatusHistoryService).recordCurrentStatus(argThat(o -> o.getStatus() == PublicOrderStatus.CANCELLED), isNull());
     }
@@ -382,6 +384,7 @@ class CustomerOrderServiceTest {
         sampleOrder.setFeeRevisionStatus(FeeRevisionStatus.PENDING);
         sampleOrder.setRevisedFee(new BigDecimal("950.00"));
         sampleOrder.setFeeRevisionReason("Package exceeded standard box limit");
+        sampleOrder.setStatus(PublicOrderStatus.PICKUP_ASSIGNED);
 
         when(customerOrderRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(sampleOrder));
         when(customerOrderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -394,7 +397,8 @@ class CustomerOrderServiceTest {
         assertThat(response.getStatus()).isEqualTo(PublicOrderStatus.CANCELLED);
         assertThat(response.getInternalQueueStatus()).isEqualTo(InternalQueueStatus.CANCELLED);
 
-        verify(orderEventPublisher).publishOrderCancelled(any(CustomerOrder.class), any(), eq("CUSTOMER"), eq(correlationId));
+        verify(orderEventPublisher).publishOrderCancelled(any(CustomerOrder.class), eq(PublicOrderStatus.PICKUP_ASSIGNED),
+                any(), eq("CUSTOMER"), eq(correlationId));
         verify(customerOrderRepository).findByOrderIdForUpdate(orderId);
         verify(orderStatusHistoryService).recordCurrentStatus(argThat(o -> o.getStatus() == PublicOrderStatus.CANCELLED), isNull());
     }

@@ -98,7 +98,8 @@ class DeliveryExecutionServiceTest {
         verify(auditTransitionAction).execute(any(), eq(orderId), eq(DeliveryState.CREATED),
                 eq(DeliveryState.ASSIGNED), any(), any(), any());
         verify(publishStateTransitionAction).execute(any(), eq(orderId), any(), eq(courierId),
-                any(), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any());
+                any(), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(), any(), any(), any(),
+                eq(event.correlationId()));
     }
 
     @Test
@@ -121,7 +122,7 @@ class DeliveryExecutionServiceTest {
         assertThat(session.getDeliveryDistrict()).isEqualTo(SriLankanDistrict.COLOMBO);
         verify(publishStateTransitionAction).execute(any(), eq(orderId), eq("SD-7K2P-Q9XM"), eq(courierId),
                 eq(customerId), eq(DeliveryState.CREATED), eq(DeliveryState.ASSIGNED), any(),
-                eq(SriLankanDistrict.KANDY), eq(SriLankanDistrict.COLOMBO), any());
+                eq(SriLankanDistrict.KANDY), eq(SriLankanDistrict.COLOMBO), any(), eq(event.correlationId()));
     }
 
     @Test

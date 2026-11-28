@@ -1,7 +1,6 @@
 package com.swiftdrop.dispatch;
 
 import com.swiftdrop.contracts.enums.SriLankanDistrict;
-import com.swiftdrop.contracts.events.delivery.ParcelStatusChangedEvent;
 import com.swiftdrop.contracts.events.dispatch.CourierAssignedEvent;
 import com.swiftdrop.dispatch.config.RabbitMQConfig;
 import com.swiftdrop.dispatch.domain.entity.CourierShift;
@@ -105,8 +104,7 @@ class AfterCommitEventPublishingIT {
         InOrder broker = inOrder(rabbitTemplate);
         broker.verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME),
                 eq(RabbitMQConfig.ROUTING_KEY_COURIER_ASSIGNED), isA(CourierAssignedEvent.class));
-        broker.verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.EXCHANGE_NAME),
-                eq(RabbitMQConfig.ROUTING_KEY_PARCEL_STATUS), isA(ParcelStatusChangedEvent.class));
+        // No parcel.status.changed: delivery-execution-service publishes CREATED -> PICKUP_ASSIGNED.
         broker.verifyNoMoreInteractions();
     }
 
