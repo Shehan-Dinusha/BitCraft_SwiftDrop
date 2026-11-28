@@ -349,7 +349,7 @@ export function ActiveDeliveryExecutionPage() {
         <div className="space-y-5">
           {/* Active Job Switcher Bar */}
           {allDeliveries.length > 1 && (
-            <SurfaceCard className="space-y-2.5 p-3.5">
+            <SurfaceCard className="p-3.5" bodyClassName="space-y-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-primary">
                   Today's Jobs ({allDeliveries.length})
@@ -380,7 +380,7 @@ export function ActiveDeliveryExecutionPage() {
           )}
 
           {/* Visual FSM Stepper Card */}
-          <SurfaceCard className="space-y-4 p-5">
+          <SurfaceCard className="p-5" bodyClassName="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-bold text-brand-primary">

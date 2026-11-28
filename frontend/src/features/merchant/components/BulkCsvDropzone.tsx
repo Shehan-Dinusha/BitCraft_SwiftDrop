@@ -108,7 +108,7 @@ export function BulkCsvDropzone({ merchantId, onBatchIngested }: BulkCsvDropzone
   };
 
   return (
-    <SurfaceCard className="space-y-4 p-4" data-density="compact">
+    <SurfaceCard className="p-4" bodyClassName="space-y-4" data-density="compact">
       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-status-success-fg" />

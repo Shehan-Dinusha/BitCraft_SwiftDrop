@@ -295,7 +295,7 @@ export function MerchantPortalDashboard() {
       {merchantId && <MerchantPaymentsCard refreshToken={ordersRevision} />}
 
       {/* Ingestion Batches Table */}
-      <SurfaceCard className="space-y-3 p-4" data-density="compact">
+      <SurfaceCard className="p-4" bodyClassName="space-y-3" data-density="compact">
         <div className="flex items-center justify-between border-b border-border-subtle pb-2">
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="h-4 w-4 text-brand-primary" />
