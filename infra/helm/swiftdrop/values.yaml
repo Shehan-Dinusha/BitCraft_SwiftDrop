@@ -113,6 +113,14 @@ secrets:
     publicKey: ""       # base64url P-256 point (65 bytes)
     privateKey: ""      # base64url P-256 scalar (32 bytes)
     subject: ""         # mailto:you@example.com or https://your-site
+  # Keyring that encrypts merchant webhook signing secrets at rest (AES-256-GCM), given to
+  # webhook-resiliency-service as WEBHOOK_SECRET_KEYRING. One line of JSON, kept as a string:
+  #   '{"activeKeyId":"v1","keys":{"v1":"<standard Base64 of 32 random bytes>"}}'
+  # scripts/generate-helm-secrets.sh creates it. When set, the chart refuses to render a malformed keyring.
+  # Optional until the service starts encrypting; from then on the service refuses to start without it.
+  # Rotation: docs/deployment/OPERATIONS-RUNBOOK.md ("Webhook secret keyring").
+  webhook:
+    secretKeyring: ""
 
 # ── Shared config (ConfigMap "swiftdrop-common-config", mounted into every backend service) ──
 commonConfig:
@@ -378,6 +386,9 @@ services:
     hpa: { minReplicas: 2, maxReplicas: 8, scaleUpPods: 2 }
     networkPolicy:
       allowFromServices: [api-gateway]
+    secretEnv:
+      # Optional until the service encrypts signing secrets (secrets.webhook.secretKeyring).
+      - { name: WEBHOOK_SECRET_KEYRING, secretName: webhook-secret-keyring, key: keyring, optional: true }
 
   notification-service:
     enabled: true
